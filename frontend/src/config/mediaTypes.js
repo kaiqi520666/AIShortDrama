@@ -11,7 +11,7 @@ export const mediaTypes = {
     model: 'Lib Image',
     hint: '商品图与视觉生成',
     placeholder: '描述你想生成的商品画面，@ 引用素材…',
-    setting: '16:9 · 2K · 1张',
+    setting: '16:9 · 2K',
   },
   video: {
     label: '视频',

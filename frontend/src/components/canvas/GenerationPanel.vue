@@ -39,7 +39,7 @@ const imageReferences = computed(() => references.value.filter((node) => node.ty
 const promptParts = computed(() => props.data.promptParts ?? (props.data.prompt ? [{ type: 'text', value: props.data.prompt }] : []))
 const selectedResolution = computed(() => props.data.resolution || '2K')
 const selectedAspectRatio = computed(() => props.data.aspectRatio || '16:9')
-const settingLabel = computed(() => props.type === 'image' ? `${selectedAspectRatio.value} · ${selectedResolution.value} · 1张` : mediaTypes[props.type].setting)
+const settingLabel = computed(() => props.type === 'image' ? `${selectedAspectRatio.value} · ${selectedResolution.value}` : mediaTypes[props.type].setting)
 const displayReferences = computed(() => {
   if (props.type !== 'image') return references.value.map((node, index) => ({ key: node.id, node, number: index + 1 }))
   const textInputs = references.value.filter((node) => node.type === 'text').map((node, index) => ({ key: `text-${node.id}`, node, number: index + 1 }))
