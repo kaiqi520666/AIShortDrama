@@ -91,9 +91,18 @@ function updateMenuPosition() {
   menuStyle.value = { left: `${left}px`, top: `${top}px` }
 }
 
+function hasMentionTrigger() {
+  const container = mentionRange?.startContainer
+  const offset = mentionRange?.startOffset
+  return container?.nodeType === 3 && container.textContent[offset - 1] === '@'
+}
+
 function handleInput(event) {
   syncParts()
-  if (event.data !== '@') return
+  if (event.data !== '@') {
+    if (menuVisible.value && !hasMentionTrigger()) menuVisible.value = false
+    return
+  }
   const selection = window.getSelection()
   if (!selection.rangeCount) return
   mentionRange = selection.getRangeAt(0).cloneRange()
