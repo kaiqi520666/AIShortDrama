@@ -25,6 +25,8 @@ button { color: inherit; }
 .flow-edge-hit { fill: none; stroke: transparent; stroke-width: 20; pointer-events: stroke; }
 .flow-edge-base { fill: none; stroke: #5a626d; stroke-width: 1.55; pointer-events: none; }
 .flow-edge-pulse { fill: none; stroke: #83bdff; stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: .07 .93; pointer-events: none; filter: drop-shadow(0 0 3px rgba(92, 170, 255, .58)); animation: edge-pulse 2.5s linear infinite; }
+.flow-edge-base.selected { stroke: #d9ecff; stroke-width: 2.8; filter: drop-shadow(0 0 4px rgba(125, 190, 255, .7)); }
+.flow-edge-pulse.selected { stroke: #ffffff; stroke-width: 3.2; filter: drop-shadow(0 0 5px rgba(135, 205, 255, .9)); }
 @keyframes edge-pulse { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 
 .canvas-header {

@@ -99,8 +99,13 @@ function handleConnectStart({ nodeId, handleType }) {
   connectionSource.value = handleType === 'source' ? nodeId : null
 }
 
+function handleConnect(connection) {
+  store.addEdge(connection)
+  connectionSource.value = null
+}
+
 function handleConnectEnd(event) {
-  if (!connectionSource.value || event.target.closest('.vue-flow__handle')) {
+  if (!connectionSource.value || event.target.closest('.vue-flow__handle, .vue-flow__node')) {
     connectionSource.value = null
     return
   }
@@ -238,7 +243,7 @@ function focusGroup(id) {
       :delete-key-code="['Backspace', 'Delete']"
       fit-view-on-init
       class="creative-flow"
-      @connect="store.addEdge"
+      @connect="handleConnect"
       @connect-start="handleConnectStart"
       @connect-end="handleConnectEnd"
       :selection-key-code="true"

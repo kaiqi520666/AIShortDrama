@@ -11,6 +11,7 @@ const props = defineProps({
   targetY: { type: Number, required: true },
   sourcePosition: { type: String, required: true },
   targetPosition: { type: String, required: true },
+  selected: Boolean,
 })
 
 const path = computed(() => getBezierPath({
@@ -26,6 +27,6 @@ const path = computed(() => getBezierPath({
 
 <template>
   <path class="flow-edge-hit" :d="path" />
-  <path class="flow-edge-base" :d="path" />
-  <path class="flow-edge-pulse" :d="path" pathLength="1" />
+  <path class="flow-edge-base" :class="{ selected }" :d="path" />
+  <path class="flow-edge-pulse" :class="{ selected }" :d="path" pathLength="1" />
 </template>
