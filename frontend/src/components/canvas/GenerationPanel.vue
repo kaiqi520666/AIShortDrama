@@ -112,12 +112,14 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', closeImageSettin
       :references="imageReferences"
       :placeholder="mediaTypes[type].placeholder"
       @update:model-value="updatePrompt"
+      @pointerdown="settingsOpen = false"
     />
     <textarea
       v-else
       :value="data.prompt"
       :placeholder="mediaTypes[type].placeholder"
       @input="updateNodeData(nodeId, { prompt: $event.target.value })"
+      @pointerdown="settingsOpen = false"
     ></textarea>
 
     <div v-if="settingsOpen && type === 'image'" ref="settingsMenu" class="image-settings-menu" :style="settingsStyle" @pointerdown.stop>
