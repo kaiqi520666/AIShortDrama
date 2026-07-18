@@ -12,6 +12,11 @@ const props = defineProps({
 
 const icons = { text: FileText, image: ImageIcon, video: Video, audio: Music2 }
 const icon = computed(() => icons[props.type])
+const bodyStyle = computed(() => {
+  if (props.type !== 'image') return {}
+  const ratio = props.data.aspectRatio || '16:9'
+  return { aspectRatio: ratio.replace(':', ' / ') }
+})
 const { updateNodeData } = useVueFlow()
 
 </script>
@@ -30,7 +35,7 @@ const { updateNodeData } = useVueFlow()
     </label>
     <Handle id="target" type="target" :position="Position.Left" />
 
-    <div class="node-body">
+    <div class="node-body" :style="bodyStyle">
       <div v-if="data.status === 'generating'" class="generating-state">
         <span></span>
         <p>正在生成…</p>
