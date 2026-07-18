@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref, watch } from 'vue'
+import { nextTick, onMounted, ref, watch } from 'vue'
 
 const props = defineProps({
   modelValue: { type: Array, required: true },
@@ -8,7 +8,9 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:modelValue'])
 const editor = ref(null)
+const menu = ref(null)
 const menuVisible = ref(false)
+const menuStyle = ref({})
 const activeIndex = ref(0)
 let mentionRange = null
 
@@ -76,6 +78,19 @@ function syncParts() {
   emit('update:modelValue', parts)
 }
 
+function updateMenuPosition() {
+  if (!mentionRange || !editor.value) return
+  const rangeRect = mentionRange.getBoundingClientRect()
+  const editorRect = editor.value.getBoundingClientRect()
+  const anchor = rangeRect.width || rangeRect.height ? rangeRect : editorRect
+  const width = menu.value?.offsetWidth || Math.min(360, window.innerWidth - 24)
+  const height = menu.value?.offsetHeight || 180
+  const left = Math.min(Math.max(12, anchor.left), window.innerWidth - width - 12)
+  const below = anchor.bottom + 8
+  const top = below + height <= window.innerHeight - 12 ? below : Math.max(12, anchor.top - height - 8)
+  menuStyle.value = { left: `${left}px`, top: `${top}px` }
+}
+
 function handleInput(event) {
   syncParts()
   if (event.data !== '@') return
@@ -84,6 +99,7 @@ function handleInput(event) {
   mentionRange = selection.getRangeAt(0).cloneRange()
   activeIndex.value = 0
   menuVisible.value = true
+  nextTick(updateMenuPosition)
 }
 
 function insertReference(reference) {
@@ -127,6 +143,9 @@ function handleKeydown(event) {
 watch(() => props.modelValue, () => {
   if (document.activeElement !== editor.value) renderEditor()
 }, { deep: true })
+watch(menuVisible, (visible) => {
+  if (visible) nextTick(updateMenuPosition)
+})
 onMounted(renderEditor)
 </script>
 
@@ -145,7 +164,7 @@ onMounted(renderEditor)
       @blur="menuVisible = false"
     ></div>
 
-    <div v-if="menuVisible" class="prompt-reference-menu" @pointerdown.prevent>
+    <div v-if="menuVisible" ref="menu" class="prompt-reference-menu" :style="menuStyle" @pointerdown.prevent>
       <button
         v-for="(reference, index) in references"
         :key="reference.id"
