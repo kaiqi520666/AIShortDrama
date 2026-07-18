@@ -43,7 +43,7 @@ const settingLabel = computed(() => props.type === 'image' ? `${selectedAspectRa
 const displayReferences = computed(() => {
   if (props.type !== 'image') return references.value.map((node, index) => ({ key: node.id, node, number: index + 1 }))
   const textInputs = references.value.filter((node) => node.type === 'text').map((node, index) => ({ key: `text-${node.id}`, node, number: index + 1 }))
-  const imageInputs = imageReferences.value.map((node, index) => ({ key: node.id, node, number: index + 1 }))
+  const imageInputs = references.value.filter((node) => node.type === 'image').map((node, index) => ({ key: node.id, node, number: index + 1 }))
   return [...textInputs, ...imageInputs]
 })
 
@@ -101,6 +101,7 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', closeImageSettin
       <div v-for="reference in displayReferences" :key="reference.key" class="reference-item">
         <img v-if="reference.node.data.asset" :src="reference.node.data.asset" alt="" />
         <FileText v-else-if="reference.node.type === 'text'" :size="20" />
+        <Image v-else-if="reference.node.type === 'image'" :size="20" />
         <span v-else>{{ reference.number }}</span>
         <b>{{ reference.number }}</b>
       </div>
