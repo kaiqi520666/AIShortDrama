@@ -44,6 +44,9 @@ export const useCanvasStore = defineStore('canvas', {
       if (this.edges.some((edge) => edge.source === connection.source && edge.target === connection.target)) return
       this.edges.push({ id: `edge-${crypto.randomUUID()}`, ...connection, type: 'cinematic' })
     },
+    deleteEdge(id) {
+      this.edges = this.edges.filter((edge) => edge.id !== id)
+    },
     selectNodes(nodeIds) {
       this.nodes.forEach((node) => { node.selected = nodeIds.includes(node.id) })
     },

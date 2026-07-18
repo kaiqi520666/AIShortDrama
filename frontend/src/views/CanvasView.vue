@@ -117,8 +117,14 @@ function openContextMenu({ event, node }) {
   contextMenu.value = { x: event.clientX, y: event.clientY, nodeId: node.id }
 }
 
+function openEdgeContextMenu({ event, edge }) {
+  event.preventDefault()
+  contextMenu.value = { x: event.clientX, y: event.clientY, edgeId: edge.id }
+}
+
 function runContextAction(action) {
-  action === 'groupSelected' ? store.groupSelected() : store[action](contextMenu.value.nodeId)
+  if (action === 'groupSelected') store.groupSelected()
+  else store[action](action === 'deleteEdge' ? contextMenu.value.edgeId : contextMenu.value.nodeId)
   contextMenu.value = null
 }
 
@@ -229,7 +235,7 @@ function focusGroup(id) {
       :min-zoom="0.25"
       :max-zoom="1.5"
       :connection-radius="28"
-      :delete-key-code="null"
+      :delete-key-code="['Backspace', 'Delete']"
       fit-view-on-init
       class="creative-flow"
       @connect="store.addEdge"
@@ -241,6 +247,7 @@ function focusGroup(id) {
       select-nodes-on-drag
       :pan-on-drag="[1]"
       @node-context-menu="openContextMenu"
+      @edge-context-menu="openEdgeContextMenu"
       @pane-click="contextMenu = null"
     >
       <Background :gap="22" :size="1" pattern-color="#303238" />
@@ -302,11 +309,14 @@ function focusGroup(id) {
     />
 
     <div v-if="contextMenu" class="context-menu" :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }" @pointerdown.stop>
-      <button @click="runContextAction('duplicateNode')"><Copy :size="15" />创建副本</button>
-      <button v-if="selectedNodes.length > 1 && !contextGroup" @click="runContextAction('groupSelected')"><Group :size="15" />编组</button>
-      <button v-if="contextGroup" @click="runContextAction('ungroupNode')"><Ungroup :size="15" />解组</button>
-      <span v-if="selectedNodes.length > 1 || contextGroup"></span>
-      <button class="danger" @click="runContextAction('deleteNode')"><Trash2 :size="15" />删除</button>
+      <button v-if="contextMenu.edgeId" class="danger" @click="runContextAction('deleteEdge')"><Trash2 :size="15" />删除连接</button>
+      <template v-else>
+        <button @click="runContextAction('duplicateNode')"><Copy :size="15" />创建副本</button>
+        <button v-if="selectedNodes.length > 1 && !contextGroup" @click="runContextAction('groupSelected')"><Group :size="15" />编组</button>
+        <button v-if="contextGroup" @click="runContextAction('ungroupNode')"><Ungroup :size="15" />解组</button>
+        <span v-if="selectedNodes.length > 1 || contextGroup"></span>
+        <button class="danger" @click="runContextAction('deleteNode')"><Trash2 :size="15" />删除</button>
+      </template>
     </div>
   </main>
 </template>
