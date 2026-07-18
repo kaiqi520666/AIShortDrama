@@ -107,6 +107,19 @@ button { color: inherit; }
 .model-select, .setting-select { display: flex; align-items: center; gap: 7px; color: #e0e2e4; font-size: 12px; }
 .setting-select { color: #b6b9bf; }
 .panel-divider { width: 1px; height: 18px; margin: 0 5px; background: #45474c; }
+.image-settings-trigger { display: flex; align-items: center; gap: 7px; padding: 0; color: #b6b9bf; font-size: 12px; }
+.image-settings-trigger .rotated { transform: rotate(180deg); }
+.image-settings-menu { position: absolute; z-index: 50; right: 0; bottom: calc(100% + 10px); width: min(660px, calc(100vw - 24px)); max-height: calc(100vh - 24px); overflow-y: auto; padding: 22px; border: 1px solid #484a50; border-radius: 12px; background: #242528; box-shadow: 0 22px 60px rgba(0,0,0,.46); }
+.image-settings-menu h3 { margin: 0 0 13px; color: #d7d9dd; font-size: 18px; font-weight: 600; }
+.image-settings-menu h3:not(:first-child) { margin-top: 20px; }
+.image-resolution-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.image-resolution-options button { display: flex; height: 58px; align-items: center; justify-content: center; gap: 8px; border: 1px solid #4d4f55; border-radius: 10px; color: #a9abb1; font-size: 18px; }
+.image-resolution-options button.active, .image-ratio-grid button.active { border-color: #f1f2f3; background: #3b3c3f; color: #f1f2f3; }
+.image-ratio-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; }
+.image-ratio-grid button { display: grid; height: 104px; place-items: center; align-content: center; gap: 10px; border: 1px solid #4d4f55; border-radius: 10px; color: #a9abb1; }
+.image-ratio-grid button:hover, .image-resolution-options button:hover { border-color: #aeb2b8; color: #e9eaec; }
+.image-ratio-icon { display: block; border: 2px solid currentColor; border-radius: 3px; }
+.image-ratio-grid strong { font-size: 15px; font-weight: 500; }
 
 .canvas-add-button { position: fixed; z-index: 30; bottom: 18px; left: 50%; display: grid; place-items: center; width: 50px; height: 50px; border: 1px solid #34363b; border-radius: 9px; background: #e5e8eb; color: #222428; box-shadow: 0 16px 42px rgba(0,0,0,.34); cursor: pointer; transform: translateX(-50%); transition: left .2s ease; }
 .assets-open .canvas-add-button { left: calc(50% + 146px); }
