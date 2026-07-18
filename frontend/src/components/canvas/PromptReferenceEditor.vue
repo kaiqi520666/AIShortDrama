@@ -31,10 +31,9 @@ function createToken(part) {
 }
 
 function renumberTokens() {
-  const imageIds = []
   editor.value.querySelectorAll('.prompt-image-token').forEach((token) => {
-    if (!imageIds.includes(token.dataset.nodeId)) imageIds.push(token.dataset.nodeId)
-    token.querySelector('.prompt-image-label').textContent = `图片${imageIds.indexOf(token.dataset.nodeId) + 1}`
+    const imageNumber = props.references.findIndex((item) => item.id === token.dataset.nodeId) + 1
+    token.querySelector('.prompt-image-label').textContent = `图片${imageNumber}`
   })
 }
 

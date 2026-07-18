@@ -20,27 +20,16 @@ const promptParts = computed(() => props.data.promptParts ?? (props.data.prompt 
 const displayReferences = computed(() => {
   if (props.type !== 'image') return references.value.map((node, index) => ({ key: node.id, node, number: index + 1 }))
   const textInputs = references.value.filter((node) => node.type === 'text').map((node, index) => ({ key: `text-${node.id}`, node, number: index + 1 }))
-  const imageInputs = promptParts.value.filter((part) => part.type === 'image').reduce((items, part) => {
-    if (items.some((item) => item.node.id === part.nodeId)) return items
-    const node = imageReferences.value.find((item) => item.id === part.nodeId)
-    if (node) items.push({ key: node.id, node, number: items.length + 1 })
-    return items
-  }, [])
+  const imageInputs = imageReferences.value.map((node, index) => ({ key: node.id, node, number: index + 1 }))
   return [...textInputs, ...imageInputs]
 })
 
 function updatePrompt(parts) {
-  const imageIds = []
   updateNodeData(props.nodeId, {
     promptParts: parts,
     prompt: parts.map((part) => {
       if (part.type !== 'image') return part.value
-      let index = imageIds.indexOf(part.nodeId)
-      if (index < 0) {
-        imageIds.push(part.nodeId)
-        index = imageIds.length - 1
-      }
-      return `图片${index + 1}`
+      return `图片${imageReferences.value.findIndex((node) => node.id === part.nodeId) + 1}`
     }).join(''),
   })
 }
