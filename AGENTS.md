@@ -20,3 +20,10 @@
 - [ ] Can I solve this using a single line (One-liner via ternary, `??`, `?.`, list comprehension) or a cruder method?
 - [ ] Did I build a complex, generic component with 10+ props just to handle 2 simple pages? (If yes, simplify it immediately)
 - [ ] Am I wasting time writing overly safe error-handling for non-fatal edge cases? (If yes, let it fail or just print a basic log)
+
+## Git Rules
+
+- Automatically create a commit after completing each code change, with a concise commit message describing the change.
+- Do not use destructive commands such as `git reset --hard` or `git checkout --` unless the user explicitly requests them.
+- Do not revert changes that the user has not asked to revert.
+- Before committing, inspect the diff to confirm that it contains no unrelated files or generated artifacts.
