@@ -76,7 +76,8 @@ function updateSettingsPosition() {
   const menuHeight = settingsMenu.value.offsetHeight
   const menuWidth = settingsMenu.value.offsetWidth
   const gap = 8
-  const left = Math.min(Math.max(12, triggerRect.right - menuWidth), window.innerWidth - menuWidth - 12)
+  const centeredLeft = triggerRect.left + (triggerRect.width - menuWidth) / 2
+  const left = Math.min(Math.max(12, centeredLeft), window.innerWidth - menuWidth - 12)
   const top = triggerRect.top - menuHeight - gap >= 12 ? triggerRect.top - menuHeight - gap : triggerRect.bottom + gap
   settingsStyle.value = { left: `${left}px`, top: `${top}px` }
 }
