@@ -12,7 +12,7 @@ const menuVisible = ref(false)
 const activeIndex = ref(0)
 let mentionRange = null
 
-function createToken(part, index) {
+function createToken(part) {
   const reference = props.references.find((item) => item.id === part.nodeId)
   const token = document.createElement('span')
   const image = document.createElement('img')
@@ -25,22 +25,30 @@ function createToken(part, index) {
   image.src = reference.data.asset
   image.alt = ''
   label.className = 'prompt-image-label'
-  label.textContent = `图片${index}`
+  label.textContent = '图片'
   token.append(image, label)
   return token
 }
 
+function renumberTokens() {
+  const imageIds = []
+  editor.value.querySelectorAll('.prompt-image-token').forEach((token) => {
+    if (!imageIds.includes(token.dataset.nodeId)) imageIds.push(token.dataset.nodeId)
+    token.querySelector('.prompt-image-label').textContent = `图片${imageIds.indexOf(token.dataset.nodeId) + 1}`
+  })
+}
+
 function renderEditor() {
   const fragment = document.createDocumentFragment()
-  let imageIndex = 0
   props.modelValue.forEach((part) => {
     if (part.type === 'image') {
-      if (props.references.some((item) => item.id === part.nodeId)) fragment.append(createToken(part, ++imageIndex))
+      if (props.references.some((item) => item.id === part.nodeId)) fragment.append(createToken(part))
     } else {
       fragment.append(document.createTextNode(part.value))
     }
   })
   editor.value.replaceChildren(fragment)
+  renumberTokens()
 }
 
 function appendText(parts, value) {
@@ -65,7 +73,7 @@ function readNode(node, parts) {
 function syncParts() {
   const parts = []
   editor.value.childNodes.forEach((node) => readNode(node, parts))
-  editor.value.querySelectorAll('.prompt-image-label').forEach((label, index) => { label.textContent = `图片${index + 1}` })
+  renumberTokens()
   emit('update:modelValue', parts)
 }
 
@@ -85,7 +93,7 @@ function insertReference(reference) {
   const offset = mentionRange.startOffset
   if (container.nodeType === 3 && container.textContent[offset - 1] === '@') mentionRange.setStart(container, offset - 1)
   mentionRange.deleteContents()
-  const token = createToken({ id: crypto.randomUUID(), nodeId: reference.id }, editor.value.querySelectorAll('.prompt-image-token').length + 1)
+  const token = createToken({ id: crypto.randomUUID(), nodeId: reference.id })
   const space = document.createTextNode(' ')
   mentionRange.insertNode(token)
   token.after(space)
