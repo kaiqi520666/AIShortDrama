@@ -89,7 +89,7 @@ button { color: inherit; }
 .reference-item img { width: 100%; height: 100%; object-fit: cover; }
 .reference-item b { position: absolute; top: 2px; left: 2px; display: grid; place-items: center; width: 14px; height: 14px; border-radius: 50%; background: #17181b; font-size: 9px; }
 .prompt-reference-editor { position: relative; margin: 11px 0 8px; }
-.prompt-editor-content { min-height: 92px; outline: 0; color: #e7e8ea; font-size: 14px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; }
+.prompt-editor-content { min-height: 92px; max-height: 180px; overflow-y: auto; outline: 0; color: #e7e8ea; font-size: 14px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; scrollbar-width: thin; scrollbar-color: #707781 transparent; }
 .prompt-editor-content:empty::before { content: attr(data-placeholder); color: #696c73; pointer-events: none; }
 .prompt-image-token { display: inline-flex; height: 30px; align-items: center; gap: 5px; margin: 0 3px; padding: 3px 7px 3px 3px; border: 1px solid #4b4e55; border-radius: 6px; background: #222327; color: #eef0f2; vertical-align: middle; user-select: none; }
 .prompt-image-token img { width: 23px; height: 23px; border-radius: 4px; object-fit: cover; }
@@ -100,7 +100,7 @@ button { color: inherit; }
 .prompt-reference-menu img { width: 38px; height: 38px; border-radius: 5px; object-fit: cover; }
 .prompt-reference-menu span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
 .prompt-reference-menu p { margin: 22px 10px; color: #8d9096; text-align: center; font-size: 13px; }
-.generation-panel textarea { display: block; width: 100%; height: 92px; resize: none; margin: 11px 0 8px; padding: 2px; border: 0; outline: 0; background: transparent; color: #e7e8ea; font-size: 14px; line-height: 1.55; }
+.generation-panel textarea { display: block; width: 100%; height: 92px; resize: none; overflow-y: auto; margin: 11px 0 8px; padding: 2px; border: 0; outline: 0; background: transparent; color: #e7e8ea; font-size: 14px; line-height: 1.55; scrollbar-width: thin; scrollbar-color: #707781 transparent; }
 .generation-panel textarea::placeholder { color: #696c73; }
 .generation-panel footer { display: flex; align-items: center; height: 34px; gap: 6px; }
 .generation-panel footer button { border: 0; background: transparent; cursor: pointer; }

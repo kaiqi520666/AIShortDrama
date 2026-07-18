@@ -161,6 +161,7 @@ onMounted(renderEditor)
       :data-placeholder="placeholder"
       @input="handleInput"
       @keydown="handleKeydown"
+      @scroll="updateMenuPosition"
       @blur="menuVisible = false"
     ></div>
 
