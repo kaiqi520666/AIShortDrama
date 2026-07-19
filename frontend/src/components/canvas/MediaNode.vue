@@ -76,10 +76,10 @@ onBeforeUnmount(stopResize)
         <p>正在生成…</p>
       </div>
 
-      <div v-else-if="type === 'text' && !textMode" class="text-mode-chooser nodrag nopan">
+      <div v-else-if="type === 'text' && !textMode" class="text-mode-chooser">
         <p>选择文本节点用途</p>
-        <button @click="store.setTextMode(id, 'manual')"><FileText :size="18" /><span><strong>自己编写内容</strong><small>记录任意文本内容</small></span></button>
-        <button @click="store.setTextMode(id, 'reverse')"><ImageIcon :size="18" /><span><strong>反推图片提示词</strong><small>创建图片与 AI 文本任务</small></span></button>
+        <button class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'manual')"><FileText :size="18" /><span><strong>自己编写内容</strong><small>记录任意文本内容</small></span></button>
+        <button class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'reverse')"><ImageIcon :size="18" /><span><strong>反推图片提示词</strong><small>创建图片与 AI 文本任务</small></span></button>
       </div>
 
       <textarea

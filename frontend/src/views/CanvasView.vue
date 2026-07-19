@@ -168,7 +168,7 @@ function startGroupDrag(event, group) {
 }
 
 function handleCanvasPointerDown(event) {
-  if (event.target.closest('.selection-toolbar, .asset-drawer, .canvas-side-tools, .canvas-add-button, .node-create-menu, .generation-panel')) return
+  if (event.target.closest('.nodrag, .selection-toolbar, .asset-drawer, .canvas-side-tools, .canvas-add-button, .node-create-menu, .generation-panel')) return
   if (event.button === 1) {
     pointerMode.value = 'panning'
     return
