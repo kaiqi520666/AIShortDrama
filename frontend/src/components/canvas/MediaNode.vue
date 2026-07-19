@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
 import { AudioWaveform, FileText, Image as ImageIcon, Music2, Video } from 'lucide-vue-next'
+import { imageAspectRatios } from '../../config/imageSettings'
 
 const props = defineProps({
   id: { type: String, required: true },
@@ -14,8 +15,8 @@ const icons = { text: FileText, image: ImageIcon, video: Video, audio: Music2 }
 const icon = computed(() => icons[props.type])
 const nodeStyle = computed(() => {
   if (props.type !== 'image') return {}
-  const [width, height] = (props.data.aspectRatio || '16:9').split(':').map(Number)
-  return { width: `${Math.round(Math.sqrt(81225 * width / height))}px` }
+  const ratio = imageAspectRatios.find((item) => item.value === (props.data.aspectRatio || '16:9'))
+  return { width: `${Math.round(Number.parseInt(ratio.sizes['1K']) * 380 / 1536)}px` }
 })
 const bodyStyle = computed(() => {
   if (props.type !== 'image') return {}
