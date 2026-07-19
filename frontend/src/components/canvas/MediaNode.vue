@@ -12,6 +12,11 @@ const props = defineProps({
 
 const icons = { text: FileText, image: ImageIcon, video: Video, audio: Music2 }
 const icon = computed(() => icons[props.type])
+const nodeStyle = computed(() => {
+  if (props.type !== 'image') return {}
+  const [width, height] = (props.data.aspectRatio || '16:9').split(':').map(Number)
+  return { width: `${Math.round(Math.sqrt(81225 * width / height))}px` }
+})
 const bodyStyle = computed(() => {
   if (props.type !== 'image') return {}
   const ratio = props.data.aspectRatio || '16:9'
@@ -22,7 +27,7 @@ const { updateNodeData } = useVueFlow()
 </script>
 
 <template>
-  <div class="media-node" :class="[`media-node--${type}`, { selected }]">
+  <div class="media-node" :class="[`media-node--${type}`, { selected }]" :style="nodeStyle">
     <label class="node-title">
       <component :is="icon" :size="14" />
       <input
