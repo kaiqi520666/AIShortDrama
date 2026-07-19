@@ -3,6 +3,18 @@ import { mediaTypes } from '../config/mediaTypes'
 import { demoEdges, demoNodes } from '../data/demoCanvas'
 
 const createEdge = (id, source, target) => ({ id, source, target, type: 'cinematic' })
+const reversePrompt = '根据图片生成结构化中文提示词，包括主体描述、环境、光影、镜头语言、风格关键词。'
+
+function createNodeData(type, number, source) {
+  const textTask = type === 'text' && ['text', 'image'].includes(source?.type)
+  return {
+    model: textTask ? 'Qwen3-VL-Flash' : mediaTypes[type].model,
+    title: textTask ? (source.type === 'image' ? '图片反推提示词' : `AI 文本任务 ${number}`) : `${mediaTypes[type].label}节点 ${number}`,
+    status: 'empty',
+    prompt: source?.type === 'image' && textTask ? reversePrompt : '',
+    ...(type === 'text' ? { textMode: textTask ? 'task' : null, content: '' } : {}),
+  }
+}
 
 export const useCanvasStore = defineStore('canvas', {
   persist: { pick: ['nodes', 'edges', 'sequence', 'groups', 'groupSequence'] },
@@ -22,6 +34,8 @@ export const useCanvasStore = defineStore('canvas', {
   },
   actions: {
     addNode(type, position, sourceId) {
+      const source = this.nodes.find((node) => node.id === sourceId)
+      if (type === 'text' && sourceId && !['text', 'image'].includes(source?.type)) return
       const number = this.sequence++
       const id = `${type}-${number}`
       this.nodes.forEach((node) => { node.selected = false })
@@ -30,19 +44,31 @@ export const useCanvasStore = defineStore('canvas', {
         type,
         position,
         selected: true,
-        data: {
-          model: mediaTypes[type].model,
-          title: `${mediaTypes[type].label}节点 ${number}`,
-          status: 'empty',
-          prompt: '',
-        },
+        data: createNodeData(type, number, source),
       })
       if (sourceId) this.edges.push(createEdge(`edge-${crypto.randomUUID()}`, sourceId, id))
       return id
     },
     addEdge(connection) {
       if (this.edges.some((edge) => edge.source === connection.source && edge.target === connection.target)) return
+      const source = this.nodes.find((node) => node.id === connection.source)
+      const target = this.nodes.find((node) => node.id === connection.target)
+      if (target?.type === 'text' && (target.data.textMode !== 'task' || !['text', 'image'].includes(source?.type))) return
       this.edges.push({ id: `edge-${crypto.randomUUID()}`, ...connection, type: 'cinematic' })
+    },
+    setTextMode(id, mode) {
+      const node = this.nodes.find((item) => item.id === id)
+      if (!node || node.data.textMode) return
+      if (mode === 'manual') {
+        node.data = { ...node.data, textMode: 'manual', status: 'ready' }
+        return
+      }
+      const imageId = this.addNode('image', { x: node.position.x - 460, y: node.position.y + 3 })
+      const image = this.nodes.find((item) => item.id === imageId)
+      image.data = { ...image.data, title: '参考图片', assetSource: 'upload' }
+      node.data = { ...node.data, textMode: 'task', title: '图片反推提示词', model: 'Qwen3-VL-Flash', prompt: reversePrompt }
+      this.edges.push(createEdge(`edge-${crypto.randomUUID()}`, imageId, id))
+      this.selectNodes([id])
     },
     deleteEdge(id) {
       this.edges = this.edges.filter((edge) => edge.id !== id)

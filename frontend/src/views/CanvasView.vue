@@ -309,6 +309,7 @@ function focusGroup(id) {
       v-if="createMenu"
       :point="createMenu.point"
       :contextual="Boolean(createMenu.sourceId)"
+      :source-id="createMenu.sourceId"
       @select="createNode"
       @close="createMenu = null"
     />

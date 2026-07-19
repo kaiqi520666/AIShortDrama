@@ -1,10 +1,10 @@
 export const mediaTypes = {
   text: {
     label: '文本',
-    model: 'Qwen 3.5',
+    model: 'Qwen3-VL-Flash',
     hint: '商品资料与生成要求',
     placeholder: '输入商品信息、卖点或生成要求…',
-    setting: '文本生成 · 中文',
+    setting: '多模态文本 · 中文',
   },
   image: {
     label: '图片',

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
-import { ChevronDown, FileText, Image, WandSparkles } from 'lucide-vue-next'
+import { ArrowUp, ChevronDown, FileText, Image, WandSparkles } from 'lucide-vue-next'
 import { imageAspectRatios } from '../../config/imageSettings'
 import { mediaTypes } from '../../config/mediaTypes'
 import { useCanvasStore } from '../../stores/canvas'
@@ -19,6 +19,7 @@ const settingsTrigger = ref(null)
 const settingsMenu = ref(null)
 const settingsOpen = ref(false)
 const settingsStyle = ref({})
+const notice = ref('')
 const resolutions = ['1K', '2K', '4K']
 const references = computed(() => store.incomingNodes(props.nodeId))
 const imageReferences = computed(() => references.value.filter((node) => node.type === 'image' && node.data.asset))
@@ -27,13 +28,18 @@ const selectedResolution = computed(() => props.data.resolution || '2K')
 const selectedAspectRatio = computed(() => props.data.aspectRatio || '16:9')
 const settingLabel = computed(() => props.type === 'image' ? `${selectedAspectRatio.value} · ${selectedResolution.value}` : mediaTypes[props.type].setting)
 const displayReferences = computed(() => {
-  if (props.type !== 'image') return references.value.map((node, index) => ({ key: node.id, node, number: index + 1 }))
-  const textInputs = references.value.filter((node) => node.type === 'text').map((node, index) => ({ key: `text-${node.id}`, node, number: index + 1 }))
-  const imageInputs = references.value.filter((node) => node.type === 'image').map((node, index) => ({ key: node.id, node, number: index + 1 }))
-  return [...textInputs, ...imageInputs]
+  const counts = { text: 0, image: 0, video: 0, audio: 0 }
+  const inputs = props.type === 'text' ? references.value.filter((node) => ['text', 'image'].includes(node.type)) : references.value
+  return inputs.map((node) => ({ key: node.id, node, number: ++counts[node.type], label: `${mediaTypes[node.type].label}${counts[node.type]}` }))
+})
+const canSubmit = computed(() => {
+  if (!props.data.prompt?.trim()) return false
+  if (props.type !== 'text') return true
+  return references.value.some((node) => node.type === 'image' ? node.data.asset : node.type === 'text' && node.data.content?.trim())
 })
 
 function updatePrompt(parts) {
+  notice.value = ''
   updateNodeData(props.nodeId, {
     promptParts: parts,
     prompt: parts.map((part) => {
@@ -41,6 +47,15 @@ function updatePrompt(parts) {
       return `图片${imageReferences.value.findIndex((node) => node.id === part.nodeId) + 1}`
     }).join(''),
   })
+}
+
+function updateTextPrompt(event) {
+  notice.value = ''
+  updateNodeData(props.nodeId, { prompt: event.target.value })
+}
+
+function submitTask() {
+  notice.value = '模型暂未接入'
 }
 
 function ratioIconStyle(value) {
@@ -82,9 +97,9 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', closeImageSettin
 </script>
 
 <template>
-  <section class="generation-panel nodrag nowheel" @pointerdown.stop>
+  <section v-if="type !== 'text' || data.textMode === 'task'" class="generation-panel nodrag nowheel" @pointerdown.stop>
     <div v-if="displayReferences.length" class="reference-strip">
-      <div v-for="reference in displayReferences" :key="reference.key" class="reference-item">
+      <div v-for="reference in displayReferences" :key="reference.key" class="reference-item" :title="reference.label" :aria-label="reference.label">
         <img v-if="reference.node.data.asset" :src="reference.node.data.asset" alt="" />
         <FileText v-else-if="reference.node.type === 'text'" :size="20" />
         <Image v-else-if="reference.node.type === 'image'" :size="20" />
@@ -105,7 +120,7 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', closeImageSettin
       v-else
       :value="data.prompt"
       :placeholder="mediaTypes[type].placeholder"
-      @input="updateNodeData(nodeId, { prompt: $event.target.value })"
+      @input="updateTextPrompt"
       @pointerdown="settingsOpen = false"
     ></textarea>
 
@@ -125,13 +140,16 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', closeImageSettin
       </div>
     </div>
 
+    <p v-if="notice" class="panel-notice">{{ notice }}</p>
+
     <footer>
       <span class="model-select"><WandSparkles :size="16" />{{ data.model }}</span>
-      <span class="panel-divider"></span>
+      <span v-if="type !== 'text'" class="panel-divider"></span>
       <button v-if="type === 'image'" ref="settingsTrigger" class="image-settings-trigger" @click="toggleImageSettings">
         <Image :size="16" />{{ settingLabel }}<ChevronDown :size="14" :class="{ rotated: settingsOpen }" />
       </button>
-      <span v-else class="setting-select"><Image :size="16" />{{ settingLabel }}</span>
+      <span v-else-if="type !== 'text'" class="setting-select"><Image :size="16" />{{ settingLabel }}</span>
+      <button class="run-task-button" :disabled="!canSubmit" title="执行" @click="submitTask"><ArrowUp :size="20" /></button>
     </footer>
   </section>
 </template>
