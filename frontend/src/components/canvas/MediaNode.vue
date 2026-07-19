@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
-import { AudioWaveform, FileText, Image as ImageIcon, MoveDiagonal2, Music2, Video } from 'lucide-vue-next'
+import { AudioWaveform, FileText, GripVertical, Image as ImageIcon, MoveDiagonal2, Music2, Video } from 'lucide-vue-next'
 import { imageAspectRatios } from '../../config/imageSettings'
 import { useCanvasStore } from '../../stores/canvas'
 
@@ -97,8 +97,8 @@ onBeforeUnmount(stopResize)
         <span class="asset-badge">AI</span>
       </template>
 
-      <div v-else-if="type === 'image'" class="image-upload-state nodrag nopan">
-        <button @click="uploadNotice = '图片上传暂未接入'"><ImageIcon :size="32" stroke-width="1.35" /><span>上传图片</span></button>
+      <div v-else-if="type === 'image'" class="image-upload-state">
+        <button class="nodrag nopan" @pointerdown.stop @click.stop="uploadNotice = '图片上传暂未接入'"><ImageIcon :size="32" stroke-width="1.35" /><span>上传图片</span></button>
         <p v-if="uploadNotice">{{ uploadNotice }}</p>
       </div>
 
@@ -111,6 +111,7 @@ onBeforeUnmount(stopResize)
         <component :is="icon" :size="42" stroke-width="1.35" />
       </div>
 
+      <span v-if="type === 'text' && textMode" class="text-drag-handle" title="拖动节点"><GripVertical :size="16" /></span>
       <button v-if="type === 'text' && textMode" class="text-resize-handle nodrag nopan" title="调整尺寸" @pointerdown.stop.prevent="startResize">
         <MoveDiagonal2 :size="15" />
       </button>
