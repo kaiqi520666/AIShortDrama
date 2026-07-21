@@ -201,10 +201,6 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', closeSettings))
           <span>生成同步音频</span>
           <input type="checkbox" :checked="data.generateAudio ?? true" @change="updateVideoSetting('generateAudio', $event.target.checked)" />
         </label>
-        <label class="video-toggle-row">
-          <span>返回尾帧图片</span>
-          <input type="checkbox" :checked="data.returnLastFrame ?? false" @change="updateVideoSetting('returnLastFrame', $event.target.checked)" />
-        </label>
       </template>
     </div>
 
