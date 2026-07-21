@@ -19,6 +19,12 @@ class Settings(BaseSettings):
     oss_endpoint: str = ""
     oss_bucket_name: str = ""
     oss_public_base_url: str = ""
+    toapis_key: str = ""
+    toapis_url: str = "https://toapis.com"
+
+    @property
+    def redis_queue_name(self) -> str:
+        return f"{self.redis_prefix}:queue"
 
 
 @lru_cache

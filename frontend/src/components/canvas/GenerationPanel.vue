@@ -1,8 +1,9 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import { ArrowUp, ChevronDown, FileText, Image, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
-import { imageModels, normalizeImageSettings } from '../../config/imageModels'
+import { createImageGeneration, getGenerationTask } from '../../api/generations'
+import { buildImageRequest, imageModels, normalizeImageSettings } from '../../config/imageModels'
 import { mediaTypes } from '../../config/mediaTypes'
 import { getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
 import { useCanvasStore } from '../../stores/canvas'
@@ -25,6 +26,8 @@ const modelMenu = ref(null)
 const modelOpen = ref(false)
 const modelStyle = ref({})
 const notice = ref('')
+const running = ref(false)
+let pollTimer = null
 const references = computed(() => store.incomingNodes(props.nodeId))
 const imageReferences = computed(() => references.value.filter((node) => node.type === 'image' && node.data.asset))
 const promptParts = computed(() => props.data.promptParts ?? (props.data.prompt ? [{ type: 'text', value: props.data.prompt }] : []))
@@ -54,7 +57,7 @@ const displayReferences = computed(() => {
   return references.value.map((node) => ({ key: node.id, node, number: ++counts[node.type], label: `${mediaTypes[node.type].label}${counts[node.type]}` }))
 })
 const canSubmit = computed(() => {
-  if (!props.data.prompt?.trim() || referenceError.value) return false
+  if (running.value || !props.data.prompt?.trim() || referenceError.value) return false
   if (props.type !== 'text') return true
   return references.value.some((node) => node.type === 'text' ? node.data.content?.trim() : node.data.asset)
 })
@@ -75,8 +78,65 @@ function updateTextPrompt(event) {
   updateNodeData(props.nodeId, { prompt: event.target.value })
 }
 
-function submitTask() {
-  notice.value = props.type === 'image' ? '图片生成后端暂未接入' : '模型暂未接入'
+async function submitTask() {
+  if (props.type !== 'image' || selectedImageModel.value.id !== 'gpt-image-2') {
+    notice.value = '当前模型后端暂未接入'
+    return
+  }
+  const nodeId = props.nodeId
+  running.value = true
+  notice.value = '任务提交中'
+  try {
+    const result = await createImageGeneration({
+      node_id: nodeId,
+      ...buildImageRequest(props.data, imageReferences.value),
+    })
+    if (result.code !== 0) throw new Error(result.message)
+    updateNodeData(nodeId, {
+      generationTaskId: result.data.id,
+      generationStatus: result.data.status,
+      status: 'generating',
+    })
+    await pollTask(result.data.id, nodeId)
+  } catch (error) {
+    running.value = false
+    notice.value = error.response?.data?.message || error.message || '任务提交失败'
+    updateNodeData(nodeId, { status: 'empty' })
+  }
+}
+
+async function pollTask(taskId, nodeId) {
+  try {
+    const result = await getGenerationTask(taskId)
+    if (result.code !== 0) throw new Error(result.message)
+    const task = result.data
+    updateNodeData(nodeId, { generationStatus: task.status })
+    if (task.status === 'succeeded') {
+      const asset = task.result?.data?.[0]?.url
+      if (!asset) throw new Error('任务未返回图片地址')
+      running.value = false
+      notice.value = '生成完成'
+      updateNodeData(nodeId, { asset, status: 'ready' })
+      return
+    }
+    if (['failed', 'cancelled', 'timeout'].includes(task.status)) {
+      running.value = false
+      notice.value = task.error_message || '图片生成失败'
+      updateNodeData(nodeId, { status: 'empty' })
+      return
+    }
+    running.value = true
+    notice.value = `生成中 ${task.progress}%`
+    pollTimer = window.setTimeout(() => pollTask(taskId, nodeId), 5000)
+  } catch (error) {
+    running.value = false
+    notice.value = error.response?.data?.message || error.message || '任务状态查询失败'
+  }
+}
+
+function stopPolling() {
+  if (pollTimer) window.clearTimeout(pollTimer)
+  pollTimer = null
 }
 
 function ratioIconStyle(value) {
@@ -159,8 +219,20 @@ function closeSettings(event) {
   if (!event.target.closest('.model-menu, .model-select-trigger')) modelOpen.value = false
 }
 
+watch(() => props.nodeId, () => {
+  stopPolling()
+  running.value = false
+  notice.value = ''
+  if (props.type === 'image' && props.data.generationTaskId && !['succeeded', 'failed', 'cancelled', 'timeout'].includes(props.data.generationStatus)) {
+    running.value = true
+    pollTask(props.data.generationTaskId, props.nodeId)
+  }
+}, { immediate: true })
 onMounted(() => window.addEventListener('pointerdown', closeSettings))
-onBeforeUnmount(() => window.removeEventListener('pointerdown', closeSettings))
+onBeforeUnmount(() => {
+  stopPolling()
+  window.removeEventListener('pointerdown', closeSettings)
+})
 </script>
 
 <template>

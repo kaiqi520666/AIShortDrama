@@ -1,7 +1,12 @@
-from redis.asyncio import Redis
+from arq import create_pool
+from arq.connections import ArqRedis, RedisSettings
 
 from app.core.config import get_settings
 
 
-def create_redis_client() -> Redis:
-    return Redis.from_url(get_settings().redis_url, decode_responses=True)
+async def create_redis_pool() -> ArqRedis:
+    settings = get_settings()
+    return await create_pool(
+        RedisSettings.from_dsn(settings.redis_url),
+        default_queue_name=settings.redis_queue_name,
+    )
