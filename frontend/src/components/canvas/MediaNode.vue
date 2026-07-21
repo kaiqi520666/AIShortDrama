@@ -113,11 +113,6 @@ onBeforeUnmount(stopResize)
 
       <div v-else class="empty-preview">
         <component :is="icon" :size="42" stroke-width="1.35" />
-        <span v-if="type === 'video'" class="video-empty-meta">
-          <b>{{ data.aspectRatio || '16:9' }}</b>
-          <b>{{ data.resolution || '720p' }}</b>
-          <b>{{ (data.duration ?? 5) === 0 ? '自动' : `${data.duration ?? 5}s` }}</b>
-        </span>
       </div>
 
       <span v-if="type === 'text' && textMode" class="text-drag-handle" title="拖动节点"><GripVertical :size="16" /></span>
