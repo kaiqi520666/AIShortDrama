@@ -98,13 +98,16 @@ function updateVideoSetting(key, value) {
 
 function updateSettingsPosition() {
   if (!settingsTrigger.value || !settingsMenu.value) return
+  const panelRect = settingsTrigger.value.closest('.generation-panel').getBoundingClientRect()
   const triggerRect = settingsTrigger.value.getBoundingClientRect()
   const menuHeight = settingsMenu.value.offsetHeight
   const menuWidth = settingsMenu.value.offsetWidth
   const gap = 8
-  const centeredLeft = triggerRect.left + (triggerRect.width - menuWidth) / 2
-  const left = Math.min(Math.max(12, centeredLeft), window.innerWidth - menuWidth - 12)
-  const top = triggerRect.top - menuHeight - gap >= 12 ? triggerRect.top - menuHeight - gap : triggerRect.bottom + gap
+  const centeredLeft = triggerRect.left - panelRect.left + (triggerRect.width - menuWidth) / 2
+  const left = Math.min(Math.max(0, centeredLeft), Math.max(0, panelRect.width - menuWidth))
+  const top = triggerRect.top - menuHeight - gap >= 12
+    ? triggerRect.top - panelRect.top - menuHeight - gap
+    : triggerRect.bottom - panelRect.top + gap
   settingsStyle.value = { left: `${left}px`, top: `${top}px` }
 }
 
