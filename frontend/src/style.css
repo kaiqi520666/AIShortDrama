@@ -74,15 +74,15 @@ button { color: inherit; }
 .text-drag-handle:active { cursor: grabbing; }
 .text-resize-handle { position: absolute; right: 5px; bottom: 5px; display: grid; width: 24px; height: 24px; place-items: center; border: 0; background: transparent; color: #6f737b; cursor: nwse-resize; }
 .text-resize-handle:hover { color: #d9dce0; }
-.image-upload-state { display: grid; width: 100%; height: 100%; min-height: inherit; place-content: center; text-align: center; }
-.image-upload-state button { display: grid; place-items: center; gap: 9px; border: 0; background: transparent; color: #777b83; cursor: pointer; }
-.image-upload-state button:hover { color: #d5d8dc; }
-.image-upload-state p { margin: 9px 0 0; color: #9b9ea5; font-size: 11px; }
+.media-upload-state { display: grid; width: 100%; height: 100%; min-height: inherit; place-content: center; text-align: center; }
+.media-upload-state button { display: grid; place-items: center; gap: 9px; border: 0; background: transparent; color: #777b83; cursor: pointer; }
+.media-upload-state button:hover { color: #d5d8dc; }
+.media-upload-state p { margin: 9px 0 0; color: #9b9ea5; font-size: 11px; }
 .empty-preview { display: flex; min-height: inherit; flex-direction: column; justify-content: center; align-items: flex-start; padding: 42px 54px; color: #676a71; }
 .media-node--image .empty-preview, .media-node--video .empty-preview { height: 100%; min-height: 0; }
 .media-node--video .empty-preview { align-items: center; padding: 28px; }
 .empty-preview > svg { align-self: center; margin-bottom: 24px; }
-.media-node--video .empty-preview > svg { margin-bottom: 0; }
+.media-node--image .empty-preview > svg, .media-node--video .empty-preview > svg { margin-bottom: 0; }
 .empty-preview p { margin: 0 0 10px; font-size: 14px; }
 .empty-preview button { display: flex; align-items: center; gap: 10px; margin: 4px 0; padding: 3px 0; border: 0; background: none; color: #e4e5e7; font-size: 14px; cursor: pointer; }
 .audio-preview { display: flex; min-height: 170px; align-items: center; gap: 24px; padding: 34px; color: #d8dadd; }

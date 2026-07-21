@@ -41,13 +41,12 @@ const settingLabel = computed(() => {
 })
 const displayReferences = computed(() => {
   const counts = { text: 0, image: 0, video: 0, audio: 0 }
-  const inputs = props.type === 'text' ? references.value.filter((node) => ['text', 'image'].includes(node.type)) : references.value
-  return inputs.map((node) => ({ key: node.id, node, number: ++counts[node.type], label: `${mediaTypes[node.type].label}${counts[node.type]}` }))
+  return references.value.map((node) => ({ key: node.id, node, number: ++counts[node.type], label: `${mediaTypes[node.type].label}${counts[node.type]}` }))
 })
 const canSubmit = computed(() => {
   if (!props.data.prompt?.trim()) return false
   if (props.type !== 'text') return true
-  return references.value.some((node) => node.type === 'image' ? node.data.asset : node.type === 'text' && node.data.content?.trim())
+  return references.value.some((node) => node.type === 'text' ? node.data.content?.trim() : node.data.asset)
 })
 
 function updatePrompt(parts) {
@@ -125,7 +124,7 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', closeSettings))
 </script>
 
 <template>
-  <section v-if="type !== 'text' || data.textMode === 'task'" class="generation-panel nodrag nowheel" @pointerdown.stop>
+  <section v-if="data.assetSource !== 'upload' && (type !== 'text' || data.textMode === 'task')" class="generation-panel nodrag nowheel" @pointerdown.stop>
     <div v-if="displayReferences.length" class="reference-strip">
       <div v-for="reference in displayReferences" :key="reference.key" class="reference-item" :title="reference.label" :aria-label="reference.label">
         <img v-if="reference.node.data.asset" :src="reference.node.data.asset" alt="" />

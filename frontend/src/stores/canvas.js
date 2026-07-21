@@ -4,16 +4,20 @@ import { mediaTypes } from '../config/mediaTypes'
 import { demoEdges, demoNodes } from '../data/demoCanvas'
 
 const createEdge = (id, source, target) => ({ id, source, target, type: 'cinematic' })
-const reversePrompt = '根据图片生成结构化中文提示词，包括主体描述、环境、光影、镜头语言、风格关键词。'
+const reversePrompts = {
+  image: '根据图片生成结构化中文提示词，包括主体描述、环境、光影、镜头语言、风格关键词。',
+  video: '根据视频生成结构化中文提示词，包括主体与场景、动作、运镜、景别、光影色彩、节奏转场、声音氛围和风格关键词，并按时间顺序描述关键画面。',
+}
 
 function createNodeData(type, number, source) {
   const textTask = type === 'text' && Boolean(source)
+  const reverseType = type === 'text' && ['image', 'video'].includes(source?.type) ? source.type : null
   return {
     model: textTask ? 'Qwen3-VL-Flash' : mediaTypes[type].model,
-    title: textTask ? (source.type === 'image' ? '图片反推提示词' : `AI 文本任务 ${number}`) : `${mediaTypes[type].label}节点 ${number}`,
+    title: reverseType ? `${mediaTypes[reverseType].label}反推提示词` : textTask ? `AI 文本任务 ${number}` : `${mediaTypes[type].label}节点 ${number}`,
     status: 'empty',
-    prompt: source?.type === 'image' && textTask ? reversePrompt : '',
-    ...(type === 'text' ? { textMode: textTask ? 'task' : null, content: '' } : {}),
+    prompt: reverseType ? reversePrompts[reverseType] : '',
+    ...(type === 'text' ? { textMode: textTask ? 'task' : null, content: '', ...(reverseType ? { reverseType } : {}) } : {}),
   }
 }
 
@@ -64,11 +68,12 @@ export const useCanvasStore = defineStore('canvas', {
         node.data = { ...node.data, textMode: 'manual', status: 'ready' }
         return
       }
-      const imageId = this.addNode('image', { x: node.position.x - 460, y: node.position.y + 3 })
-      const image = this.nodes.find((item) => item.id === imageId)
-      image.data = { ...image.data, title: '参考图片', assetSource: 'upload' }
-      node.data = { ...node.data, textMode: 'task', title: '图片反推提示词', model: 'Qwen3-VL-Flash', prompt: reversePrompt }
-      this.edges.push(createEdge(`edge-${crypto.randomUUID()}`, imageId, id))
+      const mediaType = mode === 'videoReverse' ? 'video' : 'image'
+      const mediaId = this.addNode(mediaType, { x: node.position.x - 460, y: node.position.y + 3 })
+      const media = this.nodes.find((item) => item.id === mediaId)
+      media.data = { ...media.data, title: `参考${mediaTypes[mediaType].label}`, assetSource: 'upload' }
+      node.data = { ...node.data, textMode: 'task', title: `${mediaTypes[mediaType].label}反推提示词`, model: 'Qwen3-VL-Flash', prompt: reversePrompts[mediaType], reverseType: mediaType }
+      this.edges.push(createEdge(`edge-${crypto.randomUUID()}`, mediaId, id))
       this.selectNodes([id])
     },
     deleteEdge(id) {

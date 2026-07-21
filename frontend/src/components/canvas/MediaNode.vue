@@ -15,6 +15,7 @@ const props = defineProps({
 const icons = { text: FileText, image: ImageIcon, video: Video, audio: Music2 }
 const icon = computed(() => icons[props.type])
 const textMode = computed(() => props.type === 'text' ? (props.data.textMode ?? (props.data.content ? 'manual' : null)) : null)
+const acceptsInput = computed(() => props.type === 'text' ? textMode.value === 'task' : props.data.assetSource !== 'upload')
 const nodeStyle = computed(() => {
   if (props.type === 'text') return { width: `${props.data.width || 350}px` }
   if (['image', 'video'].includes(props.type)) {
@@ -26,7 +27,7 @@ const nodeStyle = computed(() => {
   return {}
 })
 const bodyStyle = computed(() => {
-  if (props.type === 'text') return { height: `${props.data.height || 220}px` }
+  if (props.type === 'text') return { height: `${props.data.height || (textMode.value ? 220 : 280)}px` }
   if (['image', 'video'].includes(props.type)) return { aspectRatio: (props.data.aspectRatio === 'adaptive' ? '16:9' : props.data.aspectRatio || '16:9').replace(':', ' / ') }
   return {}
 })
@@ -70,7 +71,7 @@ onBeforeUnmount(stopResize)
         @keydown.stop
       />
     </label>
-    <Handle v-if="type !== 'text' || textMode === 'task'" id="target" type="target" :position="Position.Left" />
+    <Handle v-if="acceptsInput" id="target" type="target" :position="Position.Left" />
 
     <div class="node-body" :style="bodyStyle">
       <div v-if="data.status === 'generating'" class="generating-state">
@@ -81,7 +82,8 @@ onBeforeUnmount(stopResize)
       <div v-else-if="type === 'text' && !textMode" class="text-mode-chooser">
         <p>选择文本节点用途</p>
         <button class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'manual')"><FileText :size="18" /><span><strong>自己编写内容</strong><small>记录任意文本内容</small></span></button>
-        <button class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'reverse')"><ImageIcon :size="18" /><span><strong>反推图片提示词</strong><small>创建图片与 AI 文本任务</small></span></button>
+        <button class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'imageReverse')"><ImageIcon :size="18" /><span><strong>反推图片提示词</strong><small>创建图片上传与 AI 文本任务</small></span></button>
+        <button class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'videoReverse')"><Video :size="18" /><span><strong>反推视频提示词</strong><small>创建视频上传与 AI 文本任务</small></span></button>
       </div>
 
       <textarea
@@ -96,13 +98,13 @@ onBeforeUnmount(stopResize)
 
       <template v-else-if="data.asset && type === 'image'">
         <img class="node-image" :src="data.asset" :alt="data.title" />
-        <span class="asset-badge">AI</span>
+        <span v-if="data.assetSource !== 'upload'" class="asset-badge">AI</span>
       </template>
 
       <video v-else-if="data.asset && type === 'video'" class="node-video nodrag nopan nowheel" :src="data.asset" :poster="data.poster" controls playsinline preload="metadata"></video>
 
-      <div v-else-if="type === 'image'" class="image-upload-state">
-        <button class="nodrag nopan" @pointerdown.stop @click.stop="uploadNotice = '图片上传暂未接入'"><ImageIcon :size="32" stroke-width="1.35" /><span>上传图片</span></button>
+      <div v-else-if="['image', 'video'].includes(type) && data.assetSource === 'upload'" class="media-upload-state">
+        <button class="nodrag nopan" @pointerdown.stop @click.stop="uploadNotice = `${type === 'video' ? '视频' : '图片'}上传暂未接入`"><component :is="icon" :size="32" stroke-width="1.35" /><span>上传{{ type === 'video' ? '视频' : '图片' }}</span></button>
         <p v-if="uploadNotice">{{ uploadNotice }}</p>
       </div>
 
