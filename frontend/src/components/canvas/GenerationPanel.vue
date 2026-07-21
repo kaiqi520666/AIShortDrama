@@ -4,6 +4,7 @@ import { useVueFlow } from '@vue-flow/core'
 import { ArrowUp, ChevronDown, FileText, Image, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
 import { imageModels, normalizeImageSettings } from '../../config/imageModels'
 import { mediaTypes } from '../../config/mediaTypes'
+import { getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
 import { useCanvasStore } from '../../stores/canvas'
 import PromptReferenceEditor from './PromptReferenceEditor.vue'
 
@@ -24,24 +25,24 @@ const modelMenu = ref(null)
 const modelOpen = ref(false)
 const modelStyle = ref({})
 const notice = ref('')
-const videoAspectRatios = ['21:9', '16:9', '4:3', '1:1', '3:4', '9:16', 'adaptive']
-const videoModels = [
-  { value: 'seedance-2', label: 'Seedance 2', resolutions: ['480p', '720p', '1080p', '4k'] },
-  { value: 'seedance-2-fast', label: 'Seedance 2 Fast', resolutions: ['480p', '720p'] },
-  { value: 'seedance-2-mini', label: 'Seedance 2 Mini', resolutions: ['480p', '720p'], durations: [4, 8, 10, 12, 15] },
-]
 const references = computed(() => store.incomingNodes(props.nodeId))
 const imageReferences = computed(() => references.value.filter((node) => node.type === 'image' && node.data.asset))
 const promptParts = computed(() => props.data.promptParts ?? (props.data.prompt ? [{ type: 'text', value: props.data.prompt }] : []))
 const selectedImageSettings = computed(() => normalizeImageSettings(props.data))
 const selectedImageModel = computed(() => selectedImageSettings.value.model)
-const selectedResolution = computed(() => props.type === 'image' ? selectedImageSettings.value.resolution : props.data.resolution || '720p')
-const selectedAspectRatio = computed(() => props.type === 'image' ? selectedImageSettings.value.aspectRatio : props.data.aspectRatio || '16:9')
-const selectedDuration = computed(() => props.data.duration ?? 5)
-const selectedVideoModel = computed(() => videoModels.find((model) => model.value === props.data.model) || videoModels[0])
-const referenceError = computed(() => props.type === 'image' && selectedImageModel.value.maxReferences && imageReferences.value.length > selectedImageModel.value.maxReferences
-  ? `当前模型最多支持 ${selectedImageModel.value.maxReferences} 张参考图片`
-  : '')
+const selectedVideoSettings = computed(() => normalizeVideoSettings(props.data))
+const selectedVideoModel = computed(() => selectedVideoSettings.value.model)
+const selectableModels = computed(() => props.type === 'image' ? imageModels : videoModels)
+const selectedModel = computed(() => props.type === 'image' ? selectedImageModel.value : selectedVideoModel.value)
+const selectedResolution = computed(() => props.type === 'image' ? selectedImageSettings.value.resolution : selectedVideoSettings.value.resolution)
+const selectedAspectRatio = computed(() => props.type === 'image' ? selectedImageSettings.value.aspectRatio : selectedVideoSettings.value.aspectRatio)
+const selectedDuration = computed(() => selectedVideoSettings.value.duration)
+const referenceError = computed(() => {
+  if (props.type === 'video') return getVideoReferenceError(props.data, references.value)
+  return props.type === 'image' && selectedImageModel.value.maxReferences && imageReferences.value.length > selectedImageModel.value.maxReferences
+    ? `当前模型最多支持 ${selectedImageModel.value.maxReferences} 张参考图片`
+    : ''
+})
 const panelMessage = computed(() => notice.value || referenceError.value)
 const settingLabel = computed(() => {
   if (props.type === 'image') return `${selectedAspectRatio.value} · ${selectedResolution.value}`
@@ -103,10 +104,18 @@ function updateImageSearch(enabled) {
 }
 
 function updateVideoModel(model) {
-  const updates = { model: model.value }
-  if (!model.resolutions.includes(selectedResolution.value)) updates.resolution = '720p'
-  if (model.durations && !model.durations.includes(selectedDuration.value)) updates.duration = 10
+  const updates = { model: model.id }
+  if (!model.resolutions.includes(selectedResolution.value)) updates.resolution = model.defaultResolution
+  if (!model.aspectRatios.includes(selectedAspectRatio.value)) updates.aspectRatio = model.defaultAspectRatio
+  if (model.durationOptions && !model.durationOptions.includes(selectedDuration.value)) updates.duration = model.defaultDuration
+  else if (!model.durationOptions && selectedDuration.value !== 0 && (selectedDuration.value < model.durationMin || selectedDuration.value > model.durationMax)) updates.duration = model.defaultDuration
   updateNodeData(props.nodeId, updates)
+  modelOpen.value = false
+}
+
+function updateModel(model) {
+  if (props.type === 'image') updateImageModel(model)
+  else updateVideoModel(model)
 }
 
 function updateVideoSetting(key, value) {
@@ -182,8 +191,8 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', closeSettings))
       @pointerdown="settingsOpen = false; modelOpen = false"
     ></textarea>
 
-    <div v-if="modelOpen && type === 'image'" ref="modelMenu" class="model-menu" :style="modelStyle" @pointerdown.stop>
-      <button v-for="model in imageModels" :key="model.id" :class="{ active: selectedImageModel.id === model.id }" @click="updateImageModel(model)">
+    <div v-if="modelOpen && ['image', 'video'].includes(type)" ref="modelMenu" class="model-menu" :style="modelStyle" @pointerdown.stop>
+      <button v-for="model in selectableModels" :key="model.id" :class="{ active: selectedModel.id === model.id }" @click="updateModel(model)">
         <WandSparkles :size="15" />
         <span>{{ model.label }}</span>
       </button>
@@ -219,18 +228,13 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', closeSettings))
       </template>
 
       <template v-else>
-        <h3>模型</h3>
-        <div class="video-model-options">
-          <button v-for="model in videoModels" :key="model.value" :class="{ active: selectedVideoModel.value === model.value }" @click="updateVideoModel(model)">{{ model.label.replace('Seedance 2 ', '') }}</button>
-        </div>
-
         <h3>时长</h3>
-        <div v-if="selectedVideoModel.durations" class="video-duration-options">
-          <button v-for="duration in selectedVideoModel.durations" :key="duration" :class="{ active: selectedDuration === duration }" @click="updateVideoSetting('duration', duration)">{{ duration }}s</button>
+        <div v-if="selectedVideoModel.durationOptions" class="video-duration-options">
+          <button v-for="duration in selectedVideoModel.durationOptions" :key="duration" :class="{ active: selectedDuration === duration }" @click="updateVideoSetting('duration', duration)">{{ duration }}s</button>
         </div>
         <div v-else class="video-duration-slider">
-          <button :class="{ active: selectedDuration === 0 }" @click="updateVideoSetting('duration', 0)">自动</button>
-          <input type="range" min="4" max="15" step="1" :value="selectedDuration || 5" aria-label="视频时长" @input="updateVideoSetting('duration', Number($event.target.value))" />
+          <button v-if="selectedVideoModel.durationAuto" :class="{ active: selectedDuration === 0 }" @click="updateVideoSetting('duration', 0)">自动</button>
+          <input type="range" :min="selectedVideoModel.durationMin" :max="selectedVideoModel.durationMax" step="1" :value="selectedDuration || selectedVideoModel.defaultDuration" aria-label="视频时长" @input="updateVideoSetting('duration', Number($event.target.value))" />
           <span>{{ selectedDuration === 0 ? '自动' : `${selectedDuration}s` }}</span>
         </div>
 
@@ -241,28 +245,30 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', closeSettings))
 
         <h3>比例</h3>
         <div class="image-ratio-grid video-ratio-grid">
-          <button v-for="ratio in videoAspectRatios" :key="ratio" :class="{ active: selectedAspectRatio === ratio }" @click="updateVideoSetting('aspectRatio', ratio)">
+          <button v-for="ratio in selectedVideoModel.aspectRatios" :key="ratio" :class="{ active: selectedAspectRatio === ratio }" @click="updateVideoSetting('aspectRatio', ratio)">
             <span v-if="ratio !== 'adaptive'" class="image-ratio-icon" :style="ratioIconStyle(ratio)"></span>
             <span v-else class="adaptive-ratio-icon">A</span>
             <strong>{{ ratio === 'adaptive' ? '自适应' : ratio }}</strong>
           </button>
         </div>
 
-        <h3>输出</h3>
-        <label class="setting-toggle-row">
-          <span>生成同步音频</span>
-          <input type="checkbox" :checked="data.generateAudio ?? true" @change="updateVideoSetting('generateAudio', $event.target.checked)" />
-        </label>
+        <template v-if="selectedVideoModel.generateAudio">
+          <h3>输出</h3>
+          <label class="setting-toggle-row">
+            <span>生成同步音频</span>
+            <input type="checkbox" :checked="selectedVideoSettings.generateAudio" @change="updateVideoSetting('generateAudio', $event.target.checked)" />
+          </label>
+        </template>
       </template>
     </div>
 
     <p v-if="panelMessage" class="panel-notice">{{ panelMessage }}</p>
 
     <footer>
-      <button v-if="type === 'image'" ref="modelTrigger" class="model-select model-select-trigger" @click="toggleModelMenu">
-        <WandSparkles :size="16" />{{ selectedImageModel.label }}<ChevronDown :size="14" :class="{ rotated: modelOpen }" />
+      <button v-if="['image', 'video'].includes(type)" ref="modelTrigger" class="model-select model-select-trigger" @click="toggleModelMenu">
+        <WandSparkles :size="16" />{{ selectedModel.label }}<ChevronDown :size="14" :class="{ rotated: modelOpen }" />
       </button>
-      <span v-else class="model-select"><WandSparkles :size="16" />{{ type === 'video' ? selectedVideoModel.label : data.model }}</span>
+      <span v-else class="model-select"><WandSparkles :size="16" />{{ data.model }}</span>
       <span v-if="type !== 'text'" class="panel-divider"></span>
       <button v-if="['image', 'video'].includes(type)" ref="settingsTrigger" class="image-settings-trigger media-settings-trigger" @click="toggleSettings">
         <component :is="type === 'video' ? VideoIcon : Image" :size="16" />{{ settingLabel }}<ChevronDown :size="14" :class="{ rotated: settingsOpen }" />

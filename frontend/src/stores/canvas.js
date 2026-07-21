@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { canConnect } from '../config/connectionRules'
 import { defaultImageModel } from '../config/imageModels'
 import { mediaTypes } from '../config/mediaTypes'
+import { defaultVideoModel } from '../config/videoModels'
 import { demoEdges, demoNodes } from '../data/demoCanvas'
 
 const createEdge = (id, source, target) => ({ id, source, target, type: 'cinematic' })
@@ -14,7 +15,7 @@ function createNodeData(type, number, source) {
   const textTask = type === 'text' && Boolean(source)
   const reverseType = type === 'text' && ['image', 'video'].includes(source?.type) ? source.type : null
   return {
-    model: textTask ? 'Qwen3-VL-Flash' : type === 'image' ? defaultImageModel.id : mediaTypes[type].model,
+    model: textTask ? 'Qwen3-VL-Flash' : type === 'image' ? defaultImageModel.id : type === 'video' ? defaultVideoModel.id : mediaTypes[type].model,
     title: reverseType ? `${mediaTypes[reverseType].label}反推提示词` : textTask ? `AI 文本任务 ${number}` : `${mediaTypes[type].label}节点 ${number}`,
     status: 'empty',
     prompt: reverseType ? reversePrompts[reverseType] : '',
@@ -25,7 +26,7 @@ function createNodeData(type, number, source) {
 export const useCanvasStore = defineStore('canvas', {
   persist: { pick: ['nodes', 'edges', 'sequence', 'groups', 'groupSequence'] },
   state: () => ({
-    nodes: demoNodes.map((node) => ({ ...node, data: { model: node.type === 'image' ? defaultImageModel.id : mediaTypes[node.type].model, ...node.data } })),
+    nodes: demoNodes.map((node) => ({ ...node, data: { model: node.type === 'image' ? defaultImageModel.id : node.type === 'video' ? defaultVideoModel.id : mediaTypes[node.type].model, ...node.data } })),
     edges: demoEdges.map((edge) => ({ ...edge })),
     sequence: 6,
     groupSequence: 1,

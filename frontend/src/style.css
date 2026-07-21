@@ -149,11 +149,11 @@ button { color: inherit; }
 .image-resolution-options button.active, .image-ratio-grid button.active { border-color: #d9dce0; background: #3c3d40; color: #f0f1f2; }
 .image-ratio-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
 .image-ratio-grid button { display: grid; height: 62px; place-items: center; align-content: center; gap: 6px; border: 1px solid #4b4d53; border-radius: 7px; background: #292a2d; color: #a9abb1; }
-.video-model-options, .video-duration-options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
-.video-model-options button, .video-duration-options button, .video-duration-slider button { height: 34px; border: 1px solid #4b4d53; border-radius: 7px; background: #292a2d; color: #a9abb1; }
-.video-model-options button.active, .video-duration-options button.active, .video-duration-slider button.active { border-color: #d9dce0; background: #3c3d40; color: #f0f1f2; }
-.video-duration-options { grid-template-columns: repeat(5, 1fr); }
+.video-duration-options { display: grid; grid-template-columns: repeat(5, 1fr); gap: 7px; }
+.video-duration-options button, .video-duration-slider button { height: 34px; border: 1px solid #4b4d53; border-radius: 7px; background: #292a2d; color: #a9abb1; }
+.video-duration-options button.active, .video-duration-slider button.active { border-color: #d9dce0; background: #3c3d40; color: #f0f1f2; }
 .video-duration-slider { display: grid; grid-template-columns: 64px 1fr 34px; align-items: center; gap: 10px; }
+.video-duration-slider:not(:has(button)) { grid-template-columns: 1fr 34px; }
 .video-duration-slider input { width: 100%; accent-color: #d9dce0; }
 .video-duration-slider span { color: #c8cbd0; text-align: right; font-size: 12px; }
 .video-ratio-grid { grid-template-columns: repeat(4, 1fr); }
