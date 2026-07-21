@@ -1,0 +1,33 @@
+[project]
+name = "ai-short-drama-backend"
+version = "0.1.0"
+description = "AI Short Drama backend"
+requires-python = ">=3.11"
+dependencies = [
+    "alembic>=1.18.5",
+    "arq>=0.28.0",
+    "asyncpg>=0.31.0",
+    "fastapi>=0.136.3",
+    "httpx>=0.28.1",
+    "oss2>=2.19.1",
+    "pydantic-settings>=2.13.1",
+    "python-multipart>=0.0.20",
+    "redis>=5.3.1",
+    "sqlalchemy[asyncio]>=2.0.50",
+    "uvicorn>=0.49.0",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "ruff>=0.15.21",
+]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
