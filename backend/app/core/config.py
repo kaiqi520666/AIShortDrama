@@ -14,16 +14,11 @@ class Settings(BaseSettings):
     database_url: str
     redis_url: str
     redis_prefix: str = "aisd"
-    cors_origins: str = "http://localhost:5173"
     oss_access_key_id: str = ""
     oss_access_key_secret: str = ""
     oss_endpoint: str = ""
     oss_bucket_name: str = ""
     oss_public_base_url: str = ""
-
-    @property
-    def cors_origin_list(self) -> list[str]:
-        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
 
 @lru_cache
