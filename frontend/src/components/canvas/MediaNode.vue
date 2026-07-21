@@ -17,15 +17,17 @@ const icon = computed(() => icons[props.type])
 const textMode = computed(() => props.type === 'text' ? (props.data.textMode ?? (props.data.content ? 'manual' : null)) : null)
 const nodeStyle = computed(() => {
   if (props.type === 'text') return { width: `${props.data.width || 350}px` }
-  if (props.type === 'image') {
-    const ratio = imageAspectRatios.find((item) => item.value === (props.data.aspectRatio || '16:9'))
-    return { width: `${Math.round(Number.parseInt(ratio.sizes['1K']) * 380 / 1536)}px` }
+  if (['image', 'video'].includes(props.type)) {
+    const ratio = imageAspectRatios.find((item) => item.value === props.data.aspectRatio)
+      || imageAspectRatios.find((item) => item.value === '16:9')
+    const baseWidth = props.type === 'video' ? 390 : 380
+    return { width: `${Math.round(Number.parseInt(ratio.sizes['1K']) * baseWidth / 1536)}px` }
   }
   return {}
 })
 const bodyStyle = computed(() => {
   if (props.type === 'text') return { height: `${props.data.height || 220}px` }
-  if (props.type === 'image') return { aspectRatio: (props.data.aspectRatio || '16:9').replace(':', ' / ') }
+  if (['image', 'video'].includes(props.type)) return { aspectRatio: (props.data.aspectRatio === 'adaptive' ? '16:9' : props.data.aspectRatio || '16:9').replace(':', ' / ') }
   return {}
 })
 const store = useCanvasStore()
@@ -97,6 +99,8 @@ onBeforeUnmount(stopResize)
         <span class="asset-badge">AI</span>
       </template>
 
+      <video v-else-if="data.asset && type === 'video'" class="node-video nodrag nopan nowheel" :src="data.asset" :poster="data.poster" controls playsinline preload="metadata"></video>
+
       <div v-else-if="type === 'image'" class="image-upload-state">
         <button class="nodrag nopan" @pointerdown.stop @click.stop="uploadNotice = '图片上传暂未接入'"><ImageIcon :size="32" stroke-width="1.35" /><span>上传图片</span></button>
         <p v-if="uploadNotice">{{ uploadNotice }}</p>
@@ -109,6 +113,11 @@ onBeforeUnmount(stopResize)
 
       <div v-else class="empty-preview">
         <component :is="icon" :size="42" stroke-width="1.35" />
+        <span v-if="type === 'video'" class="video-empty-meta">
+          <b>{{ data.aspectRatio || '16:9' }}</b>
+          <b>{{ data.resolution || '720p' }}</b>
+          <b>{{ (data.duration ?? 5) === 0 ? '自动' : `${data.duration ?? 5}s` }}</b>
+        </span>
       </div>
 
       <span v-if="type === 'text' && textMode" class="text-drag-handle" title="拖动节点"><GripVertical :size="16" /></span>
