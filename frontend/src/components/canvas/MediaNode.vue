@@ -18,10 +18,14 @@ const textMode = computed(() => props.type === 'text' ? (props.data.textMode ?? 
 const acceptsInput = computed(() => props.type === 'text' ? textMode.value === 'task' : props.data.assetSource !== 'upload')
 const mediaWidth = computed(() => {
   if (!['image', 'video'].includes(props.type)) return 0
-  const ratio = imageAspectRatios.find((item) => item.value === props.data.aspectRatio)
+  const aspectRatio = props.data.aspectRatio === 'adaptive' ? '16:9' : props.data.aspectRatio || '16:9'
+  const ratio = imageAspectRatios.find((item) => item.value === aspectRatio)
     || imageAspectRatios.find((item) => item.value === '16:9')
   const baseWidth = props.type === 'video' ? 390 : 380
-  return Math.round(Number.parseInt(ratio.sizes['1K']) * baseWidth / 1536)
+  if (ratio.sizes?.['1K']) return Math.round(Number.parseInt(ratio.sizes['1K']) * baseWidth / 1536)
+  const [width, height] = aspectRatio.split(':').map(Number)
+  const aspect = width / height
+  return aspect >= 1 ? Math.min(570, Math.round(baseWidth * aspect / (16 / 9))) : Math.max(96, Math.round(baseWidth * aspect / (9 / 16)))
 })
 const nodeStyle = computed(() => {
   if (props.type === 'text') return { width: `${props.data.width || 350}px` }
@@ -43,7 +47,7 @@ let resizeState = null
 function resizeNode(event) {
   const zoom = viewport.value.zoom
   if (resizeState.kind === 'media') {
-    updateNodeData(props.id, { displayWidth: Math.min(720, Math.max(180, Math.round(resizeState.width + (event.clientX - resizeState.x) / zoom))) })
+    updateNodeData(props.id, { displayWidth: Math.min(720, Math.max(resizeState.minWidth, Math.round(resizeState.width + (event.clientX - resizeState.x) / zoom))) })
     return
   }
   updateNodeData(props.id, {
@@ -60,8 +64,9 @@ function stopResize() {
 
 function startResize(event) {
   const audio = props.type === 'audio'
+  const [aspectWidth, aspectHeight] = (props.data.aspectRatio || '16:9').split(':').map(Number)
   resizeState = mediaWidth.value
-    ? { kind: 'media', x: event.clientX, width: props.data.displayWidth || mediaWidth.value }
+    ? { kind: 'media', x: event.clientX, width: props.data.displayWidth || mediaWidth.value, minWidth: aspectWidth / aspectHeight < 0.5 ? 96 : 180 }
     : { kind: 'free', x: event.clientX, y: event.clientY, width: props.data.width || (audio ? 360 : 350), height: props.data.height || (audio ? 170 : 220), minWidth: 260, minHeight: audio ? 120 : 160 }
   window.addEventListener('pointermove', resizeNode)
   window.addEventListener('pointerup', stopResize)
