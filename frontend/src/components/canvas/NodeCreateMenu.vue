@@ -1,6 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { FileText, Image, Music2, Video } from 'lucide-vue-next'
+import { canConnect } from '../../config/connectionRules'
 import { mediaTypes } from '../../config/mediaTypes'
 import { useCanvasStore } from '../../stores/canvas'
 
@@ -16,7 +17,7 @@ const icons = { text: FileText, image: Image, video: Video, audio: Music2 }
 const store = useCanvasStore()
 const source = computed(() => store.nodes.find((node) => node.id === props.sourceId))
 const options = computed(() => Object.entries(mediaTypes)
-  .filter(([type]) => type !== 'text' || !props.contextual || ['text', 'image'].includes(source.value?.type))
+  .filter(([type]) => !props.contextual || canConnect(source.value?.type, type))
   .map(([type, { label, hint }]) => ({ type, label, hint, icon: icons[type] })))
 </script>
 

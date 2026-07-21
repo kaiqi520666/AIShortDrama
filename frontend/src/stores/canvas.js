@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { canConnect } from '../config/connectionRules'
 import { mediaTypes } from '../config/mediaTypes'
 import { demoEdges, demoNodes } from '../data/demoCanvas'
 
@@ -6,7 +7,7 @@ const createEdge = (id, source, target) => ({ id, source, target, type: 'cinemat
 const reversePrompt = '根据图片生成结构化中文提示词，包括主体描述、环境、光影、镜头语言、风格关键词。'
 
 function createNodeData(type, number, source) {
-  const textTask = type === 'text' && ['text', 'image'].includes(source?.type)
+  const textTask = type === 'text' && Boolean(source)
   return {
     model: textTask ? 'Qwen3-VL-Flash' : mediaTypes[type].model,
     title: textTask ? (source.type === 'image' ? '图片反推提示词' : `AI 文本任务 ${number}`) : `${mediaTypes[type].label}节点 ${number}`,
@@ -35,7 +36,7 @@ export const useCanvasStore = defineStore('canvas', {
   actions: {
     addNode(type, position, sourceId) {
       const source = this.nodes.find((node) => node.id === sourceId)
-      if (type === 'text' && sourceId && !['text', 'image'].includes(source?.type)) return
+      if (sourceId && (!source || !canConnect(source.type, type))) return
       const number = this.sequence++
       const id = `${type}-${number}`
       this.nodes.forEach((node) => { node.selected = false })
@@ -53,7 +54,7 @@ export const useCanvasStore = defineStore('canvas', {
       if (this.edges.some((edge) => edge.source === connection.source && edge.target === connection.target)) return
       const source = this.nodes.find((node) => node.id === connection.source)
       const target = this.nodes.find((node) => node.id === connection.target)
-      if (target?.type === 'text' && (target.data.textMode !== 'task' || !['text', 'image'].includes(source?.type))) return
+      if (!source || !target || source.id === target.id || !canConnect(source.type, target.type)) return
       this.edges.push({ id: `edge-${crypto.randomUUID()}`, ...connection, type: 'cinematic' })
     },
     setTextMode(id, mode) {
