@@ -16,18 +16,22 @@ const icons = { text: FileText, image: ImageIcon, video: Video, audio: Music2 }
 const icon = computed(() => icons[props.type])
 const textMode = computed(() => props.type === 'text' ? (props.data.textMode ?? (props.data.content ? 'manual' : null)) : null)
 const acceptsInput = computed(() => props.type === 'text' ? textMode.value === 'task' : props.data.assetSource !== 'upload')
+const mediaWidth = computed(() => {
+  if (!['image', 'video'].includes(props.type)) return 0
+  const ratio = imageAspectRatios.find((item) => item.value === props.data.aspectRatio)
+    || imageAspectRatios.find((item) => item.value === '16:9')
+  const baseWidth = props.type === 'video' ? 390 : 380
+  return Math.round(Number.parseInt(ratio.sizes['1K']) * baseWidth / 1536)
+})
 const nodeStyle = computed(() => {
   if (props.type === 'text') return { width: `${props.data.width || 350}px` }
-  if (['image', 'video'].includes(props.type)) {
-    const ratio = imageAspectRatios.find((item) => item.value === props.data.aspectRatio)
-      || imageAspectRatios.find((item) => item.value === '16:9')
-    const baseWidth = props.type === 'video' ? 390 : 380
-    return { width: `${Math.round(Number.parseInt(ratio.sizes['1K']) * baseWidth / 1536)}px` }
-  }
+  if (props.type === 'audio') return { width: `${props.data.width || 360}px` }
+  if (mediaWidth.value) return { width: `${props.data.displayWidth || mediaWidth.value}px` }
   return {}
 })
 const bodyStyle = computed(() => {
   if (props.type === 'text') return { height: `${props.data.height || (textMode.value ? 220 : 280)}px` }
+  if (props.type === 'audio') return { height: `${props.data.height || 170}px` }
   if (['image', 'video'].includes(props.type)) return { aspectRatio: (props.data.aspectRatio === 'adaptive' ? '16:9' : props.data.aspectRatio || '16:9').replace(':', ' / ') }
   return {}
 })
@@ -38,9 +42,13 @@ let resizeState = null
 
 function resizeNode(event) {
   const zoom = viewport.value.zoom
+  if (resizeState.kind === 'media') {
+    updateNodeData(props.id, { displayWidth: Math.min(720, Math.max(180, Math.round(resizeState.width + (event.clientX - resizeState.x) / zoom))) })
+    return
+  }
   updateNodeData(props.id, {
-    width: Math.max(260, Math.round(resizeState.width + (event.clientX - resizeState.x) / zoom)),
-    height: Math.max(160, Math.round(resizeState.height + (event.clientY - resizeState.y) / zoom)),
+    width: Math.max(resizeState.minWidth, Math.round(resizeState.width + (event.clientX - resizeState.x) / zoom)),
+    height: Math.max(resizeState.minHeight, Math.round(resizeState.height + (event.clientY - resizeState.y) / zoom)),
   })
 }
 
@@ -51,7 +59,10 @@ function stopResize() {
 }
 
 function startResize(event) {
-  resizeState = { x: event.clientX, y: event.clientY, width: props.data.width || 350, height: props.data.height || 220 }
+  const audio = props.type === 'audio'
+  resizeState = mediaWidth.value
+    ? { kind: 'media', x: event.clientX, width: props.data.displayWidth || mediaWidth.value }
+    : { kind: 'free', x: event.clientX, y: event.clientY, width: props.data.width || (audio ? 360 : 350), height: props.data.height || (audio ? 170 : 220), minWidth: 260, minHeight: audio ? 120 : 160 }
   window.addEventListener('pointermove', resizeNode)
   window.addEventListener('pointerup', stopResize)
 }
@@ -119,6 +130,9 @@ onBeforeUnmount(stopResize)
 
       <span v-if="type === 'text' && textMode" class="text-drag-handle" title="拖动节点"><GripVertical :size="16" /></span>
       <button v-if="type === 'text' && textMode" class="text-resize-handle nodrag nopan" title="调整尺寸" @pointerdown.stop.prevent="startResize">
+        <MoveDiagonal2 :size="15" />
+      </button>
+      <button v-if="selected && ['image', 'video', 'audio'].includes(type)" class="media-resize-handle nodrag nopan" title="调整显示尺寸" @pointerdown.stop.prevent="startResize">
         <MoveDiagonal2 :size="15" />
       </button>
     </div>
