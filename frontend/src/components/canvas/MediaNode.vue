@@ -2,6 +2,7 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
 import { AudioWaveform, FileText, GripVertical, Image as ImageIcon, MoveDiagonal2, Music2, Video } from 'lucide-vue-next'
+import { uploadMedia } from '../../api/uploads'
 import { imageAspectRatios } from '../../config/imageSettings'
 import { startGenerationPolling } from '../../services/generationPolling'
 import { useCanvasStore } from '../../stores/canvas'
@@ -17,8 +18,20 @@ const icons = { text: FileText, image: ImageIcon, video: Video, audio: Music2 }
 const icon = computed(() => icons[props.type])
 const textMode = computed(() => props.type === 'text' ? (props.data.textMode ?? (props.data.content ? 'manual' : null)) : null)
 const acceptsInput = computed(() => props.type === 'text' ? textMode.value === 'task' : props.data.assetSource !== 'upload')
+const sourceAspectRatio = computed(() => props.data.assetSource === 'upload' && props.data.sourceAspectRatio > 0 ? props.data.sourceAspectRatio : null)
+const displayAspectRatio = computed(() => {
+  if (sourceAspectRatio.value) return sourceAspectRatio.value
+  const value = props.data.aspectRatio === 'adaptive' ? '16:9' : props.data.aspectRatio || '16:9'
+  const [width, height] = value.split(':').map(Number)
+  return width / height
+})
 const mediaWidth = computed(() => {
   if (!['image', 'video'].includes(props.type)) return 0
+  if (sourceAspectRatio.value) {
+    const baseWidth = props.type === 'video' ? 390 : 380
+    const width = Math.sqrt(baseWidth * (baseWidth / (16 / 9)) * sourceAspectRatio.value)
+    return Math.min(570, Math.max(96, Math.round(width)))
+  }
   const aspectRatio = props.data.aspectRatio === 'adaptive' ? '16:9' : props.data.aspectRatio || '16:9'
   const ratio = imageAspectRatios.find((item) => item.value === aspectRatio)
     || imageAspectRatios.find((item) => item.value === '16:9')
@@ -37,11 +50,18 @@ const nodeStyle = computed(() => {
 const bodyStyle = computed(() => {
   if (props.type === 'text') return { height: `${props.data.height || (textMode.value ? 220 : 280)}px` }
   if (props.type === 'audio') return { height: `${props.data.height || 170}px` }
-  if (['image', 'video'].includes(props.type)) return { aspectRatio: (props.data.aspectRatio === 'adaptive' ? '16:9' : props.data.aspectRatio || '16:9').replace(':', ' / ') }
+  if (['image', 'video'].includes(props.type)) return { aspectRatio: displayAspectRatio.value }
   return {}
 })
 const store = useCanvasStore()
 const uploadNotice = ref('')
+const fileInput = ref(null)
+const uploading = ref(false)
+const uploadProgress = ref(0)
+const uploadRules = {
+  image: { types: ['image/jpeg', 'image/png', 'image/webp'], maxSize: 20 * 1024 * 1024 },
+  video: { types: ['video/mp4', 'video/quicktime', 'video/webm'], maxSize: 500 * 1024 * 1024 },
+}
 const imageRetry = ref(0)
 const imageSrc = computed(() => {
   if (!props.data.asset || !imageRetry.value) return props.data.asset
@@ -66,6 +86,61 @@ function resetImageRetry() {
   imageRetry.value = 0
 }
 
+function readMediaMetadata(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const media = props.type === 'image' ? new Image() : document.createElement('video')
+    const cleanup = () => URL.revokeObjectURL(url)
+    media.onload = media.onloadedmetadata = () => {
+      const width = media.naturalWidth || media.videoWidth
+      const height = media.naturalHeight || media.videoHeight
+      cleanup()
+      width && height ? resolve({ width, height, duration: media.duration || null }) : reject(new Error('无法读取媒体尺寸'))
+    }
+    media.onerror = () => {
+      cleanup()
+      reject(new Error('无法读取媒体文件'))
+    }
+    media.preload = 'metadata'
+    media.src = url
+  })
+}
+
+async function handleUpload(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  const rule = uploadRules[props.type]
+  if (!rule.types.includes(file.type)) {
+    uploadNotice.value = `不支持的${props.type === 'video' ? '视频' : '图片'}格式`
+    return
+  }
+  if (file.size > rule.maxSize) {
+    uploadNotice.value = `文件不能超过 ${rule.maxSize / 1024 / 1024}MB`
+    return
+  }
+  uploading.value = true
+  uploadProgress.value = 0
+  uploadNotice.value = ''
+  try {
+    const metadata = await readMediaMetadata(file)
+    const result = await uploadMedia(props.type, file, (progress) => { uploadProgress.value = progress })
+    if (result.code !== 0) throw new Error(result.message)
+    updateNodeData(props.id, {
+      asset: result.data.url,
+      status: 'ready',
+      sourceWidth: metadata.width,
+      sourceHeight: metadata.height,
+      sourceAspectRatio: metadata.width / metadata.height,
+      ...(metadata.duration ? { sourceDuration: metadata.duration } : {}),
+    })
+  } catch (error) {
+    uploadNotice.value = error.response?.data?.message || error.message || '上传失败'
+  } finally {
+    uploading.value = false
+  }
+}
+
 function resizeNode(event) {
   const zoom = viewport.value.zoom
   if (resizeState.kind === 'media') {
@@ -86,9 +161,8 @@ function stopResize() {
 
 function startResize(event) {
   const audio = props.type === 'audio'
-  const [aspectWidth, aspectHeight] = (props.data.aspectRatio || '16:9').split(':').map(Number)
   resizeState = mediaWidth.value
-    ? { kind: 'media', x: event.clientX, width: props.data.displayWidth || mediaWidth.value, minWidth: aspectWidth / aspectHeight < 0.5 ? 96 : 180 }
+    ? { kind: 'media', x: event.clientX, width: props.data.displayWidth || mediaWidth.value, minWidth: displayAspectRatio.value < 0.5 ? 96 : 180 }
     : { kind: 'free', x: event.clientX, y: event.clientY, width: props.data.width || (audio ? 360 : 350), height: props.data.height || (audio ? 170 : 220), minWidth: 260, minHeight: audio ? 120 : 160 }
   window.addEventListener('pointermove', resizeNode)
   window.addEventListener('pointerup', stopResize)
@@ -156,7 +230,8 @@ onBeforeUnmount(() => {
       <video v-else-if="data.asset && type === 'video'" class="node-video nodrag nopan nowheel" :src="data.asset" :poster="data.poster" controls playsinline preload="metadata"></video>
 
       <div v-else-if="['image', 'video'].includes(type) && data.assetSource === 'upload'" class="media-upload-state">
-        <button class="nodrag nopan" @pointerdown.stop @click.stop="uploadNotice = `${type === 'video' ? '视频' : '图片'}上传暂未接入`"><component :is="icon" :size="32" stroke-width="1.35" /><span>上传{{ type === 'video' ? '视频' : '图片' }}</span></button>
+        <input ref="fileInput" type="file" :accept="type === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'image/jpeg,image/png,image/webp'" hidden @change="handleUpload" />
+        <button class="nodrag nopan" :disabled="uploading" @pointerdown.stop @click.stop="fileInput?.click()"><component :is="icon" :size="32" stroke-width="1.35" /><span>{{ uploading ? `上传中 ${uploadProgress}%` : `上传${type === 'video' ? '视频' : '图片'}` }}</span></button>
         <p v-if="uploadNotice">{{ uploadNotice }}</p>
       </div>
 

@@ -30,6 +30,15 @@ class OssStorage:
         self.bucket = oss2.Bucket(auth, settings.oss_endpoint, settings.oss_bucket_name)
         self.public_base_url = settings.oss_public_base_url.rstrip("/")
 
+    async def store_upload(self, object_key: str, stream, content_type: str) -> str:
+        await asyncio.to_thread(
+            self.bucket.put_object,
+            object_key,
+            stream,
+            {"Content-Type": content_type},
+        )
+        return f"{self.public_base_url}/{object_key}"
+
     async def store_remote_images(self, task_id: str, urls: list[str]) -> list[str]:
         stored = []
         async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
