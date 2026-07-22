@@ -639,7 +639,7 @@ onBeforeUnmount(() => {
 
     <nav class="canvas-bottom-toolbar" aria-label="画布快捷工具">
       <AppTooltip text="新增节点">
-        <AppButton class="canvas-add-button" icon-only variant="primary" aria-label="新增节点" @click="openGlobalMenu"><Plus :size="21" /></AppButton>
+        <AppButton class="canvas-add-button" icon-only variant="primary" aria-label="新增节点" @click="openGlobalMenu"><Plus :size="19" /></AppButton>
       </AppTooltip>
       <div class="canvas-tool-picker" @pointerdown.stop>
         <AppTooltip :text="canvasTool === 'move' ? '移动工具 (V)' : '抓手工具 (H)'">
