@@ -78,7 +78,6 @@ onMounted(() => store.load())
       <div class="workspace-account">
         <span>{{ authStore.user?.username }}</span>
         <AppButton icon-only size="sm" title="退出登录" @click="signOut"><LogOut :size="16" /></AppButton>
-        <AppButton class="workspace-create" variant="primary" size="sm" @click="create"><Plus :size="17" />新建项目</AppButton>
       </div>
     </header>
 
@@ -89,10 +88,12 @@ onMounted(() => store.load())
       </div>
       <p v-if="store.error" class="workspace-notice">{{ store.error }}</p>
       <EmptyState v-if="store.loading" class="workspace-empty" title="正在加载项目" loading />
-      <EmptyState v-else-if="!store.items.length" class="workspace-empty" title="暂无项目" description="创建项目后即可开始编排内容与生成任务">
-        <AppButton variant="primary" size="sm" @click="create"><Plus :size="15" />新建项目</AppButton>
-      </EmptyState>
       <div v-else class="workspace-grid">
+        <AppButton class="workspace-create-card" aria-label="新建项目" @click="create">
+          <span class="workspace-create-icon"><Plus :size="22" /></span>
+          <strong>新建项目</strong>
+          <small>创建新的工作流画布</small>
+        </AppButton>
         <article v-for="(workspace, index) in displayedItems" :key="workspace.id" class="workspace-card" @dblclick="router.push(`/workspaces/${workspace.id}`)">
           <AppButton class="workspace-open-area" @click="router.push(`/workspaces/${workspace.id}`)">
             <span class="workspace-cover" aria-hidden="true"><b>{{ String(index + 1).padStart(2, '0') }}</b><i></i><Play :size="17" fill="currentColor" /></span>
