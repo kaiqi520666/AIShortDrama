@@ -151,7 +151,6 @@ onBeforeUnmount(() => {
 
       <template v-else-if="data.asset && type === 'image'">
         <img class="node-image" :src="imageSrc" :alt="data.title" referrerpolicy="no-referrer" @error="retryImage" />
-        <span v-if="data.assetSource !== 'upload'" class="asset-badge">AI</span>
       </template>
 
       <video v-else-if="data.asset && type === 'video'" class="node-video nodrag nopan nowheel" :src="data.asset" :poster="data.poster" controls playsinline preload="metadata"></video>
