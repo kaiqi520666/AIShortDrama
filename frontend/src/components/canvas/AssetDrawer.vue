@@ -13,7 +13,7 @@ const props = defineProps({
   groups: { type: Array, required: true },
   activeGroupId: { type: String, default: null },
 })
-const emit = defineEmits(['focus', 'focus-group', 'rename-group', 'close'])
+const emit = defineEmits(['focus', 'focus-group', 'rename-group', 'delete-node', 'delete-group', 'close'])
 const icons = { text: FileText, image: Image, video: Video, audio: Music2 }
 const drawerTabs = [{ value: 'nodes', label: '节点', icon: Workflow }, { value: 'assets', label: '资产', icon: Library }]
 const assetTypeOptions = [
@@ -109,6 +109,26 @@ async function deleteAssetItem(asset) {
   }
 }
 
+async function deleteNodeItem(node) {
+  const accepted = await confirm({
+    title: '删除节点',
+    message: `确定删除“${node.data.title}”吗？相关连线也会一并删除。`,
+    confirmText: '删除',
+    tone: 'danger',
+  })
+  if (accepted) emit('delete-node', node.id)
+}
+
+async function deleteGroupItem(group) {
+  const accepted = await confirm({
+    title: '删除编组',
+    message: `确定删除“${group.title}”及其中的 ${group.nodes.length} 个节点吗？相关连线也会一并删除。`,
+    confirmText: '全部删除',
+    tone: 'danger',
+  })
+  if (accepted) emit('delete-group', group.id)
+}
+
 function selectAssetType(type) {
   assetType.value = type
   loadAssetItems()
@@ -135,64 +155,71 @@ onMounted(loadAssetItems)
 
     <div v-if="activeTab === 'nodes'" class="asset-list">
       <EmptyState v-if="!nodes.length" compact title="暂无节点" description="在画布中创建节点后会显示在这里" />
-      <AppButton
-        v-for="node in ungroupedNodes"
-        :key="node.id"
-        class="asset-item"
-        :class="{ active: node.selected, dragging: draggingItem === `node:${node.id}` }"
-        draggable="true"
-        @click="emit('focus', node.id)"
-        @dragstart="startDrag($event, 'node', node)"
-        @dragend="draggingItem = ''"
-      >
-        <span class="asset-preview">
-          <img v-if="node.type === 'image' && node.data.asset" :src="node.data.asset" :alt="node.data.title" draggable="false" />
-          <img v-else-if="node.type === 'video' && node.data.poster" :src="node.data.poster" :alt="node.data.title" draggable="false" />
-          <component v-else :is="icons[node.type]" :size="20" />
-        </span>
-        <span>{{ node.data.title }}</span>
-      </AppButton>
+      <div v-for="node in ungroupedNodes" :key="node.id" class="asset-node-row">
+        <AppButton
+          class="asset-item"
+          :class="{ active: node.selected, dragging: draggingItem === `node:${node.id}` }"
+          draggable="true"
+          @click="emit('focus', node.id)"
+          @dragstart="startDrag($event, 'node', node)"
+          @dragend="draggingItem = ''"
+        >
+          <span class="asset-preview">
+            <img v-if="node.type === 'image' && node.data.asset" :src="node.data.asset" :alt="node.data.title" draggable="false" />
+            <img v-else-if="node.type === 'video' && node.data.poster" :src="node.data.poster" :alt="node.data.title" draggable="false" />
+            <component v-else :is="icons[node.type]" :size="20" />
+          </span>
+          <span>{{ node.data.title }}</span>
+        </AppButton>
+        <AppButton class="asset-row-action asset-row-edit" icon-only size="sm" :title="`编辑 ${node.data.title}`" :aria-label="`编辑 ${node.data.title}`" @click.stop="emit('focus', node.id)"><Pencil :size="14" /></AppButton>
+        <AppButton class="asset-row-delete" icon-only size="sm" variant="danger" :title="`删除 ${node.data.title}`" :aria-label="`删除 ${node.data.title}`" @click.stop="deleteNodeItem(node)"><Trash2 :size="14" /></AppButton>
+      </div>
 
       <section v-for="group in groupItems" :key="group.id" class="asset-group">
-        <AppButton class="asset-group-row" :class="{ active: group.active }" @click="emit('focus-group', group.id)">
-          <span class="asset-group-toggle" @click.stop="collapsedGroupIds = collapsedGroupIds.includes(group.id) ? collapsedGroupIds.filter((id) => id !== group.id) : [...collapsedGroupIds, group.id]">
-            <ChevronRight v-if="collapsedGroupIds.includes(group.id)" :size="14" />
-            <ChevronDown v-else :size="14" />
-          </span>
-          <Folder :size="16" />
-          <AppInput
-            v-if="editingGroupId === group.id"
-            class="asset-group-title-input"
-            :model-value="group.title"
-            aria-label="编组名称"
-            @click.stop
-            @input="renameGroup(group.id, $event)"
-            @blur="editingGroupId = null"
-            @keydown.enter="editingGroupId = null"
-            @keydown.esc="editingGroupId = null"
-          />
-          <span v-else class="asset-group-title" @dblclick.stop="startRename(group.id)">{{ group.title }}</span>
-          <small>{{ group.nodes.length }}</small>
-        </AppButton>
+        <div class="asset-group-header">
+          <AppButton class="asset-group-row" :class="{ active: group.active }" @click="emit('focus-group', group.id)">
+            <span class="asset-group-toggle" @click.stop="collapsedGroupIds = collapsedGroupIds.includes(group.id) ? collapsedGroupIds.filter((id) => id !== group.id) : [...collapsedGroupIds, group.id]">
+              <ChevronRight v-if="collapsedGroupIds.includes(group.id)" :size="14" />
+              <ChevronDown v-else :size="14" />
+            </span>
+            <Folder :size="16" />
+            <AppInput
+              v-if="editingGroupId === group.id"
+              class="asset-group-title-input"
+              :model-value="group.title"
+              aria-label="编组名称"
+              @click.stop
+              @input="renameGroup(group.id, $event)"
+              @blur="editingGroupId = null"
+              @keydown.enter="editingGroupId = null"
+              @keydown.esc="editingGroupId = null"
+            />
+            <span v-else class="asset-group-title" @dblclick.stop="startRename(group.id)">{{ group.title }}</span>
+            <small>{{ group.nodes.length }}</small>
+          </AppButton>
+          <AppButton class="asset-row-delete" icon-only size="sm" variant="danger" :title="`删除 ${group.title}`" :aria-label="`删除 ${group.title}`" @click.stop="deleteGroupItem(group)"><Trash2 :size="14" /></AppButton>
+        </div>
 
         <div v-if="!collapsedGroupIds.includes(group.id)" class="asset-group-items">
-          <AppButton
-            v-for="node in group.nodes"
-            :key="node.id"
-            class="asset-item"
-            :class="{ active: node.selected, dragging: draggingItem === `node:${node.id}` }"
-            draggable="true"
-            @click="emit('focus', node.id)"
-            @dragstart="startDrag($event, 'node', node)"
-            @dragend="draggingItem = ''"
-          >
-            <span class="asset-preview">
-              <img v-if="node.type === 'image' && node.data.asset" :src="node.data.asset" :alt="node.data.title" draggable="false" />
-              <img v-else-if="node.type === 'video' && node.data.poster" :src="node.data.poster" :alt="node.data.title" draggable="false" />
-              <component v-else :is="icons[node.type]" :size="20" />
-            </span>
-            <span>{{ node.data.title }}</span>
-          </AppButton>
+          <div v-for="node in group.nodes" :key="node.id" class="asset-node-row">
+            <AppButton
+              class="asset-item"
+              :class="{ active: node.selected, dragging: draggingItem === `node:${node.id}` }"
+              draggable="true"
+              @click="emit('focus', node.id)"
+              @dragstart="startDrag($event, 'node', node)"
+              @dragend="draggingItem = ''"
+            >
+              <span class="asset-preview">
+                <img v-if="node.type === 'image' && node.data.asset" :src="node.data.asset" :alt="node.data.title" draggable="false" />
+                <img v-else-if="node.type === 'video' && node.data.poster" :src="node.data.poster" :alt="node.data.title" draggable="false" />
+                <component v-else :is="icons[node.type]" :size="20" />
+              </span>
+              <span>{{ node.data.title }}</span>
+            </AppButton>
+            <AppButton class="asset-row-action asset-row-edit" icon-only size="sm" :title="`编辑 ${node.data.title}`" :aria-label="`编辑 ${node.data.title}`" @click.stop="emit('focus', node.id)"><Pencil :size="14" /></AppButton>
+            <AppButton class="asset-row-delete" icon-only size="sm" variant="danger" :title="`删除 ${node.data.title}`" :aria-label="`删除 ${node.data.title}`" @click.stop="deleteNodeItem(node)"><Trash2 :size="14" /></AppButton>
+          </div>
         </div>
       </section>
     </div>

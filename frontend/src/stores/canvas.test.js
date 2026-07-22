@@ -78,4 +78,19 @@ describe('canvas grouping and duplication', () => {
     ])
     expect(store.groups).toContainEqual(expect.objectContaining({ title: '组合 副本', nodeIds: ids }))
   })
+
+  it('deletes a group with its nodes and connected edges', () => {
+    const store = useCanvasStore()
+    store.$patch({
+      nodes: ['a', 'b', 'c'].map((id) => ({ id, type: 'text', position: { x: 0, y: 0 }, data: {} })),
+      edges: [{ id: 'edge-1', source: 'a', target: 'b' }, { id: 'edge-2', source: 'b', target: 'c' }],
+      groups: [{ id: 'group-1', title: '待删除', nodeIds: ['a', 'b'] }],
+    })
+
+    store.deleteGroup('group-1')
+
+    expect(store.nodes.map((node) => node.id)).toEqual(['c'])
+    expect(store.edges).toEqual([])
+    expect(store.groups).toEqual([])
+  })
 })

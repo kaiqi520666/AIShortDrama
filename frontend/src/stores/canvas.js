@@ -257,5 +257,13 @@ export const useCanvasStore = defineStore('canvas', {
         .map((group) => ({ ...group, nodeIds: group.nodeIds.filter((nodeId) => nodeId !== id) }))
         .filter((group) => group.nodeIds.length > 1)
     },
+    deleteGroup(id) {
+      const group = this.groups.find((item) => item.id === id)
+      if (!group) return
+      const nodeIds = new Set(group.nodeIds)
+      this.nodes = this.nodes.filter((node) => !nodeIds.has(node.id))
+      this.edges = this.edges.filter((edge) => !nodeIds.has(edge.source) && !nodeIds.has(edge.target))
+      this.groups = this.groups.filter((item) => item.id !== id)
+    },
   },
 })

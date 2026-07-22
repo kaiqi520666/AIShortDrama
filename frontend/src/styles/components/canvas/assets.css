@@ -156,6 +156,42 @@
   text-align: left;
   cursor: pointer;
 }
+.asset-node-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px 32px;
+  align-items: center;
+  gap: 2px;
+}
+.asset-group-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 2px;
+}
+.asset-node-row .asset-item,
+.asset-group-header .asset-group-row {
+  min-width: 0;
+}
+.asset-row-action.ui-button,
+.asset-row-delete.ui-button {
+  opacity: 0;
+  color: #777f87;
+  transition: opacity 140ms ease, color 140ms ease, background-color 140ms ease;
+}
+.asset-node-row:hover .asset-row-action,
+.asset-node-row:focus-within .asset-row-action,
+.asset-node-row:hover .asset-row-delete,
+.asset-node-row:focus-within .asset-row-delete,
+.asset-group-header:hover .asset-row-delete,
+.asset-group-header:focus-within .asset-row-delete {
+  opacity: 1;
+}
+.asset-row-edit.ui-button:hover {
+  color: var(--accent);
+}
+.asset-row-delete.ui-button:hover {
+  color: #ff8e8e;
+}
 .asset-item[draggable="true"] {
   cursor: grab;
 }
@@ -254,4 +290,10 @@
 }
 .asset-group-items .asset-item {
   padding-left: 36px;
+}
+@media (hover: none) {
+  .asset-row-action.ui-button,
+  .asset-row-delete.ui-button {
+    opacity: 1;
+  }
 }
