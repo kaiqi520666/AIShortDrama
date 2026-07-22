@@ -248,10 +248,12 @@ export const useCanvasStore = defineStore('canvas', {
       return this.duplicateNodes(this.nodes.filter((node) => node.selected).map((node) => node.id))
     },
     duplicateWithInputs(id) {
-      if (!this.nodes.some((node) => node.id === id)) return []
-      const nodeIds = new Set([id])
-      this.edges.filter((edge) => edge.target === id).forEach((edge) => nodeIds.add(edge.source))
-      return this.duplicateNodes(this.nodes.filter((node) => nodeIds.has(node.id)).map((node) => node.id))
+      const copyId = this.duplicateNodes([id])[0]
+      if (!copyId) return
+      this.edges.push(...this.edges
+        .filter((edge) => edge.target === id)
+        .map((edge) => ({ ...edge, id: `edge-${crypto.randomUUID()}`, target: copyId })))
+      return copyId
     },
     renameNode(id, title) {
       const node = this.nodes.find((item) => item.id === id)
