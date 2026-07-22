@@ -142,7 +142,7 @@ onBeforeUnmount(() => {
       ></textarea>
 
       <template v-else-if="data.asset && type === 'image'">
-        <img class="node-image" :src="imageSrc" :alt="data.title" @error="retryImage" />
+        <img class="node-image" :src="imageSrc" :alt="data.title" referrerpolicy="no-referrer" @error="retryImage" />
         <span v-if="data.assetSource !== 'upload'" class="asset-badge">AI</span>
       </template>
 
