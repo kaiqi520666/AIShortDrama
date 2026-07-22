@@ -811,7 +811,7 @@ onBeforeUnmount(() => {
         <AppButton @click="pasteFromMenu"><Clipboard :size="15" /><span>粘贴</span><kbd>Ctrl+V</kbd></AppButton>
       </template>
       <template v-else>
-        <AppButton @click="runContextAction('duplicateUpstream')"><Copy :size="15" />创建副本</AppButton>
+        <AppButton @click="runContextAction('duplicateWithInputs')"><Copy :size="15" />创建副本</AppButton>
         <AppButton v-if="selectedNodes.length > 1 && !contextGroup" @click="runContextAction('groupSelected')"><Group :size="15" />编组</AppButton>
         <AppButton v-if="contextGroup" @click="runContextAction('ungroupNode')"><Ungroup :size="15" />解组</AppButton>
         <span v-if="selectedNodes.length > 1 || contextGroup"></span>

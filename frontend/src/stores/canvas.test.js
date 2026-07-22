@@ -79,7 +79,7 @@ describe('canvas grouping and duplication', () => {
     expect(store.groups).toContainEqual(expect.objectContaining({ title: '组合 副本', nodeIds: ids }))
   })
 
-  it('duplicates a node with every upstream node and internal edge', () => {
+  it('duplicates a node with its direct inputs and their connections', () => {
     const store = useCanvasStore()
     store.$patch({
       sequence: 10,
@@ -91,14 +91,11 @@ describe('canvas grouping and duplication', () => {
       ],
     })
 
-    const ids = store.duplicateUpstream('c')
+    const ids = store.duplicateWithInputs('c')
 
-    expect(ids).toEqual(['text-10', 'text-11', 'text-12'])
-    expect(store.nodes.slice(-3).map((node) => node.position)).toEqual([{ x: 56, y: 56 }, { x: 156, y: 56 }, { x: 256, y: 56 }])
-    expect(store.edges.slice(-2)).toEqual([
-      expect.objectContaining({ source: 'text-10', target: 'text-11' }),
-      expect.objectContaining({ source: 'text-11', target: 'text-12' }),
-    ])
+    expect(ids).toEqual(['text-10', 'text-11'])
+    expect(store.nodes.slice(-2).map((node) => node.position)).toEqual([{ x: 156, y: 56 }, { x: 256, y: 56 }])
+    expect(store.edges.slice(-1)).toEqual([expect.objectContaining({ source: 'text-10', target: 'text-11' })])
   })
 
   it('deletes a group with its nodes and connected edges', () => {

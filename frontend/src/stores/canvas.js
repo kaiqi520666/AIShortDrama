@@ -247,18 +247,10 @@ export const useCanvasStore = defineStore('canvas', {
     duplicateSelected() {
       return this.duplicateNodes(this.nodes.filter((node) => node.selected).map((node) => node.id))
     },
-    duplicateUpstream(id) {
+    duplicateWithInputs(id) {
       if (!this.nodes.some((node) => node.id === id)) return []
       const nodeIds = new Set([id])
-      const pending = [id]
-      while (pending.length) {
-        const target = pending.pop()
-        this.edges.filter((edge) => edge.target === target).forEach((edge) => {
-          if (nodeIds.has(edge.source)) return
-          nodeIds.add(edge.source)
-          pending.push(edge.source)
-        })
-      }
+      this.edges.filter((edge) => edge.target === id).forEach((edge) => nodeIds.add(edge.source))
       return this.duplicateNodes(this.nodes.filter((node) => nodeIds.has(node.id)).map((node) => node.id))
     },
     renameNode(id, title) {
