@@ -30,7 +30,7 @@ const toast = useGlobalToast()
 const props = defineProps({ workspace: { type: Object, required: true } })
 const emit = defineEmits(['back', 'ready'])
 const { nodes, edges, groups, saveStatus } = storeToRefs(store)
-const { project, fitView, findNode, setCenter, setViewport, updateNodeData, viewport, zoomIn, zoomOut, removeSelectedElements, addSelectedNodes } = useVueFlow()
+const { project, screenToFlowCoordinate, fitView, findNode, setCenter, setViewport, updateNodeData, viewport, zoomIn, zoomOut, removeSelectedElements, addSelectedNodes } = useVueFlow()
 
 const nodeTypes = Object.fromEntries(Object.keys(mediaTypes).map((type) => [type, markRaw(MediaNode)]))
 const edgeTypes = { cinematic: markRaw(FlowEdge) }
@@ -479,7 +479,7 @@ function handleCanvasDrop(event) {
   event.preventDefault()
   try {
     const item = JSON.parse(raw)
-    const position = project({ x: event.clientX, y: event.clientY })
+    const position = screenToFlowCoordinate({ x: event.clientX, y: event.clientY })
     if (item.kind === 'asset') store.addAssetNode(item.asset, position)
     else if (item.kind === 'node') store.duplicateNode(item.nodeId, position)
     activeGroupId.value = null
