@@ -6,6 +6,7 @@ import { createImageGeneration } from '../../api/generations'
 import { getEffectivePrompt, maxGenerationPromptLength } from '../../config/generationPrompt'
 import { buildImageRequest, imageModels, normalizeImageSettings } from '../../config/imageModels'
 import { mediaTypes } from '../../config/mediaTypes'
+import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
 import { useCanvasStore } from '../../stores/canvas'
 import PromptReferenceEditor from './PromptReferenceEditor.vue'
@@ -39,8 +40,10 @@ const selectedImageSettings = computed(() => normalizeImageSettings(props.data))
 const selectedImageModel = computed(() => selectedImageSettings.value.model)
 const selectedVideoSettings = computed(() => normalizeVideoSettings(props.data))
 const selectedVideoModel = computed(() => selectedVideoSettings.value.model)
-const selectableModels = computed(() => props.type === 'image' ? imageModels : videoModels)
-const selectedModel = computed(() => props.type === 'image' ? selectedImageModel.value : selectedVideoModel.value)
+const isReverseTask = computed(() => props.type === 'text' && ['image', 'video'].includes(props.data.reverseType))
+const selectedReverseModel = computed(() => reverseModels.find((model) => model.id === props.data.model) || defaultReverseModel)
+const selectableModels = computed(() => props.type === 'image' ? imageModels : props.type === 'video' ? videoModels : reverseModels)
+const selectedModel = computed(() => props.type === 'image' ? selectedImageModel.value : props.type === 'video' ? selectedVideoModel.value : selectedReverseModel.value)
 const selectedResolution = computed(() => props.type === 'image' ? selectedImageSettings.value.resolution : selectedVideoSettings.value.resolution)
 const selectedAspectRatio = computed(() => props.type === 'image' ? selectedImageSettings.value.aspectRatio : selectedVideoSettings.value.aspectRatio)
 const selectedDuration = computed(() => selectedVideoSettings.value.duration)
@@ -149,7 +152,11 @@ function updateVideoModel(model) {
 
 function updateModel(model) {
   if (props.type === 'image') updateImageModel(model)
-  else updateVideoModel(model)
+  else if (props.type === 'video') updateVideoModel(model)
+  else {
+    updateNodeData(props.nodeId, { model: model.id })
+    modelOpen.value = false
+  }
 }
 
 function updateVideoSetting(key, value) {
@@ -195,6 +202,9 @@ function closeSettings(event) {
 
 watch(() => props.nodeId, () => {
   notice.value = ''
+  if (isReverseTask.value && selectedReverseModel.value.id !== props.data.model) {
+    updateNodeData(props.nodeId, { model: selectedReverseModel.value.id })
+  }
 }, { immediate: true })
 onMounted(() => window.addEventListener('pointerdown', closeSettings))
 onBeforeUnmount(() => {
@@ -230,7 +240,7 @@ onBeforeUnmount(() => {
       @pointerdown="settingsOpen = false; modelOpen = false"
     ></textarea>
 
-    <div v-if="modelOpen && ['image', 'video'].includes(type)" ref="modelMenu" class="model-menu" :style="modelStyle" @pointerdown.stop>
+    <div v-if="modelOpen && (['image', 'video'].includes(type) || isReverseTask)" ref="modelMenu" class="model-menu" :style="modelStyle" @pointerdown.stop>
       <button v-for="model in selectableModels" :key="model.id" :class="{ active: selectedModel.id === model.id }" @click="updateModel(model)">
         <WandSparkles :size="15" />
         <span>{{ model.label }}</span>
@@ -304,7 +314,7 @@ onBeforeUnmount(() => {
     <p v-if="panelMessage" class="panel-notice">{{ panelMessage }}</p>
 
     <footer>
-      <button v-if="['image', 'video'].includes(type)" ref="modelTrigger" class="model-select model-select-trigger" @click="toggleModelMenu">
+      <button v-if="['image', 'video'].includes(type) || isReverseTask" ref="modelTrigger" class="model-select model-select-trigger" @click="toggleModelMenu">
         <WandSparkles :size="16" />{{ selectedModel.label }}<ChevronDown :size="14" :class="{ rotated: modelOpen }" />
       </button>
       <span v-else class="model-select"><WandSparkles :size="16" />{{ data.model }}</span>

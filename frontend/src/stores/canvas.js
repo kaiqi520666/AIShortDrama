@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { canConnect } from '../config/connectionRules'
 import { defaultImageModel } from '../config/imageModels'
 import { mediaTypes } from '../config/mediaTypes'
+import { defaultReverseModel } from '../config/reverseModels'
 import { defaultVideoModel } from '../config/videoModels'
 import { demoEdges, demoNodes } from '../data/demoCanvas'
 
@@ -15,7 +16,7 @@ function createNodeData(type, number, source) {
   const textTask = type === 'text' && Boolean(source)
   const reverseType = type === 'text' && ['image', 'video'].includes(source?.type) ? source.type : null
   return {
-    model: textTask ? 'Qwen3-VL-Flash' : type === 'image' ? defaultImageModel.id : type === 'video' ? defaultVideoModel.id : mediaTypes[type].model,
+    model: reverseType ? defaultReverseModel.id : textTask ? 'Qwen3-VL-Flash' : type === 'image' ? defaultImageModel.id : type === 'video' ? defaultVideoModel.id : mediaTypes[type].model,
     title: reverseType ? `${mediaTypes[reverseType].label}反推提示词` : textTask ? `AI 文本任务 ${number}` : `${mediaTypes[type].label}节点 ${number}`,
     status: 'empty',
     prompt: reverseType ? reversePrompts[reverseType] : '',
@@ -74,7 +75,7 @@ export const useCanvasStore = defineStore('canvas', {
       const mediaId = this.addNode(mediaType, { x: node.position.x - 460, y: node.position.y + 3 })
       const media = this.nodes.find((item) => item.id === mediaId)
       media.data = { ...media.data, title: `参考${mediaTypes[mediaType].label}`, assetSource: 'upload' }
-      node.data = { ...node.data, textMode: 'task', title: `${mediaTypes[mediaType].label}反推提示词`, model: 'Qwen3-VL-Flash', prompt: reversePrompts[mediaType], reverseType: mediaType }
+      node.data = { ...node.data, textMode: 'task', title: `${mediaTypes[mediaType].label}反推提示词`, model: defaultReverseModel.id, prompt: reversePrompts[mediaType], reverseType: mediaType }
       this.edges.push(createEdge(`edge-${crypto.randomUUID()}`, mediaId, id))
       this.selectNodes([id])
     },
