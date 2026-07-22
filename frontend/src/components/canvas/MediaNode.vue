@@ -6,6 +6,7 @@ import { uploadMedia } from '../../api/uploads'
 import { imageAspectRatios } from '../../config/imageSettings'
 import { startGenerationPolling } from '../../services/generationPolling'
 import { useCanvasStore } from '../../stores/canvas'
+import AppButton from '../ui/AppButton.vue'
 
 const props = defineProps({
   id: { type: String, required: true },
@@ -190,9 +191,9 @@ onBeforeUnmount(() => {
 
       <div v-else-if="type === 'text' && !textMode" class="text-mode-chooser">
         <p>选择文本节点用途</p>
-        <button class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'manual')"><FileText :size="18" /><span><strong>自己编写内容</strong><small>记录任意文本内容</small></span></button>
-        <button class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'imageReverse')"><ImageIcon :size="18" /><span><strong>反推图片提示词</strong><small>创建图片上传与 AI 文本任务</small></span></button>
-        <button class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'videoReverse')"><Video :size="18" /><span><strong>反推视频提示词</strong><small>创建视频上传与 AI 文本任务</small></span></button>
+        <AppButton class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'manual')"><FileText :size="18" /><span><strong>自己编写内容</strong><small>记录任意文本内容</small></span></AppButton>
+        <AppButton class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'imageReverse')"><ImageIcon :size="18" /><span><strong>反推图片提示词</strong><small>创建图片上传与 AI 文本任务</small></span></AppButton>
+        <AppButton class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'videoReverse')"><Video :size="18" /><span><strong>反推视频提示词</strong><small>创建视频上传与 AI 文本任务</small></span></AppButton>
       </div>
 
       <textarea
@@ -214,7 +215,7 @@ onBeforeUnmount(() => {
 
       <div v-else-if="['image', 'video'].includes(type) && data.assetSource === 'upload'" class="media-upload-state">
         <input ref="fileInput" type="file" :accept="type === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'image/jpeg,image/png,image/webp'" hidden @change="handleUpload" />
-        <button class="nodrag nopan" :disabled="uploading" @pointerdown.stop @click.stop="fileInput?.click()"><component :is="icon" :size="32" stroke-width="1.35" /><span>{{ uploading ? `上传中 ${uploadProgress}%` : `上传${type === 'video' ? '视频' : '图片'}` }}</span></button>
+        <AppButton class="nodrag nopan" :disabled="uploading" @pointerdown.stop @click.stop="fileInput?.click()"><component :is="icon" :size="32" stroke-width="1.35" /><span>{{ uploading ? `上传中 ${uploadProgress}%` : `上传${type === 'video' ? '视频' : '图片'}` }}</span></AppButton>
         <p v-if="uploadNotice">{{ uploadNotice }}</p>
       </div>
 
@@ -233,12 +234,12 @@ onBeforeUnmount(() => {
       </div>
 
       <span v-if="type === 'text' && textMode" class="text-drag-handle" title="拖动节点"><GripVertical :size="16" /></span>
-      <button v-if="type === 'text' && textMode" class="text-resize-handle nodrag nopan" title="调整尺寸" @pointerdown.stop.prevent="startResize">
+      <AppButton v-if="type === 'text' && textMode" class="text-resize-handle nodrag nopan" icon-only title="调整尺寸" @pointerdown.stop.prevent="startResize">
         <MoveDiagonal2 :size="15" />
-      </button>
-      <button v-if="selected && ['image', 'video', 'audio'].includes(type)" class="media-resize-handle nodrag nopan" title="调整显示尺寸" @pointerdown.stop.prevent="startResize">
+      </AppButton>
+      <AppButton v-if="selected && ['image', 'video', 'audio'].includes(type)" class="media-resize-handle nodrag nopan" icon-only title="调整显示尺寸" @pointerdown.stop.prevent="startResize">
         <MoveDiagonal2 :size="15" />
-      </button>
+      </AppButton>
     </div>
 
     <Handle v-if="type !== 'text' || textMode" id="source" type="source" :position="Position.Right" />

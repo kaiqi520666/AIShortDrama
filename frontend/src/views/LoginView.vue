@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import AuthFormShell from '../components/auth/AuthFormShell.vue'
+import AppButton from '../components/ui/AppButton.vue'
 import { useAuthStore } from '../stores/auth'
 
 const route = useRoute()
@@ -33,7 +34,7 @@ async function submit() {
       <label>邮箱<input v-model.trim="email" type="email" autocomplete="email" required /></label>
       <label>密码<input v-model="password" type="password" autocomplete="current-password" minlength="8" maxlength="72" required /></label>
       <p v-if="errorMessage" class="auth-error">{{ errorMessage }}</p>
-      <button type="submit" :disabled="submitting">{{ submitting ? '登录中…' : '登录' }}</button>
+      <AppButton type="submit" variant="primary" size="lg" block :disabled="submitting">{{ submitting ? '登录中…' : '登录' }}</AppButton>
     </form>
     <p class="auth-switch">还没有账号？<RouterLink to="/register">注册</RouterLink></p>
   </AuthFormShell>

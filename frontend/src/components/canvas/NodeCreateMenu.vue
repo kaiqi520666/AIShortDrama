@@ -4,6 +4,8 @@ import { FileText, Image, Music2, Video } from 'lucide-vue-next'
 import { canConnect } from '../../config/connectionRules'
 import { mediaTypes } from '../../config/mediaTypes'
 import { useCanvasStore } from '../../stores/canvas'
+import AppButton from '../ui/AppButton.vue'
+import AppMenu from '../ui/AppMenu.vue'
 
 const props = defineProps({
   point: { type: Object, required: true },
@@ -23,12 +25,12 @@ const options = computed(() => Object.entries(mediaTypes)
 
 <template>
   <div class="menu-backdrop" @pointerdown.self="$emit('close')">
-    <div class="node-create-menu" :style="{ left: `${point.x}px`, top: `${point.y}px` }">
+    <AppMenu class="node-create-menu" :style="{ left: `${point.x}px`, top: `${point.y}px` }">
       <p>{{ contextual ? '引用该节点生成' : '添加节点' }}</p>
-      <button v-for="option in options" :key="option.type" @click="$emit('select', option.type)">
+      <AppButton v-for="option in options" :key="option.type" :class="`node-option--${option.type}`" @click="$emit('select', option.type)">
         <span class="menu-icon"><component :is="option.icon" :size="17" /></span>
         <span><strong>{{ option.label }}</strong><small>{{ option.hint }}</small></span>
-      </button>
-    </div>
+      </AppButton>
+    </AppMenu>
   </div>
 </template>

@@ -1,7 +1,9 @@
 <script setup>
-import { onMounted, ref } from 'vue'
-import { Clapperboard, Copy, FolderOpen, LogOut, Pencil, Plus, Trash2 } from 'lucide-vue-next'
+import { computed, onMounted, ref } from 'vue'
+import { Clapperboard, Copy, LogOut, Pencil, Play, Plus, Trash2 } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
+import AppButton from '../components/ui/AppButton.vue'
+import AppSelect from '../components/ui/AppSelect.vue'
 import { useAuthStore } from '../stores/auth'
 import { useWorkspaceStore } from '../stores/workspaces'
 
@@ -10,6 +12,17 @@ const authStore = useAuthStore()
 const store = useWorkspaceStore()
 const editingId = ref(null)
 const notice = ref('')
+const sortBy = ref('updated')
+const sortOptions = [
+  { value: 'updated', label: '最近更新' },
+  { value: 'created', label: '最近创建' },
+  { value: 'name', label: '名称排序' },
+]
+const displayedItems = computed(() => store.items.toSorted((a, b) => {
+  if (sortBy.value === 'name') return a.name.localeCompare(b.name, 'zh-CN')
+  const key = sortBy.value === 'created' ? 'created_at' : 'updated_at'
+  return new Date(b[key]) - new Date(a[key])
+}))
 
 async function run(action) {
   notice.value = ''
@@ -42,28 +55,29 @@ onMounted(() => store.load())
 <template>
   <main class="workspace-home">
     <header class="workspace-home-header">
-      <div class="workspace-brand"><Clapperboard :size="20" /><strong>Mooncut</strong></div>
+      <div class="workspace-brand"><span class="brand-symbol"><Clapperboard :size="19" /></span><strong>Mooncut</strong><small>STUDIO</small></div>
       <div class="workspace-account">
         <span>{{ authStore.user?.username }}</span>
-        <button title="退出登录" @click="signOut"><LogOut :size="16" /></button>
-        <button class="workspace-create" @click="create"><Plus :size="17" />新建工作台</button>
+        <AppButton icon-only size="sm" title="退出登录" @click="signOut"><LogOut :size="16" /></AppButton>
+        <AppButton class="workspace-create" variant="primary" size="sm" @click="create"><Plus :size="17" />新建项目</AppButton>
       </div>
     </header>
 
     <section class="workspace-content">
       <div class="workspace-title-row">
-        <div><h1>工作台</h1><p>打开一张画布继续创作</p></div>
-        <span>{{ store.items.length }} 个</span>
+        <div><span class="section-kicker">PROJECT LIBRARY</span><h1>创作项目</h1><p>从上次停下的位置继续推进镜头</p></div>
+        <div class="workspace-filters"><span>{{ store.items.length }} 个项目</span><AppSelect v-model="sortBy" :options="sortOptions" aria-label="项目排序" /></div>
       </div>
       <p v-if="notice || store.error" class="workspace-notice">{{ notice || store.error }}</p>
       <div v-if="store.loading" class="workspace-empty">加载中…</div>
       <div v-else-if="!store.items.length" class="workspace-empty">暂无工作台</div>
       <div v-else class="workspace-grid">
-        <article v-for="workspace in store.items" :key="workspace.id" class="workspace-card" @dblclick="router.push(`/workspaces/${workspace.id}`)">
-          <button class="workspace-open-area" @click="router.push(`/workspaces/${workspace.id}`)">
-            <FolderOpen :size="28" />
-            <span v-if="editingId !== workspace.id">{{ workspace.name }}</span>
-          </button>
+        <article v-for="(workspace, index) in displayedItems" :key="workspace.id" class="workspace-card" @dblclick="router.push(`/workspaces/${workspace.id}`)">
+          <AppButton class="workspace-open-area" @click="router.push(`/workspaces/${workspace.id}`)">
+            <span class="workspace-cover" aria-hidden="true"><b>{{ String(index + 1).padStart(2, '0') }}</b><i></i><Play :size="17" fill="currentColor" /></span>
+            <span v-if="editingId !== workspace.id" class="workspace-card-name">{{ workspace.name }}</span>
+            <small>WORKFLOW CANVAS</small>
+          </AppButton>
           <input
             v-if="editingId === workspace.id"
             class="workspace-name-input"
@@ -76,9 +90,9 @@ onMounted(() => store.load())
           />
           <footer>
             <time>{{ new Date(workspace.updated_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</time>
-            <button title="重命名" @click="editingId = workspace.id"><Pencil :size="14" /></button>
-            <button title="复制" @click="run(() => store.duplicate(workspace.id))"><Copy :size="14" /></button>
-            <button title="删除" @click="run(() => store.remove(workspace.id))"><Trash2 :size="14" /></button>
+            <AppButton icon-only size="sm" title="重命名" @click="editingId = workspace.id"><Pencil :size="14" /></AppButton>
+            <AppButton icon-only size="sm" title="复制" @click="run(() => store.duplicate(workspace.id))"><Copy :size="14" /></AppButton>
+            <AppButton icon-only size="sm" title="删除" variant="danger" @click="run(() => store.remove(workspace.id))"><Trash2 :size="14" /></AppButton>
           </footer>
         </article>
       </div>

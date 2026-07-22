@@ -1,5 +1,7 @@
 <script setup>
 import { nextTick, onMounted, ref, watch } from 'vue'
+import AppButton from '../ui/AppButton.vue'
+import AppMenu from '../ui/AppMenu.vue'
 
 const props = defineProps({
   modelValue: { type: Array, required: true },
@@ -174,8 +176,8 @@ onMounted(renderEditor)
       @blur="menuVisible = false"
     ></div>
 
-    <div v-if="menuVisible" ref="menu" class="prompt-reference-menu" :style="menuStyle" @pointerdown.prevent>
-      <button
+    <AppMenu v-if="menuVisible" ref="menu" class="prompt-reference-menu" :style="menuStyle" @pointerdown.prevent>
+      <AppButton
         v-for="(reference, index) in references"
         :key="reference.id"
         :class="{ active: activeIndex === index }"
@@ -184,8 +186,8 @@ onMounted(renderEditor)
       >
         <img :src="reference.data.asset" alt="" />
         <span>{{ reference.data.title }}</span>
-      </button>
+      </AppButton>
       <p v-if="!references.length">暂无可引用资产，请连入后操作</p>
-    </div>
+    </AppMenu>
   </div>
 </template>

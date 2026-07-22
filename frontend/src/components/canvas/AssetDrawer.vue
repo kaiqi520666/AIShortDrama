@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ChevronDown, ChevronRight, FileText, Folder, Image, Music2, Plus, RefreshCw, Video, X } from 'lucide-vue-next'
 import { listAssets } from '../../api/assets'
+import AppButton from '../ui/AppButton.vue'
 
 const props = defineProps({
   nodes: { type: Array, required: true },
@@ -61,17 +62,17 @@ onMounted(loadAssetItems)
     <header>
       <strong>资产</strong>
       <span>{{ activeTab === 'nodes' ? nodes.length : assets.length }}</span>
-      <button v-if="activeTab === 'assets'" title="刷新资产" @click="loadAssetItems"><RefreshCw :size="15" /></button>
-      <button title="关闭资产" @click="emit('close')"><X :size="17" /></button>
+      <AppButton v-if="activeTab === 'assets'" icon-only size="sm" title="刷新资产" @click="loadAssetItems"><RefreshCw :size="15" /></AppButton>
+      <AppButton icon-only size="sm" title="关闭资产" @click="emit('close')"><X :size="17" /></AppButton>
     </header>
 
     <nav class="asset-tabs">
-      <button :class="{ active: activeTab === 'nodes' }" @click="activeTab = 'nodes'">节点</button>
-      <button :class="{ active: activeTab === 'assets' }" @click="activeTab = 'assets'; loadAssetItems()">资产</button>
+      <AppButton :class="{ active: activeTab === 'nodes' }" @click="activeTab = 'nodes'">节点</AppButton>
+      <AppButton :class="{ active: activeTab === 'assets' }" @click="activeTab = 'assets'; loadAssetItems()">资产</AppButton>
     </nav>
 
     <div v-if="activeTab === 'nodes'" class="asset-list">
-      <button
+      <AppButton
         v-for="node in ungroupedNodes"
         :key="node.id"
         class="asset-item"
@@ -84,10 +85,10 @@ onMounted(loadAssetItems)
           <component v-else :is="icons[node.type]" :size="20" />
         </span>
         <span>{{ node.data.title }}</span>
-      </button>
+      </AppButton>
 
       <section v-for="group in groupItems" :key="group.id" class="asset-group">
-        <button class="asset-group-row" :class="{ active: group.active }" @click="emit('focus-group', group.id)">
+        <AppButton class="asset-group-row" :class="{ active: group.active }" @click="emit('focus-group', group.id)">
           <span class="asset-group-toggle" @click.stop="collapsedGroupIds = collapsedGroupIds.includes(group.id) ? collapsedGroupIds.filter((id) => id !== group.id) : [...collapsedGroupIds, group.id]">
             <ChevronRight v-if="collapsedGroupIds.includes(group.id)" :size="14" />
             <ChevronDown v-else :size="14" />
@@ -106,10 +107,10 @@ onMounted(loadAssetItems)
           />
           <span v-else class="asset-group-title" @dblclick.stop="startRename(group.id)">{{ group.title }}</span>
           <small>{{ group.nodes.length }}</small>
-        </button>
+        </AppButton>
 
         <div v-if="!collapsedGroupIds.includes(group.id)" class="asset-group-items">
-          <button
+          <AppButton
             v-for="node in group.nodes"
             :key="node.id"
             class="asset-item"
@@ -122,27 +123,27 @@ onMounted(loadAssetItems)
               <component v-else :is="icons[node.type]" :size="20" />
             </span>
             <span>{{ node.data.title }}</span>
-          </button>
+          </AppButton>
         </div>
       </section>
     </div>
 
     <div v-else class="asset-library">
       <div class="asset-filters">
-        <button v-for="item in [{ value: '', label: '全部' }, { value: 'image', label: '图片' }, { value: 'video', label: '视频' }, { value: 'audio', label: '音频' }]" :key="item.value" :class="{ active: assetType === item.value }" @click="selectAssetType(item.value)">{{ item.label }}</button>
+        <AppButton v-for="item in [{ value: '', label: '全部' }, { value: 'image', label: '图片' }, { value: 'video', label: '视频' }, { value: 'audio', label: '音频' }]" :key="item.value" size="sm" :class="{ active: assetType === item.value }" @click="selectAssetType(item.value)">{{ item.label }}</AppButton>
       </div>
       <p v-if="loadingAssets" class="asset-library-state">加载中…</p>
       <p v-else-if="assetError" class="asset-library-state error">{{ assetError }}</p>
       <p v-else-if="!assets.length" class="asset-library-state">暂无资产</p>
       <div v-else class="asset-list asset-library-list">
-        <button v-for="asset in assets" :key="asset.id" class="asset-item" :title="`添加 ${asset.name}`" @click="emit('add', asset)">
+        <AppButton v-for="asset in assets" :key="asset.id" class="asset-item" :title="`添加 ${asset.name}`" @click="emit('add', asset)">
           <span class="asset-preview">
             <img v-if="asset.media_type === 'image'" :src="asset.url" :alt="asset.name" />
             <component v-else :is="icons[asset.media_type]" :size="20" />
           </span>
           <span>{{ asset.name }}</span>
           <Plus :size="14" />
-        </button>
+        </AppButton>
       </div>
     </div>
   </aside>

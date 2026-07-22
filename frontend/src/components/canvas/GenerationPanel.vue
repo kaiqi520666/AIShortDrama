@@ -10,6 +10,8 @@ import { mediaTypes } from '../../config/mediaTypes'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
 import { useCanvasStore } from '../../stores/canvas'
+import AppButton from '../ui/AppButton.vue'
+import AppMenu from '../ui/AppMenu.vue'
 import PromptReferenceEditor from './PromptReferenceEditor.vue'
 
 const props = defineProps({
@@ -273,27 +275,27 @@ onBeforeUnmount(() => {
       @pointerdown="settingsOpen = false; modelOpen = false"
     ></textarea>
 
-    <div v-if="modelOpen && (['image', 'video'].includes(type) || isReverseTask)" ref="modelMenu" class="model-menu" :style="modelStyle" @pointerdown.stop>
-      <button v-for="model in selectableModels" :key="model.id" :class="{ active: selectedModel.id === model.id }" @click="updateModel(model)">
+    <AppMenu v-if="modelOpen && (['image', 'video'].includes(type) || isReverseTask)" ref="modelMenu" class="model-menu" :style="modelStyle" @pointerdown.stop>
+      <AppButton v-for="model in selectableModels" :key="model.id" :class="{ active: selectedModel.id === model.id }" @click="updateModel(model)">
         <WandSparkles :size="15" />
         <span>{{ model.label }}</span>
-      </button>
-    </div>
+      </AppButton>
+    </AppMenu>
 
-    <div v-if="settingsOpen && ['image', 'video'].includes(type)" ref="settingsMenu" class="image-settings-menu media-settings-menu" :style="settingsStyle" @pointerdown.stop>
+    <AppMenu v-if="settingsOpen && ['image', 'video'].includes(type)" ref="settingsMenu" class="image-settings-menu media-settings-menu" :style="settingsStyle" @pointerdown.stop>
       <template v-if="type === 'image'">
         <h3>清晰度</h3>
         <div class="image-resolution-options">
-          <button v-for="resolution in selectedImageModel.resolutions" :key="resolution" :class="{ active: selectedResolution === resolution }" @click="updateImageSetting('resolution', resolution)">
+          <AppButton v-for="resolution in selectedImageModel.resolutions" :key="resolution" :class="{ active: selectedResolution === resolution }" @click="updateImageSetting('resolution', resolution)">
             {{ resolution }}
-          </button>
+          </AppButton>
         </div>
         <h3>比例</h3>
         <div class="image-ratio-grid">
-          <button v-for="ratio in selectedImageModel.aspectRatios" :key="ratio" :class="{ active: selectedAspectRatio === ratio }" @click="updateImageSetting('aspectRatio', ratio)">
+          <AppButton v-for="ratio in selectedImageModel.aspectRatios" :key="ratio" :class="{ active: selectedAspectRatio === ratio }" @click="updateImageSetting('aspectRatio', ratio)">
             <span class="image-ratio-icon" :style="ratioIconStyle(ratio)"></span>
             <strong>{{ ratio }}</strong>
-          </button>
+          </AppButton>
         </div>
 
         <template v-if="selectedImageModel.search">
@@ -312,26 +314,26 @@ onBeforeUnmount(() => {
       <template v-else>
         <h3>时长</h3>
         <div v-if="selectedVideoModel.durationOptions" class="video-duration-options">
-          <button v-for="duration in selectedVideoModel.durationOptions" :key="duration" :class="{ active: selectedDuration === duration }" @click="updateVideoSetting('duration', duration)">{{ duration }}s</button>
+          <AppButton v-for="duration in selectedVideoModel.durationOptions" :key="duration" :class="{ active: selectedDuration === duration }" @click="updateVideoSetting('duration', duration)">{{ duration }}s</AppButton>
         </div>
         <div v-else class="video-duration-slider">
-          <button v-if="selectedVideoModel.durationAuto" :class="{ active: selectedDuration === 0 }" @click="updateVideoSetting('duration', 0)">自动</button>
+          <AppButton v-if="selectedVideoModel.durationAuto" :class="{ active: selectedDuration === 0 }" @click="updateVideoSetting('duration', 0)">自动</AppButton>
           <input type="range" :min="selectedVideoModel.durationMin" :max="selectedVideoModel.durationMax" step="1" :value="selectedDuration || selectedVideoModel.defaultDuration" aria-label="视频时长" @input="updateVideoSetting('duration', Number($event.target.value))" />
           <span>{{ selectedDuration === 0 ? '自动' : `${selectedDuration}s` }}</span>
         </div>
 
         <h3>清晰度</h3>
         <div class="image-resolution-options">
-          <button v-for="resolution in selectedVideoModel.resolutions" :key="resolution" :class="{ active: selectedResolution === resolution }" @click="updateVideoSetting('resolution', resolution)">{{ resolution === '4k' ? '4K' : resolution }}</button>
+          <AppButton v-for="resolution in selectedVideoModel.resolutions" :key="resolution" :class="{ active: selectedResolution === resolution }" @click="updateVideoSetting('resolution', resolution)">{{ resolution === '4k' ? '4K' : resolution }}</AppButton>
         </div>
 
         <h3>比例</h3>
         <div class="image-ratio-grid video-ratio-grid">
-          <button v-for="ratio in selectedVideoModel.aspectRatios" :key="ratio" :class="{ active: selectedAspectRatio === ratio }" @click="updateVideoSetting('aspectRatio', ratio)">
+          <AppButton v-for="ratio in selectedVideoModel.aspectRatios" :key="ratio" :class="{ active: selectedAspectRatio === ratio }" @click="updateVideoSetting('aspectRatio', ratio)">
             <span v-if="ratio !== 'adaptive'" class="image-ratio-icon" :style="ratioIconStyle(ratio)"></span>
             <span v-else class="adaptive-ratio-icon">A</span>
             <strong>{{ ratio === 'adaptive' ? '自适应' : ratio }}</strong>
-          </button>
+          </AppButton>
         </div>
 
         <template v-if="selectedVideoModel.generateAudio">
@@ -342,24 +344,24 @@ onBeforeUnmount(() => {
           </label>
         </template>
       </template>
-    </div>
+    </AppMenu>
 
     <p v-if="panelMessage" class="panel-notice">{{ panelMessage }}</p>
 
     <footer>
-      <button v-if="['image', 'video'].includes(type) || isReverseTask" ref="modelTrigger" class="model-select model-select-trigger" @click="toggleModelMenu">
+      <AppButton v-if="['image', 'video'].includes(type) || isReverseTask" ref="modelTrigger" class="model-select model-select-trigger" @click="toggleModelMenu">
         <WandSparkles :size="16" />{{ selectedModel.label }}<ChevronDown :size="14" :class="{ rotated: modelOpen }" />
-      </button>
+      </AppButton>
       <span v-else class="model-select"><WandSparkles :size="16" />{{ data.model }}</span>
       <span v-if="type !== 'text'" class="panel-divider"></span>
-      <button v-if="['image', 'video'].includes(type)" ref="settingsTrigger" class="image-settings-trigger media-settings-trigger" @click="toggleSettings">
+      <AppButton v-if="['image', 'video'].includes(type)" ref="settingsTrigger" class="image-settings-trigger media-settings-trigger" @click="toggleSettings">
         <component :is="type === 'video' ? VideoIcon : Image" :size="16" />{{ settingLabel }}<ChevronDown :size="14" :class="{ rotated: settingsOpen }" />
-      </button>
+      </AppButton>
       <span v-else-if="type !== 'text'" class="setting-select"><Image :size="16" />{{ settingLabel }}</span>
-      <button class="run-task-button" :disabled="!canSubmit" :title="running ? '执行中' : '执行'" @click="submitTask">
+      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '执行中' : '执行'" @click="submitTask">
         <LoaderCircle v-if="running" class="run-task-spinner" :size="20" />
         <ArrowUp v-else :size="20" />
-      </button>
+      </AppButton>
     </footer>
   </section>
 </template>

@@ -11,6 +11,8 @@ import FlowEdge from '../components/canvas/FlowEdge.vue'
 import GenerationPanel from '../components/canvas/GenerationPanel.vue'
 import MediaNode from '../components/canvas/MediaNode.vue'
 import NodeCreateMenu from '../components/canvas/NodeCreateMenu.vue'
+import AppButton from '../components/ui/AppButton.vue'
+import AppMenu from '../components/ui/AppMenu.vue'
 import { mediaTypes } from '../config/mediaTypes'
 import { useAuthStore } from '../stores/auth'
 import { useCanvasStore } from '../stores/canvas'
@@ -38,7 +40,6 @@ const selectedNodes = computed(() => nodes.value.filter((node) => node.selected)
 const selectedNode = computed(() => selectedNodes.value.length === 1 ? selectedNodes.value[0] : null)
 const selectedGroup = computed(() => groups.value.find((group) => group.id === activeGroupId.value) || groups.value.find((group) => group.nodeIds.length === selectedNodes.value.length && group.nodeIds.every((id) => selectedNodes.value.some((node) => node.id === id))))
 const contextGroup = computed(() => groups.value.find((group) => group.nodeIds.includes(contextMenu.value?.nodeId)))
-const panelConfig = { width: 520, height: 180, gap: 16, margin: 16 }
 function frameStyle(nodeIds) {
   const flowNodes = nodeIds.map((id) => findNode(id)).filter(Boolean)
   if (flowNodes.length < 2) return {}
@@ -72,21 +73,6 @@ const groupFrames = computed(() => groups.value.map((group) => ({
   active: selectedGroup.value?.id === group.id,
   style: frameStyle(group.nodeIds),
 })))
-const panelStyle = computed(() => {
-  const node = selectedNode.value && findNode(selectedNode.value.id)
-  if (!node) return {}
-
-  const zoom = viewport.value.zoom
-  const center = (assetsVisible.value ? 292 : 0) + viewport.value.x + (node.computedPosition.x + node.dimensions.width / 2) * zoom
-  const top = viewport.value.y + node.computedPosition.y * zoom
-  const bottom = top + node.dimensions.height * zoom
-  const below = bottom + panelConfig.gap
-  return {
-    left: `clamp(${panelConfig.margin}px, ${center - panelConfig.width / 2}px, calc(100vw - ${panelConfig.width + panelConfig.margin}px))`,
-    top: `${below + panelConfig.height <= window.innerHeight - panelConfig.margin ? below : Math.max(panelConfig.margin, top - panelConfig.height - panelConfig.gap)}px`,
-  }
-})
-
 function openGlobalMenu() {
   const centerX = window.innerWidth / 2 + (assetsVisible.value ? 146 : 0)
   createMenu.value = {
@@ -318,7 +304,6 @@ onBeforeUnmount(() => window.clearTimeout(saveTimer))
       :node-id="selectedNode.id"
       :type="selectedNode.type"
       :data="selectedNode.data"
-      :style="panelStyle"
     />
 
     <Transition name="asset-sidebar">
@@ -326,9 +311,9 @@ onBeforeUnmount(() => window.clearTimeout(saveTimer))
     </Transition>
 
     <aside class="canvas-side-tools">
-      <button class="asset-toggle-button" title="资产" @click="assetsVisible = !assetsVisible"><Library :size="17" /><span>资产</span></button>
-      <button title="整理画布" @click="fitView({ padding: 0.24, duration: 350 })"><Scan :size="17" /></button>
-      <button title="切换小地图" @click="minimapVisible = !minimapVisible"><Maximize2 :size="17" /></button>
+      <AppButton class="asset-toggle-button" title="资产" @click="assetsVisible = !assetsVisible"><Library :size="17" /><span>资产</span></AppButton>
+      <AppButton icon-only title="整理画布" @click="fitView({ padding: 0.24, duration: 350 })"><Scan :size="17" /></AppButton>
+      <AppButton icon-only title="切换小地图" @click="minimapVisible = !minimapVisible"><Maximize2 :size="17" /></AppButton>
       <span>{{ Math.round(viewport.zoom * 100) }}%</span>
     </aside>
 
@@ -344,11 +329,11 @@ onBeforeUnmount(() => window.clearTimeout(saveTimer))
         @keydown.stop
       />
       <span>{{ selectedGroup ? selectedGroup.nodeIds.length : selectedNodes.length }} 个节点</span>
-      <button v-if="selectedNodes.length > 1 && !selectedGroup" title="编组" @click="store.groupSelected"><Group :size="15" />编组</button>
-      <button v-if="selectedGroup" title="解组" @click="ungroupSelected"><Ungroup :size="15" />解组</button>
+      <AppButton v-if="selectedNodes.length > 1 && !selectedGroup" size="sm" title="编组" @click="store.groupSelected"><Group :size="15" />编组</AppButton>
+      <AppButton v-if="selectedGroup" size="sm" title="解组" @click="ungroupSelected"><Ungroup :size="15" />解组</AppButton>
     </div>
 
-    <button class="canvas-add-button" title="添加节点" @click="openGlobalMenu"><Plus :size="24" /></button>
+    <AppButton class="canvas-add-button" icon-only variant="primary" title="添加节点" @click="openGlobalMenu"><Plus :size="23" /></AppButton>
 
     <NodeCreateMenu
       v-if="createMenu"
@@ -359,15 +344,15 @@ onBeforeUnmount(() => window.clearTimeout(saveTimer))
       @close="createMenu = null"
     />
 
-    <div v-if="contextMenu" class="context-menu" :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }" @pointerdown.stop>
-      <button v-if="contextMenu.edgeId" class="danger" @click="runContextAction('deleteEdge')"><Trash2 :size="15" />删除连接</button>
+    <AppMenu v-if="contextMenu" class="context-menu" :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }" @pointerdown.stop>
+      <AppButton v-if="contextMenu.edgeId" variant="danger" @click="runContextAction('deleteEdge')"><Trash2 :size="15" />删除连接</AppButton>
       <template v-else>
-        <button @click="runContextAction('duplicateNode')"><Copy :size="15" />创建副本</button>
-        <button v-if="selectedNodes.length > 1 && !contextGroup" @click="runContextAction('groupSelected')"><Group :size="15" />编组</button>
-        <button v-if="contextGroup" @click="runContextAction('ungroupNode')"><Ungroup :size="15" />解组</button>
+        <AppButton @click="runContextAction('duplicateNode')"><Copy :size="15" />创建副本</AppButton>
+        <AppButton v-if="selectedNodes.length > 1 && !contextGroup" @click="runContextAction('groupSelected')"><Group :size="15" />编组</AppButton>
+        <AppButton v-if="contextGroup" @click="runContextAction('ungroupNode')"><Ungroup :size="15" />解组</AppButton>
         <span v-if="selectedNodes.length > 1 || contextGroup"></span>
-        <button class="danger" @click="runContextAction('deleteNode')"><Trash2 :size="15" />删除</button>
+        <AppButton variant="danger" @click="runContextAction('deleteNode')"><Trash2 :size="15" />删除</AppButton>
       </template>
-    </div>
+    </AppMenu>
   </main>
 </template>

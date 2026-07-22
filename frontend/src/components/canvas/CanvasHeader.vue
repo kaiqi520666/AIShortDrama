@@ -1,5 +1,6 @@
 <script setup>
 import { ArrowLeft, Clapperboard, GitBranch, LoaderCircle, LogOut } from 'lucide-vue-next'
+import AppButton from '../ui/AppButton.vue'
 
 defineProps({
   workspaceName: { type: String, required: true },
@@ -12,8 +13,8 @@ const emit = defineEmits(['back', 'logout'])
 <template>
   <header class="canvas-header">
     <div class="project-control">
-      <button class="project-back" title="返回工作台" @click="emit('back')"><ArrowLeft :size="17" /></button>
-      <div class="brand-mark"><Clapperboard :size="19" /></div>
+      <AppButton class="project-back" icon-only size="sm" title="返回工作台" @click="emit('back')"><ArrowLeft :size="17" /></AppButton>
+      <div class="brand-mark"><Clapperboard :size="18" /></div>
       <span class="project-name">Mooncut</span>
       <span class="project-divider"></span>
       <span class="project-select">{{ workspaceName }}</span>
@@ -28,7 +29,7 @@ const emit = defineEmits(['back', 'logout'])
         {{ saveStatus === 'saving' ? '保存中' : saveStatus === 'failed' ? '保存失败' : '已保存' }}
       </div>
       <span>{{ username }}</span>
-      <button title="退出登录" @click="emit('logout')"><LogOut :size="15" /></button>
+      <AppButton icon-only size="sm" title="退出登录" @click="emit('logout')"><LogOut :size="15" /></AppButton>
     </div>
   </header>
 </template>

@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import CanvasView from './CanvasView.vue'
+import AppButton from '../components/ui/AppButton.vue'
 import { useAuthStore } from '../stores/auth'
 import { useWorkspaceStore } from '../stores/workspaces'
 
@@ -30,6 +31,6 @@ function leaveCanvas() {
   <CanvasView v-if="workspaceStore.current" :workspace="workspaceStore.current" @back="leaveCanvas" />
   <main v-else class="route-state">
     <p>{{ errorMessage || '正在加载工作台…' }}</p>
-    <button v-if="errorMessage" @click="router.push('/workspaces')">返回工作台</button>
+    <AppButton v-if="errorMessage" variant="primary" @click="router.push('/workspaces')">返回工作台</AppButton>
   </main>
 </template>

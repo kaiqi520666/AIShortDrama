@@ -6,7 +6,7 @@ defineProps({ title: { type: String, required: true }, subtitle: { type: String,
 
 <template>
   <main class="auth-page auth-form-page">
-    <RouterLink class="workspace-brand auth-brand" to="/"><Clapperboard :size="20" /><strong>Mooncut</strong></RouterLink>
+    <RouterLink class="workspace-brand auth-brand" to="/"><span class="brand-symbol"><Clapperboard :size="19" /></span><strong>Mooncut</strong></RouterLink>
     <section class="auth-form-shell">
       <h1>{{ title }}</h1>
       <p>{{ subtitle }}</p>
