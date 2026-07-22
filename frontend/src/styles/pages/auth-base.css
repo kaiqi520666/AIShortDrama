@@ -7,8 +7,6 @@
   display: grid;
   place-items: center;
   padding: 80px 24px;
-}.auth-brand {
-  position: fixed;
 }.auth-form-shell h1 {
   margin: 0;
   font-size: 28px;

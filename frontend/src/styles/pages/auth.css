@@ -24,13 +24,19 @@
   background: var(--auth-overlay);
   content: "";
 }
-.auth-brand {
-  top: 28px;
-  left: 32px;
+.auth-form-stack {
+  display: grid;
+  width: min(420px, 100%);
+  justify-items: center;
+  gap: 18px;
+}
+.auth-brand .app-brand__symbol {
+  width: 44px;
+  height: 44px;
 }
 .auth-form-shell {
   position: relative;
-  width: min(420px, 100%);
+  width: 100%;
   overflow: hidden;
   padding: 34px;
   border: 1px solid rgba(255, 255, 255, 0.12);
