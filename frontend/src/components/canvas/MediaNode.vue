@@ -17,8 +17,8 @@ const props = defineProps({
 const icons = { text: FileText, image: ImageIcon, video: Video, audio: Music2 }
 const icon = computed(() => icons[props.type])
 const textMode = computed(() => props.type === 'text' ? (props.data.textMode ?? (props.data.content ? 'manual' : null)) : null)
-const acceptsInput = computed(() => props.type === 'text' ? textMode.value === 'task' : props.data.assetSource !== 'upload')
-const sourceAspectRatio = computed(() => props.data.assetSource === 'upload' && props.data.sourceAspectRatio > 0 ? props.data.sourceAspectRatio : null)
+const acceptsInput = computed(() => props.type === 'text' ? textMode.value === 'task' : !props.data.assetSource)
+const sourceAspectRatio = computed(() => props.data.assetSource && props.data.sourceAspectRatio > 0 ? props.data.sourceAspectRatio : null)
 const displayAspectRatio = computed(() => {
   if (sourceAspectRatio.value) return sourceAspectRatio.value
   const value = props.data.aspectRatio === 'adaptive' ? '16:9' : props.data.aspectRatio || '16:9'
@@ -124,10 +124,15 @@ async function handleUpload(event) {
   uploadNotice.value = ''
   try {
     const metadata = await readMediaMetadata(file)
-    const result = await uploadMedia(props.type, file, (progress) => { uploadProgress.value = progress })
+    const result = await uploadMedia(props.type, file, {
+      workspaceId: store.workspaceId,
+      nodeId: props.id,
+      ...metadata,
+    }, (progress) => { uploadProgress.value = progress })
     if (result.code !== 0) throw new Error(result.message)
     updateNodeData(props.id, {
       asset: result.data.url,
+      assetId: result.data.id,
       status: 'ready',
       sourceWidth: metadata.width,
       sourceHeight: metadata.height,
@@ -234,6 +239,11 @@ onBeforeUnmount(() => {
         <input ref="fileInput" type="file" :accept="type === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'image/jpeg,image/png,image/webp'" hidden @change="handleUpload" />
         <button class="nodrag nopan" :disabled="uploading" @pointerdown.stop @click.stop="fileInput?.click()"><component :is="icon" :size="32" stroke-width="1.35" /><span>{{ uploading ? `上传中 ${uploadProgress}%` : `上传${type === 'video' ? '视频' : '图片'}` }}</span></button>
         <p v-if="uploadNotice">{{ uploadNotice }}</p>
+      </div>
+
+      <div v-else-if="type === 'audio' && data.asset" class="audio-preview">
+        <AudioWaveform :size="60" />
+        <audio class="node-audio nodrag nopan nowheel" :src="data.asset" controls preload="metadata"></audio>
       </div>
 
       <div v-else-if="type === 'audio' && data.status === 'ready'" class="audio-preview">

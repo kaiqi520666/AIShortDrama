@@ -1,3 +1,4 @@
+import uuid
 from typing import Any, Literal
 
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, model_validator
@@ -102,6 +103,7 @@ class ImageMetadata(BaseModel):
 class ImageGenerationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    workspace_id: uuid.UUID
     node_id: str = Field(min_length=1, max_length=64)
     model: ImageModel
     prompt: str = Field(min_length=1, max_length=32000)

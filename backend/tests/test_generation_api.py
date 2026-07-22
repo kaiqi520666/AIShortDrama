@@ -5,6 +5,7 @@ from httpx import ASGITransport, AsyncClient
 
 import app.main as main_module
 from app.core.database import SessionLocal
+from app.core.identity import DEFAULT_WORKSPACE_ID
 from app.models import GenerationTask
 
 
@@ -61,6 +62,9 @@ IMAGE_REQUESTS = [
     },
 ]
 
+for request in IMAGE_REQUESTS:
+    request["workspace_id"] = str(DEFAULT_WORKSPACE_ID)
+
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
@@ -90,7 +94,9 @@ async def test_create_image_generation(monkeypatch, payload):
         async with SessionLocal() as db:
             task = await db.get(GenerationTask, task_id)
             assert task.model == payload["model"]
-            expected_payload = {key: value for key, value in payload.items() if key != "node_id"}
+            expected_payload = {
+                key: value for key, value in payload.items() if key not in {"node_id", "workspace_id"}
+            }
             provider_payload = task.request_snapshot.copy()
             provider_payload.pop("client_business_id")
             assert provider_payload == expected_payload

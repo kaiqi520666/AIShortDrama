@@ -1,4 +1,4 @@
-export async function streamReversePrompt(payload, onDelta) {
+export async function streamReversePrompt(payload, onDelta, onMeta) {
   const response = await fetch('/api/reversals/stream', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -18,7 +18,8 @@ export async function streamReversePrompt(payload, onDelta) {
   function consume(line) {
     if (!line) return
     const event = JSON.parse(line)
-    if (event.type === 'delta') onDelta(event.content)
+    if (event.type === 'meta') onMeta?.(event.task_id)
+    else if (event.type === 'delta') onDelta(event.content)
     else if (event.type === 'error') throw new Error(event.message || '反推生成失败')
     else if (event.type === 'done') completed = true
   }

@@ -1,11 +1,12 @@
 import asyncio
 import uuid
 from datetime import UTC, datetime
+from urllib.parse import urlparse
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import SessionLocal
-from app.models import GenerationTask
+from app.models import Asset, GenerationTask
 from app.providers.toapis import ToApisError, ToApisProvider
 from app.services.storage import OssStorage
 
@@ -49,13 +50,7 @@ async def run_image_generation(
                 if not urls:
                     raise ToApisError("ToAPIs 未返回图片地址")
                 stored_urls = await storage.store_remote_images(task_id, urls)
-                await _update_by_id(
-                    task_uuid,
-                    status="succeeded",
-                    progress=100,
-                    result={"type": "image", "data": [{"url": url} for url in stored_urls]},
-                    finished_at=datetime.now(UTC),
-                )
+                await _complete_task(task_uuid, stored_urls)
                 return
             if state.get("status") == "failed":
                 error = state.get("error") or {}
@@ -86,6 +81,32 @@ async def _update_by_id(task_id: uuid.UUID, **values):
         task = await db.get(GenerationTask, task_id)
         if task:
             await _update(db, task, **values)
+
+
+async def _complete_task(task_id: uuid.UUID, urls: list[str]):
+    async with SessionLocal() as db:
+        task = await db.get(GenerationTask, task_id)
+        if not task:
+            return
+        task.status = "succeeded"
+        task.progress = 100
+        task.result = {"type": "image", "data": [{"url": url} for url in urls]}
+        task.finished_at = datetime.now(UTC)
+        for index, url in enumerate(urls, start=1):
+            db.add(
+                Asset(
+                    user_id=task.user_id,
+                    workspace_id=task.workspace_id,
+                    generation_task_id=task.id,
+                    node_id=task.node_id,
+                    media_type="image",
+                    source_type="generation",
+                    name=f"生成图片 {index}",
+                    object_key=urlparse(url).path.lstrip("/") or None,
+                    url=url,
+                )
+            )
+        await db.commit()
 
 
 async def _update(db: AsyncSession, task: GenerationTask, **values):

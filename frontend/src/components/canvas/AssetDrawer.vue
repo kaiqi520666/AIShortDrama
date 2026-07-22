@@ -1,14 +1,20 @@
 <script setup>
-import { computed, ref } from 'vue'
-import { ChevronDown, ChevronRight, FileText, Folder, Image, Music2, Video, X } from 'lucide-vue-next'
+import { computed, onMounted, ref } from 'vue'
+import { ChevronDown, ChevronRight, FileText, Folder, Image, Music2, Plus, RefreshCw, Video, X } from 'lucide-vue-next'
+import { listAssets } from '../../api/assets'
 
 const props = defineProps({
   nodes: { type: Array, required: true },
   groups: { type: Array, required: true },
   activeGroupId: { type: String, default: null },
 })
-const emit = defineEmits(['focus', 'focus-group', 'rename-group', 'close'])
+const emit = defineEmits(['focus', 'focus-group', 'rename-group', 'add', 'close'])
 const icons = { text: FileText, image: Image, video: Video, audio: Music2 }
+const activeTab = ref('nodes')
+const assetType = ref('')
+const assets = ref([])
+const loadingAssets = ref(false)
+const assetError = ref('')
 const collapsedGroupIds = ref([])
 const editingGroupId = ref(null)
 const sortedNodes = computed(() => props.nodes.toSorted((a, b) => a.position.x - b.position.x || a.position.y - b.position.y))
@@ -27,17 +33,44 @@ function startRename(id) {
 function renameGroup(id, event) {
   emit('rename-group', id, event.target.value)
 }
+
+async function loadAssetItems() {
+  loadingAssets.value = true
+  assetError.value = ''
+  try {
+    const result = await listAssets(assetType.value)
+    if (result.code !== 0) throw new Error(result.message)
+    assets.value = result.data
+  } catch (error) {
+    assetError.value = error.response?.data?.message || error.message || '资产加载失败'
+  } finally {
+    loadingAssets.value = false
+  }
+}
+
+function selectAssetType(type) {
+  assetType.value = type
+  loadAssetItems()
+}
+
+onMounted(loadAssetItems)
 </script>
 
 <template>
   <aside class="asset-drawer">
     <header>
       <strong>资产</strong>
-      <span>{{ nodes.length }}</span>
+      <span>{{ activeTab === 'nodes' ? nodes.length : assets.length }}</span>
+      <button v-if="activeTab === 'assets'" title="刷新资产" @click="loadAssetItems"><RefreshCw :size="15" /></button>
       <button title="关闭资产" @click="emit('close')"><X :size="17" /></button>
     </header>
 
-    <div class="asset-list">
+    <nav class="asset-tabs">
+      <button :class="{ active: activeTab === 'nodes' }" @click="activeTab = 'nodes'">节点</button>
+      <button :class="{ active: activeTab === 'assets' }" @click="activeTab = 'assets'; loadAssetItems()">资产</button>
+    </nav>
+
+    <div v-if="activeTab === 'nodes'" class="asset-list">
       <button
         v-for="node in ungroupedNodes"
         :key="node.id"
@@ -92,6 +125,25 @@ function renameGroup(id, event) {
           </button>
         </div>
       </section>
+    </div>
+
+    <div v-else class="asset-library">
+      <div class="asset-filters">
+        <button v-for="item in [{ value: '', label: '全部' }, { value: 'image', label: '图片' }, { value: 'video', label: '视频' }, { value: 'audio', label: '音频' }]" :key="item.value" :class="{ active: assetType === item.value }" @click="selectAssetType(item.value)">{{ item.label }}</button>
+      </div>
+      <p v-if="loadingAssets" class="asset-library-state">加载中…</p>
+      <p v-else-if="assetError" class="asset-library-state error">{{ assetError }}</p>
+      <p v-else-if="!assets.length" class="asset-library-state">暂无资产</p>
+      <div v-else class="asset-list asset-library-list">
+        <button v-for="asset in assets" :key="asset.id" class="asset-item" :title="`添加 ${asset.name}`" @click="emit('add', asset)">
+          <span class="asset-preview">
+            <img v-if="asset.media_type === 'image'" :src="asset.url" :alt="asset.name" />
+            <component v-else :is="icons[asset.media_type]" :size="20" />
+          </span>
+          <span>{{ asset.name }}</span>
+          <Plus :size="14" />
+        </button>
+      </div>
     </div>
   </aside>
 </template>

@@ -3,14 +3,16 @@ from datetime import datetime
 from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
-from app.models import GenerationTask
+from app.models import GenerationTask, Workspace
 from app.schemas.generation import ImageGenerationRequest
 
 
 def task_payload(task: GenerationTask) -> dict[str, Any]:
     return {
         "id": str(task.id),
+        "workspace_id": str(task.workspace_id),
         "node_id": task.node_id,
         "task_type": task.task_type,
         "model": task.model,
@@ -28,17 +30,29 @@ async def create_image_task(
     db: AsyncSession,
     redis: Any,
     request: ImageGenerationRequest,
+    user_id: uuid.UUID,
 ) -> GenerationTask:
+    workspace = await db.scalar(
+        select(Workspace).where(
+            Workspace.id == request.workspace_id,
+            Workspace.user_id == user_id,
+            Workspace.deleted_at.is_(None),
+        )
+    )
+    if not workspace:
+        raise RuntimeError("工作台不存在")
     task_id = uuid.uuid4()
     provider_payload = request.model_dump(
         mode="json",
-        exclude={"node_id"},
+        exclude={"node_id", "workspace_id"},
         exclude_none=True,
         exclude_unset=True,
     )
     provider_payload["client_business_id"] = str(task_id)
     task = GenerationTask(
         id=task_id,
+        user_id=user_id,
+        workspace_id=request.workspace_id,
         node_id=request.node_id,
         task_type="image",
         provider="toapis",

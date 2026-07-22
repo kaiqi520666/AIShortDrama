@@ -98,6 +98,8 @@ async function submitTask() {
     updateNodeData(nodeId, { status: 'generating', content: '', generationError: '' })
     try {
       await streamReversePrompt({
+        workspace_id: store.workspaceId,
+        node_id: nodeId,
         model: selectedReverseModel.value.id,
         media_type: props.data.reverseType,
         media_url: reverseReference.value.data.asset,
@@ -105,6 +107,8 @@ async function submitTask() {
       }, (delta) => {
         content += delta
         updateNodeData(nodeId, { content })
+      }, (taskId) => {
+        updateNodeData(nodeId, { generationTaskId: taskId, generationStatus: 'running' })
       })
       updateNodeData(nodeId, { status: 'ready', content })
     } catch (error) {
@@ -127,6 +131,7 @@ async function submitTask() {
   })
   try {
     const result = await createImageGeneration({
+      workspace_id: store.workspaceId,
       node_id: nodeId,
       ...buildImageRequest({ ...props.data, prompt: effectivePrompt.value }, imageReferences.value),
     })
@@ -241,7 +246,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section v-if="data.assetSource !== 'upload' && (type !== 'text' || data.textMode === 'task')" class="generation-panel nodrag nowheel" @pointerdown.stop>
+  <section v-if="!data.assetSource && (type !== 'text' || data.textMode === 'task')" class="generation-panel nodrag nowheel" @pointerdown.stop>
     <div v-if="displayReferences.length" class="reference-strip">
       <div v-for="reference in displayReferences" :key="reference.key" class="reference-item" :title="reference.label" :aria-label="reference.label">
         <img v-if="reference.node.data.asset" :src="reference.node.data.asset" alt="" />

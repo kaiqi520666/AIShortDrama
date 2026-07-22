@@ -1,9 +1,11 @@
 import uuid
 
 import pytest
+from sqlalchemy import select
 
 from app.core.database import SessionLocal
-from app.models import GenerationTask
+from app.core.identity import DEFAULT_WORKSPACE_ID, LOCAL_USER_ID
+from app.models import Asset, GenerationTask
 from app.schemas.generation import ImageGenerationRequest
 from app.services.generation_tasks import create_image_task
 from app.workers.image_generation import run_image_generation
@@ -40,10 +42,12 @@ async def test_image_generation_flow():
             db,
             FakeRedis(),
             ImageGenerationRequest(
+                workspace_id=DEFAULT_WORKSPACE_ID,
                 node_id="image-test",
                 model="gpt-image-2",
                 prompt="test image",
             ),
+            LOCAL_USER_ID,
         )
         task_id = task.id
 
@@ -60,8 +64,16 @@ async def test_image_generation_flow():
             assert completed.status == "succeeded"
             assert completed.provider_task_id == "provider-task-1"
             assert completed.result["data"][0]["url"].startswith("https://image.nodepass.net/")
+            assets = list(completed.id and await db.scalars(
+                select(Asset).where(Asset.generation_task_id == completed.id)
+            ))
+            assert len(assets) == 1
     finally:
         async with SessionLocal() as db:
+            for asset in (
+                await db.scalars(select(Asset).where(Asset.generation_task_id == task_id))
+            ).all():
+                await db.delete(asset)
             task = await db.get(GenerationTask, uuid.UUID(str(task_id)))
             if task:
                 await db.delete(task)

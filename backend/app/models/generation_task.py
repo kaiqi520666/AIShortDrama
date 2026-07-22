@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, Index, SmallInteger, String, Text, Uuid, func, text
+from sqlalchemy import DateTime, ForeignKey, Index, SmallInteger, String, Text, Uuid, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -18,6 +18,8 @@ class GenerationTask(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    workspace_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("workspaces.id"), nullable=False)
     node_id: Mapped[str] = mapped_column(String(64))
     task_type: Mapped[str] = mapped_column(String(32))
     provider: Mapped[str] = mapped_column(String(32))

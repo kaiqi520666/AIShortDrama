@@ -1,5 +1,5 @@
 <script setup>
-import { computed, markRaw, ref } from 'vue'
+import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
@@ -15,8 +15,10 @@ import { mediaTypes } from '../config/mediaTypes'
 import { useCanvasStore } from '../stores/canvas'
 
 const store = useCanvasStore()
-const { nodes, edges, groups } = storeToRefs(store)
-const { project, fitView, findNode, setCenter, viewport, removeSelectedElements, addSelectedNodes } = useVueFlow()
+const props = defineProps({ workspace: { type: Object, required: true } })
+const emit = defineEmits(['back'])
+const { nodes, edges, groups, saveStatus } = storeToRefs(store)
+const { project, fitView, findNode, setCenter, setViewport, viewport, removeSelectedElements, addSelectedNodes } = useVueFlow()
 
 const nodeTypes = Object.fromEntries(Object.keys(mediaTypes).map((type) => [type, markRaw(MediaNode)]))
 const edgeTypes = { cinematic: markRaw(FlowEdge) }
@@ -25,6 +27,7 @@ const contextMenu = ref(null)
 const connectionSource = ref(null)
 const groupDrag = ref(null)
 const pointerMode = ref(null)
+let saveTimer = null
 
 const minimapVisible = ref(false)
 const assetsVisible = ref(false)
@@ -227,11 +230,42 @@ function focusGroup(id) {
   store.selectNodes([])
   fitView({ nodes: group.nodeIds, padding: 0.3, duration: 300 })
 }
+
+function scheduleSave() {
+  if (!store.ready) return
+  window.clearTimeout(saveTimer)
+  saveTimer = window.setTimeout(() => store.saveCanvas().catch(() => {}), 800)
+}
+
+function updateViewport(value) {
+  store.setViewport(value)
+}
+
+function addAsset(asset) {
+  const centerX = window.innerWidth / 2 + (assetsVisible.value ? 146 : 0)
+  store.addAssetNode(asset, project({ x: centerX, y: window.innerHeight / 2 }))
+}
+
+async function goHome() {
+  window.clearTimeout(saveTimer)
+  try {
+    await store.saveCanvas(viewport.value)
+    emit('back')
+  } catch {}
+}
+
+watch(() => store.canvasPayload(), scheduleSave, { deep: true })
+onMounted(async () => {
+  await store.loadWorkspace(props.workspace)
+  await nextTick()
+  setViewport(store.viewportData)
+})
+onBeforeUnmount(() => window.clearTimeout(saveTimer))
 </script>
 
 <template>
   <main class="canvas-page" :class="{ 'assets-open': assetsVisible, 'multi-selected': selectedNodes.length > 1, [`cursor-${pointerMode}`]: pointerMode }" @pointerdown="contextMenu = null" @pointerdown.capture="handleCanvasPointerDown" @pointerup.window="resetPointerMode" @pointercancel.window="resetPointerMode">
-    <CanvasHeader />
+    <CanvasHeader :workspace-name="workspace.name" :save-status="saveStatus" @back="goHome" />
 
     <VueFlow
       v-model:nodes="nodes"
@@ -242,7 +276,6 @@ function focusGroup(id) {
       :max-zoom="8"
       :connection-radius="28"
       :delete-key-code="['Backspace', 'Delete']"
-      fit-view-on-init
       class="creative-flow"
       @connect="handleConnect"
       @connect-start="handleConnectStart"
@@ -255,6 +288,7 @@ function focusGroup(id) {
       @node-context-menu="openContextMenu"
       @edge-context-menu="openEdgeContextMenu"
       @pane-click="contextMenu = null"
+      @viewport-change-end="updateViewport"
     >
       <Background :gap="22" :size="1" pattern-color="#303238" />
       <MiniMap v-if="minimapVisible" position="bottom-right" :pannable="true" :zoomable="true" />
@@ -278,7 +312,7 @@ function focusGroup(id) {
     />
 
     <Transition name="asset-sidebar">
-      <AssetDrawer v-if="assetsVisible" :nodes="nodes" :groups="groups" :active-group-id="selectedGroup?.id" @focus="focusNode" @focus-group="focusGroup" @rename-group="store.renameGroup" @close="assetsVisible = false" />
+      <AssetDrawer v-if="assetsVisible" :nodes="nodes" :groups="groups" :active-group-id="selectedGroup?.id" @focus="focusNode" @focus-group="focusGroup" @rename-group="store.renameGroup" @add="addAsset" @close="assetsVisible = false" />
     </Transition>
 
     <aside class="canvas-side-tools">
