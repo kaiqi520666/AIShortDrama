@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
-import { AudioWaveform, FileText, GripVertical, Image as ImageIcon, MoveDiagonal2, Music2, Video } from 'lucide-vue-next'
+import { AudioWaveform, FileText, GripVertical, Image as ImageIcon, MoveDiagonal2, Music2, Upload, Video } from 'lucide-vue-next'
 import { uploadMedia } from '../../api/uploads'
 import { imageAspectRatios } from '../../config/imageSettings'
 import { startGenerationPolling } from '../../services/generationPolling'
@@ -101,6 +101,7 @@ async function handleUpload(event) {
     uploadNotice.value = `文件不能超过 ${rule.maxSize / 1024 / 1024}MB`
     return
   }
+  const replacementWidth = props.data.asset ? props.data.displayWidth || mediaWidth.value : null
   uploading.value = true
   uploadProgress.value = 0
   uploadNotice.value = ''
@@ -119,6 +120,7 @@ async function handleUpload(event) {
       sourceWidth: metadata.width,
       sourceHeight: metadata.height,
       sourceAspectRatio: metadata.width / metadata.height,
+      ...(replacementWidth ? { displayWidth: replacementWidth } : {}),
       ...(metadata.duration ? { sourceDuration: metadata.duration } : {}),
     })
   } catch (error) {
@@ -182,6 +184,8 @@ onBeforeUnmount(() => {
     <Handle v-if="acceptsInput" id="target" type="target" :position="Position.Left" />
 
     <div class="node-body" :style="bodyStyle">
+      <input v-if="['upload', 'clipboard'].includes(data.assetSource)" ref="fileInput" type="file" :accept="type === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'image/jpeg,image/png,image/webp'" hidden @change="handleUpload" />
+
       <div v-if="['generating', 'uploading'].includes(data.status) && type !== 'text'" class="generating-state">
         <span></span>
         <p>{{ data.status === 'uploading' ? '上传中' : `生成中 ${data.generationProgress || 0}%` }}</p>
@@ -216,7 +220,6 @@ onBeforeUnmount(() => {
       <video v-else-if="data.asset && type === 'video'" class="node-video nodrag nopan nowheel" :src="data.asset" :poster="data.poster" controls playsinline preload="metadata"></video>
 
       <div v-else-if="['image', 'video'].includes(type) && data.assetSource === 'upload'" class="media-upload-state">
-        <input ref="fileInput" type="file" :accept="type === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'image/jpeg,image/png,image/webp'" hidden @change="handleUpload" />
         <AppButton class="nodrag nopan" :disabled="uploading" @pointerdown.stop @click.stop="fileInput?.click()"><component :is="icon" :size="32" stroke-width="1.35" /><span>{{ uploading ? `上传中 ${uploadProgress}%` : `上传${type === 'video' ? '视频' : '图片'}` }}</span></AppButton>
         <p v-if="uploadNotice">{{ uploadNotice }}</p>
       </div>
@@ -238,6 +241,9 @@ onBeforeUnmount(() => {
       <span v-if="type === 'text' && textMode" class="text-drag-handle" title="拖动节点"><GripVertical :size="16" /></span>
       <AppButton v-if="type === 'text' && textMode" class="text-resize-handle nodrag nopan" icon-only title="调整尺寸" @pointerdown.stop.prevent="startResize">
         <MoveDiagonal2 :size="15" />
+      </AppButton>
+      <AppButton v-if="type === 'image' && data.asset && ['upload', 'clipboard'].includes(data.assetSource)" class="media-reupload-button nodrag nopan" icon-only :disabled="uploading" title="重新上传图片" @pointerdown.stop @click.stop="fileInput?.click()">
+        <Upload :size="15" />
       </AppButton>
       <AppButton v-if="selected && ['image', 'video', 'audio'].includes(type)" class="media-resize-handle nodrag nopan" icon-only title="调整显示尺寸" @pointerdown.stop.prevent="startResize">
         <MoveDiagonal2 :size="15" />
