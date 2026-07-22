@@ -82,11 +82,12 @@ function syncParts() {
 
 function updateMenuPosition() {
   if (!mentionRange || !editor.value) return
+  const menuElement = menu.value?.element || menu.value?.$el || menu.value
   const rangeRect = mentionRange.getBoundingClientRect()
   const editorRect = editor.value.getBoundingClientRect()
   const anchor = rangeRect.width || rangeRect.height ? rangeRect : editorRect
-  const width = menu.value?.offsetWidth || Math.min(360, window.innerWidth - 24)
-  const height = menu.value?.offsetHeight || 180
+  const width = menuElement?.offsetWidth || Math.min(360, window.innerWidth - 24)
+  const height = menuElement?.offsetHeight || 180
   const left = Math.min(Math.max(12, anchor.left), window.innerWidth - width - 12)
   const below = anchor.bottom + 8
   const top = below + height <= window.innerHeight - 12 ? below : Math.max(12, anchor.top - height - 8)

@@ -199,12 +199,18 @@ function updateVideoSetting(key, value) {
   if (key === 'aspectRatio') nextTick(() => requestAnimationFrame(updateSettingsPosition))
 }
 
+function getElement(target) {
+  return target?.element || target?.$el || target
+}
+
 function updateMenuPosition(trigger, menu, style) {
-  if (!trigger || !menu) return
-  const panelRect = trigger.closest('.generation-panel').getBoundingClientRect()
-  const triggerRect = trigger.getBoundingClientRect()
-  const menuHeight = menu.offsetHeight
-  const menuWidth = menu.offsetWidth
+  const triggerElement = getElement(trigger)
+  const menuElement = getElement(menu)
+  if (!triggerElement || !menuElement) return
+  const panelRect = triggerElement.closest('.generation-panel').getBoundingClientRect()
+  const triggerRect = triggerElement.getBoundingClientRect()
+  const menuHeight = menuElement.offsetHeight
+  const menuWidth = menuElement.offsetWidth
   const gap = 8
   const centeredLeft = triggerRect.left - panelRect.left + (triggerRect.width - menuWidth) / 2
   const left = Math.min(Math.max(0, centeredLeft), Math.max(0, panelRect.width - menuWidth))
