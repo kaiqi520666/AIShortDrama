@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     oss_public_base_url: str = ""
     toapis_key: str = ""
     toapis_url: str = "https://toapis.com"
+    dashscope_api_key: str = ""
+    dashscope_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
+    dashscope_workspace_id: str = ""
 
     @property
     def redis_queue_name(self) -> str:

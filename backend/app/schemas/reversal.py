@@ -1,0 +1,12 @@
+from typing import Literal
+
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field
+
+
+class ReversePromptRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    model: Literal["qwen3.7-plus", "qwen3.6-flash"]
+    media_type: Literal["image", "video"]
+    media_url: AnyHttpUrl
+    prompt: str = Field(min_length=1, max_length=32000)

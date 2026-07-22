@@ -197,12 +197,12 @@ onBeforeUnmount(() => {
     <Handle v-if="acceptsInput" id="target" type="target" :position="Position.Left" />
 
     <div class="node-body" :style="bodyStyle">
-      <div v-if="data.status === 'generating'" class="generating-state">
+      <div v-if="data.status === 'generating' && type !== 'text'" class="generating-state">
         <span></span>
         <p>生成中 {{ data.generationProgress || 0 }}%</p>
       </div>
 
-      <div v-else-if="data.status === 'failed'" class="generation-failed-state">
+      <div v-else-if="data.status === 'failed' && type !== 'text'" class="generation-failed-state">
         <p>{{ data.generationError || '生成失败' }}</p>
       </div>
 
@@ -217,7 +217,8 @@ onBeforeUnmount(() => {
         v-else-if="type === 'text'"
         class="text-node-editor nodrag nopan nowheel"
         :value="data.content"
-        :placeholder="textMode === 'task' ? '等待生成…' : '输入内容…'"
+        :placeholder="textMode === 'task' ? (data.status === 'generating' ? '正在生成…' : '等待生成…') : '输入内容…'"
+        :readonly="textMode === 'task' && data.status === 'generating'"
         aria-label="文本节点内容"
         @input="updateNodeData(id, { content: $event.target.value, status: 'ready' })"
         @keydown.stop

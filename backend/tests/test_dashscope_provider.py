@@ -1,0 +1,93 @@
+import json
+from types import SimpleNamespace
+
+import httpx
+import pytest
+
+from app.providers import dashscope as dashscope_module
+from app.providers.dashscope import DashScopeProvider
+
+
+class ChunkStream(httpx.AsyncByteStream):
+    def __init__(self, chunks):
+        self.chunks = chunks
+
+    async def __aiter__(self):
+        for chunk in self.chunks:
+            yield chunk
+
+
+def frame(payload):
+    data = payload if isinstance(payload, str) else json.dumps(payload, ensure_ascii=False)
+    return f"data: {data}\n\n".encode()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("media_type", ["image", "video"])
+async def test_stream_reverse_prompt(monkeypatch, media_type):
+    requests = []
+    chunks = [
+        frame({"choices": [{"delta": {"content": "你好"}}]}),
+        frame({"choices": [{"delta": {"content": "世界"}}]}),
+        frame("[DONE]"),
+    ]
+
+    async def handler(request):
+        requests.append(request)
+        return httpx.Response(200, stream=ChunkStream(chunks))
+
+    monkeypatch.setattr(
+        dashscope_module,
+        "get_settings",
+        lambda: SimpleNamespace(
+            dashscope_api_key="secret",
+            dashscope_url="https://provider.test/compatible-mode/v1",
+        ),
+    )
+    async with DashScopeProvider(transport=httpx.MockTransport(handler)) as provider:
+        content = [
+            item
+            async for item in provider.stream_reverse_prompt(
+                model="qwen3.7-plus",
+                media_type=media_type,
+                media_url="https://example.com/media",
+                prompt="分析素材",
+            )
+        ]
+
+    payload = json.loads(requests[0].content)
+    media = payload["messages"][1]["content"][0]
+    assert content == ["你好", "世界"]
+    assert requests[0].url.path == "/compatible-mode/v1/chat/completions"
+    assert payload["stream"] is True
+    assert payload["enable_thinking"] is False
+    assert payload["messages"][0]["role"] == "system"
+    assert media["type"] == f"{media_type}_url"
+    if media_type == "video":
+        assert media["fps"] == 2
+
+
+@pytest.mark.asyncio
+async def test_stream_requires_done(monkeypatch):
+    async def handler(_request):
+        return httpx.Response(
+            200,
+            stream=ChunkStream([frame({"choices": [{"delta": {"content": "部分"}}]})]),
+        )
+
+    monkeypatch.setattr(
+        dashscope_module,
+        "get_settings",
+        lambda: SimpleNamespace(dashscope_api_key="secret", dashscope_url="https://provider.test"),
+    )
+    async with DashScopeProvider(transport=httpx.MockTransport(handler)) as provider:
+        with pytest.raises(RuntimeError, match="未正常结束"):
+            _ = [
+                item
+                async for item in provider.stream_reverse_prompt(
+                    model="qwen3.6-flash",
+                    media_type="image",
+                    media_url="https://example.com/image.png",
+                    prompt="分析图片",
+                )
+            ]

@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import { ArrowUp, ChevronDown, FileText, Image, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
 import { createImageGeneration } from '../../api/generations'
+import { streamReversePrompt } from '../../api/reversals'
 import { getEffectivePrompt, maxGenerationPromptLength } from '../../config/generationPrompt'
 import { buildImageRequest, imageModels, normalizeImageSettings } from '../../config/imageModels'
 import { mediaTypes } from '../../config/mediaTypes'
@@ -31,6 +32,10 @@ const notice = ref('')
 const running = computed(() => props.data.status === 'generating')
 const references = computed(() => store.incomingNodes(props.nodeId))
 const imageReferences = computed(() => references.value.filter((node) => node.type === 'image' && node.data.asset))
+const isReverseTask = computed(() => props.type === 'text' && ['image', 'video'].includes(props.data.reverseType))
+const reverseReference = computed(() => isReverseTask.value
+  ? references.value.find((node) => node.type === props.data.reverseType && node.data.asset)
+  : null)
 const effectivePrompt = computed(() => ['image', 'video'].includes(props.type)
   ? getEffectivePrompt(props.data, references.value)
   : props.data.prompt?.trim() || '')
@@ -40,7 +45,6 @@ const selectedImageSettings = computed(() => normalizeImageSettings(props.data))
 const selectedImageModel = computed(() => selectedImageSettings.value.model)
 const selectedVideoSettings = computed(() => normalizeVideoSettings(props.data))
 const selectedVideoModel = computed(() => selectedVideoSettings.value.model)
-const isReverseTask = computed(() => props.type === 'text' && ['image', 'video'].includes(props.data.reverseType))
 const selectedReverseModel = computed(() => reverseModels.find((model) => model.id === props.data.model) || defaultReverseModel)
 const selectableModels = computed(() => props.type === 'image' ? imageModels : props.type === 'video' ? videoModels : reverseModels)
 const selectedModel = computed(() => props.type === 'image' ? selectedImageModel.value : props.type === 'video' ? selectedVideoModel.value : selectedReverseModel.value)
@@ -53,7 +57,7 @@ const referenceError = computed(() => {
     ? `当前模型最多支持 ${selectedImageModel.value.maxReferences} 张参考图片`
     : ''
 })
-const panelMessage = computed(() => notice.value || referenceError.value || promptError.value)
+const panelMessage = computed(() => notice.value || props.data.generationError || referenceError.value || promptError.value)
 const settingLabel = computed(() => {
   if (props.type === 'image') return `${selectedAspectRatio.value} · ${selectedResolution.value}`
   if (props.type === 'video') return `${selectedAspectRatio.value === 'adaptive' ? '自适应' : selectedAspectRatio.value} · ${selectedResolution.value} · ${selectedDuration.value === 0 ? '自动' : `${selectedDuration.value}s`}`
@@ -65,6 +69,7 @@ const displayReferences = computed(() => {
 })
 const canSubmit = computed(() => {
   if (running.value || !effectivePrompt.value || referenceError.value || promptError.value) return false
+  if (isReverseTask.value) return Boolean(reverseReference.value)
   if (props.type !== 'text') return true
   return references.value.some((node) => node.type === 'text' ? node.data.content?.trim() : node.data.asset)
 })
@@ -86,6 +91,29 @@ function updateTextPrompt(event) {
 }
 
 async function submitTask() {
+  if (isReverseTask.value) {
+    const nodeId = props.nodeId
+    let content = ''
+    notice.value = ''
+    updateNodeData(nodeId, { status: 'generating', content: '', generationError: '' })
+    try {
+      await streamReversePrompt({
+        model: selectedReverseModel.value.id,
+        media_type: props.data.reverseType,
+        media_url: reverseReference.value.data.asset,
+        prompt: effectivePrompt.value,
+      }, (delta) => {
+        content += delta
+        updateNodeData(nodeId, { content })
+      })
+      updateNodeData(nodeId, { status: 'ready', content })
+    } catch (error) {
+      const message = error.message || '反推生成失败'
+      notice.value = message
+      updateNodeData(nodeId, { status: 'failed', content, generationError: message })
+    }
+    return
+  }
   if (props.type !== 'image') {
     notice.value = '当前模型后端暂未接入'
     return
