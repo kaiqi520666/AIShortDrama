@@ -1,0 +1,59 @@
+import { readonly, ref } from 'vue'
+
+const toasts = ref([])
+const confirmState = ref(null)
+const toastTimers = new Map()
+let confirmResolver = null
+
+function removeToast(id) {
+  window.clearTimeout(toastTimers.get(id))
+  toastTimers.delete(id)
+  toasts.value = toasts.value.filter((item) => item.id !== id)
+}
+
+function showToast(message, type = 'info', duration = 3200) {
+  const id = crypto.randomUUID()
+  toasts.value = [...toasts.value.slice(-3), { id, message, type }]
+  if (duration > 0) toastTimers.set(id, window.setTimeout(() => removeToast(id), duration))
+  return id
+}
+
+function settleConfirm(result) {
+  confirmResolver?.(result)
+  confirmResolver = null
+  confirmState.value = null
+}
+
+function confirm(options) {
+  if (confirmResolver) settleConfirm(false)
+  confirmState.value = {
+    title: '确认操作',
+    message: '',
+    confirmText: '确认',
+    cancelText: '取消',
+    tone: 'default',
+    ...options,
+  }
+  return new Promise((resolve) => { confirmResolver = resolve })
+}
+
+export function useGlobalToast() {
+  return {
+    toasts: readonly(toasts),
+    removeToast,
+    show: showToast,
+    success: (message, duration) => showToast(message, 'success', duration),
+    error: (message, duration) => showToast(message, 'error', duration ?? 5000),
+    warning: (message, duration) => showToast(message, 'warning', duration),
+    info: (message, duration) => showToast(message, 'info', duration),
+  }
+}
+
+export function useGlobalConfirm() {
+  return {
+    confirmState: readonly(confirmState),
+    confirm,
+    acceptConfirm: () => settleConfirm(true),
+    cancelConfirm: () => settleConfirm(false),
+  }
+}

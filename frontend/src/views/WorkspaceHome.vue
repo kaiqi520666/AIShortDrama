@@ -4,14 +4,16 @@ import { Clapperboard, Copy, LogOut, Pencil, Play, Plus, Trash2 } from 'lucide-v
 import { useRouter } from 'vue-router'
 import AppButton from '../components/ui/AppButton.vue'
 import AppSelect from '../components/ui/AppSelect.vue'
+import { useGlobalConfirm, useGlobalToast } from '../composables/useGlobalUI'
 import { useAuthStore } from '../stores/auth'
 import { useWorkspaceStore } from '../stores/workspaces'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const store = useWorkspaceStore()
+const toast = useGlobalToast()
+const { confirm } = useGlobalConfirm()
 const editingId = ref(null)
-const notice = ref('')
 const sortBy = ref('updated')
 const sortOptions = [
   { value: 'updated', label: '最近更新' },
@@ -24,12 +26,13 @@ const displayedItems = computed(() => store.items.toSorted((a, b) => {
   return new Date(b[key]) - new Date(a[key])
 }))
 
-async function run(action) {
-  notice.value = ''
+async function run(action, successMessage) {
   try {
-    await action()
+    const result = await action()
+    if (successMessage) toast.success(successMessage)
+    return result
   } catch (error) {
-    notice.value = error.response?.data?.message || error.message || '操作失败'
+    toast.error(error.response?.data?.message || error.message || '操作失败')
   }
 }
 
@@ -46,7 +49,21 @@ async function signOut() {
 async function rename(workspace, event) {
   const name = event.target.value.trim()
   editingId.value = null
-  if (name && name !== workspace.name) await run(() => store.rename(workspace.id, name))
+  if (name && name !== workspace.name) await run(() => store.rename(workspace.id, name), '项目名称已更新')
+}
+
+async function duplicate(workspace) {
+  await run(() => store.duplicate(workspace.id), '项目副本已创建')
+}
+
+async function remove(workspace) {
+  const accepted = await confirm({
+    title: '删除项目',
+    message: `确定删除“${workspace.name}”吗？此操作无法撤销。`,
+    confirmText: '删除',
+    tone: 'danger',
+  })
+  if (accepted) await run(() => store.remove(workspace.id), '项目已删除')
 }
 
 onMounted(() => store.load())
@@ -68,7 +85,7 @@ onMounted(() => store.load())
         <div><span class="section-kicker">PROJECT LIBRARY</span><h1>创作项目</h1><p>从上次停下的位置继续推进镜头</p></div>
         <div class="workspace-filters"><span>{{ store.items.length }} 个项目</span><AppSelect v-model="sortBy" :options="sortOptions" aria-label="项目排序" /></div>
       </div>
-      <p v-if="notice || store.error" class="workspace-notice">{{ notice || store.error }}</p>
+      <p v-if="store.error" class="workspace-notice">{{ store.error }}</p>
       <div v-if="store.loading" class="workspace-empty">加载中…</div>
       <div v-else-if="!store.items.length" class="workspace-empty">暂无工作台</div>
       <div v-else class="workspace-grid">
@@ -91,8 +108,8 @@ onMounted(() => store.load())
           <footer>
             <time>{{ new Date(workspace.updated_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</time>
             <AppButton icon-only size="sm" title="重命名" @click="editingId = workspace.id"><Pencil :size="14" /></AppButton>
-            <AppButton icon-only size="sm" title="复制" @click="run(() => store.duplicate(workspace.id))"><Copy :size="14" /></AppButton>
-            <AppButton icon-only size="sm" title="删除" variant="danger" @click="run(() => store.remove(workspace.id))"><Trash2 :size="14" /></AppButton>
+            <AppButton icon-only size="sm" title="复制" @click="duplicate(workspace)"><Copy :size="14" /></AppButton>
+            <AppButton icon-only size="sm" title="删除" variant="danger" @click="remove(workspace)"><Trash2 :size="14" /></AppButton>
           </footer>
         </article>
       </div>
