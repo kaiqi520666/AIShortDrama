@@ -62,29 +62,8 @@ const uploadRules = {
   image: { types: ['image/jpeg', 'image/png', 'image/webp'], maxSize: 20 * 1024 * 1024 },
   video: { types: ['video/mp4', 'video/quicktime', 'video/webm'], maxSize: 500 * 1024 * 1024 },
 }
-const imageRetry = ref(0)
-const imageSrc = computed(() => {
-  if (!props.data.asset || !imageRetry.value) return props.data.asset
-  const separator = props.data.asset.includes('?') ? '&' : '?'
-  return `${props.data.asset}${separator}retry=${imageRetry.value}`
-})
 const { updateNodeData, viewport } = useVueFlow()
 let resizeState = null
-let imageRetryTimer = null
-
-function retryImage() {
-  if (imageRetry.value >= 5 || imageRetryTimer) return
-  imageRetryTimer = window.setTimeout(() => {
-    imageRetryTimer = null
-    imageRetry.value += 1
-  }, 1000)
-}
-
-function resetImageRetry() {
-  if (imageRetryTimer) window.clearTimeout(imageRetryTimer)
-  imageRetryTimer = null
-  imageRetry.value = 0
-}
 
 function readMediaMetadata(file) {
   return new Promise((resolve, reject) => {
@@ -173,7 +152,6 @@ function startResize(event) {
   window.addEventListener('pointerup', stopResize)
 }
 
-watch(() => props.data.asset, resetImageRetry)
 watch(
   () => [props.data.generationTaskId, props.data.status],
   ([taskId, status]) => {
@@ -183,7 +161,6 @@ watch(
 )
 onBeforeUnmount(() => {
   stopResize()
-  resetImageRetry()
 })
 </script>
 
@@ -230,7 +207,7 @@ onBeforeUnmount(() => {
       ></textarea>
 
       <template v-else-if="data.asset && type === 'image'">
-        <img class="node-image" :src="imageSrc" :alt="data.title" referrerpolicy="no-referrer" @error="retryImage" />
+        <img class="node-image" :src="data.asset" :alt="data.title" referrerpolicy="no-referrer" />
       </template>
 
       <video v-else-if="data.asset && type === 'video'" class="node-video nodrag nopan nowheel" :src="data.asset" :poster="data.poster" controls playsinline preload="metadata"></video>
