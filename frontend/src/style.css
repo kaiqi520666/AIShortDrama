@@ -90,8 +90,9 @@ button { color: inherit; }
 .audio-preview { display: flex; height: 100%; align-items: center; gap: 24px; padding: 34px; color: #d8dadd; }
 .audio-preview > svg { color: #8c9099; }
 .audio-preview span { color: #858890; font-size: 12px; }
-.generating-state { display: grid; min-height: 220px; place-content: center; text-align: center; color: #afb2b8; font-size: 13px; }
-.media-node--audio .generating-state { height: 100%; min-height: 0; }
+.generating-state, .generation-failed-state { position: absolute; inset: 0; display: grid; place-content: center; padding: 24px; text-align: center; color: #afb2b8; font-size: 13px; }
+.generating-state p, .generation-failed-state p { margin: 0; overflow-wrap: anywhere; }
+.generation-failed-state { color: #c4a3a3; }
 .generating-state span { width: 34px; height: 34px; margin: 0 auto 12px; border: 2px solid #3e4148; border-top-color: #c6d7ec; border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 

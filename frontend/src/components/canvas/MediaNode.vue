@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
 import { AudioWaveform, FileText, GripVertical, Image as ImageIcon, MoveDiagonal2, Music2, Video } from 'lucide-vue-next'
 import { imageAspectRatios } from '../../config/imageSettings'
@@ -41,8 +41,29 @@ const bodyStyle = computed(() => {
 })
 const store = useCanvasStore()
 const uploadNotice = ref('')
+const imageRetry = ref(0)
+const imageSrc = computed(() => {
+  if (!props.data.asset || !imageRetry.value) return props.data.asset
+  const separator = props.data.asset.includes('?') ? '&' : '?'
+  return `${props.data.asset}${separator}retry=${imageRetry.value}`
+})
 const { updateNodeData, viewport } = useVueFlow()
 let resizeState = null
+let imageRetryTimer = null
+
+function retryImage() {
+  if (imageRetry.value >= 5 || imageRetryTimer) return
+  imageRetryTimer = window.setTimeout(() => {
+    imageRetryTimer = null
+    imageRetry.value += 1
+  }, 1000)
+}
+
+function resetImageRetry() {
+  if (imageRetryTimer) window.clearTimeout(imageRetryTimer)
+  imageRetryTimer = null
+  imageRetry.value = 0
+}
 
 function resizeNode(event) {
   const zoom = viewport.value.zoom
@@ -72,7 +93,11 @@ function startResize(event) {
   window.addEventListener('pointerup', stopResize)
 }
 
-onBeforeUnmount(stopResize)
+watch(() => props.data.asset, resetImageRetry)
+onBeforeUnmount(() => {
+  stopResize()
+  resetImageRetry()
+})
 </script>
 
 <template>
@@ -92,7 +117,11 @@ onBeforeUnmount(stopResize)
     <div class="node-body" :style="bodyStyle">
       <div v-if="data.status === 'generating'" class="generating-state">
         <span></span>
-        <p>正在生成…</p>
+        <p>生成中 {{ data.generationProgress || 0 }}%</p>
+      </div>
+
+      <div v-else-if="data.status === 'failed'" class="generation-failed-state">
+        <p>{{ data.generationError || '生成失败' }}</p>
       </div>
 
       <div v-else-if="type === 'text' && !textMode" class="text-mode-chooser">
@@ -113,7 +142,7 @@ onBeforeUnmount(stopResize)
       ></textarea>
 
       <template v-else-if="data.asset && type === 'image'">
-        <img class="node-image" :src="data.asset" :alt="data.title" />
+        <img class="node-image" :src="imageSrc" :alt="data.title" @error="retryImage" />
         <span v-if="data.assetSource !== 'upload'" class="asset-badge">AI</span>
       </template>
 

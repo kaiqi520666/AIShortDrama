@@ -90,7 +90,12 @@ async function submitTask() {
   }
   const nodeId = props.nodeId
   running.value = true
-  notice.value = '任务提交中'
+  notice.value = ''
+  updateNodeData(nodeId, {
+    status: 'generating',
+    generationProgress: 0,
+    generationError: '',
+  })
   try {
     const result = await createImageGeneration({
       node_id: nodeId,
@@ -105,8 +110,10 @@ async function submitTask() {
     await pollTask(result.data.id, nodeId)
   } catch (error) {
     running.value = false
-    notice.value = error.response?.data?.message || error.message || '任务提交失败'
-    updateNodeData(nodeId, { status: 'empty' })
+    updateNodeData(nodeId, {
+      status: 'failed',
+      generationError: error.response?.data?.message || error.message || '任务提交失败',
+    })
   }
 }
 
@@ -115,27 +122,35 @@ async function pollTask(taskId, nodeId) {
     const result = await getGenerationTask(taskId)
     if (result.code !== 0) throw new Error(result.message)
     const task = result.data
-    updateNodeData(nodeId, { generationStatus: task.status })
+    updateNodeData(nodeId, {
+      generationStatus: task.status,
+      generationProgress: task.progress,
+    })
     if (task.status === 'succeeded') {
       const asset = task.result?.data?.[0]?.url
       if (!asset) throw new Error('任务未返回图片地址')
       running.value = false
-      notice.value = '生成完成'
-      updateNodeData(nodeId, { asset, status: 'ready' })
+      updateNodeData(nodeId, {
+        asset,
+        status: 'ready',
+        generationProgress: 100,
+        generationError: '',
+      })
       return
     }
     if (['failed', 'cancelled', 'timeout'].includes(task.status)) {
       running.value = false
-      notice.value = task.error_message || '图片生成失败'
-      updateNodeData(nodeId, { status: 'empty' })
+      updateNodeData(nodeId, {
+        status: 'failed',
+        generationError: task.error_message || '图片生成失败',
+      })
       return
     }
     running.value = true
-    notice.value = `生成中 ${task.progress}%`
     pollTimer = window.setTimeout(() => pollTask(taskId, nodeId), 5000)
   } catch (error) {
-    running.value = false
-    notice.value = error.response?.data?.message || error.message || '任务状态查询失败'
+    running.value = true
+    pollTimer = window.setTimeout(() => pollTask(taskId, nodeId), 5000)
   }
 }
 
