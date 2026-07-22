@@ -505,7 +505,7 @@ a { color: inherit; text-decoration: none; }
 /* Brand and public surfaces */
 .app-brand { display: inline-flex; flex: none; align-items: center; gap: 10px; color: var(--text); }
 .app-brand__symbol { display: block; width: 32px; height: 32px; flex: none; filter: drop-shadow(0 8px 10px rgba(82, 204, 231, .16)); }
-.app-brand strong { font-size: 14px; font-weight: 700; }
+.app-brand strong { font-family: Bahnschrift, "Aptos Display", "Segoe UI", sans-serif; font-size: 15px; font-weight: 600; line-height: 1; }
 .home-page { position: relative; width: 100%; height: 100%; overflow: hidden; background: #07090a; color: var(--text); }
 .home-page .public-header { position: fixed; z-index: 4; top: 0; right: 0; left: 0; height: 76px; padding: 0 38px; border: 0; background: transparent; }
 .home-page .public-header::after { position: absolute; right: 38px; bottom: 0; left: 38px; height: 1px; background: rgba(255, 255, 255, .12); content: ''; }
