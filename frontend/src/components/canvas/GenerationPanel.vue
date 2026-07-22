@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
-import { ArrowUp, ChevronDown, FileText, Image, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
+import { ArrowUp, ChevronDown, FileText, Image, LoaderCircle, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
 import { createImageGeneration } from '../../api/generations'
 import { streamReversePrompt } from '../../api/reversals'
 import { getEffectivePrompt, maxGenerationPromptLength } from '../../config/generationPrompt'
@@ -351,7 +351,10 @@ onBeforeUnmount(() => {
         <component :is="type === 'video' ? VideoIcon : Image" :size="16" />{{ settingLabel }}<ChevronDown :size="14" :class="{ rotated: settingsOpen }" />
       </button>
       <span v-else-if="type !== 'text'" class="setting-select"><Image :size="16" />{{ settingLabel }}</span>
-      <button class="run-task-button" :disabled="!canSubmit" title="执行" @click="submitTask"><ArrowUp :size="20" /></button>
+      <button class="run-task-button" :disabled="!canSubmit" :title="running ? '执行中' : '执行'" @click="submitTask">
+        <LoaderCircle v-if="running" class="run-task-spinner" :size="20" />
+        <ArrowUp v-else :size="20" />
+      </button>
     </footer>
   </section>
 </template>
