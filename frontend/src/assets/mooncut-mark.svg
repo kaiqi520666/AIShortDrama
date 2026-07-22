@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Mooncut">
+  <rect x=".5" y=".5" width="31" height="31" rx="7" fill="#8BE6F5" stroke="#C6F6FC"/>
+  <path d="m6.7 10.8 17.6-4 .95 4.15-17.6 4z" fill="#0B1A1D"/>
+  <path d="m10.1 10.05 1.75 3.1m3.05-4.2 1.75 3.1m3.05-4.2 1.75 3.1" fill="none" stroke="#8BE6F5" stroke-width="1.35"/>
+  <path d="M7.65 15h17.6v8.3a2.7 2.7 0 0 1-2.7 2.7h-12.2a2.7 2.7 0 0 1-2.7-2.7z" fill="#0B1A1D"/>
+  <path d="M10.5 18.5h4.25M10.5 22h4.25" fill="none" stroke="#8BE6F5" stroke-linecap="round" stroke-width="1.4"/>
+  <path d="M20.7 17.15a4.15 4.15 0 1 0 2.35 6.75 3.55 3.55 0 0 1-2.35-6.75" fill="#8BE6F5"/>
+</svg>
