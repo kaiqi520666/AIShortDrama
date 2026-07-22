@@ -1,8 +1,47 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Mooncut">
-  <rect x=".5" y=".5" width="31" height="31" rx="7" fill="#8BE6F5" stroke="#C6F6FC"/>
-  <path d="m6.7 10.8 17.6-4 .95 4.15-17.6 4z" fill="#0B1A1D"/>
-  <path d="m10.1 10.05 1.75 3.1m3.05-4.2 1.75 3.1m3.05-4.2 1.75 3.1" fill="none" stroke="#8BE6F5" stroke-width="1.35"/>
-  <path d="M7.65 15h17.6v8.3a2.7 2.7 0 0 1-2.7 2.7h-12.2a2.7 2.7 0 0 1-2.7-2.7z" fill="#0B1A1D"/>
-  <path d="M10.5 18.5h4.25M10.5 22h4.25" fill="none" stroke="#8BE6F5" stroke-linecap="round" stroke-width="1.4"/>
-  <path d="M20.7 17.15a4.15 4.15 0 1 0 2.35 6.75 3.55 3.55 0 0 1-2.35-6.75" fill="#8BE6F5"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Mooncut">
+  <defs>
+    <linearGradient id="shell" x1="7" y1="4" x2="57" y2="61" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#20383E"/>
+      <stop offset=".48" stop-color="#102126"/>
+      <stop offset="1" stop-color="#071114"/>
+    </linearGradient>
+    <linearGradient id="rim" x1="9" y1="7" x2="55" y2="58" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D8FBFF"/>
+      <stop offset=".42" stop-color="#63D8E9"/>
+      <stop offset="1" stop-color="#197C95"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="18" y1="17" x2="49" y2="53" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#D9FCFF"/>
+      <stop offset=".45" stop-color="#78E3F1"/>
+      <stop offset="1" stop-color="#31AFC8"/>
+    </linearGradient>
+    <linearGradient id="panel" x1="19" y1="29" x2="49" y2="56" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#18353B"/>
+      <stop offset="1" stop-color="#081517"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0" cy="0" r="1" gradientTransform="translate(31 29) rotate(55) scale(30)">
+      <stop stop-color="#78E8F5" stop-opacity=".3"/>
+      <stop offset="1" stop-color="#42C7DD" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="shadow" x="-25%" y="-25%" width="150%" height="160%">
+      <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#02090B" flood-opacity=".58"/>
+    </filter>
+  </defs>
+
+  <rect x="3" y="3" width="58" height="58" rx="17" fill="url(#shell)" stroke="url(#rim)" stroke-width="2"/>
+  <rect x="6.5" y="6.5" width="51" height="51" rx="14" fill="url(#glow)" stroke="#C7F8FF" stroke-opacity=".12"/>
+  <path d="M12 18C17 9 27 6 38 7" fill="none" stroke="#E9FDFF" stroke-linecap="round" stroke-opacity=".28"/>
+
+  <g filter="url(#shadow)">
+    <path d="m14.5 21.5 33-7.7a2.2 2.2 0 0 1 2.65 1.65l1.8 7.65-34.9 8.15z" fill="url(#cyan)"/>
+    <path d="m20 20.2 6.4-1.5-3.7 8-6.4 1.5zm11-2.55 6.4-1.5-3.7 8-6.4 1.5zm11-2.6 5.5-1.25a2.2 2.2 0 0 1 2.65 1.65l.18.75-3.65 7.8-6.4 1.5z" fill="#0A171A" fill-opacity=".92"/>
+    <path d="M17.05 31.25h34.9v16.2a8.3 8.3 0 0 1-8.3 8.3h-18.3a8.3 8.3 0 0 1-8.3-8.3z" fill="url(#panel)" stroke="#79DFED" stroke-opacity=".42"/>
+    <path d="M17.55 31.75h33.9" stroke="#D9FBFF" stroke-opacity=".72"/>
+  </g>
+
+  <path d="M22 38.5h8m-8 5h6" fill="none" stroke="url(#cyan)" stroke-linecap="round" stroke-width="2.6"/>
+  <circle cx="40.5" cy="43.5" r="8.2" fill="#091719" stroke="url(#cyan)" stroke-width="2.8"/>
+  <circle cx="40.5" cy="43.5" r="5.1" fill="#102C31" stroke="#D8FBFF" stroke-opacity=".2"/>
+  <path d="m39 39.9 6 3.6-6 3.6z" fill="#DDFBFF"/>
+  <circle cx="51.5" cy="51.5" r="1.4" fill="#77E6F3"/>
 </svg>
