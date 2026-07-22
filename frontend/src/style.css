@@ -539,13 +539,28 @@ a { color: inherit; text-decoration: none; }
 .auth-form-page::before { position: absolute; z-index: -2; inset: 0; background: url('./assets/mooncut-hero.webp') center / cover; opacity: .22; content: ''; }
 .auth-form-page::after { position: absolute; z-index: -1; inset: 0; background: rgba(7, 9, 10, .68); content: ''; }
 .auth-brand { top: 28px; left: 32px; }
-.auth-form-shell { width: min(420px, 100%); padding: 34px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(18, 21, 24, .92); box-shadow: 0 28px 80px rgba(0,0,0,.38); }
-.auth-form-shell h1 { font-size: 26px; }
-.auth-form-shell > p { color: var(--text-3); }
-.auth-form label { color: var(--text-2); }
-.auth-form input { height: 44px; border-color: var(--line); background: #101316; }
+.auth-form-shell { position: relative; width: min(420px, 100%); overflow: hidden; padding: 34px; border: 1px solid rgba(255,255,255,.12); border-radius: 8px; background: rgba(18, 21, 24, .92); box-shadow: 0 28px 80px rgba(0,0,0,.38), 0 1px 0 rgba(255,255,255,.04) inset; backdrop-filter: blur(18px); }
+.auth-form-shell::before { position: absolute; top: 0; right: 34px; left: 34px; height: 2px; background: var(--accent); content: ''; opacity: .72; }
+.auth-form-header { display: flex; align-items: flex-start; gap: 14px; margin-bottom: 28px; }
+.auth-form-mark { display: grid; flex: none; width: 42px; height: 42px; place-items: center; border: 1px solid rgba(101,217,238,.32); border-radius: 7px; background: rgba(82,204,231,.08); color: var(--accent); }
+.auth-form-header h1 { margin: 0; font-size: 26px; line-height: 1.15; }
+.auth-form-header p { margin: 7px 0 0; color: var(--text-3); font-size: 12px; }
+.auth-form { gap: 16px; }
+.auth-field { display: grid; gap: 8px; color: var(--text-2); font-size: 12px; }
+.auth-field-control { position: relative; display: flex; align-items: center; }
+.auth-field-icon { position: absolute; z-index: 1; left: 14px; color: #66717a; pointer-events: none; transition: color .18s ease; }
+.auth-field-control:focus-within .auth-field-icon { color: var(--accent); }
+.auth-form .auth-field-control input { height: 44px; padding: 0 42px; border-color: var(--line); background: #101316; }
 .auth-form input:hover { border-color: #424b54; }
 .auth-form input:focus { border-color: var(--accent-strong); box-shadow: 0 0 0 3px rgba(82,204,231,.1); }
+.auth-password-toggle { position: absolute; z-index: 1; right: 7px; display: grid; width: 32px; height: 32px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: #68737c; cursor: pointer; }
+.auth-password-toggle:hover { background: #20262a; color: var(--text); }
+.auth-form > .ui-button { justify-content: space-between; margin-top: 3px; box-shadow: 0 10px 28px rgba(82,204,231,.12); }
+.auth-form > .ui-button svg { transition: transform .18s ease; }
+.auth-form > .ui-button:hover svg { transform: translateX(2px); }
+.auth-form .auth-error { display: flex; align-items: flex-start; gap: 7px; line-height: 1.45; }
+.auth-form .auth-error svg { flex: none; margin-top: 1px; }
+.auth-switch { color: var(--text-3); }
 .auth-switch a { color: var(--accent); }
 
 /* Project library */
