@@ -238,8 +238,8 @@ function focusGroup(id) {
       v-model:edges="edges"
       :node-types="nodeTypes"
       :edge-types="edgeTypes"
-      :min-zoom="0.25"
-      :max-zoom="1.5"
+      :min-zoom="0.1"
+      :max-zoom="8"
       :connection-radius="28"
       :delete-key-code="['Backspace', 'Delete']"
       fit-view-on-init
