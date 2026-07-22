@@ -27,7 +27,7 @@ const toast = useGlobalToast()
 const props = defineProps({ workspace: { type: Object, required: true } })
 const emit = defineEmits(['back', 'ready'])
 const { nodes, edges, groups, saveStatus } = storeToRefs(store)
-const { project, fitView, findNode, setCenter, setViewport, viewport, removeSelectedElements, addSelectedNodes } = useVueFlow()
+const { project, fitView, findNode, setCenter, setViewport, updateNodeData, viewport, removeSelectedElements, addSelectedNodes } = useVueFlow()
 
 const nodeTypes = Object.fromEntries(Object.keys(mediaTypes).map((type) => [type, markRaw(MediaNode)]))
 const edgeTypes = { cinematic: markRaw(FlowEdge) }
@@ -309,15 +309,14 @@ async function pasteImage(file, position) {
     bitmap.close()
     const result = await uploadMedia('image', file, { workspaceId: store.workspaceId, nodeId: id, timeout: 60_000, ...metadata })
     if (result.code !== 0) throw new Error(result.message)
-    node.data = {
-      ...node.data,
+    updateNodeData(id, {
       asset: result.data.url,
       assetId: result.data.id,
       status: 'ready',
       sourceWidth: metadata.width,
       sourceHeight: metadata.height,
       sourceAspectRatio: metadata.width / metadata.height,
-    }
+    })
     toast.success('图片已粘贴到画布')
   } catch (error) {
     store.deleteNode(id)
