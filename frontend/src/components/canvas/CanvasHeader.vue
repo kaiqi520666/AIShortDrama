@@ -1,5 +1,6 @@
 <script setup>
-import { ArrowLeft, CheckCircle2, CircleAlert, Clapperboard, Folder, LoaderCircle, LogOut, UserRound } from 'lucide-vue-next'
+import { ArrowLeft, CheckCircle2, CircleAlert, Folder, LoaderCircle, LogOut, UserRound } from 'lucide-vue-next'
+import AppBrand from '../ui/AppBrand.vue'
 import AppButton from '../ui/AppButton.vue'
 
 defineProps({
@@ -15,8 +16,7 @@ const emit = defineEmits(['back', 'logout'])
     <div class="project-control">
       <AppButton class="project-back" icon-only size="sm" title="返回工作台" @click="emit('back')"><ArrowLeft :size="17" /></AppButton>
       <span class="project-control-separator"></span>
-      <div class="brand-mark"><Clapperboard :size="18" /></div>
-      <span class="project-identity"><strong class="project-name">Mooncut</strong><small>CREATIVE STUDIO</small></span>
+      <AppBrand />
       <span class="project-divider"></span>
       <span class="project-context"><Folder :size="14" /><span class="project-select">{{ workspaceName }}</span></span>
     </div>

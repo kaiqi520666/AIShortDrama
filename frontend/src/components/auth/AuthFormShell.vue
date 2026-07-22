@@ -1,12 +1,13 @@
 <script setup>
-import { Clapperboard, ShieldCheck } from 'lucide-vue-next'
+import { ShieldCheck } from 'lucide-vue-next'
+import AppBrand from '../ui/AppBrand.vue'
 
 defineProps({ title: { type: String, required: true }, subtitle: { type: String, required: true } })
 </script>
 
 <template>
   <main class="auth-page auth-form-page">
-    <RouterLink class="workspace-brand auth-brand" to="/"><span class="brand-symbol"><Clapperboard :size="19" /></span><strong>Mooncut</strong></RouterLink>
+    <AppBrand class="auth-brand" />
     <section class="auth-form-shell">
       <header class="auth-form-header">
         <span class="auth-form-mark"><ShieldCheck :size="20" /></span>

@@ -54,7 +54,6 @@ a { color: inherit; text-decoration: none; }
 
 .workspace-home { width: 100%; height: 100%; overflow-y: auto; background: #151619; color: #eceef1; }
 .workspace-home-header { position: sticky; z-index: 5; top: 0; display: flex; height: 64px; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #2b2d31; background: rgba(21,22,25,.96); }
-.workspace-brand { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .workspace-account { display: flex; align-items: center; gap: 6px; color: #92969e; font-size: 12px; }
 .workspace-content { width: min(1120px, calc(100% - 48px)); margin: 54px auto; }
 .workspace-title-row { display: flex; align-items: end; justify-content: space-between; margin-bottom: 24px; }
@@ -103,10 +102,6 @@ a { color: inherit; text-decoration: none; }
 .project-back { display: grid; width: 32px; height: 32px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: #858f97; cursor: pointer; }
 .project-back:hover { background: #303237; color: #e5e7ea; }
 .project-control-separator { width: 1px; height: 24px; margin: 0 7px 0 3px; background: #2d353b; }
-.brand-mark { display: grid; width: 32px; height: 32px; flex: none; place-items: center; border: 1px solid #b9f2fb; border-radius: 7px; background: var(--accent); color: var(--accent-ink); }
-.project-identity { display: grid; gap: 1px; margin-left: 9px; line-height: 1; }
-.project-name { margin: 0; color: #f3f6f7; font-size: 14px; font-weight: 700; }
-.project-identity small { color: #69747c; font-size: 8px; font-weight: 700; }
 .project-divider { width: 1px; height: 24px; margin: 0 10px; background: #313940; }
 .project-context { display: flex; min-width: 0; align-items: center; gap: 7px; color: #74818a; }
 .project-context > svg { flex: none; }
@@ -390,12 +385,8 @@ a { color: inherit; text-decoration: none; }
 .vue-flow__minimap-mask { fill: rgba(15,16,18,.7); }
 .vue-flow__minimap-node { fill: #70747d; }
 
-@media (max-width: 900px) {
-  .project-identity, .project-divider { display: none; }
-}
-
 @media (max-width: 600px) {
-  .project-context, .brand-mark, .project-control-separator, .canvas-side-tools, .workspace-account .ui-button span, .canvas-account .ui-button span, .save-state span { display: none; }
+  .project-context, .project-control .app-brand, .project-divider, .project-control-separator, .canvas-side-tools, .workspace-account .ui-button span, .canvas-account .ui-button span, .save-state span { display: none; }
   .asset-drawer { width: min(292px, calc(100vw - 40px)); }
   .workspace-home-header, .public-header { padding: 0 16px; }
   .workspace-content { width: calc(100% - 32px); margin: 32px auto; }
@@ -512,10 +503,9 @@ a { color: inherit; text-decoration: none; }
 .global-loading-enter-from, .global-loading-leave-to { opacity: 0; }
 
 /* Brand and public surfaces */
-.workspace-brand { color: var(--text); }
-.workspace-brand strong { font-size: 14px; font-weight: 700; }
-.workspace-brand small { margin-left: 1px; color: var(--text-3); font-size: 9px; font-weight: 700; }
-.brand-symbol { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid #b9f2fb; border-radius: 7px; background: var(--accent); color: var(--accent-ink); box-shadow: 0 8px 22px rgba(82, 204, 231, .16); }
+.app-brand { display: inline-flex; flex: none; align-items: center; gap: 10px; color: var(--text); }
+.app-brand__symbol { display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid #b9f2fb; border-radius: 7px; background: var(--accent); color: var(--accent-ink); box-shadow: 0 8px 22px rgba(82, 204, 231, .16); }
+.app-brand strong { font-size: 14px; font-weight: 700; }
 .home-page { position: relative; width: 100%; height: 100%; overflow: hidden; background: #07090a; color: var(--text); }
 .home-page .public-header { position: fixed; z-index: 4; top: 0; right: 0; left: 0; height: 76px; padding: 0 38px; border: 0; background: transparent; }
 .home-page .public-header::after { position: absolute; right: 38px; bottom: 0; left: 38px; height: 1px; background: rgba(255, 255, 255, .12); content: ''; }

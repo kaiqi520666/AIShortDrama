@@ -1,5 +1,6 @@
 <script setup>
-import { ArrowRight, Clapperboard, Play, Sparkles } from 'lucide-vue-next'
+import { ArrowRight, Play, Sparkles } from 'lucide-vue-next'
+import AppBrand from '../components/ui/AppBrand.vue'
 import AppButton from '../components/ui/AppButton.vue'
 import heroVisual from '../assets/mooncut-hero.webp'
 </script>
@@ -7,7 +8,7 @@ import heroVisual from '../assets/mooncut-hero.webp'
 <template>
   <main class="home-page">
     <header class="public-header">
-      <RouterLink class="workspace-brand" to="/"><Clapperboard :size="20" /><strong>Mooncut</strong></RouterLink>
+      <AppBrand />
       <nav>
         <RouterLink to="/login">登录</RouterLink>
         <AppButton as="RouterLink" to="/register" variant="primary" size="sm">开始创作<ArrowRight :size="15" /></AppButton>
