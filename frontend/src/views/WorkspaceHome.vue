@@ -116,7 +116,7 @@ onMounted(() => store.load())
             @keydown.esc="editingId = null"
           />
           <footer>
-            <time>{{ new Date(workspace.updated_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</time>
+            <time>{{ new Date(workspace.created_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</time>
             <AppButton icon-only size="sm" title="重命名" @click="editingId = workspace.id"><Pencil :size="14" /></AppButton>
             <AppButton icon-only size="sm" title="复制" @click="duplicate(workspace)"><Copy :size="14" /></AppButton>
             <AppButton icon-only size="sm" title="删除" variant="danger" @click="remove(workspace)"><Trash2 :size="14" /></AppButton>
