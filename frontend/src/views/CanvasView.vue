@@ -90,11 +90,27 @@ const panelStyle = computed(() => {
     top: `${below + panelConfig.height <= window.innerHeight - panelConfig.margin ? below : Math.max(panelConfig.margin, top - panelConfig.height - panelConfig.gap)}px`,
   }
 })
-function openGlobalMenu() {
+function openGlobalMenu(event) {
+  const buttonRect = event.currentTarget.getBoundingClientRect()
   const centerX = window.innerWidth / 2 + (assetsVisible.value ? 146 : 0)
   createMenu.value = {
-    point: { x: centerX - 120, y: window.innerHeight - 390 },
+    point: { x: buttonRect.left + buttonRect.width / 2, y: buttonRect.top - 8 },
     position: project({ x: centerX, y: window.innerHeight / 2 }),
+    placement: 'anchor',
+    sourceId: null,
+  }
+}
+
+function openPaneCreateMenu(event) {
+  event.preventDefault()
+  contextMenu.value = null
+  createMenu.value = {
+    point: {
+      x: Math.min(Math.max(10, event.clientX + 10), window.innerWidth - 256),
+      y: Math.min(Math.max(10, event.clientY + 10), window.innerHeight - 278),
+    },
+    position: project({ x: event.clientX, y: event.clientY }),
+    placement: 'cursor',
     sourceId: null,
   }
 }
@@ -300,6 +316,7 @@ onBeforeUnmount(() => window.clearTimeout(saveTimer))
       :pan-on-drag="[1]"
       @node-context-menu="openContextMenu"
       @edge-context-menu="openEdgeContextMenu"
+      @pane-context-menu="openPaneCreateMenu"
       @pane-click="contextMenu = null"
       @viewport-change-end="updateViewport"
     >
@@ -356,6 +373,7 @@ onBeforeUnmount(() => window.clearTimeout(saveTimer))
     <NodeCreateMenu
       v-if="createMenu"
       :point="createMenu.point"
+      :placement="createMenu.placement"
       :contextual="Boolean(createMenu.sourceId)"
       :source-id="createMenu.sourceId"
       @select="createNode"

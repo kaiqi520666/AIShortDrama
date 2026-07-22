@@ -9,6 +9,7 @@ import AppMenu from '../ui/AppMenu.vue'
 
 const props = defineProps({
   point: { type: Object, required: true },
+  placement: { type: String, default: 'cursor' },
   contextual: Boolean,
   sourceId: { type: String, default: null },
 })
@@ -25,7 +26,7 @@ const options = computed(() => Object.entries(mediaTypes)
 
 <template>
   <div class="menu-backdrop" @pointerdown.self="$emit('close')">
-    <AppMenu class="node-create-menu" :style="{ left: `${point.x}px`, top: `${point.y}px` }">
+    <AppMenu class="node-create-menu" :class="{ 'node-create-menu--anchor': placement === 'anchor' }" :style="{ left: `${point.x}px`, top: `${point.y}px` }">
       <p>{{ contextual ? '引用该节点生成' : '添加节点' }}</p>
       <AppButton v-for="option in options" :key="option.type" :class="`node-option--${option.type}`" @click="$emit('select', option.type)">
         <span class="menu-icon"><component :is="option.icon" :size="17" /></span>
