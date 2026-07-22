@@ -4,13 +4,14 @@ import { storeToRefs } from 'pinia'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { MiniMap } from '@vue-flow/minimap'
-import { CircleHelp, Copy, Group, Keyboard, Library, Maximize2, Plus, Scan, Trash2, Ungroup } from 'lucide-vue-next'
+import { ChevronRight, CircleHelp, Clipboard, Copy, Group, Image as ImageIcon, Keyboard, Library, Maximize2, Plus, Redo2, Scan, Trash2, Undo2, Ungroup, Video } from 'lucide-vue-next'
 import AssetDrawer from '../components/canvas/AssetDrawer.vue'
 import CanvasHeader from '../components/canvas/CanvasHeader.vue'
 import FlowEdge from '../components/canvas/FlowEdge.vue'
 import GenerationPanel from '../components/canvas/GenerationPanel.vue'
 import MediaNode from '../components/canvas/MediaNode.vue'
 import NodeCreateMenu from '../components/canvas/NodeCreateMenu.vue'
+import NodeTypeMenu from '../components/canvas/NodeTypeMenu.vue'
 import AppButton from '../components/ui/AppButton.vue'
 import AppInput from '../components/ui/AppInput.vue'
 import AppMenu from '../components/ui/AppMenu.vue'
@@ -37,16 +38,22 @@ const connectionSource = ref(null)
 const groupDrag = ref(null)
 const pointerMode = ref(null)
 const flowMounted = ref(false)
+const uploadInput = ref(null)
+const pendingUpload = ref(null)
 let saveTimer = null
 let readyEmitted = false
 let pastePoint = null
 let history = []
-let historyIndex = -1
+const historyIndex = ref(-1)
 let historyTimer = null
 let historyApplying = false
 
 const pastedImageTypes = ['image/jpeg', 'image/png', 'image/webp']
 const pastedImageMaxSize = 20 * 1024 * 1024
+const uploadRules = {
+  image: { accept: 'image/jpeg,image/png,image/webp', types: ['image/jpeg', 'image/png', 'image/webp'], maxSize: 20 * 1024 * 1024 },
+  video: { accept: 'video/mp4,video/quicktime,video/webm', types: ['video/mp4', 'video/quicktime', 'video/webm'], maxSize: 500 * 1024 * 1024 },
+}
 
 const minimapVisible = ref(false)
 const assetsVisible = ref(false)
@@ -116,15 +123,14 @@ function openGlobalMenu(event) {
 
 function openPaneCreateMenu(event) {
   event.preventDefault()
-  contextMenu.value = null
-  createMenu.value = {
-    point: {
-      x: Math.min(Math.max(10, event.clientX + 10), window.innerWidth - 256),
-      y: Math.min(Math.max(10, event.clientY + 10), window.innerHeight - 278),
-    },
+  commitHistory()
+  createMenu.value = null
+  contextMenu.value = {
+    kind: 'pane',
+    x: Math.min(Math.max(10, event.clientX), window.innerWidth - 226),
+    y: Math.min(Math.max(10, event.clientY), window.innerHeight - 318),
     position: project({ x: event.clientX, y: event.clientY }),
-    placement: 'cursor',
-    sourceId: null,
+    submenuOpen: false,
   }
 }
 
@@ -265,6 +271,11 @@ function focusGroup(id) {
   fitView({ nodes: group.nodeIds, padding: 0.3, duration: 300 })
 }
 
+function createPaneNode(type) {
+  store.addNode(type, contextMenu.value.position)
+  contextMenu.value = null
+}
+
 function scheduleSave() {
   if (!store.ready) return
   window.clearTimeout(saveTimer)
@@ -284,9 +295,9 @@ function commitHistory() {
   window.clearTimeout(historyTimer)
   if (historyApplying || !store.ready) return
   const snapshot = historySnapshot()
-  if (snapshot === history[historyIndex]) return
-  history = [...history.slice(0, historyIndex + 1), snapshot].slice(-50)
-  historyIndex = history.length - 1
+  if (snapshot === history[historyIndex.value]) return
+  history = [...history.slice(0, historyIndex.value + 1), snapshot].slice(-50)
+  historyIndex.value = history.length - 1
 }
 
 function scheduleHistory() {
@@ -309,16 +320,20 @@ function restoreHistory(snapshot) {
 function undo() {
   if (historyApplying) return
   commitHistory()
-  if (historyIndex <= 0) return
-  restoreHistory(history[--historyIndex])
+  if (historyIndex.value <= 0) return
+  restoreHistory(history[--historyIndex.value])
 }
 
 function redo() {
   if (historyApplying) return
   commitHistory()
-  if (historyIndex >= history.length - 1) return
-  restoreHistory(history[++historyIndex])
+  if (historyIndex.value >= history.length - 1) return
+  restoreHistory(history[++historyIndex.value])
 }
+
+const canUndo = computed(() => historyIndex.value > 0)
+const canRedo = computed(() => historyIndex.value < history.length - 1)
+const submenuOpensLeft = computed(() => (contextMenu.value?.x || 0) + 478 > window.innerWidth)
 
 function handleHistoryShortcut(event) {
   if (!(event.ctrlKey || event.metaKey) || event.altKey) return
@@ -387,6 +402,88 @@ async function pasteImage(file, position) {
   }
 }
 
+function readMediaMetadata(type, file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file)
+    const media = type === 'image' ? new Image() : document.createElement('video')
+    const cleanup = () => URL.revokeObjectURL(url)
+    media.onload = media.onloadedmetadata = () => {
+      const width = media.naturalWidth || media.videoWidth
+      const height = media.naturalHeight || media.videoHeight
+      cleanup()
+      width && height ? resolve({ width, height, duration: media.duration || null }) : reject(new Error('无法读取媒体尺寸'))
+    }
+    media.onerror = () => {
+      cleanup()
+      reject(new Error('无法读取媒体文件'))
+    }
+    media.preload = 'metadata'
+    media.src = url
+  })
+}
+
+function chooseUpload(type) {
+  pendingUpload.value = { type, position: contextMenu.value.position }
+  contextMenu.value = null
+  nextTick(() => uploadInput.value?.click())
+}
+
+async function handlePaneUpload(event) {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  const upload = pendingUpload.value
+  pendingUpload.value = null
+  if (!file || !upload) return
+  const rule = uploadRules[upload.type]
+  if (!rule.types.includes(file.type)) return toast.warning(`不支持的${upload.type === 'video' ? '视频' : '图片'}格式`)
+  if (file.size > rule.maxSize) return toast.warning(`文件不能超过 ${rule.maxSize / 1024 / 1024}MB`)
+
+  const id = store.addNode(upload.type, upload.position)
+  const node = nodes.value.find((item) => item.id === id)
+  node.data = { ...node.data, status: 'uploading', assetSource: 'upload', pasted: true }
+  try {
+    const metadata = await readMediaMetadata(upload.type, file)
+    const result = await uploadMedia(upload.type, file, { workspaceId: store.workspaceId, nodeId: id, timeout: 60_000, ...metadata })
+    if (result.code !== 0) throw new Error(result.message)
+    updateNodeData(id, {
+      asset: result.data.url,
+      assetId: result.data.id,
+      status: 'ready',
+      sourceWidth: metadata.width,
+      sourceHeight: metadata.height,
+      sourceAspectRatio: metadata.width / metadata.height,
+      ...(metadata.duration ? { sourceDuration: metadata.duration } : {}),
+    })
+  } catch (error) {
+    store.deleteNode(id)
+    toast.error(error.code === 'ECONNABORTED' ? '上传超时，请重试' : error.response?.data?.message || error.message || '上传失败')
+  }
+}
+
+async function pasteFromMenu() {
+  const position = contextMenu.value.position
+  contextMenu.value = null
+  try {
+    if (!navigator.clipboard?.read) {
+      const text = (await navigator.clipboard.readText()).trim()
+      return text ? pasteText(text, position) : toast.warning('剪贴板中没有可粘贴内容')
+    }
+    const items = await navigator.clipboard.read()
+    for (const item of items) {
+      const imageType = item.types.find((type) => type.startsWith('image/'))
+      if (imageType) {
+        const blob = await item.getType(imageType)
+        return pasteImage(new File([blob], 'clipboard-image', { type: imageType }), position)
+      }
+    }
+    const textItem = items.find((item) => item.types.includes('text/plain'))
+    const text = textItem ? (await (await textItem.getType('text/plain')).text()).trim() : ''
+    return text ? pasteText(text, position) : toast.warning('剪贴板中没有可粘贴内容')
+  } catch {
+    toast.error('无法读取剪贴板，请允许浏览器访问剪贴板')
+  }
+}
+
 function handlePaste(event) {
   const editable = event.target instanceof Element && event.target.closest('input, textarea, [contenteditable]:not([contenteditable="false"])')
   if (editable || !pastePoint) return
@@ -427,7 +524,7 @@ onMounted(async () => {
   await store.loadWorkspace(props.workspace)
   window.clearTimeout(historyTimer)
   history = [historySnapshot()]
-  historyIndex = 0
+  historyIndex.value = 0
   flowMounted.value = true
   await nextTick()
   if (!nodes.value.length) await finishCanvasSetup()
@@ -442,6 +539,7 @@ onBeforeUnmount(() => {
 
 <template>
   <main class="canvas-page" :class="{ 'assets-open': assetsVisible, 'multi-selected': selectedNodes.length > 1, [`cursor-${pointerMode}`]: pointerMode }" @pointermove="trackPastePoint" @pointerdown="contextMenu = null" @pointerdown.capture="handleCanvasPointerDown" @pointerup.window="resetPointerMode" @pointercancel.window="resetPointerMode">
+    <input ref="uploadInput" type="file" :accept="pendingUpload ? uploadRules[pendingUpload.type].accept : ''" hidden @change="handlePaneUpload" />
     <CanvasHeader :workspace-name="workspace.name" :save-status="saveStatus" :username="authStore.user?.username || '访客'" @back="goHome" @logout="signOut" />
 
     <VueFlow
@@ -541,8 +639,25 @@ onBeforeUnmount(() => {
       @close="createMenu = null"
     />
 
-    <AppMenu v-if="contextMenu" class="context-menu" :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }" @pointerdown.stop>
+    <AppMenu v-if="contextMenu" class="context-menu" :class="{ 'context-menu--pane': contextMenu.kind === 'pane' }" :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }" @pointerdown.stop>
       <AppButton v-if="contextMenu.edgeId" variant="danger" @click="runContextAction('deleteEdge')"><Trash2 :size="15" />删除连接</AppButton>
+      <template v-else-if="contextMenu.kind === 'pane'">
+        <p class="context-menu-label">上传</p>
+        <AppButton @click="chooseUpload('image')"><ImageIcon :size="15" /><span>图片</span></AppButton>
+        <AppButton @click="chooseUpload('video')"><Video :size="15" /><span>视频</span></AppButton>
+        <span class="context-menu-divider"></span>
+        <div class="context-submenu-trigger" @mouseenter="contextMenu.submenuOpen = true" @mouseleave="contextMenu.submenuOpen = false">
+          <AppButton @click="contextMenu.submenuOpen = true"><Plus :size="15" /><span>添加节点</span><ChevronRight class="context-menu-chevron" :size="14" /></AppButton>
+          <AppMenu v-if="contextMenu.submenuOpen" class="context-submenu" :class="{ 'context-submenu--left': submenuOpensLeft }" @pointerdown.stop>
+            <NodeTypeMenu @select="createPaneNode" />
+          </AppMenu>
+        </div>
+        <span class="context-menu-divider"></span>
+        <AppButton :disabled="!canUndo" @click="undo"><Undo2 :size="15" /><span>撤销</span><kbd>Ctrl+Z</kbd></AppButton>
+        <AppButton :disabled="!canRedo" @click="redo"><Redo2 :size="15" /><span>重做</span><kbd>Ctrl+Y</kbd></AppButton>
+        <span class="context-menu-divider"></span>
+        <AppButton @click="pasteFromMenu"><Clipboard :size="15" /><span>粘贴</span><kbd>Ctrl+V</kbd></AppButton>
+      </template>
       <template v-else>
         <AppButton @click="runContextAction('duplicateNode')"><Copy :size="15" />创建副本</AppButton>
         <AppButton v-if="selectedNodes.length > 1 && !contextGroup" @click="runContextAction('groupSelected')"><Group :size="15" />编组</AppButton>
