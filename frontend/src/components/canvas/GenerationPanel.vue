@@ -83,7 +83,7 @@ function updateTextPrompt(event) {
 }
 
 async function submitTask() {
-  if (props.type !== 'image' || selectedImageModel.value.id !== 'gpt-image-2') {
+  if (props.type !== 'image') {
     notice.value = '当前模型后端暂未接入'
     return
   }

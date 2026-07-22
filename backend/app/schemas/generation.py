@@ -1,28 +1,163 @@
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import AnyHttpUrl, BaseModel, Field
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, model_validator
+
+
+ImageModel = Literal[
+    "gpt-image-2",
+    "doubao-seedream-5-0-pro",
+    "doubao-seedream-5-0",
+    "gemini-3-pro-image-preview",
+    "gemini-3.1-flash-image-preview",
+]
+
+IMAGE_MODEL_RULES: dict[str, dict[str, Any]] = {
+    "gpt-image-2": {
+        "sizes": {
+            "1:1",
+            "3:2",
+            "2:3",
+            "4:3",
+            "3:4",
+            "5:4",
+            "4:5",
+            "16:9",
+            "9:16",
+            "2:1",
+            "1:2",
+            "21:9",
+            "9:21",
+        },
+        "resolutions": {"1K", "2K", "4K"},
+        "request_fields": {"resolution", "response_format", "reference_images"},
+        "reference_field": "reference_images",
+    },
+    "doubao-seedream-5-0-pro": {
+        "sizes": {"1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "21:9", "9:21"},
+        "resolutions": {"1K", "2K"},
+        "request_fields": {"metadata", "image_urls"},
+        "metadata_fields": {"resolution"},
+        "reference_field": "image_urls",
+        "max_references": 10,
+    },
+    "doubao-seedream-5-0": {
+        "sizes": {"1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "21:9", "9:21"},
+        "resolutions": {"2K", "3K"},
+        "request_fields": {"metadata", "image_urls"},
+        "metadata_fields": {"resolution"},
+        "reference_field": "image_urls",
+        "max_references": 10,
+    },
+    "gemini-3-pro-image-preview": {
+        "sizes": {"1:1", "2:3", "3:2", "3:4", "4:3", "4:5", "5:4", "9:16", "16:9", "21:9"},
+        "resolutions": {"1K", "2K", "4K"},
+        "request_fields": {"metadata", "image_urls"},
+        "metadata_fields": {"resolution", "orientation"},
+        "reference_field": "image_urls",
+        "reference_objects": True,
+        "max_references": 14,
+    },
+    "gemini-3.1-flash-image-preview": {
+        "sizes": {
+            "1:1",
+            "3:2",
+            "2:3",
+            "4:3",
+            "3:4",
+            "16:9",
+            "9:16",
+            "5:4",
+            "4:5",
+            "21:9",
+            "1:4",
+            "4:1",
+            "1:8",
+            "8:1",
+        },
+        "resolutions": {"0.5K", "1K", "2K", "4K"},
+        "request_fields": {"metadata", "image_urls"},
+        "metadata_fields": {"resolution", "google_search", "google_image_search"},
+        "reference_field": "image_urls",
+        "reference_objects": True,
+        "max_references": 14,
+    },
+}
+
+
+class ImageReference(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    url: AnyHttpUrl
+
+
+class ImageMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    resolution: Literal["0.5K", "1K", "2K", "3K", "4K"] | None = None
+    orientation: Literal["landscape", "portrait"] | None = None
+    google_search: bool | None = None
+    google_image_search: bool | None = None
 
 
 class ImageGenerationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     node_id: str = Field(min_length=1, max_length=64)
-    model: Literal["gpt-image-2"]
+    model: ImageModel
     prompt: str = Field(min_length=1, max_length=32000)
-    size: Literal[
-        "1:1",
-        "3:2",
-        "2:3",
-        "4:3",
-        "3:4",
-        "5:4",
-        "4:5",
-        "16:9",
-        "9:16",
-        "2:1",
-        "1:2",
-        "21:9",
-        "9:21",
-    ] = "1:1"
-    resolution: Literal["1k", "2k", "4k"] = "1k"
+    size: str = "1:1"
     n: Literal[1] = 1
-    response_format: Literal["url"] = "url"
+    resolution: Literal["1k", "2k", "4k"] | None = None
+    response_format: Literal["url"] | None = None
     reference_images: list[AnyHttpUrl] = Field(default_factory=list)
+    image_urls: list[AnyHttpUrl | ImageReference] = Field(default_factory=list)
+    metadata: ImageMetadata | None = None
+
+    @model_validator(mode="after")
+    def validate_model_options(self):
+        rules = IMAGE_MODEL_RULES[self.model]
+        if self.size not in rules["sizes"]:
+            raise ValueError(f"{self.model} 不支持比例 {self.size}")
+
+        optional_fields = self.model_fields_set & {
+            "resolution",
+            "response_format",
+            "reference_images",
+            "image_urls",
+            "metadata",
+        }
+        unsupported_fields = optional_fields - rules["request_fields"]
+        if unsupported_fields:
+            raise ValueError(f"{self.model} 不支持参数 {', '.join(sorted(unsupported_fields))}")
+
+        metadata_fields = self.metadata.model_fields_set if self.metadata else set()
+        unsupported_metadata = metadata_fields - rules.get("metadata_fields", set())
+        if unsupported_metadata:
+            raise ValueError(
+                f"{self.model} 不支持 metadata 参数 {', '.join(sorted(unsupported_metadata))}"
+            )
+
+        resolution = (
+            self.resolution.upper()
+            if self.resolution
+            else getattr(self.metadata, "resolution", None)
+        )
+        if resolution and resolution not in rules["resolutions"]:
+            raise ValueError(f"{self.model} 不支持分辨率 {resolution}")
+
+        references = getattr(self, rules["reference_field"])
+        if len(references) > rules.get("max_references", len(references)):
+            raise ValueError(f"{self.model} 参考图片不能超过 {rules['max_references']} 张")
+        if rules.get("reference_objects") and any(
+            not isinstance(item, ImageReference) for item in references
+        ):
+            raise ValueError(f"{self.model} 的 image_urls 必须使用 URL 对象")
+        if (
+            not rules.get("reference_objects")
+            and rules["reference_field"] == "image_urls"
+            and any(isinstance(item, ImageReference) for item in references)
+        ):
+            raise ValueError(f"{self.model} 的 image_urls 必须使用 URL 字符串")
+        if self.metadata and self.metadata.google_image_search and not self.metadata.google_search:
+            raise ValueError("google_image_search 需要同时启用 google_search")
+        return self

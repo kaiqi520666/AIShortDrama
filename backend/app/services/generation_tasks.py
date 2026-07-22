@@ -30,7 +30,12 @@ async def create_image_task(
     request: ImageGenerationRequest,
 ) -> GenerationTask:
     task_id = uuid.uuid4()
-    provider_payload = request.model_dump(mode="json", exclude={"node_id"})
+    provider_payload = request.model_dump(
+        mode="json",
+        exclude={"node_id"},
+        exclude_none=True,
+        exclude_unset=True,
+    )
     provider_payload["client_business_id"] = str(task_id)
     task = GenerationTask(
         id=task_id,
