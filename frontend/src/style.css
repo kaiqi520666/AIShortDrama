@@ -276,9 +276,12 @@ a { color: inherit; text-decoration: none; }
 .asset-tabs button.active { background: #34363b; color: #f0f1f3; }
 .asset-list { display: flex; height: calc(100% - 76px); flex-direction: column; gap: 2px; overflow-y: auto; }
 .asset-library { height: calc(100% - 76px); }
-.asset-filters { display: flex; gap: 4px; margin: 0 4px 10px; }
-.asset-filters button { height: 26px; padding: 0 9px; border: 0; border-radius: 5px; background: transparent; color: #858991; font-size: 11px; cursor: pointer; }
-.asset-filters button.active, .asset-filters button:hover { background: #2e3035; color: #e1e3e6; }
+.asset-filters.ui-tabs { display: grid; width: 100%; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 2px; margin: 0 0 12px; padding: 3px; border-color: #2f3941; background: #111518; }
+.asset-filters.ui-tabs > .ui-button { height: 30px; min-height: 30px; gap: 5px; padding: 0 5px; border-radius: 5px; color: #7f8993; font-size: 11px; }
+.asset-filters.ui-tabs > .ui-button svg { color: #697680; }
+.asset-filters.ui-tabs > .ui-button:hover { background: #20282e; color: #e1e6ea; }
+.asset-filters.ui-tabs > .ui-button.active { background: #27343b; color: var(--accent); }
+.asset-filters.ui-tabs > .ui-button.active svg { color: var(--accent); }
 .asset-library-state { margin: 36px 8px; color: #777b83; text-align: center; font-size: 12px; }
 .asset-library-state.error { color: #c99b98; }
 .asset-library-list { height: calc(100% - 36px); }

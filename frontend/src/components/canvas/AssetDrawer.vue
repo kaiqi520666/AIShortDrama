@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ChevronDown, ChevronRight, FileText, Folder, Image, Library, Music2, Plus, RefreshCw, Video, Workflow, X } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight, FileText, Folder, Image, LayoutGrid, Library, Music2, Plus, RefreshCw, Video, Workflow, X } from 'lucide-vue-next'
 import { listAssets } from '../../api/assets'
 import AppButton from '../ui/AppButton.vue'
 import AppInput from '../ui/AppInput.vue'
@@ -15,7 +15,12 @@ const props = defineProps({
 const emit = defineEmits(['focus', 'focus-group', 'rename-group', 'add', 'close'])
 const icons = { text: FileText, image: Image, video: Video, audio: Music2 }
 const drawerTabs = [{ value: 'nodes', label: '节点', icon: Workflow }, { value: 'assets', label: '资产', icon: Library }]
-const assetTypeOptions = [{ value: '', label: '全部' }, { value: 'image', label: '图片' }, { value: 'video', label: '视频' }, { value: 'audio', label: '音频' }]
+const assetTypeOptions = [
+  { value: '', label: '全部', icon: LayoutGrid },
+  { value: 'image', label: '图片', icon: Image },
+  { value: 'video', label: '视频', icon: Video },
+  { value: 'audio', label: '音频', icon: Music2 },
+]
 const activeTab = ref('nodes')
 const assetType = ref('')
 const assets = ref([])
