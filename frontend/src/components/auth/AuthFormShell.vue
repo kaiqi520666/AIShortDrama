@@ -3,14 +3,13 @@ import { ShieldCheck } from 'lucide-vue-next'
 import AppBrand from '../ui/AppBrand.vue'
 
 defineProps({
-  variant: { type: String, required: true },
   title: { type: String, required: true },
   subtitle: { type: String, required: true },
 })
 </script>
 
 <template>
-  <main :class="['auth-page', 'auth-form-page', `auth-form-page--${variant}`]">
+  <main class="auth-page auth-form-page">
     <AppBrand class="auth-brand" />
     <section class="auth-form-shell">
       <header class="auth-form-header">

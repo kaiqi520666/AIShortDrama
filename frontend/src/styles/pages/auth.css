@@ -2,25 +2,17 @@
   background: #0c0f11;
 }
 .auth-form-page {
+  --auth-background-opacity: 0.72;
+  --auth-overlay: rgba(7, 9, 10, 0.34);
   position: relative;
   isolation: isolate;
   overflow: hidden;
-}
-.auth-form-page--login {
-  --auth-background: url("../../assets/mooncut-login-bg.webp");
-  --auth-background-opacity: 0.88;
-  --auth-overlay: rgba(7, 9, 10, 0.18);
-}
-.auth-form-page--register {
-  --auth-background: url("../../assets/mooncut-register-bg.webp");
-  --auth-background-opacity: 0.72;
-  --auth-overlay: rgba(7, 9, 10, 0.34);
 }
 .auth-form-page::before {
   position: absolute;
   z-index: -2;
   inset: 0;
-  background: var(--auth-background) center / cover;
+  background: url("../../assets/mooncut-register-bg.webp") center / cover;
   filter: brightness(1.05);
   opacity: var(--auth-background-opacity);
   content: "";

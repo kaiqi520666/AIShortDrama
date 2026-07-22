@@ -31,7 +31,7 @@ async function submit() {
 </script>
 
 <template>
-  <AuthFormShell variant="login" title="登录" subtitle="继续进入你的工作台">
+  <AuthFormShell title="登录" subtitle="继续进入你的工作台">
     <form class="auth-form" @submit.prevent="submit">
       <AuthInputField v-model.trim="email" label="邮箱" :icon="Mail" type="email" autocomplete="email" required />
       <AuthInputField v-model="password" label="密码" :icon="LockKeyhole" type="password" autocomplete="current-password" minlength="8" maxlength="72" revealable required />
