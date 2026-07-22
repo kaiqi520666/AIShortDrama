@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import { ArrowUp, ChevronDown, FileText, Image, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
-import { createImageGeneration, getGenerationTask } from '../../api/generations'
+import { createImageGeneration } from '../../api/generations'
 import { getEffectivePrompt, maxGenerationPromptLength } from '../../config/generationPrompt'
 import { buildImageRequest, imageModels, normalizeImageSettings } from '../../config/imageModels'
 import { mediaTypes } from '../../config/mediaTypes'
@@ -27,8 +27,7 @@ const modelMenu = ref(null)
 const modelOpen = ref(false)
 const modelStyle = ref({})
 const notice = ref('')
-const running = ref(false)
-let pollTimer = null
+const running = computed(() => props.data.status === 'generating')
 const references = computed(() => store.incomingNodes(props.nodeId))
 const imageReferences = computed(() => references.value.filter((node) => node.type === 'image' && node.data.asset))
 const effectivePrompt = computed(() => ['image', 'video'].includes(props.type)
@@ -89,7 +88,6 @@ async function submitTask() {
     return
   }
   const nodeId = props.nodeId
-  running.value = true
   notice.value = ''
   updateNodeData(nodeId, {
     status: 'generating',
@@ -107,56 +105,12 @@ async function submitTask() {
       generationStatus: result.data.status,
       status: 'generating',
     })
-    await pollTask(result.data.id, nodeId)
   } catch (error) {
-    running.value = false
     updateNodeData(nodeId, {
       status: 'failed',
       generationError: error.response?.data?.message || error.message || '任务提交失败',
     })
   }
-}
-
-async function pollTask(taskId, nodeId) {
-  try {
-    const result = await getGenerationTask(taskId)
-    if (result.code !== 0) throw new Error(result.message)
-    const task = result.data
-    updateNodeData(nodeId, {
-      generationStatus: task.status,
-      generationProgress: task.progress,
-    })
-    if (task.status === 'succeeded') {
-      const asset = task.result?.data?.[0]?.url
-      if (!asset) throw new Error('任务未返回图片地址')
-      running.value = false
-      updateNodeData(nodeId, {
-        asset,
-        status: 'ready',
-        generationProgress: 100,
-        generationError: '',
-      })
-      return
-    }
-    if (['failed', 'cancelled', 'timeout'].includes(task.status)) {
-      running.value = false
-      updateNodeData(nodeId, {
-        status: 'failed',
-        generationError: task.error_message || '图片生成失败',
-      })
-      return
-    }
-    running.value = true
-    pollTimer = window.setTimeout(() => pollTask(taskId, nodeId), 5000)
-  } catch (error) {
-    running.value = true
-    pollTimer = window.setTimeout(() => pollTask(taskId, nodeId), 5000)
-  }
-}
-
-function stopPolling() {
-  if (pollTimer) window.clearTimeout(pollTimer)
-  pollTimer = null
 }
 
 function ratioIconStyle(value) {
@@ -240,17 +194,10 @@ function closeSettings(event) {
 }
 
 watch(() => props.nodeId, () => {
-  stopPolling()
-  running.value = false
   notice.value = ''
-  if (props.type === 'image' && props.data.generationTaskId && !['succeeded', 'failed', 'cancelled', 'timeout'].includes(props.data.generationStatus)) {
-    running.value = true
-    pollTask(props.data.generationTaskId, props.nodeId)
-  }
 }, { immediate: true })
 onMounted(() => window.addEventListener('pointerdown', closeSettings))
 onBeforeUnmount(() => {
-  stopPolling()
   window.removeEventListener('pointerdown', closeSettings)
 })
 </script>

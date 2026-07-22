@@ -19,7 +19,7 @@ async def run_image_generation(
     provider: ToApisProvider | None = None,
     storage: OssStorage | None = None,
     poll_interval: int = 5,
-    max_polls: int = 24,
+    max_polls: int = 72,
 ):
     task_uuid = uuid.UUID(task_id)
     async with SessionLocal() as db:

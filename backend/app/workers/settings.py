@@ -10,5 +10,5 @@ class WorkerSettings:
     functions = [generate_image]
     redis_settings = RedisSettings.from_dsn(settings.redis_url)
     queue_name = settings.redis_queue_name
-    job_timeout = 180
+    job_timeout = 420
     max_tries = 1

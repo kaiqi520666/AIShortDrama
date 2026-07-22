@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
 import { AudioWaveform, FileText, GripVertical, Image as ImageIcon, MoveDiagonal2, Music2, Video } from 'lucide-vue-next'
 import { imageAspectRatios } from '../../config/imageSettings'
+import { startGenerationPolling } from '../../services/generationPolling'
 import { useCanvasStore } from '../../stores/canvas'
 
 const props = defineProps({
@@ -94,6 +95,13 @@ function startResize(event) {
 }
 
 watch(() => props.data.asset, resetImageRetry)
+watch(
+  () => [props.data.generationTaskId, props.data.status],
+  ([taskId, status]) => {
+    if (taskId && status === 'generating') startGenerationPolling(taskId, props.id, updateNodeData)
+  },
+  { immediate: true },
+)
 onBeforeUnmount(() => {
   stopResize()
   resetImageRetry()
