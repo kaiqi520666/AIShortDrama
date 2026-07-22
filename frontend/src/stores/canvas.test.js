@@ -93,4 +93,13 @@ describe('canvas grouping and duplication', () => {
     expect(store.edges).toEqual([])
     expect(store.groups).toEqual([])
   })
+
+  it('renames a node', () => {
+    const store = useCanvasStore()
+    store.$patch({ nodes: [{ ...readyNode, data: { ...readyNode.data, title: '旧名称' } }] })
+
+    store.renameNode(readyNode.id, ' 新名称 ')
+
+    expect(store.nodes[0].data.title).toBe('新名称')
+  })
 })

@@ -728,7 +728,7 @@ onBeforeUnmount(() => {
     />
 
     <Transition name="asset-sidebar">
-      <AssetDrawer v-if="assetsVisible" :nodes="nodes" :groups="groups" :active-group-id="selectedGroup?.id" @focus="focusNode" @focus-group="focusGroup" @rename-group="store.renameGroup" @delete-node="store.deleteNode" @delete-group="store.deleteGroup" @close="assetsVisible = false" />
+      <AssetDrawer v-if="assetsVisible" :nodes="nodes" :groups="groups" :active-group-id="selectedGroup?.id" @focus="focusNode" @focus-group="focusGroup" @rename-node="store.renameNode" @rename-group="store.renameGroup" @delete-node="store.deleteNode" @delete-group="store.deleteGroup" @close="assetsVisible = false" />
     </Transition>
 
     <aside class="canvas-side-tools">

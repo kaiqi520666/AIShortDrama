@@ -250,6 +250,10 @@ export const useCanvasStore = defineStore('canvas', {
     duplicateNode(id, position) {
       return this.duplicateNodes([id], position ? { [id]: position } : {})[0]
     },
+    renameNode(id, title) {
+      const node = this.nodes.find((item) => item.id === id)
+      if (node && title.trim()) node.data.title = title.trim()
+    },
     deleteNode(id) {
       this.nodes = this.nodes.filter((node) => node.id !== id)
       this.edges = this.edges.filter((edge) => edge.source !== id && edge.target !== id)

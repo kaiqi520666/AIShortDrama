@@ -13,7 +13,7 @@ const props = defineProps({
   groups: { type: Array, required: true },
   activeGroupId: { type: String, default: null },
 })
-const emit = defineEmits(['focus', 'focus-group', 'rename-group', 'delete-node', 'delete-group', 'close'])
+const emit = defineEmits(['focus', 'focus-group', 'rename-node', 'rename-group', 'delete-node', 'delete-group', 'close'])
 const icons = { text: FileText, image: Image, video: Video, audio: Music2 }
 const drawerTabs = [{ value: 'nodes', label: '节点', icon: Workflow }, { value: 'assets', label: '资产', icon: Library }]
 const assetTypeOptions = [
@@ -119,6 +119,19 @@ async function deleteNodeItem(node) {
   if (accepted) emit('delete-node', node.id)
 }
 
+async function renameNodeItem(node) {
+  const currentTitle = node.data.title || '未命名节点'
+  const title = await prompt({
+    title: '重命名节点',
+    message: '输入新的节点名称',
+    value: currentTitle,
+    placeholder: '节点名称',
+    maxLength: 100,
+  })
+  if (!title || title.trim() === currentTitle) return
+  emit('rename-node', node.id, title.trim())
+}
+
 async function deleteGroupItem(group) {
   const accepted = await confirm({
     title: '删除编组',
@@ -171,7 +184,7 @@ onMounted(loadAssetItems)
           </span>
           <span>{{ node.data.title }}</span>
         </AppButton>
-        <AppButton class="asset-row-action asset-row-edit" icon-only size="sm" :title="`编辑 ${node.data.title}`" :aria-label="`编辑 ${node.data.title}`" @click.stop="emit('focus', node.id)"><Pencil :size="14" /></AppButton>
+        <AppButton class="asset-row-action asset-row-edit" icon-only size="sm" :title="`重命名 ${node.data.title}`" :aria-label="`重命名 ${node.data.title}`" @click.stop="renameNodeItem(node)"><Pencil :size="14" /></AppButton>
         <AppButton class="asset-row-delete" icon-only size="sm" variant="danger" :title="`删除 ${node.data.title}`" :aria-label="`删除 ${node.data.title}`" @click.stop="deleteNodeItem(node)"><Trash2 :size="14" /></AppButton>
       </div>
 
@@ -217,7 +230,7 @@ onMounted(loadAssetItems)
               </span>
               <span>{{ node.data.title }}</span>
             </AppButton>
-            <AppButton class="asset-row-action asset-row-edit" icon-only size="sm" :title="`编辑 ${node.data.title}`" :aria-label="`编辑 ${node.data.title}`" @click.stop="emit('focus', node.id)"><Pencil :size="14" /></AppButton>
+            <AppButton class="asset-row-action asset-row-edit" icon-only size="sm" :title="`重命名 ${node.data.title}`" :aria-label="`重命名 ${node.data.title}`" @click.stop="renameNodeItem(node)"><Pencil :size="14" /></AppButton>
             <AppButton class="asset-row-delete" icon-only size="sm" variant="danger" :title="`删除 ${node.data.title}`" :aria-label="`删除 ${node.data.title}`" @click.stop="deleteNodeItem(node)"><Trash2 :size="14" /></AppButton>
           </div>
         </div>
