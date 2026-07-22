@@ -275,7 +275,7 @@ a { color: inherit; text-decoration: none; }
 .asset-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin: 0 4px 10px; padding: 3px; border-radius: 6px; background: #202125; }
 .asset-tabs button { height: 28px; border: 0; border-radius: 4px; background: transparent; color: #858991; font-size: 12px; cursor: pointer; }
 .asset-tabs button.active { background: #34363b; color: #f0f1f3; }
-.asset-list { height: calc(100% - 76px); overflow-y: auto; }
+.asset-list { display: flex; height: calc(100% - 76px); flex-direction: column; gap: 4px; overflow-y: auto; }
 .asset-library { height: calc(100% - 76px); }
 .asset-filters { display: flex; gap: 4px; margin: 0 4px 10px; }
 .asset-filters button { height: 26px; padding: 0 9px; border: 0; border-radius: 5px; background: transparent; color: #858991; font-size: 11px; cursor: pointer; }
@@ -298,6 +298,7 @@ a { color: inherit; text-decoration: none; }
 .asset-group-title { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .asset-group-row small { color: #777a81; font-size: 10px; }
 .asset-group-title-input { min-width: 0; flex: 1; padding: 1px 3px; border: 1px solid #59636e; border-radius: 3px; outline: 0; background: #202125; color: #f0f1f3; font: inherit; }
+.asset-group-items { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
 .asset-group-items .asset-item { padding-left: 36px; }
 
 .menu-backdrop { position: fixed; z-index: 80; inset: 0; }
