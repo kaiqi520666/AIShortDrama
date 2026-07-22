@@ -1,7 +1,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { animate } from 'motion/mini'
-import { ArrowRight, Play, Sparkles } from 'lucide-vue-next'
+import { ArrowRight, LogIn, Play, Sparkles } from 'lucide-vue-next'
 import AppBrand from '../components/ui/AppBrand.vue'
 import AppButton from '../components/ui/AppButton.vue'
 import heroVisual from '../assets/mooncut-hero.webp'
@@ -56,8 +56,8 @@ onBeforeUnmount(() => {
     <header ref="pageHeader" class="public-header">
       <AppBrand />
       <nav>
-        <RouterLink to="/login">登录</RouterLink>
-        <AppButton as="RouterLink" to="/register" variant="primary" size="sm">开始创作<ArrowRight :size="15" /></AppButton>
+        <AppButton class="home-login-button" as="RouterLink" to="/login" size="sm" aria-label="登录"><LogIn :size="15" /><span>登录</span></AppButton>
+        <AppButton class="home-start-button" as="RouterLink" to="/register" variant="primary" size="sm">开始创作<ArrowRight :size="15" /></AppButton>
       </nav>
     </header>
     <section ref="hero" class="home-hero" @pointermove="updateParallax" @pointerleave="resetParallax">
@@ -66,7 +66,7 @@ onBeforeUnmount(() => {
       </div>
       <div ref="content" class="home-content">
         <span class="home-kicker" data-reveal><Sparkles :size="14" />AI SHORT DRAMA STUDIO</span>
-        <h1 data-reveal>Mooncut</h1>
+        <h1 data-reveal>AI电商短视频<br />工作台</h1>
         <p data-reveal>把灵感、分镜与生成素材放进同一张画布，让每个镜头自然衔接。</p>
         <div class="home-actions" data-reveal>
           <AppButton as="RouterLink" to="/register" variant="primary" size="lg">创建工作台<ArrowRight :size="18" /></AppButton>
