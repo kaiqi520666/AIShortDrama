@@ -22,7 +22,7 @@ import { useCanvasStore } from '../stores/canvas'
 const store = useCanvasStore()
 const authStore = useAuthStore()
 const props = defineProps({ workspace: { type: Object, required: true } })
-const emit = defineEmits(['back'])
+const emit = defineEmits(['back', 'ready'])
 const { nodes, edges, groups, saveStatus } = storeToRefs(store)
 const { project, fitView, findNode, setCenter, setViewport, viewport, removeSelectedElements, addSelectedNodes } = useVueFlow()
 
@@ -33,7 +33,9 @@ const contextMenu = ref(null)
 const connectionSource = ref(null)
 const groupDrag = ref(null)
 const pointerMode = ref(null)
+const flowMounted = ref(false)
 let saveTimer = null
+let readyEmitted = false
 
 const minimapVisible = ref(false)
 const assetsVisible = ref(false)
@@ -262,6 +264,14 @@ function updateViewport(value) {
   store.setViewport(value)
 }
 
+async function finishCanvasSetup() {
+  if (readyEmitted) return
+  readyEmitted = true
+  setViewport(store.viewportData)
+  await nextTick()
+  emit('ready')
+}
+
 function addAsset(asset) {
   const centerX = window.innerWidth / 2 + (assetsVisible.value ? 146 : 0)
   store.addAssetNode(asset, project({ x: centerX, y: window.innerHeight / 2 }))
@@ -286,8 +296,9 @@ async function signOut() {
 watch(() => store.canvasPayload(), scheduleSave, { deep: true })
 onMounted(async () => {
   await store.loadWorkspace(props.workspace)
+  flowMounted.value = true
   await nextTick()
-  setViewport(store.viewportData)
+  if (!nodes.value.length) await finishCanvasSetup()
 })
 onBeforeUnmount(() => window.clearTimeout(saveTimer))
 </script>
@@ -297,6 +308,7 @@ onBeforeUnmount(() => window.clearTimeout(saveTimer))
     <CanvasHeader :workspace-name="workspace.name" :save-status="saveStatus" :username="authStore.user?.username || '访客'" @back="goHome" @logout="signOut" />
 
     <VueFlow
+      v-if="flowMounted"
       v-model:nodes="nodes"
       v-model:edges="edges"
       :node-types="nodeTypes"
@@ -318,6 +330,7 @@ onBeforeUnmount(() => window.clearTimeout(saveTimer))
       @edge-context-menu="openEdgeContextMenu"
       @pane-context-menu="openPaneCreateMenu"
       @pane-click="contextMenu = null"
+      @nodes-initialized="finishCanvasSetup"
       @viewport-change-end="updateViewport"
     >
       <Background :gap="22" :size="1" pattern-color="#303238" />
