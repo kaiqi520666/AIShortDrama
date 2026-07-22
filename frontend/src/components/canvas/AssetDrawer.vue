@@ -50,12 +50,10 @@ function renameGroup(id, event) {
   emit('rename-group', id, event.target.value)
 }
 
-function startDrag(event, kind, item) {
-  draggingItem.value = `${kind}:${item.id}`
+function startAssetDrag(event, asset) {
+  draggingItem.value = `asset:${asset.id}`
   event.dataTransfer.effectAllowed = 'copy'
-  event.dataTransfer.setData('application/x-mooncut-canvas-item', JSON.stringify(
-    kind === 'asset' ? { kind, asset: item } : { kind, nodeId: item.id },
-  ))
+  event.dataTransfer.setData('application/x-mooncut-canvas-item', JSON.stringify({ kind: 'asset', asset }))
 }
 
 async function loadAssetItems() {
@@ -171,11 +169,8 @@ onMounted(loadAssetItems)
       <div v-for="node in ungroupedNodes" :key="node.id" class="asset-node-row">
         <AppButton
           class="asset-item"
-          :class="{ active: node.selected, dragging: draggingItem === `node:${node.id}` }"
-          draggable="true"
+          :class="{ active: node.selected }"
           @click="emit('focus', node.id)"
-          @dragstart="startDrag($event, 'node', node)"
-          @dragend="draggingItem = ''"
         >
           <span class="asset-preview">
             <img v-if="node.type === 'image' && node.data.asset" :src="node.data.asset" :alt="node.data.title" draggable="false" />
@@ -217,11 +212,8 @@ onMounted(loadAssetItems)
           <div v-for="node in group.nodes" :key="node.id" class="asset-node-row">
             <AppButton
               class="asset-item"
-              :class="{ active: node.selected, dragging: draggingItem === `node:${node.id}` }"
-              draggable="true"
+              :class="{ active: node.selected }"
               @click="emit('focus', node.id)"
-              @dragstart="startDrag($event, 'node', node)"
-              @dragend="draggingItem = ''"
             >
               <span class="asset-preview">
                 <img v-if="node.type === 'image' && node.data.asset" :src="node.data.asset" :alt="node.data.title" draggable="false" />
@@ -244,7 +236,7 @@ onMounted(loadAssetItems)
       <EmptyState v-else-if="!assets.length" compact title="暂无资产" description="上传或生成的媒体会显示在这里" />
       <div v-else class="asset-list asset-library-list">
         <div v-for="asset in assets" :key="asset.id" class="asset-library-row">
-          <AppButton class="asset-item" :class="{ dragging: draggingItem === `asset:${asset.id}` }" :title="`拖动 ${asset.name}`" draggable="true" @dragstart="startDrag($event, 'asset', asset)" @dragend="draggingItem = ''">
+          <AppButton class="asset-item" :class="{ dragging: draggingItem === `asset:${asset.id}` }" :title="`拖动 ${asset.name}`" draggable="true" @dragstart="startAssetDrag($event, asset)" @dragend="draggingItem = ''">
             <span class="asset-preview">
               <img v-if="asset.media_type === 'image'" :src="asset.url" :alt="asset.name" draggable="false" />
               <component v-else :is="icons[asset.media_type]" :size="20" />

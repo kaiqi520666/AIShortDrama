@@ -480,8 +480,8 @@ function handleCanvasDrop(event) {
   try {
     const item = JSON.parse(raw)
     const position = screenToFlowCoordinate({ x: event.clientX, y: event.clientY })
-    if (item.kind === 'asset') store.addAssetNode(item.asset, position)
-    else if (item.kind === 'node') store.duplicateNode(item.nodeId, position)
+    if (item.kind !== 'asset') return
+    store.addAssetNode(item.asset, position)
     activeGroupId.value = null
   } catch {
     toast.error('无法添加拖拽内容')
