@@ -12,7 +12,6 @@ const props = defineProps({
   nodes: { type: Array, required: true },
   groups: { type: Array, required: true },
   activeGroupId: { type: String, default: null },
-  workspaceId: { type: String, required: true },
 })
 const emit = defineEmits(['focus', 'focus-group', 'rename-group', 'add', 'close'])
 const icons = { text: FileText, image: Image, video: Video, audio: Music2 }
@@ -54,7 +53,7 @@ async function loadAssetItems() {
   loadingAssets.value = true
   assetError.value = ''
   try {
-    const result = await listAssets(props.workspaceId, assetType.value)
+    const result = await listAssets(assetType.value)
     if (result.code !== 0) throw new Error(result.message)
     assets.value = result.data
   } catch (error) {
