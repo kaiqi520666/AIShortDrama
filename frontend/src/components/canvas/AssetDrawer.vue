@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ChevronDown, ChevronRight, FileText, Folder, Image, LayoutGrid, Library, Music2, Pencil, Plus, RefreshCw, Trash2, Video, Workflow, X } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight, FileText, Folder, Image, LayoutGrid, Library, Music2, Pencil, RefreshCw, Trash2, Video, Workflow, X } from 'lucide-vue-next'
 import { deleteAsset, listAssets, renameAsset } from '../../api/assets'
 import { useGlobalConfirm, useGlobalPrompt, useGlobalToast } from '../../composables/useGlobalUI'
 import AppButton from '../ui/AppButton.vue'
@@ -13,7 +13,7 @@ const props = defineProps({
   groups: { type: Array, required: true },
   activeGroupId: { type: String, default: null },
 })
-const emit = defineEmits(['focus', 'focus-group', 'rename-group', 'add', 'close'])
+const emit = defineEmits(['focus', 'focus-group', 'rename-group', 'close'])
 const icons = { text: FileText, image: Image, video: Video, audio: Music2 }
 const drawerTabs = [{ value: 'nodes', label: '节点', icon: Workflow }, { value: 'assets', label: '资产', icon: Library }]
 const assetTypeOptions = [
@@ -29,6 +29,7 @@ const loadingAssets = ref(false)
 const assetError = ref('')
 const collapsedGroupIds = ref([])
 const editingGroupId = ref(null)
+const draggingItem = ref('')
 const toast = useGlobalToast()
 const { confirm } = useGlobalConfirm()
 const { prompt } = useGlobalPrompt()
@@ -47,6 +48,14 @@ function startRename(id) {
 
 function renameGroup(id, event) {
   emit('rename-group', id, event.target.value)
+}
+
+function startDrag(event, kind, item) {
+  draggingItem.value = `${kind}:${item.id}`
+  event.dataTransfer.effectAllowed = 'copy'
+  event.dataTransfer.setData('application/x-mooncut-canvas-item', JSON.stringify(
+    kind === 'asset' ? { kind, asset: item } : { kind, nodeId: item.id },
+  ))
 }
 
 async function loadAssetItems() {
@@ -130,12 +139,15 @@ onMounted(loadAssetItems)
         v-for="node in ungroupedNodes"
         :key="node.id"
         class="asset-item"
-        :class="{ active: node.selected }"
+        :class="{ active: node.selected, dragging: draggingItem === `node:${node.id}` }"
+        draggable="true"
         @click="emit('focus', node.id)"
+        @dragstart="startDrag($event, 'node', node)"
+        @dragend="draggingItem = ''"
       >
         <span class="asset-preview">
-          <img v-if="node.type === 'image' && node.data.asset" :src="node.data.asset" :alt="node.data.title" />
-          <img v-else-if="node.type === 'video' && node.data.poster" :src="node.data.poster" :alt="node.data.title" />
+          <img v-if="node.type === 'image' && node.data.asset" :src="node.data.asset" :alt="node.data.title" draggable="false" />
+          <img v-else-if="node.type === 'video' && node.data.poster" :src="node.data.poster" :alt="node.data.title" draggable="false" />
           <component v-else :is="icons[node.type]" :size="20" />
         </span>
         <span>{{ node.data.title }}</span>
@@ -168,12 +180,15 @@ onMounted(loadAssetItems)
             v-for="node in group.nodes"
             :key="node.id"
             class="asset-item"
-            :class="{ active: node.selected }"
+            :class="{ active: node.selected, dragging: draggingItem === `node:${node.id}` }"
+            draggable="true"
             @click="emit('focus', node.id)"
+            @dragstart="startDrag($event, 'node', node)"
+            @dragend="draggingItem = ''"
           >
             <span class="asset-preview">
-              <img v-if="node.type === 'image' && node.data.asset" :src="node.data.asset" :alt="node.data.title" />
-              <img v-else-if="node.type === 'video' && node.data.poster" :src="node.data.poster" :alt="node.data.title" />
+              <img v-if="node.type === 'image' && node.data.asset" :src="node.data.asset" :alt="node.data.title" draggable="false" />
+              <img v-else-if="node.type === 'video' && node.data.poster" :src="node.data.poster" :alt="node.data.title" draggable="false" />
               <component v-else :is="icons[node.type]" :size="20" />
             </span>
             <span>{{ node.data.title }}</span>
@@ -189,13 +204,12 @@ onMounted(loadAssetItems)
       <EmptyState v-else-if="!assets.length" compact title="暂无资产" description="上传或生成的媒体会显示在这里" />
       <div v-else class="asset-list asset-library-list">
         <div v-for="asset in assets" :key="asset.id" class="asset-library-row">
-          <AppButton class="asset-item" :title="`添加 ${asset.name}`" @click="emit('add', asset)">
+          <AppButton class="asset-item" :class="{ dragging: draggingItem === `asset:${asset.id}` }" :title="`拖动 ${asset.name}`" draggable="true" @dragstart="startDrag($event, 'asset', asset)" @dragend="draggingItem = ''">
             <span class="asset-preview">
-              <img v-if="asset.media_type === 'image'" :src="asset.url" :alt="asset.name" />
+              <img v-if="asset.media_type === 'image'" :src="asset.url" :alt="asset.name" draggable="false" />
               <component v-else :is="icons[asset.media_type]" :size="20" />
             </span>
             <span>{{ asset.name }}</span>
-            <Plus :size="14" />
           </AppButton>
           <span class="asset-library-actions">
             <AppButton icon-only size="sm" :title="`重命名 ${asset.name}`" @click="renameAssetItem(asset)"><Pencil :size="13" /></AppButton>

@@ -43,6 +43,7 @@ const canvasTool = ref('move')
 const toolMenuOpen = ref(false)
 const shortcutPanelOpen = ref(false)
 const flowMounted = ref(false)
+const canvasDropActive = ref(false)
 const uploadInput = ref(null)
 const pendingUpload = ref(null)
 const generationPanel = ref(null)
@@ -460,9 +461,31 @@ async function finishCanvasSetup() {
   emit('ready')
 }
 
-function addAsset(asset) {
-  const centerX = window.innerWidth / 2 + (assetsVisible.value ? 146 : 0)
-  store.addAssetNode(asset, project({ x: centerX, y: window.innerHeight / 2 }))
+function handleCanvasDragOver(event) {
+  if (!event.dataTransfer.types.includes('application/x-mooncut-canvas-item')) return
+  event.preventDefault()
+  event.dataTransfer.dropEffect = 'copy'
+  canvasDropActive.value = true
+}
+
+function handleCanvasDragLeave(event) {
+  if (!event.currentTarget.contains(event.relatedTarget)) canvasDropActive.value = false
+}
+
+function handleCanvasDrop(event) {
+  const raw = event.dataTransfer.getData('application/x-mooncut-canvas-item')
+  canvasDropActive.value = false
+  if (!raw) return
+  event.preventDefault()
+  try {
+    const item = JSON.parse(raw)
+    const position = project({ x: event.clientX, y: event.clientY })
+    if (item.kind === 'asset') store.addAssetNode(item.asset, position)
+    else if (item.kind === 'node') store.duplicateNode(item.nodeId, position)
+    activeGroupId.value = null
+  } catch {
+    toast.error('无法添加拖拽内容')
+  }
 }
 
 function trackPastePoint(event) {
@@ -645,7 +668,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="canvas-page" :class="{ 'assets-open': assetsVisible, 'multi-selected': selectedNodes.length > 1, [`canvas-tool-${canvasTool}`]: canvasTool, [`cursor-${pointerMode}`]: pointerMode }" @pointermove="trackPastePoint" @pointerdown="contextMenu = null; toolMenuOpen = false" @pointerdown.capture="handleCanvasPointerDown" @pointerup.window="resetPointerMode" @pointercancel.window="resetPointerMode">
+  <main class="canvas-page" :class="{ 'assets-open': assetsVisible, 'multi-selected': selectedNodes.length > 1, [`canvas-tool-${canvasTool}`]: canvasTool, [`cursor-${pointerMode}`]: pointerMode }" @pointermove="trackPastePoint" @pointerdown="contextMenu = null; toolMenuOpen = false" @pointerdown.capture="handleCanvasPointerDown" @pointerup.window="resetPointerMode" @pointercancel.window="resetPointerMode" @dragend="canvasDropActive = false">
     <input ref="uploadInput" type="file" :accept="pendingUpload ? uploadRules[pendingUpload.type].accept : ''" hidden @change="handlePaneUpload" />
     <CanvasHeader :workspace-name="workspace.name" :save-status="saveStatus" :username="authStore.user?.username || '访客'" @back="goHome" @logout="signOut" />
 
@@ -660,6 +683,10 @@ onBeforeUnmount(() => {
       :connection-radius="28"
       :delete-key-code="['Backspace', 'Delete']"
       class="creative-flow"
+      :class="{ 'drop-active': canvasDropActive }"
+      @dragover="handleCanvasDragOver"
+      @dragleave="handleCanvasDragLeave"
+      @drop="handleCanvasDrop"
       @connect="handleConnect"
       @connect-start="handleConnectStart"
       @connect-end="handleConnectEnd"
@@ -701,7 +728,7 @@ onBeforeUnmount(() => {
     />
 
     <Transition name="asset-sidebar">
-      <AssetDrawer v-if="assetsVisible" :nodes="nodes" :groups="groups" :active-group-id="selectedGroup?.id" @focus="focusNode" @focus-group="focusGroup" @rename-group="store.renameGroup" @add="addAsset" @close="assetsVisible = false" />
+      <AssetDrawer v-if="assetsVisible" :nodes="nodes" :groups="groups" :active-group-id="selectedGroup?.id" @focus="focusNode" @focus-group="focusGroup" @rename-group="store.renameGroup" @close="assetsVisible = false" />
     </Transition>
 
     <aside class="canvas-side-tools">

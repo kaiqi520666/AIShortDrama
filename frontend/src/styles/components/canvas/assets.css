@@ -132,12 +132,6 @@
   align-items: center;
   gap: 4px;
 }
-.asset-library-row .asset-item {
-  grid-template-columns: 44px minmax(0, 1fr) 18px;
-}
-.asset-library-row .asset-item > svg {
-  color: #777b83;
-}
 .asset-library-actions {
   display: flex;
   gap: 2px;
@@ -161,6 +155,20 @@
   color: #d8dade;
   text-align: left;
   cursor: pointer;
+}
+.asset-item[draggable="true"] {
+  cursor: grab;
+}
+.asset-item.dragging {
+  opacity: 0.5;
+  cursor: grabbing;
+}
+.creative-flow.drop-active,
+.creative-flow.drop-active * {
+  cursor: copy !important;
+}
+.creative-flow.drop-active {
+  box-shadow: inset 0 0 0 2px rgb(153 244 202 / 45%);
 }
 .asset-item:hover,
 .asset-item.active {
