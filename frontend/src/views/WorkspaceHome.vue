@@ -27,6 +27,11 @@ const displayedItems = computed(() => store.items.toSorted((a, b) => {
   const key = sortBy.value === 'created' ? 'created_at' : 'updated_at'
   return new Date(b[key]) - new Date(a[key])
 }))
+const workspaceNumbers = computed(() => new Map(
+  store.items
+    .toSorted((a, b) => new Date(a.created_at) - new Date(b.created_at))
+    .map((workspace, index) => [workspace.id, String(index + 1).padStart(2, '0')]),
+))
 
 async function run(action, successMessage) {
   try {
@@ -94,9 +99,9 @@ onMounted(() => store.load())
           <strong>新建项目</strong>
           <small>创建新的工作流画布</small>
         </AppButton>
-        <article v-for="(workspace, index) in displayedItems" :key="workspace.id" class="workspace-card" @dblclick="router.push(`/workspaces/${workspace.id}`)">
+        <article v-for="workspace in displayedItems" :key="workspace.id" class="workspace-card" @dblclick="router.push(`/workspaces/${workspace.id}`)">
           <AppButton class="workspace-open-area" @click="router.push(`/workspaces/${workspace.id}`)">
-            <span class="workspace-cover" aria-hidden="true"><b>{{ String(index + 1).padStart(2, '0') }}</b><i></i><Play :size="17" fill="currentColor" /></span>
+            <span class="workspace-cover" aria-hidden="true"><b>{{ workspaceNumbers.get(workspace.id) }}</b><i></i><Play :size="17" fill="currentColor" /></span>
             <span v-if="editingId !== workspace.id" class="workspace-card-name">{{ workspace.name }}</span>
             <small>WORKFLOW CANVAS</small>
           </AppButton>
