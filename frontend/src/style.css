@@ -275,7 +275,7 @@ a { color: inherit; text-decoration: none; }
 .asset-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; margin: 0 4px 10px; padding: 3px; border-radius: 6px; background: #202125; }
 .asset-tabs button { height: 28px; border: 0; border-radius: 4px; background: transparent; color: #858991; font-size: 12px; cursor: pointer; }
 .asset-tabs button.active { background: #34363b; color: #f0f1f3; }
-.asset-list { display: flex; height: calc(100% - 76px); flex-direction: column; gap: 4px; overflow-y: auto; }
+.asset-list { display: flex; height: calc(100% - 76px); flex-direction: column; gap: 6px; overflow-y: auto; }
 .asset-library { height: calc(100% - 76px); }
 .asset-filters { display: flex; gap: 4px; margin: 0 4px 10px; }
 .asset-filters button { height: 26px; padding: 0 9px; border: 0; border-radius: 5px; background: transparent; color: #858991; font-size: 11px; cursor: pointer; }
@@ -298,7 +298,7 @@ a { color: inherit; text-decoration: none; }
 .asset-group-title { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .asset-group-row small { color: #777a81; font-size: 10px; }
 .asset-group-title-input { min-width: 0; flex: 1; padding: 1px 3px; border: 1px solid #59636e; border-radius: 3px; outline: 0; background: #202125; color: #f0f1f3; font: inherit; }
-.asset-group-items { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.asset-group-items { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
 .asset-group-items .asset-item { padding-left: 36px; }
 
 .menu-backdrop { position: fixed; z-index: 80; inset: 0; }
@@ -364,7 +364,8 @@ a { color: inherit; text-decoration: none; }
 .text-resize-handle.ui-button, .media-resize-handle.ui-button { width: 24px; height: 24px; min-height: 24px; padding: 0; border: 0; cursor: nwse-resize; }
 .text-resize-handle.ui-button:hover { background: transparent; color: #d9dce0; }
 .media-resize-handle.ui-button, .media-resize-handle.ui-button:hover { background: rgba(27, 28, 31, .72); color: #d9dce0; }
-.asset-item.ui-button { display: grid; justify-content: normal; text-align: left; }
+.asset-item.ui-button { display: grid; min-height: 52px; justify-content: normal; padding: 6px 8px; text-align: left; }
+.asset-group-items .asset-item.ui-button { padding-left: 36px; }
 .asset-group-row.ui-button, .model-select-trigger.ui-button, .image-settings-trigger.ui-button { justify-content: flex-start; text-align: left; }
 .model-menu > .ui-button, .prompt-reference-menu > .ui-button, .node-create-menu > .ui-button, .context-menu > .ui-button { width: 100%; justify-content: flex-start; text-align: left; }
 .ui-button--block { width: 100%; }
