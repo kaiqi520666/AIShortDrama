@@ -3,6 +3,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import { ArrowUp, ChevronDown, FileText, Image, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
 import { createImageGeneration, getGenerationTask } from '../../api/generations'
+import { getEffectivePrompt, maxGenerationPromptLength } from '../../config/generationPrompt'
 import { buildImageRequest, imageModels, normalizeImageSettings } from '../../config/imageModels'
 import { mediaTypes } from '../../config/mediaTypes'
 import { getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
@@ -30,6 +31,10 @@ const running = ref(false)
 let pollTimer = null
 const references = computed(() => store.incomingNodes(props.nodeId))
 const imageReferences = computed(() => references.value.filter((node) => node.type === 'image' && node.data.asset))
+const effectivePrompt = computed(() => ['image', 'video'].includes(props.type)
+  ? getEffectivePrompt(props.data, references.value)
+  : props.data.prompt?.trim() || '')
+const promptError = computed(() => effectivePrompt.value.length > maxGenerationPromptLength ? `提示词不能超过 ${maxGenerationPromptLength} 个字符` : '')
 const promptParts = computed(() => props.data.promptParts ?? (props.data.prompt ? [{ type: 'text', value: props.data.prompt }] : []))
 const selectedImageSettings = computed(() => normalizeImageSettings(props.data))
 const selectedImageModel = computed(() => selectedImageSettings.value.model)
@@ -46,7 +51,7 @@ const referenceError = computed(() => {
     ? `当前模型最多支持 ${selectedImageModel.value.maxReferences} 张参考图片`
     : ''
 })
-const panelMessage = computed(() => notice.value || referenceError.value)
+const panelMessage = computed(() => notice.value || referenceError.value || promptError.value)
 const settingLabel = computed(() => {
   if (props.type === 'image') return `${selectedAspectRatio.value} · ${selectedResolution.value}`
   if (props.type === 'video') return `${selectedAspectRatio.value === 'adaptive' ? '自适应' : selectedAspectRatio.value} · ${selectedResolution.value} · ${selectedDuration.value === 0 ? '自动' : `${selectedDuration.value}s`}`
@@ -57,7 +62,7 @@ const displayReferences = computed(() => {
   return references.value.map((node) => ({ key: node.id, node, number: ++counts[node.type], label: `${mediaTypes[node.type].label}${counts[node.type]}` }))
 })
 const canSubmit = computed(() => {
-  if (running.value || !props.data.prompt?.trim() || referenceError.value) return false
+  if (running.value || !effectivePrompt.value || referenceError.value || promptError.value) return false
   if (props.type !== 'text') return true
   return references.value.some((node) => node.type === 'text' ? node.data.content?.trim() : node.data.asset)
 })
@@ -89,7 +94,7 @@ async function submitTask() {
   try {
     const result = await createImageGeneration({
       node_id: nodeId,
-      ...buildImageRequest(props.data, imageReferences.value),
+      ...buildImageRequest({ ...props.data, prompt: effectivePrompt.value }, imageReferences.value),
     })
     if (result.code !== 0) throw new Error(result.message)
     updateNodeData(nodeId, {
