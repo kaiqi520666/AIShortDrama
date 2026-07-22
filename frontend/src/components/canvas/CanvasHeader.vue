@@ -1,11 +1,12 @@
 <script setup>
-import { ArrowLeft, Clapperboard, GitBranch, LoaderCircle } from 'lucide-vue-next'
+import { ArrowLeft, Clapperboard, GitBranch, LoaderCircle, LogOut } from 'lucide-vue-next'
 
 defineProps({
   workspaceName: { type: String, required: true },
   saveStatus: { type: String, required: true },
+  username: { type: String, required: true },
 })
-const emit = defineEmits(['back'])
+const emit = defineEmits(['back', 'logout'])
 </script>
 
 <template>
@@ -21,9 +22,13 @@ const emit = defineEmits(['back'])
     <div class="view-switch" role="tablist" aria-label="项目视图">
       <span class="active"><GitBranch :size="14" />工作流</span>
     </div>
-    <div class="save-state" :class="saveStatus">
-      <LoaderCircle v-if="saveStatus === 'saving'" :size="13" />
-      {{ saveStatus === 'saving' ? '保存中' : saveStatus === 'failed' ? '保存失败' : '已保存' }}
+    <div class="canvas-account">
+      <div class="save-state" :class="saveStatus">
+        <LoaderCircle v-if="saveStatus === 'saving'" :size="13" />
+        {{ saveStatus === 'saving' ? '保存中' : saveStatus === 'failed' ? '保存失败' : '已保存' }}
+      </div>
+      <span>{{ username }}</span>
+      <button title="退出登录" @click="emit('logout')"><LogOut :size="15" /></button>
     </div>
   </header>
 </template>

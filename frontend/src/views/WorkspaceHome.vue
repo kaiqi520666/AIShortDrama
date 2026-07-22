@@ -1,9 +1,12 @@
 <script setup>
 import { onMounted, ref } from 'vue'
-import { Clapperboard, Copy, FolderOpen, Pencil, Plus, Trash2 } from 'lucide-vue-next'
+import { Clapperboard, Copy, FolderOpen, LogOut, Pencil, Plus, Trash2 } from 'lucide-vue-next'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../stores/auth'
 import { useWorkspaceStore } from '../stores/workspaces'
 
-const emit = defineEmits(['open'])
+const router = useRouter()
+const authStore = useAuthStore()
 const store = useWorkspaceStore()
 const editingId = ref(null)
 const notice = ref('')
@@ -18,7 +21,13 @@ async function run(action) {
 }
 
 async function create() {
-  await run(async () => emit('open', (await store.create()).id))
+  await run(async () => router.push(`/workspaces/${(await store.create()).id}`))
+}
+
+async function signOut() {
+  await authStore.logout()
+  store.$reset()
+  await router.replace('/')
 }
 
 async function rename(workspace, event) {
@@ -34,7 +43,11 @@ onMounted(() => store.load())
   <main class="workspace-home">
     <header class="workspace-home-header">
       <div class="workspace-brand"><Clapperboard :size="20" /><strong>Mooncut</strong></div>
-      <button class="workspace-create" @click="create"><Plus :size="17" />新建工作台</button>
+      <div class="workspace-account">
+        <span>{{ authStore.user?.username }}</span>
+        <button title="退出登录" @click="signOut"><LogOut :size="16" /></button>
+        <button class="workspace-create" @click="create"><Plus :size="17" />新建工作台</button>
+      </div>
     </header>
 
     <section class="workspace-content">
@@ -46,8 +59,8 @@ onMounted(() => store.load())
       <div v-if="store.loading" class="workspace-empty">加载中…</div>
       <div v-else-if="!store.items.length" class="workspace-empty">暂无工作台</div>
       <div v-else class="workspace-grid">
-        <article v-for="workspace in store.items" :key="workspace.id" class="workspace-card" @dblclick="emit('open', workspace.id)">
-          <button class="workspace-open-area" @click="emit('open', workspace.id)">
+        <article v-for="workspace in store.items" :key="workspace.id" class="workspace-card" @dblclick="router.push(`/workspaces/${workspace.id}`)">
+          <button class="workspace-open-area" @click="router.push(`/workspaces/${workspace.id}`)">
             <FolderOpen :size="28" />
             <span v-if="editingId !== workspace.id">{{ workspace.name }}</span>
           </button>

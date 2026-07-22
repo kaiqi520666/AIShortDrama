@@ -12,9 +12,11 @@ import GenerationPanel from '../components/canvas/GenerationPanel.vue'
 import MediaNode from '../components/canvas/MediaNode.vue'
 import NodeCreateMenu from '../components/canvas/NodeCreateMenu.vue'
 import { mediaTypes } from '../config/mediaTypes'
+import { useAuthStore } from '../stores/auth'
 import { useCanvasStore } from '../stores/canvas'
 
 const store = useCanvasStore()
+const authStore = useAuthStore()
 const props = defineProps({ workspace: { type: Object, required: true } })
 const emit = defineEmits(['back'])
 const { nodes, edges, groups, saveStatus } = storeToRefs(store)
@@ -254,6 +256,14 @@ async function goHome() {
   } catch {}
 }
 
+async function signOut() {
+  window.clearTimeout(saveTimer)
+  await store.saveCanvas(viewport.value).catch(() => {})
+  await authStore.logout()
+  store.$reset()
+  emit('back')
+}
+
 watch(() => store.canvasPayload(), scheduleSave, { deep: true })
 onMounted(async () => {
   await store.loadWorkspace(props.workspace)
@@ -265,7 +275,7 @@ onBeforeUnmount(() => window.clearTimeout(saveTimer))
 
 <template>
   <main class="canvas-page" :class="{ 'assets-open': assetsVisible, 'multi-selected': selectedNodes.length > 1, [`cursor-${pointerMode}`]: pointerMode }" @pointerdown="contextMenu = null" @pointerdown.capture="handleCanvasPointerDown" @pointerup.window="resetPointerMode" @pointercancel.window="resetPointerMode">
-    <CanvasHeader :workspace-name="workspace.name" :save-status="saveStatus" @back="goHome" />
+    <CanvasHeader :workspace-name="workspace.name" :save-status="saveStatus" :username="authStore.user.username" @back="goHome" @logout="signOut" />
 
     <VueFlow
       v-model:nodes="nodes"

@@ -13,7 +13,10 @@ class Settings(BaseSettings):
     app_env: str = "development"
     database_url: str
     redis_url: str
+    secret_key: str
     redis_prefix: str = "aisd"
+    access_token_expire_minutes: int = 30
+    refresh_token_expire_days: int = 7
     oss_access_key_id: str = ""
     oss_access_key_secret: str = ""
     oss_endpoint: str = ""
@@ -28,6 +31,10 @@ class Settings(BaseSettings):
     @property
     def redis_queue_name(self) -> str:
         return f"{self.redis_prefix}:queue"
+
+    @property
+    def secure_cookies(self) -> bool:
+        return self.app_env == "production"
 
 
 @lru_cache
