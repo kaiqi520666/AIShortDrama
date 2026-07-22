@@ -1,4 +1,5 @@
 import uuid
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Query
@@ -8,9 +9,20 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.identity import get_current_user_id
 from app.models import Asset
-from app.schemas.response import success
+from app.schemas.asset import AssetUpdate
+from app.schemas.response import fail, success
 
 router = APIRouter()
+
+
+async def owned_asset(db: AsyncSession, asset_id: uuid.UUID, user_id: uuid.UUID) -> Asset | None:
+    return await db.scalar(
+        select(Asset).where(
+            Asset.id == asset_id,
+            Asset.user_id == user_id,
+            Asset.deleted_at.is_(None),
+        )
+    )
 
 
 def asset_payload(asset: Asset) -> dict[str, Any]:
@@ -50,3 +62,33 @@ async def list_assets(
         query = query.where(Asset.workspace_id == workspace_id)
     assets = (await db.scalars(query.order_by(Asset.created_at.desc()))).all()
     return success([asset_payload(item) for item in assets])
+
+
+@router.patch("/{asset_id}")
+async def update_asset(
+    asset_id: uuid.UUID,
+    payload: AssetUpdate,
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    asset = await owned_asset(db, asset_id, user_id)
+    if not asset:
+        return fail("资产不存在")
+    asset.name = payload.name
+    await db.commit()
+    await db.refresh(asset)
+    return success(asset_payload(asset))
+
+
+@router.delete("/{asset_id}")
+async def delete_asset(
+    asset_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    asset = await owned_asset(db, asset_id, user_id)
+    if not asset:
+        return fail("资产不存在")
+    asset.deleted_at = datetime.now(UTC)
+    await db.commit()
+    return success({"id": str(asset.id)})

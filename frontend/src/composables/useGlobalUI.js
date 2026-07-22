@@ -2,8 +2,10 @@ import { readonly, ref } from 'vue'
 
 const toasts = ref([])
 const confirmState = ref(null)
+const promptState = ref(null)
 const toastTimers = new Map()
 let confirmResolver = null
+let promptResolver = null
 
 function removeToast(id) {
   window.clearTimeout(toastTimers.get(id))
@@ -37,6 +39,27 @@ function confirm(options) {
   return new Promise((resolve) => { confirmResolver = resolve })
 }
 
+function settlePrompt(result) {
+  promptResolver?.(result)
+  promptResolver = null
+  promptState.value = null
+}
+
+function prompt(options) {
+  if (promptResolver) settlePrompt(null)
+  promptState.value = {
+    title: '输入内容',
+    message: '',
+    value: '',
+    placeholder: '',
+    confirmText: '保存',
+    cancelText: '取消',
+    maxLength: 100,
+    ...options,
+  }
+  return new Promise((resolve) => { promptResolver = resolve })
+}
+
 export function useGlobalToast() {
   return {
     toasts: readonly(toasts),
@@ -55,5 +78,14 @@ export function useGlobalConfirm() {
     confirm,
     acceptConfirm: () => settleConfirm(true),
     cancelConfirm: () => settleConfirm(false),
+  }
+}
+
+export function useGlobalPrompt() {
+  return {
+    promptState: readonly(promptState),
+    prompt,
+    acceptPrompt: settlePrompt,
+    cancelPrompt: () => settlePrompt(null),
   }
 }

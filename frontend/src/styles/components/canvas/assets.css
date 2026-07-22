@@ -126,11 +126,27 @@
 .asset-library-list {
   height: calc(100% - 36px);
 }
-.asset-library-list .asset-item {
+.asset-library-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 4px;
+}
+.asset-library-row .asset-item {
   grid-template-columns: 44px minmax(0, 1fr) 18px;
 }
-.asset-library-list .asset-item > svg {
+.asset-library-row .asset-item > svg {
   color: #777b83;
+}
+.asset-library-actions {
+  display: flex;
+  gap: 2px;
+}
+.asset-library-actions .ui-button {
+  width: 26px;
+  min-height: 30px;
+  padding: 0;
+  color: #68727b;
 }
 .asset-item {
   display: grid;

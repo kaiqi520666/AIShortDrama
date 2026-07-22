@@ -112,6 +112,15 @@
   gap: 8px;
   margin-top: 22px;
 }
+.global-prompt-dialog form {
+  margin-top: 18px;
+}
+.global-prompt-dialog .ui-input {
+  height: 42px;
+}
+.global-prompt-dialog footer {
+  margin-top: 18px;
+}
 .global-confirm-enter-active,
 .global-confirm-leave-active {
   transition: opacity 0.16s ease;

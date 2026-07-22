@@ -4,10 +4,9 @@ import { Copy, LogOut, Pencil, Play, Plus, Trash2, UserRound } from 'lucide-vue-
 import { useRouter } from 'vue-router'
 import AppBrand from '../components/ui/AppBrand.vue'
 import AppButton from '../components/ui/AppButton.vue'
-import AppInput from '../components/ui/AppInput.vue'
 import AppSelect from '../components/ui/AppSelect.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
-import { useGlobalConfirm, useGlobalToast } from '../composables/useGlobalUI'
+import { useGlobalConfirm, useGlobalPrompt, useGlobalToast } from '../composables/useGlobalUI'
 import { useAuthStore } from '../stores/auth'
 import { useWorkspaceStore } from '../stores/workspaces'
 
@@ -16,7 +15,7 @@ const authStore = useAuthStore()
 const store = useWorkspaceStore()
 const toast = useGlobalToast()
 const { confirm } = useGlobalConfirm()
-const editingId = ref(null)
+const { prompt } = useGlobalPrompt()
 const sortBy = ref('updated')
 const sortOptions = [
   { value: 'updated', label: '最近更新' },
@@ -54,9 +53,14 @@ async function signOut() {
   await router.replace('/')
 }
 
-async function rename(workspace, event) {
-  const name = event.target.value.trim()
-  editingId.value = null
+async function rename(workspace) {
+  const name = await prompt({
+    title: '重命名项目',
+    message: '输入新的项目名称',
+    value: workspace.name,
+    placeholder: '项目名称',
+    maxLength: 100,
+  })
   if (name && name !== workspace.name) await run(() => store.rename(workspace.id, name), '项目名称已更新')
 }
 
@@ -103,22 +107,12 @@ onMounted(() => store.load())
         <article v-for="workspace in displayedItems" :key="workspace.id" class="workspace-card" @dblclick="router.push(`/workspaces/${workspace.id}`)">
           <AppButton class="workspace-open-area" @click="router.push(`/workspaces/${workspace.id}`)">
             <span class="workspace-cover" aria-hidden="true"><b>{{ workspaceNumbers.get(workspace.id) }}</b><i></i><Play :size="17" fill="currentColor" /></span>
-            <span v-if="editingId !== workspace.id" class="workspace-card-name">{{ workspace.name }}</span>
+            <span class="workspace-card-name">{{ workspace.name }}</span>
             <small>WORKFLOW CANVAS</small>
           </AppButton>
-          <AppInput
-            v-if="editingId === workspace.id"
-            class="workspace-name-input"
-            :model-value="workspace.name"
-            autofocus
-            @click.stop
-            @blur="rename(workspace, $event)"
-            @keydown.enter="$event.target.blur()"
-            @keydown.esc="editingId = null"
-          />
           <footer>
             <time>{{ new Date(workspace.created_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</time>
-            <AppButton icon-only size="sm" title="重命名" @click="editingId = workspace.id"><Pencil :size="14" /></AppButton>
+            <AppButton icon-only size="sm" title="重命名" @click="rename(workspace)"><Pencil :size="14" /></AppButton>
             <AppButton icon-only size="sm" title="复制" @click="duplicate(workspace)"><Copy :size="14" /></AppButton>
             <AppButton icon-only size="sm" title="删除" variant="danger" @click="remove(workspace)"><Trash2 :size="14" /></AppButton>
           </footer>

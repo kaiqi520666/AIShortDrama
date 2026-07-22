@@ -1,5 +1,5 @@
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { useGlobalConfirm, useGlobalToast } from './useGlobalUI'
+import { useGlobalConfirm, useGlobalPrompt, useGlobalToast } from './useGlobalUI'
 
 beforeAll(() => {
   if (!globalThis.window) globalThis.window = globalThis
@@ -26,5 +26,15 @@ describe('global UI', () => {
     dialog.acceptConfirm()
     await expect(result).resolves.toBe(true)
     expect(dialog.confirmState.value).toBeNull()
+  })
+
+  it('resolves prompt values', async () => {
+    const dialog = useGlobalPrompt()
+    const result = dialog.prompt({ title: '重命名项目', value: '旧名称' })
+
+    expect(dialog.promptState.value.value).toBe('旧名称')
+    dialog.acceptPrompt('新名称')
+    await expect(result).resolves.toBe('新名称')
+    expect(dialog.promptState.value).toBeNull()
   })
 })

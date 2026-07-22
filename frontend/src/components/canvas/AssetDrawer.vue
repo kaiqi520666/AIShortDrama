@@ -1,7 +1,8 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ChevronDown, ChevronRight, FileText, Folder, Image, LayoutGrid, Library, Music2, Plus, RefreshCw, Video, Workflow, X } from 'lucide-vue-next'
-import { listAssets } from '../../api/assets'
+import { ChevronDown, ChevronRight, FileText, Folder, Image, LayoutGrid, Library, Music2, Pencil, Plus, RefreshCw, Trash2, Video, Workflow, X } from 'lucide-vue-next'
+import { deleteAsset, listAssets, renameAsset } from '../../api/assets'
+import { useGlobalConfirm, useGlobalPrompt, useGlobalToast } from '../../composables/useGlobalUI'
 import AppButton from '../ui/AppButton.vue'
 import AppInput from '../ui/AppInput.vue'
 import AppTabs from '../ui/AppTabs.vue'
@@ -11,6 +12,7 @@ const props = defineProps({
   nodes: { type: Array, required: true },
   groups: { type: Array, required: true },
   activeGroupId: { type: String, default: null },
+  workspaceId: { type: String, required: true },
 })
 const emit = defineEmits(['focus', 'focus-group', 'rename-group', 'add', 'close'])
 const icons = { text: FileText, image: Image, video: Video, audio: Music2 }
@@ -28,6 +30,9 @@ const loadingAssets = ref(false)
 const assetError = ref('')
 const collapsedGroupIds = ref([])
 const editingGroupId = ref(null)
+const toast = useGlobalToast()
+const { confirm } = useGlobalConfirm()
+const { prompt } = useGlobalPrompt()
 const sortedNodes = computed(() => props.nodes.toSorted((a, b) => a.position.x - b.position.x || a.position.y - b.position.y))
 const ungroupedNodes = computed(() => sortedNodes.value.filter((node) => !props.groups.some((group) => group.nodeIds.includes(node.id))))
 const groupItems = computed(() => props.groups.map((group) => ({
@@ -49,13 +54,50 @@ async function loadAssetItems() {
   loadingAssets.value = true
   assetError.value = ''
   try {
-    const result = await listAssets(assetType.value)
+    const result = await listAssets(props.workspaceId, assetType.value)
     if (result.code !== 0) throw new Error(result.message)
     assets.value = result.data
   } catch (error) {
     assetError.value = error.response?.data?.message || error.message || '资产加载失败'
   } finally {
     loadingAssets.value = false
+  }
+}
+
+async function renameAssetItem(asset) {
+  const name = await prompt({
+    title: '重命名资产',
+    message: '输入新的资产名称',
+    value: asset.name,
+    placeholder: '资产名称',
+    maxLength: 255,
+  })
+  if (!name || name === asset.name) return
+  try {
+    const result = await renameAsset(asset.id, name)
+    if (result.code !== 0) throw new Error(result.message)
+    Object.assign(asset, result.data)
+    toast.success('资产名称已更新')
+  } catch (error) {
+    toast.error(error.response?.data?.message || error.message || '资产重命名失败')
+  }
+}
+
+async function deleteAssetItem(asset) {
+  const accepted = await confirm({
+    title: '删除资产',
+    message: `确定删除“${asset.name}”吗？画布中已使用的节点不会被删除。`,
+    confirmText: '删除',
+    tone: 'danger',
+  })
+  if (!accepted) return
+  try {
+    const result = await deleteAsset(asset.id)
+    if (result.code !== 0) throw new Error(result.message)
+    assets.value = assets.value.filter((item) => item.id !== asset.id)
+    toast.success('资产已删除')
+  } catch (error) {
+    toast.error(error.response?.data?.message || error.message || '资产删除失败')
   }
 }
 
@@ -147,14 +189,20 @@ onMounted(loadAssetItems)
       <EmptyState v-else-if="assetError" compact title="资产加载失败" :description="assetError" tone="error" />
       <EmptyState v-else-if="!assets.length" compact title="暂无资产" description="上传或生成的媒体会显示在这里" />
       <div v-else class="asset-list asset-library-list">
-        <AppButton v-for="asset in assets" :key="asset.id" class="asset-item" :title="`添加 ${asset.name}`" @click="emit('add', asset)">
-          <span class="asset-preview">
-            <img v-if="asset.media_type === 'image'" :src="asset.url" :alt="asset.name" />
-            <component v-else :is="icons[asset.media_type]" :size="20" />
+        <div v-for="asset in assets" :key="asset.id" class="asset-library-row">
+          <AppButton class="asset-item" :title="`添加 ${asset.name}`" @click="emit('add', asset)">
+            <span class="asset-preview">
+              <img v-if="asset.media_type === 'image'" :src="asset.url" :alt="asset.name" />
+              <component v-else :is="icons[asset.media_type]" :size="20" />
+            </span>
+            <span>{{ asset.name }}</span>
+            <Plus :size="14" />
+          </AppButton>
+          <span class="asset-library-actions">
+            <AppButton icon-only size="sm" :title="`重命名 ${asset.name}`" @click="renameAssetItem(asset)"><Pencil :size="13" /></AppButton>
+            <AppButton icon-only size="sm" variant="danger" :title="`删除 ${asset.name}`" @click="deleteAssetItem(asset)"><Trash2 :size="13" /></AppButton>
           </span>
-          <span>{{ asset.name }}</span>
-          <Plus :size="14" />
-        </AppButton>
+        </div>
       </div>
     </div>
   </aside>
