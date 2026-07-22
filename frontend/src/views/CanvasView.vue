@@ -20,13 +20,14 @@ import AppTooltip from '../components/ui/AppTooltip.vue'
 import { uploadMedia } from '../api/uploads'
 import { canConnect } from '../config/connectionRules'
 import { mediaTypes } from '../config/mediaTypes'
-import { useGlobalToast } from '../composables/useGlobalUI'
+import { useGlobalConfirm, useGlobalToast } from '../composables/useGlobalUI'
 import { useAuthStore } from '../stores/auth'
 import { useCanvasStore } from '../stores/canvas'
 
 const store = useCanvasStore()
 const authStore = useAuthStore()
 const toast = useGlobalToast()
+const { confirm } = useGlobalConfirm()
 const props = defineProps({ workspace: { type: Object, required: true } })
 const emit = defineEmits(['back', 'ready'])
 const { nodes, edges, groups, saveStatus } = storeToRefs(store)
@@ -635,6 +636,13 @@ async function goHome() {
 }
 
 async function signOut() {
+  const accepted = await confirm({
+    title: '退出登录',
+    message: '确定退出当前账号吗？',
+    confirmText: '退出',
+    tone: 'danger',
+  })
+  if (!accepted) return
   window.clearTimeout(saveTimer)
   await store.saveCanvas(viewport.value).catch(() => {})
   await authStore.logout()
