@@ -182,9 +182,9 @@ onBeforeUnmount(() => {
     <Handle v-if="acceptsInput" id="target" type="target" :position="Position.Left" />
 
     <div class="node-body" :style="bodyStyle">
-      <div v-if="data.status === 'generating' && type !== 'text'" class="generating-state">
+      <div v-if="['generating', 'uploading'].includes(data.status) && type !== 'text'" class="generating-state">
         <span></span>
-        <p>生成中 {{ data.generationProgress || 0 }}%</p>
+        <p>{{ data.status === 'uploading' ? '上传中' : `生成中 ${data.generationProgress || 0}%` }}</p>
       </div>
 
       <div v-else-if="data.status === 'failed' && type !== 'text'" class="generation-failed-state">

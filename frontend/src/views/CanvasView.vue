@@ -15,12 +15,15 @@ import AppButton from '../components/ui/AppButton.vue'
 import AppInput from '../components/ui/AppInput.vue'
 import AppMenu from '../components/ui/AppMenu.vue'
 import AppTooltip from '../components/ui/AppTooltip.vue'
+import { uploadMedia } from '../api/uploads'
 import { mediaTypes } from '../config/mediaTypes'
+import { useGlobalToast } from '../composables/useGlobalUI'
 import { useAuthStore } from '../stores/auth'
 import { useCanvasStore } from '../stores/canvas'
 
 const store = useCanvasStore()
 const authStore = useAuthStore()
+const toast = useGlobalToast()
 const props = defineProps({ workspace: { type: Object, required: true } })
 const emit = defineEmits(['back', 'ready'])
 const { nodes, edges, groups, saveStatus } = storeToRefs(store)
@@ -36,6 +39,10 @@ const pointerMode = ref(null)
 const flowMounted = ref(false)
 let saveTimer = null
 let readyEmitted = false
+let pastePoint = null
+
+const pastedImageTypes = ['image/jpeg', 'image/png', 'image/webp']
+const pastedImageMaxSize = 20 * 1024 * 1024
 
 const minimapVisible = ref(false)
 const assetsVisible = ref(false)
@@ -277,6 +284,63 @@ function addAsset(asset) {
   store.addAssetNode(asset, project({ x: centerX, y: window.innerHeight / 2 }))
 }
 
+function trackPastePoint(event) {
+  if (event.target.closest('.creative-flow') && !event.target.closest('.vue-flow__node, .generation-panel, .node-create-menu')) {
+    pastePoint = { x: event.clientX, y: event.clientY }
+  }
+}
+
+function pasteText(text, position) {
+  const id = store.addNode('text', position)
+  const node = nodes.value.find((item) => item.id === id)
+  node.data = { ...node.data, textMode: 'manual', content: text, status: 'ready', pasted: true }
+}
+
+async function pasteImage(file, position) {
+  if (!pastedImageTypes.includes(file.type)) return toast.warning('仅支持粘贴 JPG、PNG 或 WebP 图片')
+  if (file.size > pastedImageMaxSize) return toast.warning('粘贴图片不能超过 20MB')
+
+  const id = store.addNode('image', position)
+  const node = nodes.value.find((item) => item.id === id)
+  node.data = { ...node.data, status: 'uploading', assetSource: 'clipboard', pasted: true }
+  try {
+    const bitmap = await createImageBitmap(file)
+    const metadata = { width: bitmap.width, height: bitmap.height }
+    bitmap.close()
+    const result = await uploadMedia('image', file, { workspaceId: store.workspaceId, nodeId: id, ...metadata })
+    if (result.code !== 0) throw new Error(result.message)
+    node.data = {
+      ...node.data,
+      asset: result.data.url,
+      assetId: result.data.id,
+      status: 'ready',
+      sourceWidth: metadata.width,
+      sourceHeight: metadata.height,
+      sourceAspectRatio: metadata.width / metadata.height,
+    }
+    toast.success('图片已粘贴到画布')
+  } catch (error) {
+    store.deleteNode(id)
+    toast.error(error.response?.data?.message || error.message || '图片粘贴失败')
+  }
+}
+
+function handlePaste(event) {
+  const editable = event.target instanceof Element && event.target.closest('input, textarea, [contenteditable]:not([contenteditable="false"])')
+  if (editable || !pastePoint) return
+
+  const imageItem = Array.from(event.clipboardData?.items || []).find((item) => item.kind === 'file' && item.type.startsWith('image/'))
+  const text = event.clipboardData?.getData('text/plain')?.trim()
+  if (!imageItem && !text) return
+
+  event.preventDefault()
+  const position = project(pastePoint)
+  const imageFile = imageItem?.getAsFile()
+  if (imageItem && !imageFile) return toast.error('无法读取剪贴板图片')
+  if (imageFile) pasteImage(imageFile, position)
+  else pasteText(text, position)
+}
+
 async function goHome() {
   window.clearTimeout(saveTimer)
   try {
@@ -295,16 +359,20 @@ async function signOut() {
 
 watch(() => store.canvasPayload(), scheduleSave, { deep: true })
 onMounted(async () => {
+  window.addEventListener('paste', handlePaste)
   await store.loadWorkspace(props.workspace)
   flowMounted.value = true
   await nextTick()
   if (!nodes.value.length) await finishCanvasSetup()
 })
-onBeforeUnmount(() => window.clearTimeout(saveTimer))
+onBeforeUnmount(() => {
+  window.clearTimeout(saveTimer)
+  window.removeEventListener('paste', handlePaste)
+})
 </script>
 
 <template>
-  <main class="canvas-page" :class="{ 'assets-open': assetsVisible, 'multi-selected': selectedNodes.length > 1, [`cursor-${pointerMode}`]: pointerMode }" @pointerdown="contextMenu = null" @pointerdown.capture="handleCanvasPointerDown" @pointerup.window="resetPointerMode" @pointercancel.window="resetPointerMode">
+  <main class="canvas-page" :class="{ 'assets-open': assetsVisible, 'multi-selected': selectedNodes.length > 1, [`cursor-${pointerMode}`]: pointerMode }" @pointermove="trackPastePoint" @pointerdown="contextMenu = null" @pointerdown.capture="handleCanvasPointerDown" @pointerup.window="resetPointerMode" @pointercancel.window="resetPointerMode">
     <CanvasHeader :workspace-name="workspace.name" :save-status="saveStatus" :username="authStore.user?.username || '访客'" @back="goHome" @logout="signOut" />
 
     <VueFlow
@@ -347,7 +415,7 @@ onBeforeUnmount(() => window.clearTimeout(saveTimer))
     <div v-if="selectedNodes.length > 1 && !selectedGroup" class="selection-frame active" :style="selectionFrameStyle"></div>
 
     <GenerationPanel
-      v-if="selectedNode"
+      v-if="selectedNode && !selectedNode.data.pasted"
       :node-id="selectedNode.id"
       :type="selectedNode.type"
       :data="selectedNode.data"
