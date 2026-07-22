@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { MiniMap } from '@vue-flow/minimap'
-import { Copy, Group, Library, Maximize2, Plus, Scan, Trash2, Ungroup } from 'lucide-vue-next'
+import { CircleHelp, Copy, Group, Keyboard, Library, Maximize2, Plus, Scan, Trash2, Ungroup } from 'lucide-vue-next'
 import AssetDrawer from '../components/canvas/AssetDrawer.vue'
 import CanvasHeader from '../components/canvas/CanvasHeader.vue'
 import FlowEdge from '../components/canvas/FlowEdge.vue'
@@ -206,7 +206,7 @@ function startGroupDrag(event, group) {
 }
 
 function handleCanvasPointerDown(event) {
-  if (event.target.closest('.nodrag, .selection-toolbar, .asset-drawer, .canvas-side-tools, .canvas-add-button, .node-create-menu, .generation-panel')) return
+  if (event.target.closest('.nodrag, .selection-toolbar, .asset-drawer, .canvas-side-tools, .canvas-bottom-toolbar, .node-create-menu, .generation-panel')) return
   if (event.button === 1) {
     pointerMode.value = 'panning'
     return
@@ -518,7 +518,18 @@ onBeforeUnmount(() => {
       <AppButton v-if="selectedGroup" size="sm" title="解组" @click="ungroupSelected"><Ungroup :size="15" />解组</AppButton>
     </div>
 
-    <AppButton class="canvas-add-button" icon-only variant="primary" title="添加节点" @click="openGlobalMenu"><Plus :size="23" /></AppButton>
+    <nav class="canvas-bottom-toolbar" aria-label="画布快捷工具">
+      <AppTooltip text="新增节点">
+        <AppButton class="canvas-add-button" icon-only variant="primary" aria-label="新增节点" @click="openGlobalMenu"><Plus :size="21" /></AppButton>
+      </AppTooltip>
+      <span class="canvas-bottom-divider"></span>
+      <AppTooltip text="快捷键（即将上线）">
+        <AppButton class="canvas-bottom-secondary" icon-only aria-label="快捷键（即将上线）"><Keyboard :size="18" /></AppButton>
+      </AppTooltip>
+      <AppTooltip text="教程（即将上线）">
+        <AppButton class="canvas-bottom-secondary" icon-only aria-label="教程（即将上线）"><CircleHelp :size="18" /></AppButton>
+      </AppTooltip>
+    </nav>
 
     <NodeCreateMenu
       v-if="createMenu"

@@ -253,8 +253,13 @@ a { color: inherit; text-decoration: none; }
 .image-ratio-icon { display: block; border: 2px solid currentColor; border-radius: 3px; }
 .image-ratio-grid strong { font-size: 12px; font-weight: 500; }
 
-.canvas-add-button { position: fixed; z-index: 30; bottom: 18px; left: 50%; display: grid; place-items: center; width: 50px; height: 50px; border: 1px solid #34363b; border-radius: 9px; background: #e5e8eb; color: #222428; box-shadow: 0 16px 42px rgba(0,0,0,.34); cursor: pointer; transform: translateX(-50%); transition: left .2s ease; }
-.assets-open .canvas-add-button { left: calc(50% + 146px); }
+.canvas-bottom-toolbar { position: fixed; z-index: 30; bottom: 18px; left: 50%; display: flex; height: 52px; align-items: center; gap: 3px; padding: 5px; border: 1px solid #343c42; border-radius: 8px; background: rgba(17,20,23,.94); box-shadow: 0 16px 42px rgba(0,0,0,.34); backdrop-filter: blur(14px); transform: translateX(-50%); transition: left .2s ease; }
+.assets-open .canvas-bottom-toolbar { left: calc(50% + 146px); }
+.canvas-add-button.ui-button { width: 40px; height: 40px; min-height: 40px; border-color: #b9f2fb; border-radius: 6px; background: var(--accent); color: var(--accent-ink); box-shadow: none; }
+.canvas-add-button.ui-button:hover { border-color: #d7f8fd; background: #b9f2fb; color: var(--accent-ink); }
+.canvas-bottom-divider { width: 1px; height: 24px; margin: 0 3px; background: #343c42; }
+.canvas-bottom-secondary.ui-button { width: 36px; height: 36px; min-height: 36px; padding: 0; border-color: transparent; border-radius: 6px; color: #929ca4; cursor: default; }
+.canvas-bottom-secondary.ui-button:hover { background: #252c31; color: #e4e9ec; }
 .canvas-side-tools { position: fixed; z-index: 25; bottom: 22px; left: 22px; display: flex; align-items: center; gap: 4px; }
 .canvas-side-tools button { display: grid; place-items: center; width: 32px; height: 32px; border: 0; border-radius: 6px; background: transparent; color: #7f838b; cursor: pointer; }
 .canvas-side-tools button:hover { color: #e1e3e6; background: #282a2e; }
@@ -344,7 +349,7 @@ a { color: inherit; text-decoration: none; }
   .project-control { height: 42px; padding: 4px; }
   .canvas-user-button.ui-button, .canvas-logout-button.ui-button, .workspace-user-button.ui-button, .workspace-logout-button.ui-button { width: 32px; padding: 0; }
   .save-state { width: 32px; justify-content: center; padding: 0; }
-  .canvas-add-button { bottom: 12px; }
+  .canvas-bottom-toolbar { bottom: 12px; }
 }
 
 /* Shared controls */
@@ -574,9 +579,6 @@ a { color: inherit; text-decoration: none; }
 .node-create-menu .node-option--audio .menu-icon { color: #a8dd72; }
 .canvas-side-tools { bottom: 24px; padding: 4px; border: 1px solid #2d343a; border-radius: 8px; background: rgba(17,20,23,.88); backdrop-filter: blur(12px); }
 .canvas-side-tools span { margin-right: 6px; }
-.canvas-add-button { right: auto; bottom: 24px; left: 50%; width: 50px; height: 50px; min-height: 50px; border-color: #b9f2fb; border-radius: 8px; background: var(--accent); color: var(--accent-ink); box-shadow: 0 16px 44px rgba(0,0,0,.32); transform: translateX(-50%); }
-.canvas-add-button:hover { background: #b9f2fb; color: var(--accent-ink); }
-.assets-open .canvas-add-button { right: auto; left: calc(50% + 146px); }
 .selection-frame.active { border-color: var(--accent-strong); background: rgba(82,204,231,.035); }
 .selection-toolbar { border-color: #3b454d; background: #171b1e; }
 .vue-flow__minimap { border-color: #30383f; background: #111416; }
@@ -599,7 +601,7 @@ a { color: inherit; text-decoration: none; }
   .auth-form-shell { padding: 26px 22px; }
   .generation-panel { width: calc(100vw - 24px); }
   .canvas-side-tools { bottom: 14px; left: 12px; }
-  .canvas-add-button { right: auto; bottom: 14px; }
+  .canvas-bottom-toolbar { bottom: 14px; }
 }
 
 @media (max-width: 480px) {
