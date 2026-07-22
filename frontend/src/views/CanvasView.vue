@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { MiniMap } from '@vue-flow/minimap'
-import { ChevronRight, CircleHelp, Clipboard, Copy, Group, Image as ImageIcon, Keyboard, Library, Maximize2, Plus, Redo2, Scan, Trash2, Undo2, Ungroup, Video } from 'lucide-vue-next'
+import { ChevronRight, CircleHelp, Clipboard, Copy, Group, Hand, Image as ImageIcon, Keyboard, Library, Maximize2, MousePointer2, Plus, Redo2, Scan, Trash2, Undo2, Ungroup, Video } from 'lucide-vue-next'
 import AssetDrawer from '../components/canvas/AssetDrawer.vue'
 import CanvasHeader from '../components/canvas/CanvasHeader.vue'
 import FlowEdge from '../components/canvas/FlowEdge.vue'
@@ -37,6 +37,8 @@ const contextMenu = ref(null)
 const connectionSource = ref(null)
 const groupDrag = ref(null)
 const pointerMode = ref(null)
+const canvasTool = ref('move')
+const toolMenuOpen = ref(false)
 const flowMounted = ref(false)
 const uploadInput = ref(null)
 const pendingUpload = ref(null)
@@ -111,6 +113,7 @@ const panelStyle = computed(() => {
   }
 })
 function openGlobalMenu(event) {
+  toolMenuOpen.value = false
   const buttonRect = event.currentTarget.getBoundingClientRect()
   const centerX = window.innerWidth / 2 + (assetsVisible.value ? 146 : 0)
   createMenu.value = {
@@ -213,7 +216,7 @@ function startGroupDrag(event, group) {
 
 function handleCanvasPointerDown(event) {
   if (event.target.closest('.nodrag, .selection-toolbar, .asset-drawer, .canvas-side-tools, .canvas-bottom-toolbar, .node-create-menu, .generation-panel')) return
-  if (event.button === 1) {
+  if (event.button === 1 || (event.button === 0 && canvasTool.value === 'hand')) {
     pointerMode.value = 'panning'
     return
   }
@@ -249,6 +252,18 @@ function handleCanvasPointerDown(event) {
 
 function resetPointerMode() {
   pointerMode.value = null
+}
+
+function selectCanvasTool(tool) {
+  canvasTool.value = tool
+  toolMenuOpen.value = false
+  pointerMode.value = null
+}
+
+function toggleToolMenu() {
+  createMenu.value = null
+  contextMenu.value = null
+  toolMenuOpen.value = !toolMenuOpen.value
 }
 
 function ungroupSelected() {
@@ -336,9 +351,14 @@ const canRedo = computed(() => historyIndex.value < history.length - 1)
 const submenuOpensLeft = computed(() => (contextMenu.value?.x || 0) + 478 > window.innerWidth)
 
 function handleHistoryShortcut(event) {
-  if (!(event.ctrlKey || event.metaKey) || event.altKey) return
   if (event.target instanceof Element && event.target.closest('input, textarea, [contenteditable]:not([contenteditable="false"])')) return
   const key = event.key.toLowerCase()
+  if (!(event.ctrlKey || event.metaKey || event.altKey) && (key === 'v' || key === 'h')) {
+    event.preventDefault()
+    selectCanvasTool(key === 'h' ? 'hand' : 'move')
+    return
+  }
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return
   if (key !== 'z' && key !== 'y') return
   event.preventDefault()
   if (key === 'y' || (key === 'z' && event.shiftKey)) redo()
@@ -538,7 +558,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <main class="canvas-page" :class="{ 'assets-open': assetsVisible, 'multi-selected': selectedNodes.length > 1, [`cursor-${pointerMode}`]: pointerMode }" @pointermove="trackPastePoint" @pointerdown="contextMenu = null" @pointerdown.capture="handleCanvasPointerDown" @pointerup.window="resetPointerMode" @pointercancel.window="resetPointerMode">
+  <main class="canvas-page" :class="{ 'assets-open': assetsVisible, 'multi-selected': selectedNodes.length > 1, [`canvas-tool-${canvasTool}`]: canvasTool, [`cursor-${pointerMode}`]: pointerMode }" @pointermove="trackPastePoint" @pointerdown="contextMenu = null; toolMenuOpen = false" @pointerdown.capture="handleCanvasPointerDown" @pointerup.window="resetPointerMode" @pointercancel.window="resetPointerMode">
     <input ref="uploadInput" type="file" :accept="pendingUpload ? uploadRules[pendingUpload.type].accept : ''" hidden @change="handlePaneUpload" />
     <CanvasHeader :workspace-name="workspace.name" :save-status="saveStatus" :username="authStore.user?.username || '访客'" @back="goHome" @logout="signOut" />
 
@@ -556,11 +576,12 @@ onBeforeUnmount(() => {
       @connect="handleConnect"
       @connect-start="handleConnectStart"
       @connect-end="handleConnectEnd"
-      :selection-key-code="true"
+      :selection-key-code="canvasTool === 'move' ? true : null"
       multi-selection-key-code="Shift"
       selection-mode="partial"
-      select-nodes-on-drag
-      :pan-on-drag="[1]"
+      :nodes-draggable="canvasTool === 'move'"
+      :select-nodes-on-drag="canvasTool === 'move'"
+      :pan-on-drag="canvasTool === 'hand' ? [0, 1] : [1]"
       @node-context-menu="openContextMenu"
       @edge-context-menu="openEdgeContextMenu"
       @pane-context-menu="openPaneCreateMenu"
@@ -620,6 +641,18 @@ onBeforeUnmount(() => {
       <AppTooltip text="新增节点">
         <AppButton class="canvas-add-button" icon-only variant="primary" aria-label="新增节点" @click="openGlobalMenu"><Plus :size="21" /></AppButton>
       </AppTooltip>
+      <div class="canvas-tool-picker" @pointerdown.stop>
+        <AppTooltip :text="canvasTool === 'move' ? '移动工具 (V)' : '抓手工具 (H)'">
+          <AppButton class="canvas-tool-button" :class="{ active: toolMenuOpen }" icon-only aria-label="切换画布工具" aria-haspopup="menu" :aria-expanded="toolMenuOpen" @click="toggleToolMenu">
+            <MousePointer2 v-if="canvasTool === 'move'" :size="18" />
+            <Hand v-else :size="18" />
+          </AppButton>
+        </AppTooltip>
+        <AppMenu v-if="toolMenuOpen" class="canvas-tool-menu" @pointerdown.stop>
+          <AppButton :class="{ active: canvasTool === 'move' }" @click="selectCanvasTool('move')"><MousePointer2 :size="17" /><strong>移动</strong><kbd>V</kbd></AppButton>
+          <AppButton :class="{ active: canvasTool === 'hand' }" @click="selectCanvasTool('hand')"><Hand :size="17" /><strong>抓手工具</strong><kbd>H</kbd></AppButton>
+        </AppMenu>
+      </div>
       <span class="canvas-bottom-divider"></span>
       <AppTooltip text="快捷键（即将上线）">
         <AppButton class="canvas-bottom-secondary" icon-only aria-label="快捷键（即将上线）"><Keyboard :size="18" /></AppButton>

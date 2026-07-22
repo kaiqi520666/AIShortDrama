@@ -80,6 +80,8 @@ a { color: inherit; text-decoration: none; }
 .creative-flow { position: absolute; inset: 0; width: auto; background: var(--canvas); transition: left .2s ease; }
 .assets-open .creative-flow { left: 292px; }
 .creative-flow .vue-flow__pane { cursor: default; }
+.canvas-page.canvas-tool-hand .creative-flow .vue-flow__pane { cursor: grab; }
+.canvas-page.canvas-tool-hand .creative-flow .vue-flow__node, .canvas-page.canvas-tool-hand .creative-flow .vue-flow__edge { pointer-events: none !important; }
 .canvas-page.cursor-selecting .creative-flow .vue-flow__pane { cursor: crosshair; }
 .canvas-page.cursor-panning .creative-flow .vue-flow__pane { cursor: grabbing; }
 .canvas-page.cursor-moving .creative-flow .vue-flow__pane { cursor: move; }
@@ -257,6 +259,16 @@ a { color: inherit; text-decoration: none; }
 .assets-open .canvas-bottom-toolbar { left: calc(50% + 146px); }
 .canvas-add-button.ui-button { width: 40px; height: 40px; min-height: 40px; border-color: #b9f2fb; border-radius: 6px; background: var(--accent); color: var(--accent-ink); box-shadow: none; }
 .canvas-add-button.ui-button:hover { border-color: #d7f8fd; background: #b9f2fb; color: var(--accent-ink); }
+.canvas-tool-picker { position: relative; }
+.canvas-tool-button.ui-button { width: 40px; height: 40px; min-height: 40px; padding: 0; border-color: transparent; border-radius: 6px; color: #aeb7be; }
+.canvas-tool-button.ui-button:hover, .canvas-tool-button.ui-button.active { border-color: #3b444b; background: #293036; color: #f2f5f6; }
+.canvas-tool-menu { position: absolute; bottom: calc(100% + 10px); left: 0; width: 180px; padding: 6px; border: 1px solid #384047; border-radius: 8px; background: #1f2428; box-shadow: 0 16px 38px rgba(0,0,0,.42); }
+.canvas-tool-menu::after { position: absolute; top: 100%; left: 0; width: 100%; height: 10px; content: ''; }
+.canvas-tool-menu button { display: grid; grid-template-columns: 24px minmax(0,1fr) 18px; width: 100%; min-height: 40px; align-items: center; gap: 8px; padding: 7px 9px; border: 0; border-radius: 6px; background: transparent; color: #aeb5ba; text-align: left; cursor: pointer; }
+.canvas-tool-menu button:hover { background: #2a3035; color: #eef2f3; }
+.canvas-tool-menu button.active { background: #343b41; color: #f5f7f8; }
+.canvas-tool-menu strong { font-size: 12px; font-weight: 600; letter-spacing: 0; }
+.canvas-tool-menu kbd { color: #767f86; font: 11px/1 inherit; text-align: right; }
 .canvas-bottom-divider { width: 1px; height: 24px; margin: 0 3px; background: #343c42; }
 .canvas-bottom-secondary.ui-button { width: 36px; height: 36px; min-height: 36px; padding: 0; border-color: transparent; border-radius: 6px; color: #929ca4; cursor: default; }
 .canvas-bottom-secondary.ui-button:hover { background: #252c31; color: #e4e9ec; }
