@@ -40,6 +40,10 @@ const flowMounted = ref(false)
 let saveTimer = null
 let readyEmitted = false
 let pastePoint = null
+let history = []
+let historyIndex = -1
+let historyTimer = null
+let historyApplying = false
 
 const pastedImageTypes = ['image/jpeg', 'image/png', 'image/webp']
 const pastedImageMaxSize = 20 * 1024 * 1024
@@ -267,6 +271,65 @@ function scheduleSave() {
   saveTimer = window.setTimeout(() => store.saveCanvas().catch(() => {}), 800)
 }
 
+function historySnapshot() {
+  const payload = store.canvasPayload()
+  return JSON.stringify({
+    nodes: payload.nodes,
+    edges: payload.edges,
+    groups: payload.groups,
+  })
+}
+
+function commitHistory() {
+  window.clearTimeout(historyTimer)
+  if (historyApplying || !store.ready) return
+  const snapshot = historySnapshot()
+  if (snapshot === history[historyIndex]) return
+  history = [...history.slice(0, historyIndex + 1), snapshot].slice(-50)
+  historyIndex = history.length - 1
+}
+
+function scheduleHistory() {
+  if (historyApplying || !store.ready) return
+  window.clearTimeout(historyTimer)
+  historyTimer = window.setTimeout(commitHistory, 200)
+}
+
+function restoreHistory(snapshot) {
+  historyApplying = true
+  const state = JSON.parse(snapshot)
+  store.nodes = state.nodes
+  store.edges = state.edges
+  store.groups = state.groups
+  activeGroupId.value = null
+  contextMenu.value = null
+  nextTick(() => { historyApplying = false })
+}
+
+function undo() {
+  if (historyApplying) return
+  commitHistory()
+  if (historyIndex <= 0) return
+  restoreHistory(history[--historyIndex])
+}
+
+function redo() {
+  if (historyApplying) return
+  commitHistory()
+  if (historyIndex >= history.length - 1) return
+  restoreHistory(history[++historyIndex])
+}
+
+function handleHistoryShortcut(event) {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey) return
+  if (event.target instanceof Element && event.target.closest('input, textarea, [contenteditable]:not([contenteditable="false"])')) return
+  const key = event.key.toLowerCase()
+  if (key !== 'z' && key !== 'y') return
+  event.preventDefault()
+  if (key === 'y' || (key === 'z' && event.shiftKey)) redo()
+  else undo()
+}
+
 function updateViewport(value) {
   store.setViewport(value)
 }
@@ -357,16 +420,23 @@ async function signOut() {
 }
 
 watch(() => store.canvasPayload(), scheduleSave, { deep: true })
+watch(historySnapshot, scheduleHistory)
 onMounted(async () => {
   window.addEventListener('paste', handlePaste)
+  window.addEventListener('keydown', handleHistoryShortcut)
   await store.loadWorkspace(props.workspace)
+  window.clearTimeout(historyTimer)
+  history = [historySnapshot()]
+  historyIndex = 0
   flowMounted.value = true
   await nextTick()
   if (!nodes.value.length) await finishCanvasSetup()
 })
 onBeforeUnmount(() => {
   window.clearTimeout(saveTimer)
+  window.clearTimeout(historyTimer)
   window.removeEventListener('paste', handlePaste)
+  window.removeEventListener('keydown', handleHistoryShortcut)
 })
 </script>
 
