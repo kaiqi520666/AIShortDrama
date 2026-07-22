@@ -1,0 +1,211 @@
+.menu-backdrop {
+  position: fixed;
+  z-index: 80;
+  inset: 0;
+}
+.node-create-menu {
+  position: fixed;
+  width: 246px;
+  border: 1px solid #3a3c42;
+  border-radius: 8px;
+  background: #27282b;
+  box-shadow: 0 18px 46px rgba(0, 0, 0, 0.42);
+}
+.node-create-menu--anchor {
+  transform: translate(-50%, -100%);
+}
+.node-create-menu > p {
+  margin: 2px 8px 9px;
+  color: #92959c;
+  font-size: 12px;
+}
+.node-create-menu > button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.node-create-menu > button:hover {
+  background: #35373b;
+}
+.menu-icon {
+  display: grid;
+  place-items: center;
+  width: 31px;
+  height: 31px;
+  border-radius: 6px;
+  background: #34363a;
+  color: #d9dbdf;
+}
+.node-create-menu strong,
+.node-create-menu small {
+  display: block;
+  letter-spacing: 0;
+}
+.node-create-menu strong {
+  color: #eef0f2;
+  font-size: 13px;
+  font-weight: 550;
+}
+.node-create-menu small {
+  margin-top: 2px;
+  color: #777a81;
+  font-size: 10px;
+}
+.context-menu {
+  position: fixed;
+  z-index: 90;
+  width: 190px;
+  padding: 7px;
+  border: 1px solid #3b3d43;
+  border-radius: 8px;
+  background: #28292d;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.4);
+}
+.context-menu button {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #e1e3e6;
+  font-size: 12px;
+  cursor: pointer;
+}
+.context-menu button:hover {
+  background: #37393e;
+}
+.context-menu button:disabled {
+  color: #666a70;
+  cursor: default;
+}
+.context-menu button:disabled:hover {
+  background: transparent;
+}
+.context-menu button.danger {
+  color: #efaaa8;
+}
+.context-menu > span {
+  display: block;
+  height: 1px;
+  margin: 4px 7px;
+  background: #3c3e43;
+}
+.context-menu--pane {
+  width: 218px;
+}
+.context-menu--pane > button > span,
+.context-submenu-trigger > button > span {
+  flex: 1;
+  text-align: left;
+}
+.context-menu-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 4px 8px 3px;
+  color: #858990;
+  font-size: 11px;
+}
+.context-menu .context-menu-divider {
+  margin: 5px 7px;
+}
+.context-menu kbd {
+  color: #777b82;
+  font: 10px/1.2 inherit;
+}
+.context-menu-chevron {
+  margin-left: auto;
+  color: #777b82;
+}
+.context-submenu-trigger {
+  position: relative;
+  margin: -2px 0;
+  padding: 2px 0;
+}
+.context-submenu {
+  position: absolute;
+  top: -7px;
+  left: calc(100% + 4px);
+  width: 238px;
+  padding: 6px;
+  border: 1px solid #353940;
+  border-radius: 8px;
+  background: #202327;
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.46);
+}
+.context-submenu::before {
+  position: absolute;
+  top: 0;
+  right: 100%;
+  width: 4px;
+  height: 100%;
+  content: "";
+}
+.context-submenu--left {
+  right: calc(100% + 4px);
+  left: auto;
+}
+.context-submenu--left::before {
+  right: auto;
+  left: 100%;
+}
+.context-submenu button {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  min-height: 48px;
+  gap: 10px;
+  padding: 7px;
+}
+.context-submenu button:hover {
+  background: #2b2f34;
+}
+.context-submenu .menu-icon {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #383d43;
+  background: #292d32;
+}
+.context-submenu .node-option--text .menu-icon {
+  color: #e8bd68;
+}
+.context-submenu .node-option--image .menu-icon {
+  color: #64c9db;
+}
+.context-submenu .node-option--video .menu-icon {
+  color: #ed8179;
+}
+.context-submenu .node-option--audio .menu-icon {
+  color: #9dce70;
+}
+.context-submenu button > span:last-child {
+  min-width: 0;
+  text-align: left;
+}
+.context-submenu strong,
+.context-submenu small {
+  display: block;
+  letter-spacing: 0;
+}
+.context-submenu strong {
+  color: #eef0f2;
+  font-size: 12px;
+  font-weight: 600;
+}
+.context-submenu small {
+  overflow: hidden;
+  margin-top: 2px;
+  color: #7f848b;
+  font-size: 10px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

@@ -1,0 +1,134 @@
+.workspace-home {
+  width: 100%;
+  height: 100%;
+  overflow-y: auto;
+  color: #eceef1;
+}
+.workspace-home-header {
+  position: sticky;
+  z-index: 5;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #2b2d31;
+}
+.workspace-account {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #92969e;
+  font-size: 12px;
+}
+.workspace-title-row {
+  display: flex;
+  justify-content: space-between;
+}
+.workspace-title-row h1 {
+  margin: 0;
+  font-weight: 650;
+  letter-spacing: 0;
+}
+.workspace-title-row p {
+  margin: 7px 0 0;
+  font-size: 13px;
+}
+.workspace-title-row > span {
+  color: #777b83;
+  font-size: 12px;
+}
+.workspace-grid {
+  display: grid;
+}
+.workspace-card {
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #303238;
+  border-radius: 8px;
+}
+.workspace-open-area {
+  display: flex;
+  width: 100%;
+  height: 112px;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 12px;
+  padding: 18px;
+  border: 0;
+  background: transparent;
+  color: #dfe1e5;
+  text-align: left;
+  cursor: pointer;
+}
+.workspace-open-area > svg {
+  color: #818792;
+}
+.workspace-open-area > span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 14px;
+}
+.workspace-card footer {
+  display: flex;
+  align-items: center;
+  padding: 0 8px 0 18px;
+  border-top: 1px solid #2d2f33;
+}
+.workspace-card footer time {
+  min-width: 0;
+  flex: 1;
+  color: #747880;
+  font-size: 11px;
+}
+.workspace-card footer button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #858991;
+  cursor: pointer;
+}
+.workspace-card footer button:hover {
+  background: #303237;
+  color: #e5e7ea;
+}
+.workspace-name-input {
+  position: absolute;
+  right: 18px;
+  left: 18px;
+  width: auto;
+  height: 30px;
+  border: 1px solid #60646c;
+  border-radius: 5px;
+  outline: 0;
+  color: #f0f1f3;
+}
+.workspace-empty {
+  display: grid;
+  min-height: 260px;
+  place-items: center;
+  border: 1px dashed #383a40;
+  border-radius: 8px;
+}
+.workspace-notice,
+.app-notice {
+  color: #d4a6a3;
+  font-size: 12px;
+}
+.app-notice {
+  position: fixed;
+  z-index: 100;
+  top: 18px;
+  left: 50%;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: #392526;
+  transform: translateX(-50%);
+}

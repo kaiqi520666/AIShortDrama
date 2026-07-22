@@ -1,0 +1,327 @@
+.canvas-bottom-toolbar {
+  position: fixed;
+  z-index: 30;
+  bottom: 18px;
+  left: 50%;
+  display: flex;
+  height: 48px;
+  align-items: center;
+  gap: 6px;
+  padding: 5px;
+  border: 1px solid #343c42;
+  border-radius: 8px;
+  background: rgba(17, 20, 23, 0.94);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, 0.34);
+  backdrop-filter: blur(14px);
+  transform: translateX(-50%);
+  transition: left 0.2s ease;
+}
+.assets-open .canvas-bottom-toolbar {
+  left: calc(50% + 146px);
+}
+.canvas-add-button.ui-button {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-color: #a9e7f1;
+  border-radius: 6px;
+  background: #8edbe8;
+  color: var(--accent-ink);
+  box-shadow: none;
+}
+.canvas-add-button.ui-button:hover {
+  border-color: #c7f1f7;
+  background: #a5e5ef;
+  color: var(--accent-ink);
+}
+.canvas-tool-picker {
+  position: relative;
+}
+.canvas-tool-button.ui-button {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-color: transparent;
+  border-radius: 6px;
+  color: #c3cbd0;
+}
+.canvas-tool-button.ui-button:hover,
+.canvas-tool-button.ui-button.active {
+  border-color: #3b444b;
+  background: #293036;
+  color: #f2f5f6;
+}
+.canvas-tool-menu {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  left: 0;
+  width: 180px;
+  padding: 6px;
+  border: 1px solid #384047;
+  border-radius: 8px;
+  background: #1f2428;
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.42);
+}
+.canvas-tool-menu::after {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 100%;
+  height: 10px;
+  content: "";
+}
+.canvas-tool-menu button {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) 18px;
+  width: 100%;
+  min-height: 40px;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #aeb5ba;
+  text-align: left;
+  cursor: pointer;
+}
+.canvas-tool-menu button:hover {
+  background: #2a3035;
+  color: #eef2f3;
+}
+.canvas-tool-menu button.active {
+  background: #343b41;
+  color: #f5f7f8;
+}
+.canvas-tool-menu strong {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+.canvas-tool-menu kbd {
+  color: #767f86;
+  font: 11px/1 inherit;
+  text-align: right;
+}
+.canvas-bottom-divider {
+  width: 1px;
+  height: 22px;
+  margin: 0 4px 0 5px;
+  background: #343c42;
+}
+.canvas-bottom-secondary.ui-button {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  border-color: transparent;
+  border-radius: 6px;
+  color: #929ca4;
+  cursor: default;
+}
+.canvas-bottom-secondary.ui-button:hover {
+  background: #252c31;
+  color: #e4e9ec;
+}
+.shortcut-toggle.ui-button {
+  cursor: pointer;
+}
+.shortcut-toggle.ui-button[aria-pressed="true"] {
+  background: #30373c;
+  color: #eef2f3;
+}
+.shortcut-panel-backdrop {
+  position: fixed;
+  z-index: 70;
+  inset: 0;
+  background: rgba(4, 6, 7, 0.28);
+}
+.shortcut-panel {
+  position: absolute;
+  right: 28px;
+  bottom: 80px;
+  left: 28px;
+  max-width: 900px;
+  margin: auto;
+  padding: 18px 20px 20px;
+  border: 1px solid #343b40;
+  border-radius: 8px;
+  background: #1c2023;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.46);
+}
+.shortcut-panel > header {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+.shortcut-panel h3 {
+  margin: 0;
+  letter-spacing: 0;
+}
+.shortcut-panel h3 {
+  margin-bottom: 10px;
+  color: #61d3e8;
+  font-size: 12px;
+  font-weight: 600;
+}
+.shortcut-panel > header button {
+  width: 30px;
+  height: 30px;
+  min-height: 30px;
+  padding: 0;
+  border: 0;
+  color: #8d969d;
+}
+.shortcut-sections {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.shortcut-sections > section {
+  min-width: 0;
+  padding: 0 20px;
+  border-left: 1px solid #30363b;
+}
+.shortcut-sections > section:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+.shortcut-sections > section:last-child {
+  padding-right: 0;
+}
+.shortcut-row {
+  display: flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: #90989e;
+  font-size: 12px;
+}
+.shortcut-row > span:last-child {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+}
+.shortcut-row kbd {
+  min-width: 24px;
+  padding: 4px 6px;
+  border: 1px solid #3a4147;
+  border-radius: 5px;
+  background: #252a2e;
+  color: #e4e8ea;
+  font: 11px/1 inherit;
+  text-align: center;
+}
+.shortcut-row i {
+  color: #60686e;
+  font-size: 10px;
+  font-style: normal;
+}
+@media (max-width: 760px) {
+  .shortcut-sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px 0;
+  }
+  .shortcut-sections > section:nth-child(3) {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+.canvas-side-tools {
+  position: fixed;
+  z-index: 25;
+  left: 22px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.canvas-side-tools button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: #7f838b;
+  cursor: pointer;
+}
+.canvas-side-tools button:hover {
+  color: #e1e3e6;
+  background: #282a2e;
+}
+.canvas-side-tools span {
+  margin-left: 4px;
+  color: #83868d;
+  font-size: 12px;
+}
+.canvas-side-tools .asset-toggle-button {
+  display: flex;
+  width: auto;
+  gap: 6px;
+  padding: 0 9px;
+}
+.canvas-side-tools .asset-toggle-button span {
+  margin: 0;
+  color: inherit;
+}
+.selection-frame {
+  position: fixed;
+  z-index: 15;
+  border: 1px solid #59636e;
+  border-radius: 8px;
+  background: rgba(108, 164, 218, 0.015);
+  pointer-events: none;
+}
+.selection-frame.active {
+  box-shadow: 0 0 0 1px rgba(138, 184, 229, 0.12);
+}
+.selection-toolbar {
+  position: fixed;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 7px 5px 10px;
+  border: 1px solid #3a3c42;
+  border-radius: 7px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+  transform: translateY(calc(-100% - 8px));
+}
+.selection-toolbar > span {
+  color: #aeb1b8;
+  font-size: 11px;
+}
+.selection-group-title {
+  width: 124px;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  outline: 0;
+  background: transparent;
+  color: #f0f1f3;
+  font-size: 12px;
+}
+.selection-group-title:hover,
+.selection-group-title:focus {
+  border-color: #50535a;
+  background: #202125;
+}
+.selection-toolbar button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #e2e4e7;
+  font-size: 11px;
+  cursor: pointer;
+}
+.selection-toolbar button:hover {
+  background: #37393e;
+}

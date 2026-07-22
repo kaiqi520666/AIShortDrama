@@ -1,0 +1,54 @@
+.vue-flow__minimap {
+  overflow: hidden;
+  border: 1px solid #3b3d43;
+  border-radius: 8px;
+}
+.vue-flow__minimap-mask {
+  fill: rgba(15, 16, 18, 0.7);
+}
+.vue-flow__minimap-node {
+  fill: #70747d;
+}
+
+@media (max-width: 600px) {
+  .project-context,
+  .project-control .app-brand,
+  .project-divider,
+  .project-control-separator,
+  .canvas-side-tools,
+  .workspace-account .ui-button span,
+  .canvas-account .ui-button span,
+  .save-state span {
+    display: none;
+  }
+  .asset-drawer {
+    width: min(292px, calc(100vw - 40px));
+  }
+  .workspace-home-header,
+  .public-header {
+    padding: 0 16px;
+  }
+  .workspace-content {
+    width: calc(100% - 32px);
+    margin: 32px auto;
+  }
+  .project-control {
+    height: 42px;
+    padding: 4px;
+  }
+  .canvas-user-button.ui-button,
+  .canvas-logout-button.ui-button,
+  .workspace-user-button.ui-button,
+  .workspace-logout-button.ui-button {
+    width: 32px;
+    padding: 0;
+  }
+  .save-state {
+    width: 32px;
+    justify-content: center;
+    padding: 0;
+  }
+  .canvas-bottom-toolbar {
+    bottom: 12px;
+  }
+}

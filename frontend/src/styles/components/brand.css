@@ -1,0 +1,21 @@
+/* Brand and public surfaces */
+.app-brand {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+}
+.app-brand__symbol {
+  display: block;
+  width: 32px;
+  height: 32px;
+  flex: none;
+  filter: drop-shadow(0 8px 10px rgba(82, 204, 231, 0.16));
+}
+.app-brand strong {
+  font-family: Bahnschrift, "Aptos Display", "Segoe UI", sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1;
+}

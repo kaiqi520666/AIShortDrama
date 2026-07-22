@@ -6,7 +6,7 @@ import { createAppRouter } from './router'
 import { useAuthStore } from './stores/auth'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
-import './style.css'
+import './styles/index.css'
 
 const pinia = createPinia()
 const authStore = useAuthStore(pinia)

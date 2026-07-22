@@ -1,0 +1,211 @@
+.home-page {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #07090a;
+  color: var(--text);
+}
+.home-page .public-header {
+  position: fixed;
+  z-index: 4;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 76px;
+  padding: 0 38px;
+  border: 0;
+  background: transparent;
+}
+.home-page .public-header::after {
+  position: absolute;
+  right: 38px;
+  bottom: 0;
+  left: 38px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  content: "";
+}
+.home-page .public-header nav {
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  background: rgba(10, 14, 17, 0.38);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(12px);
+}
+.home-login-button.ui-button {
+  min-height: 34px;
+  padding: 0 12px;
+  border: 0;
+  color: #e4e9ec;
+}
+.home-login-button.ui-button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+.home-hero {
+  position: relative;
+  display: flex;
+  width: 100%;
+  min-height: 100%;
+  align-items: center;
+  overflow: hidden;
+  padding: 92px 6.5vw 52px;
+}
+.home-reel {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+}
+.home-reel::after {
+  position: absolute;
+  inset: 0;
+  background: rgba(3, 5, 6, 0.26);
+  content: "";
+}
+.home-reel img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transform: translate3d(var(--hero-x, 0), var(--hero-y, 0), 0) scale(1.02);
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.home-content {
+  position: relative;
+  z-index: 2;
+  width: min(650px, 48vw);
+  margin: 0;
+  padding: 0;
+}
+.home-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+.home-content h1 {
+  margin: 18px 0 22px;
+  font-size: 72px;
+  font-weight: 720;
+  line-height: 1.04;
+  letter-spacing: 0;
+  text-shadow: 0 8px 30px rgba(0, 0, 0, 0.34);
+}
+.home-content p {
+  max-width: 540px;
+  color: #d2d7dc;
+  font-size: 18px;
+  line-height: 1.75;
+  text-shadow: 0 2px 18px #000;
+}
+.home-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 34px;
+}
+.home-actions .ui-button {
+  transition:
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+.home-actions .ui-button svg {
+  transition: transform 0.18s ease;
+}
+.home-actions .ui-button:hover svg {
+  transform: translateX(2px);
+}
+.home-meta {
+  position: absolute;
+  z-index: 2;
+  right: 38px;
+  bottom: 28px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(230, 236, 240, 0.64);
+  font-size: 9px;
+  font-weight: 700;
+}
+.home-meta i {
+  width: 18px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.24);
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-reel,
+  .home-reel img,
+  .home-actions .ui-button svg {
+    transform: none !important;
+    transition: none !important;
+  }
+}
+@media (max-width: 760px) {
+  .home-page .public-header {
+    height: 66px;
+    padding: 0 18px;
+  }
+  .home-page .public-header::after {
+    right: 18px;
+    left: 18px;
+  }
+  .home-hero {
+    align-items: flex-end;
+    padding: 92px 22px 88px;
+  }
+  .home-reel img {
+    object-position: 68% center;
+  }
+  .home-reel::after {
+    background: rgba(3, 5, 6, 0.44);
+  }
+  .home-content {
+    width: 100%;
+  }
+  .home-content h1 {
+    font-size: 48px;
+  }
+  .home-content p {
+    font-size: 15px;
+  }
+  .home-actions {
+    flex-wrap: wrap;
+  }
+  .home-meta {
+    right: 22px;
+    bottom: 22px;
+    left: 22px;
+    justify-content: center;
+  }
+}
+@media (max-width: 480px) {
+  .home-page .public-header nav {
+    padding: 3px;
+  }
+  .home-start-button.ui-button {
+    display: none;
+  }
+  .home-login-button.ui-button {
+    width: 34px;
+    padding: 0;
+  }
+  .home-login-button span {
+    display: none;
+  }
+  .home-content p {
+    max-width: calc(100vw - 44px);
+    overflow-wrap: anywhere;
+  }
+  .home-meta {
+    gap: 7px;
+  }
+  .home-meta i {
+    width: 10px;
+  }
+}

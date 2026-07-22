@@ -1,0 +1,23 @@
+:root {
+  font-family:
+    Inter, "Microsoft YaHei", "PingFang SC", ui-sans-serif, system-ui,
+    sans-serif;
+  color: #f3f5f7;
+  background: #0b0d0f;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  --canvas: #0c0e10;
+  --surface-1: #14171a;
+  --surface-2: #1a1e22;
+  --surface-3: #22272c;
+  --line: #30363d;
+  --line-strong: #46505a;
+  --text: #f3f5f7;
+  --text-2: #b4bbc4;
+  --text-3: #747d88;
+  --accent: #9de7f5;
+  --accent-strong: #52cce7;
+  --accent-ink: #071216;
+  --danger: #ff7a76;
+}
