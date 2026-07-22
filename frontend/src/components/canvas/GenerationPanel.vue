@@ -94,6 +94,7 @@ function updateTextPrompt(event) {
 }
 
 async function submitTask() {
+  if (!canSubmit.value) return
   if (isReverseTask.value) {
     const nodeId = props.nodeId
     let content = ''
@@ -151,6 +152,8 @@ async function submitTask() {
     })
   }
 }
+
+defineExpose({ submitTask })
 
 function ratioIconStyle(value) {
   const [width, height] = value.split(':').map(Number)

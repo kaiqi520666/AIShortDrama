@@ -18,6 +18,7 @@ import AppInput from '../components/ui/AppInput.vue'
 import AppMenu from '../components/ui/AppMenu.vue'
 import AppTooltip from '../components/ui/AppTooltip.vue'
 import { uploadMedia } from '../api/uploads'
+import { canConnect } from '../config/connectionRules'
 import { mediaTypes } from '../config/mediaTypes'
 import { useGlobalToast } from '../composables/useGlobalUI'
 import { useAuthStore } from '../stores/auth'
@@ -44,6 +45,7 @@ const shortcutPanelOpen = ref(false)
 const flowMounted = ref(false)
 const uploadInput = ref(null)
 const pendingUpload = ref(null)
+const generationPanel = ref(null)
 let saveTimer = null
 let readyEmitted = false
 let pastePoint = null
@@ -51,6 +53,8 @@ let history = []
 const historyIndex = ref(-1)
 let historyTimer = null
 let historyApplying = false
+let toolBeforeSpace = null
+let nodeDragCopy = null
 
 const pastedImageTypes = ['image/jpeg', 'image/png', 'image/webp']
 const pastedImageMaxSize = 20 * 1024 * 1024
@@ -164,6 +168,14 @@ function handleConnect(connection) {
   connectionSource.value = null
 }
 
+function connectSelected() {
+  if (selectedNodes.value.length !== 2) return toast.warning('请选择两个节点后连接')
+  let [source, target] = [...selectedNodes.value].sort((a, b) => a.position.x - b.position.x)
+  if (!canConnect(source.type, target.type) && canConnect(target.type, source.type)) [source, target] = [target, source]
+  if (!canConnect(source.type, target.type)) return toast.warning('所选节点类型不能连接')
+  if (!store.addEdge({ source: source.id, target: target.id })) toast.warning('节点已经连接')
+}
+
 function handleConnectEnd(event) {
   if (!connectionSource.value || event.target.closest('.vue-flow__handle, .vue-flow__node')) {
     connectionSource.value = null
@@ -267,6 +279,21 @@ function resetPointerMode() {
   pointerMode.value = null
 }
 
+function handleNodeDragStart({ event, nodes: draggedNodes }) {
+  if (!event.altKey) return
+  nodeDragCopy = Object.fromEntries(draggedNodes.map((node) => [node.id, { ...node.position }]))
+}
+
+function handleNodeDragStop() {
+  if (!nodeDragCopy) return
+  const ids = Object.keys(nodeDragCopy)
+  const positions = Object.fromEntries(ids.map((id) => [id, { ...nodes.value.find((node) => node.id === id).position }]))
+  Object.entries(nodeDragCopy).forEach(([id, position]) => { nodes.value.find((node) => node.id === id).position = position })
+  store.duplicateNodes(ids, positions)
+  nodeDragCopy = null
+  activeGroupId.value = null
+}
+
 function selectCanvasTool(tool) {
   canvasTool.value = tool
   toolMenuOpen.value = false
@@ -280,7 +307,9 @@ function toggleToolMenu() {
 }
 
 function ungroupSelected() {
-  store.ungroupNode(selectedGroup.value.nodeIds[0])
+  const group = selectedGroup.value || groups.value.find((item) => item.nodeIds.some((id) => selectedNodes.value.some((node) => node.id === id)))
+  if (!group) return
+  store.ungroupNode(group.nodeIds[0])
   activeGroupId.value = null
 }
 
@@ -371,6 +400,15 @@ function handleCanvasShortcut(event) {
     shortcutPanelOpen.value = false
     return
   }
+  if (shortcutPanelOpen.value) return
+  if (event.code === 'Space' && !command && !event.altKey) {
+    event.preventDefault()
+    if (toolBeforeSpace === null) {
+      toolBeforeSpace = canvasTool.value
+      canvasTool.value = 'hand'
+    }
+    return
+  }
   if (key === 'tab' && !command && !event.altKey) {
     event.preventDefault()
     openShortcutCreateMenu()
@@ -387,14 +425,27 @@ function handleCanvasShortcut(event) {
     return
   }
   if (!command || event.altKey) return
-  if (['z', 'y', 'g', 'd', '0', '=', '+', '-'].includes(key)) event.preventDefault()
+  if (['z', 'y', 'g', 'd', 'l', 'enter', '0', '=', '+', '-'].includes(key)) event.preventDefault()
   if (key === 'z') return event.shiftKey ? redo() : undo()
   if (key === 'y') return redo()
-  if (key === 'g') return event.shiftKey ? (selectedGroup.value && ungroupSelected()) : (selectedNodes.value.length > 1 && store.groupSelected())
-  if (key === 'd') return selectedNode.value && store.duplicateNode(selectedNode.value.id)
+  if (key === 'g') return event.shiftKey ? ungroupSelected() : (selectedNodes.value.length > 1 && store.groupSelected())
+  if (key === 'd') return selectedNodes.value.length && store.duplicateSelected()
+  if (key === 'l') return connectSelected()
+  if (key === 'enter') return generationPanel.value?.submitTask()
   if (key === '0') return fitView({ padding: 0.24, duration: 350 })
   if (key === '=' || key === '+') return zoomIn({ duration: 180 })
   if (key === '-') zoomOut({ duration: 180 })
+}
+
+function restoreTemporaryHand() {
+  if (toolBeforeSpace === null) return
+  canvasTool.value = toolBeforeSpace
+  toolBeforeSpace = null
+  pointerMode.value = null
+}
+
+function handleCanvasKeyup(event) {
+  if (event.code === 'Space') restoreTemporaryHand()
 }
 
 function updateViewport(value) {
@@ -573,6 +624,8 @@ watch(historySnapshot, scheduleHistory)
 onMounted(async () => {
   window.addEventListener('paste', handlePaste)
   window.addEventListener('keydown', handleCanvasShortcut)
+  window.addEventListener('keyup', handleCanvasKeyup)
+  window.addEventListener('blur', restoreTemporaryHand)
   await store.loadWorkspace(props.workspace)
   window.clearTimeout(historyTimer)
   history = [historySnapshot()]
@@ -586,6 +639,8 @@ onBeforeUnmount(() => {
   window.clearTimeout(historyTimer)
   window.removeEventListener('paste', handlePaste)
   window.removeEventListener('keydown', handleCanvasShortcut)
+  window.removeEventListener('keyup', handleCanvasKeyup)
+  window.removeEventListener('blur', restoreTemporaryHand)
 })
 </script>
 
@@ -608,6 +663,8 @@ onBeforeUnmount(() => {
       @connect="handleConnect"
       @connect-start="handleConnectStart"
       @connect-end="handleConnectEnd"
+      @node-drag-start="handleNodeDragStart"
+      @node-drag-stop="handleNodeDragStop"
       :selection-key-code="canvasTool === 'move' ? true : null"
       multi-selection-key-code="Shift"
       selection-mode="partial"
@@ -636,6 +693,7 @@ onBeforeUnmount(() => {
 
     <GenerationPanel
       v-if="selectedNode && !selectedNode.data.pasted"
+      ref="generationPanel"
       :node-id="selectedNode.id"
       :type="selectedNode.type"
       :data="selectedNode.data"

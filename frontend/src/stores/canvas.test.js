@@ -42,3 +42,40 @@ describe('canvas transient uploads', () => {
     expect(saveWorkspaceCanvas).toHaveBeenCalledOnce()
   })
 })
+
+describe('canvas grouping and duplication', () => {
+  it('merges complete groups touched by selected nodes', () => {
+    const store = useCanvasStore()
+    store.$patch({
+      nodes: ['a', 'b', 'c', 'd'].map((id) => ({ id, type: 'text', position: { x: 0, y: 0 }, selected: ['a', 'c'].includes(id), data: {} })),
+      groups: [{ id: 'group-1', title: '第一组', nodeIds: ['a', 'b'] }, { id: 'group-2', title: '第二组', nodeIds: ['c', 'd'] }],
+    })
+
+    store.groupSelected()
+
+    expect(store.groups).toEqual([{ id: 'group-1', title: '第一组', nodeIds: ['a', 'b', 'c', 'd'] }])
+  })
+
+  it('duplicates selected nodes with internal edges and group membership', () => {
+    const store = useCanvasStore()
+    store.$patch({
+      sequence: 10,
+      nodes: [
+        { id: 'text-1', type: 'text', position: { x: 10, y: 20 }, selected: true, data: { title: '文本' } },
+        { id: 'image-2', type: 'image', position: { x: 100, y: 20 }, selected: true, data: { title: '图片' } },
+        { id: 'video-3', type: 'video', position: { x: 200, y: 20 }, selected: false, data: { title: '视频' } },
+      ],
+      edges: [{ id: 'edge-1', source: 'text-1', target: 'image-2', type: 'cinematic' }, { id: 'edge-2', source: 'image-2', target: 'video-3', type: 'cinematic' }],
+      groups: [{ id: 'group-1', title: '组合', nodeIds: ['text-1', 'image-2'] }],
+    })
+
+    const ids = store.duplicateSelected()
+
+    expect(ids).toEqual(['text-10', 'image-11'])
+    expect(store.nodes.filter((node) => node.selected).map((node) => node.id)).toEqual(ids)
+    expect(store.edges.filter((edge) => ids.includes(edge.source) || ids.includes(edge.target))).toEqual([
+      expect.objectContaining({ source: 'text-10', target: 'image-11' }),
+    ])
+    expect(store.groups).toContainEqual(expect.objectContaining({ title: '组合 副本', nodeIds: ids }))
+  })
+})

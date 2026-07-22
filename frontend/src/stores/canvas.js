@@ -148,11 +148,12 @@ export const useCanvasStore = defineStore('canvas', {
       return id
     },
     addEdge(connection) {
-      if (this.edges.some((edge) => edge.source === connection.source && edge.target === connection.target)) return
+      if (this.edges.some((edge) => edge.source === connection.source && edge.target === connection.target)) return false
       const source = this.nodes.find((node) => node.id === connection.source)
       const target = this.nodes.find((node) => node.id === connection.target)
-      if (!source || !target || source.id === target.id || !canConnect(source.type, target.type)) return
+      if (!source || !target || source.id === target.id || !canConnect(source.type, target.type)) return false
       this.edges.push({ id: `edge-${crypto.randomUUID()}`, ...connection, type: 'cinematic' })
+      return true
     },
     addAssetNode(asset, position) {
       const id = this.addNode(asset.media_type, position)
@@ -194,9 +195,16 @@ export const useCanvasStore = defineStore('canvas', {
       this.nodes.forEach((node) => { node.selected = nodeIds.includes(node.id) })
     },
     groupSelected() {
-      const nodeIds = this.nodes.filter((node) => node.selected).map((node) => node.id)
-      if (nodeIds.length < 2) return
-      this.groups = this.groups.filter((group) => !group.nodeIds.some((id) => nodeIds.includes(id)))
+      const selectedIds = this.nodes.filter((node) => node.selected).map((node) => node.id)
+      if (selectedIds.length < 2) return
+      const touched = this.groups.filter((group) => group.nodeIds.some((id) => selectedIds.includes(id)))
+      const mergedIds = new Set([...selectedIds, ...touched.flatMap((group) => group.nodeIds)])
+      const nodeIds = this.nodes.filter((node) => mergedIds.has(node.id)).map((node) => node.id)
+      this.groups = this.groups.filter((group) => !touched.includes(group))
+      if (touched.length) {
+        this.groups.push({ ...touched[0], nodeIds })
+        return
+      }
       while (this.groups.some((group) => group.title === `编组 ${this.groupSequence}`)) this.groupSequence += 1
       this.groups.push({ id: `group-${crypto.randomUUID()}`, title: `编组 ${this.groupSequence++}`, nodeIds })
     },
@@ -209,12 +217,38 @@ export const useCanvasStore = defineStore('canvas', {
       if (!group) return
       this.groups = this.groups.filter((item) => item.id !== group.id)
     },
-    duplicateNode(id) {
-      const source = this.nodes.find((node) => node.id === id)
-      if (!source) return
-      const copyId = this.addNode(source.type, { x: source.position.x + 56, y: source.position.y + 56 })
-      const copy = this.nodes.find((node) => node.id === copyId)
-      copy.data = { ...source.data, title: `${source.data.title} 副本` }
+    duplicateNodes(nodeIds, positions = {}) {
+      const sourceIds = new Set(nodeIds)
+      const sources = this.nodes.filter((node) => sourceIds.has(node.id))
+      if (!sources.length) return []
+      const idMap = new Map()
+      this.nodes.forEach((node) => { node.selected = false })
+      const copies = sources.map((source) => {
+        const id = `${source.type}-${this.sequence++}`
+        idMap.set(source.id, id)
+        return {
+          id,
+          type: source.type,
+          position: positions[source.id] || { x: source.position.x + 56, y: source.position.y + 56 },
+          selected: true,
+          data: { ...JSON.parse(JSON.stringify(source.data)), title: `${source.data.title || mediaTypes[source.type].label} 副本` },
+        }
+      })
+      this.nodes.push(...copies)
+      this.edges.push(...this.edges
+        .filter((edge) => sourceIds.has(edge.source) && sourceIds.has(edge.target))
+        .map((edge) => ({ ...edge, id: `edge-${crypto.randomUUID()}`, source: idMap.get(edge.source), target: idMap.get(edge.target) })))
+      this.groups
+        .map((group) => ({ title: `${group.title} 副本`, nodeIds: group.nodeIds.filter((id) => sourceIds.has(id)).map((id) => idMap.get(id)) }))
+        .filter((group) => group.nodeIds.length > 1)
+        .forEach((group) => this.groups.push({ id: `group-${crypto.randomUUID()}`, ...group }))
+      return copies.map((copy) => copy.id)
+    },
+    duplicateSelected() {
+      return this.duplicateNodes(this.nodes.filter((node) => node.selected).map((node) => node.id))
+    },
+    duplicateNode(id, position) {
+      return this.duplicateNodes([id], position ? { [id]: position } : {})[0]
     },
     deleteNode(id) {
       this.nodes = this.nodes.filter((node) => node.id !== id)

@@ -276,9 +276,8 @@ a { color: inherit; text-decoration: none; }
 .shortcut-toggle.ui-button[aria-pressed="true"] { background: #30373c; color: #eef2f3; }
 .shortcut-panel-backdrop { position: fixed; z-index: 70; inset: 0; background: rgba(4,6,7,.28); }
 .shortcut-panel { position: absolute; right: 28px; bottom: 80px; left: 28px; max-width: 900px; margin: auto; padding: 18px 20px 20px; border: 1px solid #343b40; border-radius: 8px; background: #1c2023; box-shadow: 0 24px 64px rgba(0,0,0,.46); }
-.shortcut-panel > header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-.shortcut-panel h2, .shortcut-panel h3 { margin: 0; letter-spacing: 0; }
-.shortcut-panel h2 { color: #edf1f3; font-size: 15px; }
+.shortcut-panel > header { position: absolute; top: 10px; right: 10px; }
+.shortcut-panel h3 { margin: 0; letter-spacing: 0; }
 .shortcut-panel h3 { margin-bottom: 10px; color: #61d3e8; font-size: 12px; font-weight: 600; }
 .shortcut-panel > header button { width: 30px; height: 30px; min-height: 30px; padding: 0; border: 0; color: #8d969d; }
 .shortcut-sections { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); }
