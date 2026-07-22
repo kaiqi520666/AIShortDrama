@@ -12,6 +12,7 @@ import GenerationPanel from '../components/canvas/GenerationPanel.vue'
 import MediaNode from '../components/canvas/MediaNode.vue'
 import NodeCreateMenu from '../components/canvas/NodeCreateMenu.vue'
 import NodeTypeMenu from '../components/canvas/NodeTypeMenu.vue'
+import ShortcutPanel from '../components/canvas/ShortcutPanel.vue'
 import AppButton from '../components/ui/AppButton.vue'
 import AppInput from '../components/ui/AppInput.vue'
 import AppMenu from '../components/ui/AppMenu.vue'
@@ -28,7 +29,7 @@ const toast = useGlobalToast()
 const props = defineProps({ workspace: { type: Object, required: true } })
 const emit = defineEmits(['back', 'ready'])
 const { nodes, edges, groups, saveStatus } = storeToRefs(store)
-const { project, fitView, findNode, setCenter, setViewport, updateNodeData, viewport, removeSelectedElements, addSelectedNodes } = useVueFlow()
+const { project, fitView, findNode, setCenter, setViewport, updateNodeData, viewport, zoomIn, zoomOut, removeSelectedElements, addSelectedNodes } = useVueFlow()
 
 const nodeTypes = Object.fromEntries(Object.keys(mediaTypes).map((type) => [type, markRaw(MediaNode)]))
 const edgeTypes = { cinematic: markRaw(FlowEdge) }
@@ -39,6 +40,7 @@ const groupDrag = ref(null)
 const pointerMode = ref(null)
 const canvasTool = ref('move')
 const toolMenuOpen = ref(false)
+const shortcutPanelOpen = ref(false)
 const flowMounted = ref(false)
 const uploadInput = ref(null)
 const pendingUpload = ref(null)
@@ -118,6 +120,17 @@ function openGlobalMenu(event) {
   const centerX = window.innerWidth / 2 + (assetsVisible.value ? 146 : 0)
   createMenu.value = {
     point: { x: buttonRect.left + buttonRect.width / 2, y: buttonRect.top - 8 },
+    position: project({ x: centerX, y: window.innerHeight / 2 }),
+    placement: 'anchor',
+    sourceId: null,
+  }
+}
+
+function openShortcutCreateMenu() {
+  const centerX = window.innerWidth / 2 + (assetsVisible.value ? 146 : 0)
+  shortcutPanelOpen.value = false
+  createMenu.value = {
+    point: { x: centerX, y: window.innerHeight - 76 },
     position: project({ x: centerX, y: window.innerHeight / 2 }),
     placement: 'anchor',
     sourceId: null,
@@ -350,19 +363,38 @@ const canUndo = computed(() => historyIndex.value > 0)
 const canRedo = computed(() => historyIndex.value < history.length - 1)
 const submenuOpensLeft = computed(() => (contextMenu.value?.x || 0) + 478 > window.innerWidth)
 
-function handleHistoryShortcut(event) {
+function handleCanvasShortcut(event) {
   if (event.target instanceof Element && event.target.closest('input, textarea, [contenteditable]:not([contenteditable="false"])')) return
   const key = event.key.toLowerCase()
+  const command = event.ctrlKey || event.metaKey
+  if (key === 'escape' && shortcutPanelOpen.value) {
+    shortcutPanelOpen.value = false
+    return
+  }
+  if (key === 'tab' && !command && !event.altKey) {
+    event.preventDefault()
+    openShortcutCreateMenu()
+    return
+  }
   if (!(event.ctrlKey || event.metaKey || event.altKey) && (key === 'v' || key === 'h')) {
     event.preventDefault()
     selectCanvasTool(key === 'h' ? 'hand' : 'move')
     return
   }
-  if (!(event.ctrlKey || event.metaKey) || event.altKey) return
-  if (key !== 'z' && key !== 'y') return
-  event.preventDefault()
-  if (key === 'y' || (key === 'z' && event.shiftKey)) redo()
-  else undo()
+  if (event.altKey && event.shiftKey && key === 'f') {
+    event.preventDefault()
+    fitView({ padding: 0.24, duration: 350 })
+    return
+  }
+  if (!command || event.altKey) return
+  if (['z', 'y', 'g', 'd', '0', '=', '+', '-'].includes(key)) event.preventDefault()
+  if (key === 'z') return event.shiftKey ? redo() : undo()
+  if (key === 'y') return redo()
+  if (key === 'g') return event.shiftKey ? (selectedGroup.value && ungroupSelected()) : (selectedNodes.value.length > 1 && store.groupSelected())
+  if (key === 'd') return selectedNode.value && store.duplicateNode(selectedNode.value.id)
+  if (key === '0') return fitView({ padding: 0.24, duration: 350 })
+  if (key === '=' || key === '+') return zoomIn({ duration: 180 })
+  if (key === '-') zoomOut({ duration: 180 })
 }
 
 function updateViewport(value) {
@@ -540,7 +572,7 @@ watch(() => store.canvasPayload(), scheduleSave, { deep: true })
 watch(historySnapshot, scheduleHistory)
 onMounted(async () => {
   window.addEventListener('paste', handlePaste)
-  window.addEventListener('keydown', handleHistoryShortcut)
+  window.addEventListener('keydown', handleCanvasShortcut)
   await store.loadWorkspace(props.workspace)
   window.clearTimeout(historyTimer)
   history = [historySnapshot()]
@@ -553,7 +585,7 @@ onBeforeUnmount(() => {
   window.clearTimeout(saveTimer)
   window.clearTimeout(historyTimer)
   window.removeEventListener('paste', handlePaste)
-  window.removeEventListener('keydown', handleHistoryShortcut)
+  window.removeEventListener('keydown', handleCanvasShortcut)
 })
 </script>
 
@@ -654,13 +686,15 @@ onBeforeUnmount(() => {
         </AppMenu>
       </div>
       <span class="canvas-bottom-divider"></span>
-      <AppTooltip text="快捷键（即将上线）">
-        <AppButton class="canvas-bottom-secondary" icon-only aria-label="快捷键（即将上线）"><Keyboard :size="18" /></AppButton>
+      <AppTooltip text="快捷键">
+        <AppButton class="canvas-bottom-secondary shortcut-toggle" icon-only aria-label="快捷键" :aria-pressed="shortcutPanelOpen" @click="shortcutPanelOpen = !shortcutPanelOpen"><Keyboard :size="18" /></AppButton>
       </AppTooltip>
       <AppTooltip text="教程（即将上线）">
         <AppButton class="canvas-bottom-secondary" icon-only aria-label="教程（即将上线）"><CircleHelp :size="18" /></AppButton>
       </AppTooltip>
     </nav>
+
+    <ShortcutPanel v-if="shortcutPanelOpen" @close="shortcutPanelOpen = false" />
 
     <NodeCreateMenu
       v-if="createMenu"
