@@ -9,6 +9,7 @@ export async function uploadMedia(type, file, context, onProgress) {
   if (context.height) form.append('height', context.height)
   if (context.duration) form.append('duration', context.duration)
   return (await apiClient.post(`/uploads/${type}`, form, {
+    timeout: context.timeout,
     onUploadProgress: ({ loaded, total }) => onProgress?.(total ? Math.round(loaded * 100 / total) : 0),
   })).data
 }

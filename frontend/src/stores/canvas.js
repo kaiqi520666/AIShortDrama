@@ -15,6 +15,18 @@ const defaultWorkspaceId = '00000000-0000-0000-0000-000000000101'
 let activeSave = null
 let saveQueued = false
 
+function stripTransientNodes(nodes = [], edges = [], groups = []) {
+  const transientIds = new Set(nodes.filter((node) => node.data?.status === 'uploading').map((node) => node.id))
+  return {
+    removed: transientIds.size > 0,
+    nodes: nodes.filter((node) => !transientIds.has(node.id)),
+    edges: edges.filter((edge) => !transientIds.has(edge.source) && !transientIds.has(edge.target)),
+    groups: groups
+      .map((group) => ({ ...group, nodeIds: group.nodeIds.filter((id) => !transientIds.has(id)) }))
+      .filter((group) => group.nodeIds.length > 1),
+  }
+}
+
 function createNodeData(type, number, source) {
   const textTask = type === 'text' && Boolean(source)
   const reverseType = type === 'text' && ['image', 'video'].includes(source?.type) ? source.type : null
@@ -57,15 +69,16 @@ export const useCanvasStore = defineStore('canvas', {
         canvas = legacy
         this.legacyImportPending = true
       }
-      this.nodes = JSON.parse(JSON.stringify(canvas.nodes || []))
-      this.edges = JSON.parse(JSON.stringify(canvas.edges || []))
-      this.groups = JSON.parse(JSON.stringify(canvas.groups || []))
+      const persistent = stripTransientNodes(canvas.nodes, canvas.edges, canvas.groups)
+      this.nodes = JSON.parse(JSON.stringify(persistent.nodes))
+      this.edges = JSON.parse(JSON.stringify(persistent.edges))
+      this.groups = JSON.parse(JSON.stringify(persistent.groups))
       this.sequence = canvas.sequence || 1
       this.groupSequence = canvas.group_sequence || canvas.groupSequence || 1
       this.viewportData = { x: 0, y: 0, zoom: 1, ...(canvas.viewport || {}) }
       this.saveStatus = 'saved'
       this.ready = true
-      if (this.legacyImportPending) await this.saveCanvas().catch(() => {})
+      if (this.legacyImportPending || persistent.removed) await this.saveCanvas().catch(() => {})
     },
     readLegacyCanvas() {
       try {
@@ -75,11 +88,12 @@ export const useCanvasStore = defineStore('canvas', {
       }
     },
     canvasPayload() {
+      const persistent = stripTransientNodes(this.nodes, this.edges, this.groups)
       return {
         schema_version: 1,
-        nodes: this.nodes.map(({ id, type, position, data }) => ({ id, type, position, data })),
-        edges: this.edges.map(({ id, source, target, sourceHandle, targetHandle, type }) => ({ id, source, target, ...(sourceHandle ? { sourceHandle } : {}), ...(targetHandle ? { targetHandle } : {}), type: type || 'cinematic' })),
-        groups: this.groups,
+        nodes: persistent.nodes.map(({ id, type, position, data }) => ({ id, type, position, data })),
+        edges: persistent.edges.map(({ id, source, target, sourceHandle, targetHandle, type }) => ({ id, source, target, ...(sourceHandle ? { sourceHandle } : {}), ...(targetHandle ? { targetHandle } : {}), type: type || 'cinematic' })),
+        groups: persistent.groups,
         sequence: this.sequence,
         group_sequence: this.groupSequence,
         viewport: this.viewportData,

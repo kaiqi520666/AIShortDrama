@@ -307,7 +307,7 @@ async function pasteImage(file, position) {
     const bitmap = await createImageBitmap(file)
     const metadata = { width: bitmap.width, height: bitmap.height }
     bitmap.close()
-    const result = await uploadMedia('image', file, { workspaceId: store.workspaceId, nodeId: id, ...metadata })
+    const result = await uploadMedia('image', file, { workspaceId: store.workspaceId, nodeId: id, timeout: 60_000, ...metadata })
     if (result.code !== 0) throw new Error(result.message)
     node.data = {
       ...node.data,
@@ -321,7 +321,7 @@ async function pasteImage(file, position) {
     toast.success('图片已粘贴到画布')
   } catch (error) {
     store.deleteNode(id)
-    toast.error(error.response?.data?.message || error.message || '图片粘贴失败')
+    toast.error(error.code === 'ECONNABORTED' ? '图片上传超时，请重试' : error.response?.data?.message || error.message || '图片粘贴失败')
   }
 }
 
