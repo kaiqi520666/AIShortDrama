@@ -56,8 +56,8 @@ a { color: inherit; text-decoration: none; }
 .workspace-home-header { position: sticky; z-index: 5; top: 0; display: flex; height: 64px; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #2b2d31; background: rgba(21,22,25,.96); }
 .workspace-brand { display: flex; align-items: center; gap: 10px; font-size: 14px; }
 .workspace-account { display: flex; align-items: center; gap: 8px; color: #92969e; font-size: 12px; }
-.workspace-account > button, .canvas-account > button { display: grid; width: 32px; height: 32px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: #8f939b; cursor: pointer; }
-.workspace-account > button:hover, .canvas-account > button:hover { background: #2d2f33; color: #eceef1; }
+.workspace-account > button { display: grid; width: 32px; height: 32px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: #8f939b; cursor: pointer; }
+.workspace-account > button:hover { background: #2d2f33; color: #eceef1; }
 .workspace-content { width: min(1120px, calc(100% - 48px)); margin: 54px auto; }
 .workspace-title-row { display: flex; align-items: end; justify-content: space-between; margin-bottom: 24px; }
 .workspace-title-row h1 { margin: 0; font-size: 28px; font-weight: 650; letter-spacing: 0; }
@@ -95,25 +95,33 @@ a { color: inherit; text-decoration: none; }
 @keyframes edge-pulse { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 
 .canvas-header {
-  position: fixed; z-index: 30; top: 14px; left: 16px; right: 16px; height: 44px;
-  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; pointer-events: none;
+  position: fixed; z-index: 30; top: 14px; left: 16px; right: 16px; height: 48px;
+  display: flex; align-items: center; justify-content: space-between; pointer-events: none;
 }
-.canvas-header .project-control, .canvas-header .view-switch { pointer-events: auto; }
-.project-control, .view-switch { display: flex; align-items: center; }
-.project-control { justify-self: start; height: 42px; padding: 5px 8px; border: 1px solid #2d2f34; border-radius: 8px; background: rgba(28,29,32,.94); box-shadow: 0 10px 30px rgba(0,0,0,.22); }
-.project-back { display: grid; width: 30px; height: 30px; margin-right: 5px; place-items: center; border: 0; border-radius: 5px; background: transparent; color: #8e929a; cursor: pointer; }
+.canvas-header .project-control, .canvas-header .canvas-account { pointer-events: auto; }
+.project-control { display: flex; height: 48px; align-items: center; padding: 6px 9px 6px 6px; border: 1px solid #30383e; border-radius: 8px; background: rgba(15,18,20,.94); box-shadow: 0 16px 42px rgba(0,0,0,.3), 0 1px 0 rgba(255,255,255,.035) inset; backdrop-filter: blur(16px); }
+.project-back { display: grid; width: 32px; height: 32px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: #858f97; cursor: pointer; }
 .project-back:hover { background: #303237; color: #e5e7ea; }
-.brand-mark { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 6px; color: #101113; background: #e9f1f5; transform: rotate(-3deg); }
-.project-name { margin-left: 9px; font-size: 13px; font-weight: 650; }
-.project-divider { width: 1px; height: 18px; margin: 0 9px; background: #3c3e43; }
-.project-select { color: #b8bac0; font-size: 13px; }
-.view-switch { justify-self: center; padding: 3px; border: 1px solid #303238; border-radius: 8px; background: rgba(25,26,29,.94); }
-.view-switch span { display: flex; gap: 6px; align-items: center; height: 32px; padding: 0 13px; border-radius: 6px; color: #f5f6f7; background: #34363b; font-size: 12px; }
-.save-state { justify-self: end; color: #7f838b; font-size: 11px; }
-.save-state.saving { display: flex; align-items: center; gap: 6px; color: #aeb2ba; }
+.project-control-separator { width: 1px; height: 24px; margin: 0 7px 0 3px; background: #2d353b; }
+.brand-mark { display: grid; width: 32px; height: 32px; flex: none; place-items: center; border: 1px solid #b9f2fb; border-radius: 7px; background: var(--accent); color: var(--accent-ink); }
+.project-identity { display: grid; gap: 1px; margin-left: 9px; line-height: 1; }
+.project-name { margin: 0; color: #f3f6f7; font-size: 14px; font-weight: 700; }
+.project-identity small { color: #69747c; font-size: 8px; font-weight: 700; }
+.project-divider { width: 1px; height: 24px; margin: 0 10px; background: #313940; }
+.project-context { display: flex; min-width: 0; align-items: center; gap: 7px; color: #74818a; }
+.project-context > svg { flex: none; }
+.project-select { max-width: 220px; overflow: hidden; color: #d5dade; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.save-state { display: flex; height: 32px; align-items: center; gap: 6px; padding: 0 9px; border: 1px solid #2c343a; border-radius: 7px; background: rgba(15,18,20,.8); color: #7f8991; font-size: 11px; }
+.save-state.saved svg { color: #6fc5ad; }
+.save-state.saving { color: #aeb2ba; }
 .save-state.saving svg { animation: spin .8s linear infinite; }
-.save-state.failed { color: #d39b98; }
-.canvas-account { display: flex; justify-self: end; align-items: center; gap: 9px; color: #8f939b; font-size: 11px; pointer-events: auto; }
+.save-state.failed, .save-state.failed svg { color: #e2918d; }
+.canvas-account { display: flex; align-items: center; gap: 6px; color: #8f939b; font-size: 11px; }
+.canvas-user-button.ui-button, .canvas-logout-button.ui-button { width: auto; min-height: 34px; gap: 7px; padding: 0 10px; border-radius: 7px; font-size: 12px; }
+.canvas-user-button.ui-button { border-color: #303940; background: rgba(18,22,25,.88); color: #d7dde1; }
+.canvas-user-button.ui-button svg { color: var(--accent); }
+.canvas-logout-button.ui-button { color: #8b959d; }
+.canvas-logout-button.ui-button:hover { background: #22282d; color: #f0f3f4; }
 
 .media-node { position: relative; width: 380px; color: #e8e9eb; }
 .node-title { position: absolute; right: 0; left: 0; bottom: calc(100% + 8px); display: flex; align-items: center; gap: 6px; color: #999ca3; font-size: 13px; white-space: nowrap; }
@@ -324,19 +332,17 @@ a { color: inherit; text-decoration: none; }
 .vue-flow__minimap-node { fill: #70747d; }
 
 @media (max-width: 900px) {
-  .project-name, .project-divider { display: none; }
-  .canvas-header { grid-template-columns: auto 1fr auto; }
-  .view-switch { transform: scale(.92); }
+  .project-identity, .project-divider { display: none; }
 }
 
 @media (max-width: 600px) {
-  .project-select, .brand-mark, .canvas-side-tools, .canvas-account > span, .workspace-account > span { display: none; }
+  .project-context, .brand-mark, .project-control-separator, .canvas-side-tools, .workspace-account > span, .canvas-account .ui-button span, .save-state span { display: none; }
   .asset-drawer { width: min(292px, calc(100vw - 40px)); }
   .workspace-home-header, .public-header { padding: 0 16px; }
   .workspace-content { width: calc(100% - 32px); margin: 32px auto; }
-  .project-control { width: 42px; padding: 5px; }
-  .view-switch { transform: none; }
-  .view-switch button.active { padding: 0 14px; }
+  .project-control { height: 42px; padding: 4px; }
+  .canvas-user-button.ui-button, .canvas-logout-button.ui-button { width: 32px; padding: 0; }
+  .save-state { width: 32px; justify-content: center; padding: 0; }
   .canvas-add-button { bottom: 12px; }
 }
 
@@ -521,11 +527,6 @@ a { color: inherit; text-decoration: none; }
 /* Creative canvas */
 .canvas-page, .creative-flow { background: var(--canvas); }
 .canvas-header { top: 16px; left: 18px; right: 18px; }
-.project-control, .view-switch { border-color: rgba(255,255,255,.1); background: rgba(18, 21, 24, .9); backdrop-filter: blur(14px); box-shadow: 0 14px 36px rgba(0,0,0,.26); }
-.brand-mark { border: 1px solid #b9f2fb; background: var(--accent); color: var(--accent-ink); transform: none; }
-.project-select { color: #d4d9de; }
-.view-switch span { background: #242a2f; color: var(--accent); }
-.save-state { padding: 4px 8px; border-radius: 5px; background: rgba(18,21,24,.75); }
 .media-node { --node-accent: #aeb7c0; }
 .media-node--text { --node-accent: #f0c36c; }
 .media-node--image { --node-accent: #6ed8ea; }

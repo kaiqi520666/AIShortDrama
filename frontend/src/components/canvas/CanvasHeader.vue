@@ -1,5 +1,5 @@
 <script setup>
-import { ArrowLeft, Clapperboard, GitBranch, LoaderCircle, LogOut } from 'lucide-vue-next'
+import { ArrowLeft, CheckCircle2, CircleAlert, Clapperboard, Folder, LoaderCircle, LogOut, UserRound } from 'lucide-vue-next'
 import AppButton from '../ui/AppButton.vue'
 
 defineProps({
@@ -14,22 +14,21 @@ const emit = defineEmits(['back', 'logout'])
   <header class="canvas-header">
     <div class="project-control">
       <AppButton class="project-back" icon-only size="sm" title="返回工作台" @click="emit('back')"><ArrowLeft :size="17" /></AppButton>
+      <span class="project-control-separator"></span>
       <div class="brand-mark"><Clapperboard :size="18" /></div>
-      <span class="project-name">Mooncut</span>
+      <span class="project-identity"><strong class="project-name">Mooncut</strong><small>CREATIVE STUDIO</small></span>
       <span class="project-divider"></span>
-      <span class="project-select">{{ workspaceName }}</span>
-    </div>
-
-    <div class="view-switch" role="tablist" aria-label="项目视图">
-      <span class="active"><GitBranch :size="14" />工作流</span>
+      <span class="project-context"><Folder :size="14" /><span class="project-select">{{ workspaceName }}</span></span>
     </div>
     <div class="canvas-account">
       <div class="save-state" :class="saveStatus">
         <LoaderCircle v-if="saveStatus === 'saving'" :size="13" />
-        {{ saveStatus === 'saving' ? '保存中' : saveStatus === 'failed' ? '保存失败' : '已保存' }}
+        <CircleAlert v-else-if="saveStatus === 'failed'" :size="13" />
+        <CheckCircle2 v-else :size="13" />
+        <span>{{ saveStatus === 'saving' ? '保存中' : saveStatus === 'failed' ? '保存失败' : '已保存' }}</span>
       </div>
-      <span>{{ username }}</span>
-      <AppButton icon-only size="sm" title="退出登录" @click="emit('logout')"><LogOut :size="15" /></AppButton>
+      <AppButton class="canvas-user-button" size="sm" variant="soft" title="当前用户"><UserRound :size="15" /><span>{{ username }}</span></AppButton>
+      <AppButton class="canvas-logout-button" size="sm" title="退出登录" @click="emit('logout')"><LogOut :size="15" /><span>退出</span></AppButton>
     </div>
   </header>
 </template>
