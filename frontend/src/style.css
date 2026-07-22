@@ -55,9 +55,7 @@ a { color: inherit; text-decoration: none; }
 .workspace-home { width: 100%; height: 100%; overflow-y: auto; background: #151619; color: #eceef1; }
 .workspace-home-header { position: sticky; z-index: 5; top: 0; display: flex; height: 64px; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #2b2d31; background: rgba(21,22,25,.96); }
 .workspace-brand { display: flex; align-items: center; gap: 10px; font-size: 14px; }
-.workspace-account { display: flex; align-items: center; gap: 8px; color: #92969e; font-size: 12px; }
-.workspace-account > button { display: grid; width: 32px; height: 32px; place-items: center; border: 0; border-radius: 6px; background: transparent; color: #8f939b; cursor: pointer; }
-.workspace-account > button:hover { background: #2d2f33; color: #eceef1; }
+.workspace-account { display: flex; align-items: center; gap: 6px; color: #92969e; font-size: 12px; }
 .workspace-content { width: min(1120px, calc(100% - 48px)); margin: 54px auto; }
 .workspace-title-row { display: flex; align-items: end; justify-content: space-between; margin-bottom: 24px; }
 .workspace-title-row h1 { margin: 0; font-size: 28px; font-weight: 650; letter-spacing: 0; }
@@ -117,11 +115,12 @@ a { color: inherit; text-decoration: none; }
 .save-state.saving svg { animation: spin .8s linear infinite; }
 .save-state.failed, .save-state.failed svg { color: #e2918d; }
 .canvas-account { display: flex; align-items: center; gap: 6px; color: #8f939b; font-size: 11px; }
-.canvas-user-button.ui-button, .canvas-logout-button.ui-button { width: auto; min-height: 34px; gap: 7px; padding: 0 10px; border-radius: 7px; font-size: 12px; }
-.canvas-user-button.ui-button { border-color: #303940; background: rgba(18,22,25,.88); color: #d7dde1; }
-.canvas-user-button.ui-button svg { color: var(--accent); }
-.canvas-logout-button.ui-button { color: #8b959d; }
-.canvas-logout-button.ui-button:hover { background: #22282d; color: #f0f3f4; }
+.canvas-user-button.ui-button, .canvas-logout-button.ui-button,
+.workspace-user-button.ui-button, .workspace-logout-button.ui-button { width: auto; min-height: 34px; gap: 7px; padding: 0 10px; border-radius: 7px; font-size: 12px; }
+.canvas-user-button.ui-button, .workspace-user-button.ui-button { border-color: #303940; background: rgba(18,22,25,.88); color: #d7dde1; }
+.canvas-user-button.ui-button svg, .workspace-user-button.ui-button svg { color: var(--accent); }
+.canvas-logout-button.ui-button, .workspace-logout-button.ui-button { color: #8b959d; }
+.canvas-logout-button.ui-button:hover, .workspace-logout-button.ui-button:hover { background: #22282d; color: #f0f3f4; }
 
 .media-node { position: relative; width: 380px; color: #e8e9eb; }
 .node-title { position: absolute; right: 0; left: 0; bottom: calc(100% + 8px); display: flex; align-items: center; gap: 6px; color: #999ca3; font-size: 13px; white-space: nowrap; }
@@ -336,12 +335,12 @@ a { color: inherit; text-decoration: none; }
 }
 
 @media (max-width: 600px) {
-  .project-context, .brand-mark, .project-control-separator, .canvas-side-tools, .workspace-account > span, .canvas-account .ui-button span, .save-state span { display: none; }
+  .project-context, .brand-mark, .project-control-separator, .canvas-side-tools, .workspace-account .ui-button span, .canvas-account .ui-button span, .save-state span { display: none; }
   .asset-drawer { width: min(292px, calc(100vw - 40px)); }
   .workspace-home-header, .public-header { padding: 0 16px; }
   .workspace-content { width: calc(100% - 32px); margin: 32px auto; }
   .project-control { height: 42px; padding: 4px; }
-  .canvas-user-button.ui-button, .canvas-logout-button.ui-button { width: 32px; padding: 0; }
+  .canvas-user-button.ui-button, .canvas-logout-button.ui-button, .workspace-user-button.ui-button, .workspace-logout-button.ui-button { width: 32px; padding: 0; }
   .save-state { width: 32px; justify-content: center; padding: 0; }
   .canvas-add-button { bottom: 12px; }
 }

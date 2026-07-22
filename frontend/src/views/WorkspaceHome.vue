@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { Clapperboard, Copy, LogOut, Pencil, Play, Plus, Trash2 } from 'lucide-vue-next'
+import { Clapperboard, Copy, LogOut, Pencil, Play, Plus, Trash2, UserRound } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import AppButton from '../components/ui/AppButton.vue'
 import AppInput from '../components/ui/AppInput.vue'
@@ -81,8 +81,8 @@ onMounted(() => store.load())
     <header class="workspace-home-header">
       <div class="workspace-brand"><span class="brand-symbol"><Clapperboard :size="19" /></span><strong>Mooncut</strong><small>STUDIO</small></div>
       <div class="workspace-account">
-        <span>{{ authStore.user?.username }}</span>
-        <AppButton icon-only size="sm" title="退出登录" @click="signOut"><LogOut :size="16" /></AppButton>
+        <AppButton class="workspace-user-button" size="sm" variant="soft" title="当前用户"><UserRound :size="15" /><span>{{ authStore.user?.username }}</span></AppButton>
+        <AppButton class="workspace-logout-button" size="sm" title="退出登录" @click="signOut"><LogOut :size="15" /><span>退出</span></AppButton>
       </div>
     </header>
 
