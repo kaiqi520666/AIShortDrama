@@ -12,6 +12,7 @@ import { getVideoReferenceError, normalizeVideoSettings, videoModels } from '../
 import { useCanvasStore } from '../../stores/canvas'
 import AppButton from '../ui/AppButton.vue'
 import AppMenu from '../ui/AppMenu.vue'
+import AppTextarea from '../ui/AppTextarea.vue'
 import PromptReferenceEditor from './PromptReferenceEditor.vue'
 
 const props = defineProps({
@@ -273,13 +274,13 @@ onBeforeUnmount(() => {
       @update:model-value="updatePrompt"
       @pointerdown="settingsOpen = false; modelOpen = false"
     />
-    <textarea
+    <AppTextarea
       v-else
-      :value="data.prompt"
+      :model-value="data.prompt"
       :placeholder="mediaTypes[type].placeholder"
       @input="updateTextPrompt"
       @pointerdown="settingsOpen = false; modelOpen = false"
-    ></textarea>
+    />
 
     <AppMenu v-if="modelOpen && (['image', 'video'].includes(type) || isReverseTask)" ref="modelMenu" class="model-menu" :style="modelStyle" @pointerdown.stop>
       <AppButton v-for="model in selectableModels" :key="model.id" :class="{ active: selectedModel.id === model.id }" @click="updateModel(model)">

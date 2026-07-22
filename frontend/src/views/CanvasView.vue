@@ -12,7 +12,9 @@ import GenerationPanel from '../components/canvas/GenerationPanel.vue'
 import MediaNode from '../components/canvas/MediaNode.vue'
 import NodeCreateMenu from '../components/canvas/NodeCreateMenu.vue'
 import AppButton from '../components/ui/AppButton.vue'
+import AppInput from '../components/ui/AppInput.vue'
 import AppMenu from '../components/ui/AppMenu.vue'
+import AppTooltip from '../components/ui/AppTooltip.vue'
 import { mediaTypes } from '../config/mediaTypes'
 import { useAuthStore } from '../stores/auth'
 import { useCanvasStore } from '../stores/canvas'
@@ -276,7 +278,7 @@ onBeforeUnmount(() => window.clearTimeout(saveTimer))
 
 <template>
   <main class="canvas-page" :class="{ 'assets-open': assetsVisible, 'multi-selected': selectedNodes.length > 1, [`cursor-${pointerMode}`]: pointerMode }" @pointerdown="contextMenu = null" @pointerdown.capture="handleCanvasPointerDown" @pointerup.window="resetPointerMode" @pointercancel.window="resetPointerMode">
-    <CanvasHeader :workspace-name="workspace.name" :save-status="saveStatus" :username="authStore.user.username" @back="goHome" @logout="signOut" />
+    <CanvasHeader :workspace-name="workspace.name" :save-status="saveStatus" :username="authStore.user?.username || '访客'" @back="goHome" @logout="signOut" />
 
     <VueFlow
       v-model:nodes="nodes"
@@ -328,16 +330,16 @@ onBeforeUnmount(() => window.clearTimeout(saveTimer))
 
     <aside class="canvas-side-tools">
       <AppButton class="asset-toggle-button" title="资产" @click="assetsVisible = !assetsVisible"><Library :size="17" /><span>资产</span></AppButton>
-      <AppButton icon-only title="整理画布" @click="fitView({ padding: 0.24, duration: 350 })"><Scan :size="17" /></AppButton>
-      <AppButton icon-only title="切换小地图" @click="minimapVisible = !minimapVisible"><Maximize2 :size="17" /></AppButton>
+      <AppTooltip text="整理画布"><AppButton icon-only aria-label="整理画布" @click="fitView({ padding: 0.24, duration: 350 })"><Scan :size="17" /></AppButton></AppTooltip>
+      <AppTooltip text="切换小地图"><AppButton icon-only aria-label="切换小地图" @click="minimapVisible = !minimapVisible"><Maximize2 :size="17" /></AppButton></AppTooltip>
       <span>{{ Math.round(viewport.zoom * 100) }}%</span>
     </aside>
 
     <div v-if="selectedNodes.length > 1 || selectedGroup" class="selection-toolbar" :style="selectionToolbarStyle">
-      <input
+      <AppInput
         v-if="selectedGroup"
         class="selection-group-title"
-        :value="selectedGroup.title || '未命名编组'"
+        :model-value="selectedGroup.title || '未命名编组'"
         aria-label="编组标题"
         @input="store.renameGroup(selectedGroup.id, $event.target.value)"
         @blur="store.renameGroup(selectedGroup.id, $event.target.value)"

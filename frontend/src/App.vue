@@ -1,5 +1,6 @@
 <script setup>
 import GlobalConfirm from './components/global/GlobalConfirm.vue'
+import GlobalLoading from './components/global/GlobalLoading.vue'
 import GlobalToast from './components/global/GlobalToast.vue'
 </script>
 
@@ -9,4 +10,5 @@ import GlobalToast from './components/global/GlobalToast.vue'
   </RouterView>
   <GlobalToast />
   <GlobalConfirm />
+  <GlobalLoading />
 </template>

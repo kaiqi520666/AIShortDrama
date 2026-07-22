@@ -7,6 +7,8 @@ import { imageAspectRatios } from '../../config/imageSettings'
 import { startGenerationPolling } from '../../services/generationPolling'
 import { useCanvasStore } from '../../stores/canvas'
 import AppButton from '../ui/AppButton.vue'
+import AppInput from '../ui/AppInput.vue'
+import AppTextarea from '../ui/AppTextarea.vue'
 
 const props = defineProps({
   id: { type: String, required: true },
@@ -169,9 +171,9 @@ onBeforeUnmount(() => {
   <div class="media-node" :class="[`media-node--${type}`, { selected }]" :style="nodeStyle">
     <label class="node-title">
       <component :is="icon" :size="14" />
-      <input
+      <AppInput
         class="node-title-input nodrag nopan"
-        :value="data.title"
+        :model-value="data.title"
         aria-label="节点标题"
         @input="updateNodeData(id, { title: $event.target.value })"
         @keydown.stop
@@ -196,16 +198,16 @@ onBeforeUnmount(() => {
         <AppButton class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'videoReverse')"><Video :size="18" /><span><strong>反推视频提示词</strong><small>创建视频上传与 AI 文本任务</small></span></AppButton>
       </div>
 
-      <textarea
+      <AppTextarea
         v-else-if="type === 'text'"
         class="text-node-editor nodrag nopan nowheel"
-        :value="data.content"
+        :model-value="data.content"
         :placeholder="textMode === 'task' ? (data.status === 'generating' ? '正在生成…' : '等待生成…') : '输入内容…'"
         :readonly="textMode === 'task' && data.status === 'generating'"
         aria-label="文本节点内容"
         @input="updateNodeData(id, { content: $event.target.value, status: 'ready' })"
         @keydown.stop
-      ></textarea>
+      />
 
       <template v-else-if="data.asset && type === 'image'">
         <img class="node-image" :src="data.asset" :alt="data.title" referrerpolicy="no-referrer" />

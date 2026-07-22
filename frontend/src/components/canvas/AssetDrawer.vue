@@ -3,6 +3,9 @@ import { computed, onMounted, ref } from 'vue'
 import { ChevronDown, ChevronRight, FileText, Folder, Image, Music2, Plus, RefreshCw, Video, X } from 'lucide-vue-next'
 import { listAssets } from '../../api/assets'
 import AppButton from '../ui/AppButton.vue'
+import AppInput from '../ui/AppInput.vue'
+import AppTabs from '../ui/AppTabs.vue'
+import EmptyState from '../ui/EmptyState.vue'
 
 const props = defineProps({
   nodes: { type: Array, required: true },
@@ -11,6 +14,8 @@ const props = defineProps({
 })
 const emit = defineEmits(['focus', 'focus-group', 'rename-group', 'add', 'close'])
 const icons = { text: FileText, image: Image, video: Video, audio: Music2 }
+const drawerTabs = [{ value: 'nodes', label: '节点' }, { value: 'assets', label: '资产' }]
+const assetTypeOptions = [{ value: '', label: '全部' }, { value: 'image', label: '图片' }, { value: 'video', label: '视频' }, { value: 'audio', label: '音频' }]
 const activeTab = ref('nodes')
 const assetType = ref('')
 const assets = ref([])
@@ -54,6 +59,11 @@ function selectAssetType(type) {
   loadAssetItems()
 }
 
+function selectTab(tab) {
+  activeTab.value = tab
+  if (tab === 'assets') loadAssetItems()
+}
+
 onMounted(loadAssetItems)
 </script>
 
@@ -66,12 +76,10 @@ onMounted(loadAssetItems)
       <AppButton icon-only size="sm" title="关闭资产" @click="emit('close')"><X :size="17" /></AppButton>
     </header>
 
-    <nav class="asset-tabs">
-      <AppButton :class="{ active: activeTab === 'nodes' }" @click="activeTab = 'nodes'">节点</AppButton>
-      <AppButton :class="{ active: activeTab === 'assets' }" @click="activeTab = 'assets'; loadAssetItems()">资产</AppButton>
-    </nav>
+    <AppTabs class="asset-tabs" :model-value="activeTab" :options="drawerTabs" aria-label="资产面板" @update:model-value="selectTab" />
 
     <div v-if="activeTab === 'nodes'" class="asset-list">
+      <EmptyState v-if="!nodes.length" compact title="暂无节点" description="在画布中创建节点后会显示在这里" />
       <AppButton
         v-for="node in ungroupedNodes"
         :key="node.id"
@@ -94,10 +102,10 @@ onMounted(loadAssetItems)
             <ChevronDown v-else :size="14" />
           </span>
           <Folder :size="16" />
-          <input
+          <AppInput
             v-if="editingGroupId === group.id"
             class="asset-group-title-input"
-            :value="group.title"
+            :model-value="group.title"
             aria-label="编组名称"
             @click.stop
             @input="renameGroup(group.id, $event)"
@@ -129,12 +137,10 @@ onMounted(loadAssetItems)
     </div>
 
     <div v-else class="asset-library">
-      <div class="asset-filters">
-        <AppButton v-for="item in [{ value: '', label: '全部' }, { value: 'image', label: '图片' }, { value: 'video', label: '视频' }, { value: 'audio', label: '音频' }]" :key="item.value" size="sm" :class="{ active: assetType === item.value }" @click="selectAssetType(item.value)">{{ item.label }}</AppButton>
-      </div>
-      <p v-if="loadingAssets" class="asset-library-state">加载中…</p>
-      <p v-else-if="assetError" class="asset-library-state error">{{ assetError }}</p>
-      <p v-else-if="!assets.length" class="asset-library-state">暂无资产</p>
+      <AppTabs class="asset-filters" :model-value="assetType" :options="assetTypeOptions" aria-label="资产类型" @update:model-value="selectAssetType" />
+      <EmptyState v-if="loadingAssets" compact title="正在加载资产" loading />
+      <EmptyState v-else-if="assetError" compact title="资产加载失败" :description="assetError" tone="error" />
+      <EmptyState v-else-if="!assets.length" compact title="暂无资产" description="上传或生成的媒体会显示在这里" />
       <div v-else class="asset-list asset-library-list">
         <AppButton v-for="asset in assets" :key="asset.id" class="asset-item" :title="`添加 ${asset.name}`" @click="emit('add', asset)">
           <span class="asset-preview">

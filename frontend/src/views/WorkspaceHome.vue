@@ -3,7 +3,9 @@ import { computed, onMounted, ref } from 'vue'
 import { Clapperboard, Copy, LogOut, Pencil, Play, Plus, Trash2 } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import AppButton from '../components/ui/AppButton.vue'
+import AppInput from '../components/ui/AppInput.vue'
 import AppSelect from '../components/ui/AppSelect.vue'
+import EmptyState from '../components/ui/EmptyState.vue'
 import { useGlobalConfirm, useGlobalToast } from '../composables/useGlobalUI'
 import { useAuthStore } from '../stores/auth'
 import { useWorkspaceStore } from '../stores/workspaces'
@@ -86,8 +88,10 @@ onMounted(() => store.load())
         <div class="workspace-filters"><span>{{ store.items.length }} 个项目</span><AppSelect v-model="sortBy" :options="sortOptions" aria-label="项目排序" /></div>
       </div>
       <p v-if="store.error" class="workspace-notice">{{ store.error }}</p>
-      <div v-if="store.loading" class="workspace-empty">加载中…</div>
-      <div v-else-if="!store.items.length" class="workspace-empty">暂无工作台</div>
+      <EmptyState v-if="store.loading" class="workspace-empty" title="正在加载项目" loading />
+      <EmptyState v-else-if="!store.items.length" class="workspace-empty" title="暂无项目" description="创建项目后即可开始编排内容与生成任务">
+        <AppButton variant="primary" size="sm" @click="create"><Plus :size="15" />新建项目</AppButton>
+      </EmptyState>
       <div v-else class="workspace-grid">
         <article v-for="(workspace, index) in displayedItems" :key="workspace.id" class="workspace-card" @dblclick="router.push(`/workspaces/${workspace.id}`)">
           <AppButton class="workspace-open-area" @click="router.push(`/workspaces/${workspace.id}`)">
@@ -95,10 +99,10 @@ onMounted(() => store.load())
             <span v-if="editingId !== workspace.id" class="workspace-card-name">{{ workspace.name }}</span>
             <small>WORKFLOW CANVAS</small>
           </AppButton>
-          <input
+          <AppInput
             v-if="editingId === workspace.id"
             class="workspace-name-input"
-            :value="workspace.name"
+            :model-value="workspace.name"
             autofocus
             @click.stop
             @blur="rename(workspace, $event)"
