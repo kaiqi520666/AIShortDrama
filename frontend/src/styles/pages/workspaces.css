@@ -1,6 +1,8 @@
 /* Project library */
 .workspace-home {
-  background: #0d0f11;
+  background:
+    linear-gradient(rgba(7, 9, 10, 0.38), rgba(7, 9, 10, 0.62)),
+    url("../../assets/mooncut-workspaces-bg.webp") center / cover fixed;
 }
 .workspace-home-header {
   height: 72px;

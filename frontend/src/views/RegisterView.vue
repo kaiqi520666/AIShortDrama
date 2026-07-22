@@ -30,7 +30,7 @@ async function submit() {
 </script>
 
 <template>
-  <AuthFormShell title="创建账号" subtitle="注册后即可开始创建工作台">
+  <AuthFormShell variant="register" title="创建账号" subtitle="注册后即可开始创建工作台">
     <form class="auth-form" @submit.prevent="submit">
       <AuthInputField v-model.trim="username" label="用户名" :icon="UserRound" autocomplete="username" minlength="2" maxlength="32" required />
       <AuthInputField v-model.trim="email" label="邮箱" :icon="Mail" type="email" autocomplete="email" required />
