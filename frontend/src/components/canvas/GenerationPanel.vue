@@ -8,7 +8,8 @@ import { getEffectivePrompt, maxGenerationPromptLength } from '../../config/gene
 import { buildImageRequest, imageModels, normalizeImageSettings } from '../../config/imageModels'
 import { mediaTypes } from '../../config/mediaTypes'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
-import { buildVideoRequest, getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
+import { buildVideoRequest, defaultVideoModel, getVideoModelError, getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
+import { useGlobalToast } from '../../composables/useGlobalUI'
 import { useCanvasStore } from '../../stores/canvas'
 import AppButton from '../ui/AppButton.vue'
 import AppMenu from '../ui/AppMenu.vue'
@@ -22,6 +23,7 @@ const props = defineProps({
 })
 
 const store = useCanvasStore()
+const toast = useGlobalToast()
 const { updateNodeData } = useVueFlow()
 const settingsTrigger = ref(null)
 const settingsMenu = ref(null)
@@ -183,6 +185,8 @@ function updateImageSearch(enabled) {
 }
 
 function updateVideoModel(model) {
+  const error = getVideoModelError({ ...props.data, model: model.id }, references.value)
+  if (error) return
   const updates = { model: model.id }
   if (!model.resolutions.includes(selectedResolution.value)) updates.resolution = model.defaultResolution
   if (!model.aspectRatios.includes(selectedAspectRatio.value)) updates.aspectRatio = model.defaultAspectRatio
@@ -205,6 +209,13 @@ function updateVideoSetting(key, value) {
   updateNodeData(props.nodeId, { [key]: value })
   if (key === 'aspectRatio') nextTick(() => requestAnimationFrame(updateSettingsPosition))
 }
+
+watch(() => `${props.type}:${props.data.model}:${references.value.map((node) => node.type).join(',')}`, () => {
+  if (props.type !== 'video' || props.data.model !== 'happyhorse-1.1') return
+  if (!references.value.some((node) => ['audio', 'video'].includes(node.type))) return
+  updateVideoModel(defaultVideoModel)
+  toast.info('HappyHorse 不支持音频或视频参考，已切换为 Seedance 2')
+}, { immediate: true })
 
 function getElement(target) {
   return target?.element || target?.$el || target
@@ -289,7 +300,7 @@ onBeforeUnmount(() => {
     />
 
     <AppMenu v-if="modelOpen && (['image', 'video'].includes(type) || isReverseTask)" ref="modelMenu" class="model-menu" :style="modelStyle" @pointerdown.stop>
-      <AppButton v-for="model in selectableModels" :key="model.id" :class="{ active: selectedModel.id === model.id }" @click="updateModel(model)">
+      <AppButton v-for="model in selectableModels" :key="model.id" :class="{ active: selectedModel.id === model.id }" :disabled="type === 'video' && Boolean(getVideoModelError({ ...data, model: model.id }, references))" :title="type === 'video' ? getVideoModelError({ ...data, model: model.id }, references) : ''" @click="updateModel(model)">
         <WandSparkles :size="15" />
         <span>{{ model.label }}</span>
       </AppButton>

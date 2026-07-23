@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildVideoRequest, getVideoReferenceError } from './videoModels'
+import { buildVideoRequest, getVideoModelError, getVideoReferenceError } from './videoModels'
 
 const imageNode = (id) => ({ id, type: 'image', data: { asset: `https://example.com/${id}.png` } })
+const mediaNode = (type, id) => ({ id, type, data: { asset: `https://example.com/${id}.${type === 'audio' ? 'mp3' : 'mp4'}` } })
 
 describe('buildVideoRequest', () => {
   it('builds a standard Seedance reference request', () => {
@@ -13,7 +14,7 @@ describe('buildVideoRequest', () => {
       resolution: '720p',
       aspectRatio: '16:9',
       generateAudio: false,
-    }, [imageNode('one')])).toEqual({
+    }, [imageNode('one'), mediaNode('video', 'two'), mediaNode('audio', 'three')])).toEqual({
       model: 'seedance-2',
       prompt: 'test video',
       duration: 5,
@@ -21,6 +22,8 @@ describe('buildVideoRequest', () => {
       aspect_ratio: '16:9',
       generate_audio: false,
       reference_images: ['https://example.com/one.png'],
+      reference_videos: ['https://example.com/two.mp4'],
+      reference_audios: ['https://example.com/three.mp3'],
     })
   })
 
@@ -37,8 +40,11 @@ describe('buildVideoRequest', () => {
     expect(request).not.toHaveProperty('action')
   })
 
-  it('rejects unsupported media references and excess images', () => {
-    expect(getVideoReferenceError({}, [{ type: 'video', data: { asset: 'https://example.com/a.mp4' } }])).toContain('仅支持图片')
+  it('validates model-specific reference capabilities', () => {
+    expect(getVideoModelError({ model: 'happyhorse-1.1' }, [mediaNode('audio', 'one')])).toContain('不支持参考音频')
+    expect(getVideoModelError({ model: 'happyhorse-1.1' }, [mediaNode('video', 'one')])).toContain('不支持参考视频')
+    expect(getVideoReferenceError({}, [mediaNode('audio', 'one')])).toContain('需同时连接图片或视频')
     expect(getVideoReferenceError({}, Array.from({ length: 10 }, (_, index) => imageNode(index)))).toContain('最多支持 9 张')
+    expect(getVideoReferenceError({}, [imageNode('image'), ...Array.from({ length: 4 }, (_, index) => mediaNode('audio', index))])).toContain('最多支持 3 条参考音频')
   })
 })

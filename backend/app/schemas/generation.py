@@ -215,6 +215,8 @@ class VideoGenerationRequest(BaseModel):
     aspect_ratio: str
     generate_audio: bool | None = None
     reference_images: list[AnyHttpUrl] = Field(default_factory=list, max_length=9)
+    reference_videos: list[AnyHttpUrl] = Field(default_factory=list, max_length=3)
+    reference_audios: list[AnyHttpUrl] = Field(default_factory=list, max_length=3)
 
     @field_validator("prompt")
     @classmethod
@@ -239,4 +241,8 @@ class VideoGenerationRequest(BaseModel):
             raise ValueError(f"{self.model} 不支持时长 {self.duration}")
         if self.generate_audio is not None and not rules["audio"]:
             raise ValueError(f"{self.model} 不支持音频生成参数")
+        if self.model == "happyhorse-1.1" and (self.reference_videos or self.reference_audios):
+            raise ValueError("HappyHorse 1.1 不支持视频或音频参考")
+        if self.reference_audios and not (self.reference_images or self.reference_videos):
+            raise ValueError("参考音频需同时提供图片或视频")
         return self

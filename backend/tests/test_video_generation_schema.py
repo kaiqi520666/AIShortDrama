@@ -33,6 +33,27 @@ def video_request(**updates):
             "resolution": "1080P",
             "generate_audio": True,
         },
+        {"reference_audios": ["https://example.com/reference.mp3"]},
+        {
+            "reference_images": ["https://example.com/reference.png"],
+            "reference_videos": [f"https://example.com/{index}.mp4" for index in range(4)],
+        },
+        {
+            "reference_images": ["https://example.com/reference.png"],
+            "reference_audios": [f"https://example.com/{index}.mp3" for index in range(4)],
+        },
+        {
+            "model": "happyhorse-1.1",
+            "duration": 5,
+            "resolution": "1080P",
+            "reference_audios": ["https://example.com/reference.mp3"],
+        },
+        {
+            "model": "happyhorse-1.1",
+            "duration": 5,
+            "resolution": "1080P",
+            "reference_videos": ["https://example.com/reference.mp4"],
+        },
     ],
 )
 def test_invalid_video_request(updates):
@@ -47,7 +68,11 @@ def test_seedance_mini_duration_options():
 
 def test_provider_payloads_use_reference_mode():
     seedance = build_video_provider_payload(
-        video_request(reference_images=["https://example.com/one.png"])
+        video_request(
+            reference_images=["https://example.com/one.png"],
+            reference_videos=["https://example.com/one.mp4"],
+            reference_audios=["https://example.com/one.mp3"],
+        )
     )
     happyhorse = build_video_provider_payload(
         video_request(
@@ -62,6 +87,12 @@ def test_provider_payloads_use_reference_mode():
     )
     assert seedance["image_with_roles"] == [
         {"url": "https://example.com/one.png", "role": "reference_image"}
+    ]
+    assert seedance["video_with_roles"] == [
+        {"url": "https://example.com/one.mp4", "role": "reference_video"}
+    ]
+    assert seedance["audio_with_roles"] == [
+        {"url": "https://example.com/one.mp3", "role": "reference_audio"}
     ]
     assert happyhorse["action"] == "reference-to-video"
     assert happyhorse["reference_images"] == ["https://example.com/one.png"]

@@ -53,6 +53,8 @@ async def create_video_task(
 
 def build_video_provider_payload(request: VideoGenerationRequest) -> dict[str, Any]:
     reference_images = [str(url) for url in request.reference_images]
+    reference_videos = [str(url) for url in request.reference_videos]
+    reference_audios = [str(url) for url in request.reference_audios]
     provider_payload = {
         "model": request.model,
         "prompt": request.prompt,
@@ -69,6 +71,14 @@ def build_video_provider_payload(request: VideoGenerationRequest) -> dict[str, A
         if reference_images:
             provider_payload["image_with_roles"] = [
                 {"url": url, "role": "reference_image"} for url in reference_images
+            ]
+        if reference_videos:
+            provider_payload["video_with_roles"] = [
+                {"url": url, "role": "reference_video"} for url in reference_videos
+            ]
+        if reference_audios:
+            provider_payload["audio_with_roles"] = [
+                {"url": url, "role": "reference_audio"} for url in reference_audios
             ]
     return provider_payload
 

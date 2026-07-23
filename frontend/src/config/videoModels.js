@@ -14,7 +14,7 @@ export const videoModels = [
     durationMax: 15,
     durationAuto: true,
     generateAudio: true,
-    maxImages: 9,
+    referenceLimits: { image: 9, video: 3, audio: 3 },
   },
   {
     id: 'seedance-2-fast',
@@ -28,7 +28,7 @@ export const videoModels = [
     durationMax: 15,
     durationAuto: true,
     generateAudio: true,
-    maxImages: 9,
+    referenceLimits: { image: 9, video: 3, audio: 3 },
   },
   {
     id: 'seedance-2-mini',
@@ -40,7 +40,7 @@ export const videoModels = [
     defaultDuration: 10,
     durationOptions: [4, 8, 10, 12, 15],
     generateAudio: true,
-    maxImages: 9,
+    referenceLimits: { image: 9, video: 3, audio: 3 },
   },
   {
     id: 'happyhorse-1.1',
@@ -52,7 +52,7 @@ export const videoModels = [
     defaultDuration: 5,
     durationMin: 3,
     durationMax: 15,
-    maxImages: 9,
+    referenceLimits: { image: 9, video: 0, audio: 0 },
     remoteOnly: true,
   },
 ]
@@ -87,17 +87,32 @@ function normalizeReferences(references) {
   return references.map((reference) => ({
     type: reference?.type,
     url: typeof reference === 'string' ? reference : reference?.url || reference?.data?.asset,
-  })).filter((reference) => reference.url)
+  }))
 }
 
-export function getVideoReferenceError(data, references = []) {
+const referenceLabels = { image: '图片', video: '视频', audio: '音频' }
+const referenceUnits = { image: '张', video: '条', audio: '条' }
+
+export function getVideoModelError(data, references = []) {
   const model = getVideoModel(data.model)
   const normalized = normalizeReferences(references)
   const counts = Object.fromEntries(['image', 'video', 'audio'].map((type) => [type, normalized.filter((reference) => reference.type === type).length]))
 
-  if (counts.image > model.maxImages) return `当前模型最多支持 ${model.maxImages} 张参考图片`
-  if (counts.video || counts.audio) return '当前仅支持图片作为视频参考素材'
-  if (model.remoteOnly && normalized.some((reference) => !/^https?:\/\//i.test(reference.url))) return '当前模型的参考素材必须是公开 URL'
+  for (const type of ['image', 'video', 'audio']) {
+    const limit = model.referenceLimits[type]
+    if (counts[type] > limit) return limit ? `${model.label} 最多支持 ${limit} ${referenceUnits[type]}参考${referenceLabels[type]}` : `${model.label} 不支持参考${referenceLabels[type]}`
+  }
+  return ''
+}
+
+export function getVideoReferenceError(data, references = []) {
+  const normalized = normalizeReferences(references)
+  const modelError = getVideoModelError(data, references)
+  if (modelError) return modelError
+  const types = normalized.map((reference) => reference.type)
+  if (types.includes('audio') && !types.some((type) => ['image', 'video'].includes(type))) return '参考音频需同时连接图片或视频'
+  if (normalized.some((reference) => reference.type in referenceLabels && !reference.url)) return '请先上传已连接的参考素材'
+  if (getVideoModel(data.model).remoteOnly && normalized.some((reference) => reference.url && !/^https?:\/\//i.test(reference.url))) return '当前模型的参考素材必须是公开 URL'
   return ''
 }
 
@@ -108,9 +123,8 @@ export function buildVideoRequest(data, references = []) {
 
   const referenceError = getVideoReferenceError(data, references)
   if (referenceError) throw new Error(referenceError)
-  const referenceImages = normalizeReferences(references)
-    .filter((reference) => reference.type === 'image')
-    .map(({ url }) => url)
+  const normalized = normalizeReferences(references)
+  const referenceUrls = (type) => normalized.filter((reference) => reference.type === type && reference.url).map(({ url }) => url)
   return {
     model: settings.model.id,
     prompt,
@@ -118,6 +132,8 @@ export function buildVideoRequest(data, references = []) {
     aspect_ratio: settings.aspectRatio,
     resolution: settings.resolution,
     ...(settings.model.generateAudio ? { generate_audio: settings.generateAudio } : {}),
-    reference_images: referenceImages,
+    reference_images: referenceUrls('image'),
+    reference_videos: referenceUrls('video'),
+    reference_audios: referenceUrls('audio'),
   }
 }
