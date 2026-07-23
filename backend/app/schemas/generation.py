@@ -1,7 +1,7 @@
 import uuid
 from typing import Any, Literal
 
-from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, model_validator
+from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
 ImageModel = Literal[
@@ -11,6 +11,44 @@ ImageModel = Literal[
     "gemini-3-pro-image-preview",
     "gemini-3.1-flash-image-preview",
 ]
+
+VideoModel = Literal[
+    "seedance-2",
+    "seedance-2-fast",
+    "seedance-2-mini",
+    "happyhorse-1.1",
+]
+
+SEEDANCE_RATIOS = {"21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "adaptive"}
+HAPPYHORSE_RATIOS = {"16:9", "9:16", "1:1", "4:3", "3:4"}
+VIDEO_MODEL_RULES: dict[str, dict[str, Any]] = {
+    "seedance-2": {
+        "resolutions": {"480p", "720p", "1080p", "4k"},
+        "ratios": SEEDANCE_RATIOS,
+        "duration_range": range(4, 16),
+        "duration_auto": True,
+        "audio": True,
+    },
+    "seedance-2-fast": {
+        "resolutions": {"480p", "720p"},
+        "ratios": SEEDANCE_RATIOS,
+        "duration_range": range(4, 16),
+        "duration_auto": True,
+        "audio": True,
+    },
+    "seedance-2-mini": {
+        "resolutions": {"480p", "720p"},
+        "ratios": SEEDANCE_RATIOS,
+        "durations": {4, 8, 10, 12, 15},
+        "audio": True,
+    },
+    "happyhorse-1.1": {
+        "resolutions": {"720P", "1080P"},
+        "ratios": HAPPYHORSE_RATIOS,
+        "duration_range": range(3, 16),
+        "audio": False,
+    },
+}
 
 IMAGE_MODEL_RULES: dict[str, dict[str, Any]] = {
     "gpt-image-2": {
@@ -162,4 +200,43 @@ class ImageGenerationRequest(BaseModel):
             raise ValueError(f"{self.model} 的 image_urls 必须使用 URL 字符串")
         if self.metadata and self.metadata.google_image_search and not self.metadata.google_search:
             raise ValueError("google_image_search 需要同时启用 google_search")
+        return self
+
+
+class VideoGenerationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    workspace_id: uuid.UUID
+    node_id: str = Field(min_length=1, max_length=64)
+    model: VideoModel
+    prompt: str = Field(min_length=1, max_length=32000)
+    duration: int
+    resolution: str
+    aspect_ratio: str
+    generate_audio: bool | None = None
+    reference_images: list[AnyHttpUrl] = Field(default_factory=list, max_length=9)
+
+    @field_validator("prompt")
+    @classmethod
+    def validate_prompt(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("视频提示词不能为空")
+        return value.strip()
+
+    @model_validator(mode="after")
+    def validate_model_options(self):
+        rules = VIDEO_MODEL_RULES[self.model]
+        if self.resolution not in rules["resolutions"]:
+            raise ValueError(f"{self.model} 不支持分辨率 {self.resolution}")
+        if self.aspect_ratio not in rules["ratios"]:
+            raise ValueError(f"{self.model} 不支持比例 {self.aspect_ratio}")
+        valid_duration = self.duration in rules.get("durations", set()) or (
+            self.duration in rules.get("duration_range", range(0))
+        )
+        if rules.get("duration_auto") and self.duration == 0:
+            valid_duration = True
+        if not valid_duration:
+            raise ValueError(f"{self.model} 不支持时长 {self.duration}")
+        if self.generate_audio is not None and not rules["audio"]:
+            raise ValueError(f"{self.model} 不支持音频生成参数")
         return self

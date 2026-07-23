@@ -17,9 +17,10 @@ async function pollTask(taskId, nodeId, updateNodeData) {
     })
     if (task.status === 'succeeded') {
       const asset = task.result?.data?.[0]?.url
+      const mediaLabel = task.task_type === 'video' ? '视频' : '图片'
       pollTimers.delete(taskId)
       if (!asset) {
-        updateNodeData(nodeId, { status: 'failed', generationError: '任务未返回图片地址' })
+        updateNodeData(nodeId, { status: 'failed', generationError: `任务未返回${mediaLabel}地址` })
         return
       }
       updateNodeData(nodeId, {
@@ -31,10 +32,11 @@ async function pollTask(taskId, nodeId, updateNodeData) {
       return
     }
     if (['failed', 'cancelled', 'timeout'].includes(task.status)) {
+      const mediaLabel = task.task_type === 'video' ? '视频' : '图片'
       pollTimers.delete(taskId)
       updateNodeData(nodeId, {
         status: 'failed',
-        generationError: task.error_message || '图片生成失败',
+        generationError: task.error_message || `${mediaLabel}生成失败`,
       })
       return
     }

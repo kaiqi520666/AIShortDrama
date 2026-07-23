@@ -2,13 +2,13 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import { ArrowUp, ChevronDown, FileText, Image, LoaderCircle, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
-import { createImageGeneration } from '../../api/generations'
+import { createImageGeneration, createVideoGeneration } from '../../api/generations'
 import { streamReversePrompt } from '../../api/reversals'
 import { getEffectivePrompt, maxGenerationPromptLength } from '../../config/generationPrompt'
 import { buildImageRequest, imageModels, normalizeImageSettings } from '../../config/imageModels'
 import { mediaTypes } from '../../config/mediaTypes'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
-import { getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
+import { buildVideoRequest, getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
 import { useCanvasStore } from '../../stores/canvas'
 import AppButton from '../ui/AppButton.vue'
 import AppMenu from '../ui/AppMenu.vue'
@@ -122,8 +122,7 @@ async function submitTask() {
     }
     return
   }
-  if (props.type !== 'image') {
-    notice.value = '当前模型后端暂未接入'
+  if (!['image', 'video'].includes(props.type)) {
     return
   }
   const nodeId = props.nodeId
@@ -134,10 +133,14 @@ async function submitTask() {
     generationError: '',
   })
   try {
-    const result = await createImageGeneration({
+    const createGeneration = props.type === 'image' ? createImageGeneration : createVideoGeneration
+    const generationRequest = props.type === 'image'
+      ? buildImageRequest({ ...props.data, prompt: effectivePrompt.value }, imageReferences.value)
+      : buildVideoRequest({ ...props.data, prompt: effectivePrompt.value }, references.value)
+    const result = await createGeneration({
       workspace_id: store.workspaceId,
       node_id: nodeId,
-      ...buildImageRequest({ ...props.data, prompt: effectivePrompt.value }, imageReferences.value),
+      ...generationRequest,
     })
     if (result.code !== 0) throw new Error(result.message)
     updateNodeData(nodeId, {
