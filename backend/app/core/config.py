@@ -24,6 +24,8 @@ class Settings(BaseSettings):
     oss_public_base_url: str = ""
     toapis_key: str = ""
     toapis_url: str = "https://toapis.com"
+    volcengine_speech_api_key: str = ""
+    volcengine_speech_url: str = "https://openspeech.bytedance.com/api/v3/tts/create"
     dashscope_api_key: str = ""
     dashscope_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     dashscope_workspace_id: str = ""

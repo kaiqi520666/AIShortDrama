@@ -1,4 +1,5 @@
 import asyncio
+from io import BytesIO
 import tempfile
 from pathlib import PurePosixPath
 from urllib.parse import urlparse
@@ -17,6 +18,12 @@ VIDEO_EXTENSIONS = {
     "video/mp4": ".mp4",
     "video/quicktime": ".mov",
     "video/webm": ".webm",
+}
+AUDIO_EXTENSIONS = {
+    "audio/mpeg": ".mp3",
+    "audio/wav": ".wav",
+    "audio/x-wav": ".wav",
+    "audio/ogg": ".ogg",
 }
 
 
@@ -69,6 +76,32 @@ class OssStorage:
         return stored
 
     async def store_remote_videos(self, task_id: str, urls: list[str]) -> list[str]:
+        return await self._store_remote_media(task_id, urls, "videos", VIDEO_EXTENSIONS, ".mp4")
+
+    async def store_remote_audios(
+        self, task_id: str, urls: list[str], audio_format: str
+    ) -> list[str]:
+        fallback = {"mp3": ".mp3", "wav": ".wav", "ogg_opus": ".ogg"}[audio_format]
+        return await self._store_remote_media(task_id, urls, "audios", AUDIO_EXTENSIONS, fallback)
+
+    async def store_audio_bytes(self, task_id: str, data: bytes, audio_format: str) -> str:
+        extension, content_type = {
+            "mp3": (".mp3", "audio/mpeg"),
+            "wav": (".wav", "audio/wav"),
+            "ogg_opus": (".ogg", "audio/ogg"),
+        }[audio_format]
+        return await self.store_upload(
+            f"generations/audios/{task_id}-1{extension}", BytesIO(data), content_type
+        )
+
+    async def _store_remote_media(
+        self,
+        task_id: str,
+        urls: list[str],
+        media_dir: str,
+        content_type_extensions: dict[str, str],
+        fallback_extension: str,
+    ) -> list[str]:
         stored = []
         timeout = httpx.Timeout(300, connect=30)
         async with httpx.AsyncClient(timeout=timeout, follow_redirects=True) as client:
@@ -77,16 +110,18 @@ class OssStorage:
                     response.raise_for_status()
                     content_type = response.headers.get("content-type", "").split(";", 1)[0]
                     extension = (
-                        VIDEO_EXTENSIONS.get(content_type)
+                        content_type_extensions.get(content_type)
                         or PurePosixPath(urlparse(url).path).suffix.lower()
                     )
-                    extension = extension if extension in {".mp4", ".mov", ".webm"} else ".mp4"
-                    content_type = content_type if content_type in VIDEO_EXTENSIONS else {
-                        ".mp4": "video/mp4",
-                        ".mov": "video/quicktime",
-                        ".webm": "video/webm",
-                    }[extension]
-                    object_key = f"generations/videos/{task_id}-{index}{extension}"
+                    allowed_extensions = set(content_type_extensions.values())
+                    extension = extension if extension in allowed_extensions else fallback_extension
+                    extension_types = {value: key for key, value in content_type_extensions.items()}
+                    content_type = (
+                        content_type
+                        if content_type in content_type_extensions
+                        else extension_types[extension]
+                    )
+                    object_key = f"generations/{media_dir}/{task_id}-{index}{extension}"
                     headers = {"Content-Type": content_type}
                     with tempfile.TemporaryFile() as stream:
                         async for chunk in response.aiter_bytes():

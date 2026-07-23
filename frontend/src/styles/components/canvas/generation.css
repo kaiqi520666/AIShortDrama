@@ -62,7 +62,7 @@
   color: var(--color-text-muted);
   pointer-events: none;
 }
-.prompt-image-token {
+.prompt-reference-token {
   display: inline-flex;
   height: 30px;
   align-items: center;
@@ -76,13 +76,13 @@
   vertical-align: middle;
   user-select: none;
 }
-.prompt-image-token img {
+.prompt-reference-token img {
   width: 23px;
   height: 23px;
   border-radius: 4px;
   object-fit: cover;
 }
-.prompt-image-label {
+.prompt-reference-label {
   font-size: 12px;
 }
 .prompt-reference-menu {
@@ -119,6 +119,11 @@
   height: 38px;
   border-radius: 5px;
   object-fit: cover;
+}
+.prompt-reference-menu svg {
+  flex: none;
+  margin: 7px;
+  color: var(--color-text-secondary);
 }
 .prompt-reference-menu span {
   overflow: hidden;
@@ -343,6 +348,26 @@
   color: var(--color-text-secondary);
   text-align: right;
   font-size: 12px;
+}
+.audio-setting-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.audio-setting-grid > div {
+  display: grid;
+  gap: 7px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+.audio-setting-grid .ui-select,
+.audio-setting-grid .ui-select-trigger {
+  width: 100%;
+}
+.audio-slider-list {
+  display: grid;
+  gap: 12px;
+  padding: 3px 0 2px;
 }
 .video-ratio-grid {
   grid-template-columns: repeat(4, 1fr);

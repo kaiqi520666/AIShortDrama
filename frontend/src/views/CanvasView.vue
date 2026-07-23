@@ -18,7 +18,7 @@ import AppInput from '../components/ui/AppInput.vue'
 import AppMenu from '../components/ui/AppMenu.vue'
 import AppTooltip from '../components/ui/AppTooltip.vue'
 import { uploadMedia } from '../api/uploads'
-import { canConnect } from '../config/connectionRules'
+import { canConnect, getConnectionError } from '../config/connectionRules'
 import { mediaTypes } from '../config/mediaTypes'
 import { useGlobalConfirm, useGlobalToast } from '../composables/useGlobalUI'
 import { useAuthStore } from '../stores/auth'
@@ -167,7 +167,11 @@ function handleConnectStart({ nodeId, handleType }) {
 }
 
 function handleConnect(connection) {
-  store.addEdge(connection)
+  const source = nodes.value.find((node) => node.id === connection.source)
+  const target = nodes.value.find((node) => node.id === connection.target)
+  const error = source && target ? getConnectionError(source.type, target.type, store.incomingNodes(target.id).map((node) => node.type)) : '节点不存在'
+  if (error) toast.warning(error)
+  else if (!store.addEdge(connection)) toast.warning('节点已经连接')
   connectionSource.value = null
 }
 
@@ -175,7 +179,8 @@ function connectSelected() {
   if (selectedNodes.value.length !== 2) return toast.warning('请选择两个节点后连接')
   let [source, target] = [...selectedNodes.value].sort((a, b) => a.position.x - b.position.x)
   if (!canConnect(source.type, target.type) && canConnect(target.type, source.type)) [source, target] = [target, source]
-  if (!canConnect(source.type, target.type)) return toast.warning('所选节点类型不能连接')
+  const error = getConnectionError(source.type, target.type, store.incomingNodes(target.id).map((node) => node.type))
+  if (error) return toast.warning(error)
   if (!store.addEdge({ source: source.id, target: target.id })) toast.warning('节点已经连接')
 }
 
@@ -584,6 +589,7 @@ async function handlePaneUpload(event) {
       status: 'ready',
       ...(metadata.width ? { sourceWidth: metadata.width, sourceHeight: metadata.height, sourceAspectRatio: metadata.width / metadata.height } : {}),
       ...(metadata.duration ? { sourceDuration: metadata.duration } : {}),
+      sourceByteSize: result.data.size,
     })
   } catch (error) {
     store.deleteNode(id)

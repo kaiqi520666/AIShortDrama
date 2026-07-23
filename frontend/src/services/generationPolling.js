@@ -16,8 +16,9 @@ async function pollTask(taskId, nodeId, updateNodeData) {
       generationProgress: task.progress,
     })
     if (task.status === 'succeeded') {
-      const asset = task.result?.data?.[0]?.url
-      const mediaLabel = task.task_type === 'video' ? '视频' : '图片'
+      const generated = task.result?.data?.[0]
+      const asset = generated?.url
+      const mediaLabel = { image: '图片', video: '视频', audio: '音频' }[task.task_type] || '内容'
       pollTimers.delete(taskId)
       if (!asset) {
         updateNodeData(nodeId, { status: 'failed', generationError: `任务未返回${mediaLabel}地址` })
@@ -28,11 +29,12 @@ async function pollTask(taskId, nodeId, updateNodeData) {
         status: 'ready',
         generationProgress: 100,
         generationError: '',
+        ...(generated.duration ? { sourceDuration: generated.duration } : {}),
       })
       return
     }
     if (['failed', 'cancelled', 'timeout'].includes(task.status)) {
-      const mediaLabel = task.task_type === 'video' ? '视频' : '图片'
+      const mediaLabel = { image: '图片', video: '视频', audio: '音频' }[task.task_type] || '内容'
       pollTimers.delete(taskId)
       updateNodeData(nodeId, {
         status: 'failed',

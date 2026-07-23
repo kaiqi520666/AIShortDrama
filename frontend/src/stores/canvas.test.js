@@ -122,3 +122,20 @@ describe('canvas grouping and duplication', () => {
     expect(store.nodes[0].data.title).toBe('新名称')
   })
 })
+
+describe('audio reference connections', () => {
+  it('enforces mutually exclusive and counted media references in the store', () => {
+    const store = useCanvasStore()
+    store.$patch({
+      nodes: [
+        { id: 'image-1', type: 'image', data: {} },
+        { id: 'audio-1', type: 'audio', data: {} },
+        { id: 'audio-2', type: 'audio', data: {} },
+      ],
+      edges: [{ id: 'edge-1', source: 'image-1', target: 'audio-2' }],
+    })
+
+    expect(store.addEdge({ source: 'audio-1', target: 'audio-2' })).toBe(false)
+    expect(store.edges).toHaveLength(1)
+  })
+})

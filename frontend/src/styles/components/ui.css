@@ -216,6 +216,24 @@
   opacity: 0;
   transform: translateY(-4px);
 }
+.ui-slider {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) 34px;
+  align-items: center;
+  gap: 10px;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+.ui-slider input {
+  width: 100%;
+  accent-color: var(--color-brand);
+  cursor: pointer;
+}
+.ui-slider output {
+  color: var(--color-text-primary);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 .ui-menu {
   border: 1px solid var(--color-border-default);
   border-radius: 8px;

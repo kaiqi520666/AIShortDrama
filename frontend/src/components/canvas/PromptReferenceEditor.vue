@@ -1,11 +1,14 @@
 <script setup>
 import { nextTick, onMounted, ref, watch } from 'vue'
+import { Music2 } from 'lucide-vue-next'
 import AppButton from '../ui/AppButton.vue'
 import AppMenu from '../ui/AppMenu.vue'
 
 const props = defineProps({
   modelValue: { type: Array, required: true },
   references: { type: Array, required: true },
+  referenceType: { type: String, default: 'image' },
+  referenceLabel: { type: String, default: '图片' },
   placeholder: { type: String, default: '' },
 })
 const emit = defineEmits(['update:modelValue'])
@@ -19,32 +22,36 @@ let mentionRange = null
 function createToken(part) {
   const reference = props.references.find((item) => item.id === part.nodeId)
   const token = document.createElement('span')
-  const image = document.createElement('img')
   const label = document.createElement('span')
-  token.className = 'prompt-image-token'
+  token.className = 'prompt-reference-token'
   token.contentEditable = 'false'
   token.dataset.nodeId = part.nodeId
   token.dataset.mentionId = part.id
+  token.dataset.referenceType = props.referenceType
   token.title = reference.data.title
-  image.src = reference.data.asset
-  image.alt = ''
-  label.className = 'prompt-image-label'
-  label.textContent = '图片'
-  token.append(image, label)
+  if (props.referenceType === 'image') {
+    const image = document.createElement('img')
+    image.src = reference.data.asset
+    image.alt = ''
+    token.append(image)
+  }
+  label.className = 'prompt-reference-label'
+  label.textContent = props.referenceLabel
+  token.append(label)
   return token
 }
 
 function renumberTokens() {
-  editor.value.querySelectorAll('.prompt-image-token').forEach((token) => {
-    const imageNumber = props.references.findIndex((item) => item.id === token.dataset.nodeId) + 1
-    token.querySelector('.prompt-image-label').textContent = `图片${imageNumber}`
+  editor.value.querySelectorAll('.prompt-reference-token').forEach((token) => {
+    const number = props.references.findIndex((item) => item.id === token.dataset.nodeId) + 1
+    token.querySelector('.prompt-reference-label').textContent = `${props.referenceLabel}${number}`
   })
 }
 
 function renderEditor() {
   const fragment = document.createDocumentFragment()
   props.modelValue.forEach((part) => {
-    if (part.type === 'image') {
+    if (part.type === props.referenceType) {
       if (props.references.some((item) => item.id === part.nodeId)) fragment.append(createToken(part))
     } else {
       fragment.append(document.createTextNode(part.value))
@@ -64,8 +71,8 @@ function appendText(parts, value) {
 function readNode(node, parts) {
   if (node.nodeType === 3) return appendText(parts, node.textContent)
   if (node.nodeType !== 1) return
-  if (node.classList.contains('prompt-image-token')) {
-    parts.push({ type: 'image', id: node.dataset.mentionId, nodeId: node.dataset.nodeId })
+  if (node.classList.contains('prompt-reference-token')) {
+    parts.push({ type: node.dataset.referenceType, id: node.dataset.mentionId, nodeId: node.dataset.nodeId })
     return
   }
   if (node.tagName === 'BR') return appendText(parts, '\n')
@@ -152,7 +159,7 @@ function handleKeydown(event) {
   }
 }
 
-watch(() => props.modelValue, () => {
+watch([() => props.modelValue, () => props.references], () => {
   if (document.activeElement !== editor.value) renderEditor()
 }, { deep: true })
 watch(menuVisible, (visible) => {
@@ -168,7 +175,7 @@ onMounted(renderEditor)
       class="prompt-editor-content"
       contenteditable="true"
       role="textbox"
-      aria-label="图片提示词"
+      :aria-label="`${referenceLabel}提示词`"
       aria-multiline="true"
       :data-placeholder="placeholder"
       @input="handleInput"
@@ -185,7 +192,8 @@ onMounted(renderEditor)
         @mouseenter="activeIndex = index"
         @click="insertReference(reference)"
       >
-        <img :src="reference.data.asset" alt="" />
+        <img v-if="referenceType === 'image'" :src="reference.data.asset" alt="" />
+        <Music2 v-else :size="24" />
         <span>{{ reference.data.title }}</span>
       </AppButton>
       <p v-if="!references.length">暂无可引用资产，请连入后操作</p>

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { canConnect } from '../config/connectionRules'
+import { canConnect, getConnectionError } from '../config/connectionRules'
 import { defaultImageModel } from '../config/imageModels'
 import { mediaTypes } from '../config/mediaTypes'
 import { defaultReverseModel } from '../config/reverseModels'
@@ -152,6 +152,11 @@ export const useCanvasStore = defineStore('canvas', {
       const source = this.nodes.find((node) => node.id === connection.source)
       const target = this.nodes.find((node) => node.id === connection.target)
       if (!source || !target || source.id === target.id || !canConnect(source.type, target.type)) return false
+      const incomingTypes = this.edges
+        .filter((edge) => edge.target === target.id)
+        .map((edge) => this.nodes.find((node) => node.id === edge.source)?.type)
+        .filter(Boolean)
+      if (getConnectionError(source.type, target.type, incomingTypes)) return false
       this.edges.push({ id: `edge-${crypto.randomUUID()}`, ...connection, type: 'cinematic' })
       return true
     },
@@ -169,6 +174,7 @@ export const useCanvasStore = defineStore('canvas', {
         sourceWidth: asset.width,
         sourceHeight: asset.height,
         sourceAspectRatio: asset.width && asset.height ? asset.width / asset.height : null,
+        sourceByteSize: asset.byte_size,
         ...(asset.duration ? { sourceDuration: asset.duration } : {}),
       }
       return id

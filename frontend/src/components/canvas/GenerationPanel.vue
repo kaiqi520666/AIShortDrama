@@ -1,9 +1,10 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
-import { ArrowUp, ChevronDown, FileText, Image, LoaderCircle, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
-import { createImageGeneration, createVideoGeneration } from '../../api/generations'
+import { ArrowUp, ChevronDown, FileText, Image, LoaderCircle, Music2, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
+import { createAudioGeneration, createImageGeneration, createVideoGeneration } from '../../api/generations'
 import { streamReversePrompt } from '../../api/reversals'
+import { audioFormatOptions, audioModel, audioSampleRateOptions, buildAudioRequest, getAudioReferenceError, maxAudioPromptLength, normalizeAudioSettings } from '../../config/audioModels'
 import { getEffectivePrompt, maxGenerationPromptLength } from '../../config/generationPrompt'
 import { buildImageRequest, imageModels, normalizeImageSettings } from '../../config/imageModels'
 import { mediaTypes } from '../../config/mediaTypes'
@@ -13,6 +14,8 @@ import { useGlobalToast } from '../../composables/useGlobalUI'
 import { useCanvasStore } from '../../stores/canvas'
 import AppButton from '../ui/AppButton.vue'
 import AppMenu from '../ui/AppMenu.vue'
+import AppSelect from '../ui/AppSelect.vue'
+import AppSlider from '../ui/AppSlider.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
 import PromptReferenceEditor from './PromptReferenceEditor.vue'
 
@@ -37,19 +40,23 @@ const notice = ref('')
 const running = computed(() => props.data.status === 'generating')
 const references = computed(() => store.incomingNodes(props.nodeId))
 const imageReferences = computed(() => references.value.filter((node) => node.type === 'image' && node.data.asset))
+const audioReferences = computed(() => references.value.filter((node) => node.type === 'audio' && node.data.asset))
+const mentionReferences = computed(() => props.type === 'audio' ? audioReferences.value : imageReferences.value)
 const isReverseTask = computed(() => props.type === 'text' && ['image', 'video'].includes(props.data.reverseType))
 const reverseReference = computed(() => isReverseTask.value
   ? references.value.find((node) => node.type === props.data.reverseType && node.data.asset)
   : null)
-const effectivePrompt = computed(() => ['image', 'video'].includes(props.type)
+const effectivePrompt = computed(() => ['image', 'video', 'audio'].includes(props.type)
   ? getEffectivePrompt(props.data, references.value)
   : props.data.prompt?.trim() || '')
-const promptError = computed(() => effectivePrompt.value.length > maxGenerationPromptLength ? `提示词不能超过 ${maxGenerationPromptLength} 个字符` : '')
+const promptLimit = computed(() => props.type === 'audio' ? maxAudioPromptLength : maxGenerationPromptLength)
+const promptError = computed(() => effectivePrompt.value.length > promptLimit.value ? `提示词不能超过 ${promptLimit.value} 个字符` : '')
 const promptParts = computed(() => props.data.promptParts ?? (props.data.prompt ? [{ type: 'text', value: props.data.prompt }] : []))
 const selectedImageSettings = computed(() => normalizeImageSettings(props.data))
 const selectedImageModel = computed(() => selectedImageSettings.value.model)
 const selectedVideoSettings = computed(() => normalizeVideoSettings(props.data))
 const selectedVideoModel = computed(() => selectedVideoSettings.value.model)
+const selectedAudioSettings = computed(() => normalizeAudioSettings(props.data))
 const selectedReverseModel = computed(() => reverseModels.find((model) => model.id === props.data.model) || defaultReverseModel)
 const selectableModels = computed(() => props.type === 'image' ? imageModels : props.type === 'video' ? videoModels : reverseModels)
 const selectedModel = computed(() => props.type === 'image' ? selectedImageModel.value : props.type === 'video' ? selectedVideoModel.value : selectedReverseModel.value)
@@ -58,6 +65,7 @@ const selectedAspectRatio = computed(() => props.type === 'image' ? selectedImag
 const selectedDuration = computed(() => selectedVideoSettings.value.duration)
 const referenceError = computed(() => {
   if (props.type === 'video') return getVideoReferenceError(props.data, references.value)
+  if (props.type === 'audio') return getAudioReferenceError(references.value)
   return props.type === 'image' && selectedImageModel.value.maxReferences && imageReferences.value.length > selectedImageModel.value.maxReferences
     ? `当前模型最多支持 ${selectedImageModel.value.maxReferences} 张参考图片`
     : ''
@@ -66,6 +74,7 @@ const panelMessage = computed(() => notice.value || props.data.generationError |
 const settingLabel = computed(() => {
   if (props.type === 'image') return `${selectedAspectRatio.value} · ${selectedResolution.value}`
   if (props.type === 'video') return `${selectedAspectRatio.value === 'adaptive' ? '自适应' : selectedAspectRatio.value} · ${selectedResolution.value} · ${selectedDuration.value === 0 ? '自动' : `${selectedDuration.value}s`}`
+  if (props.type === 'audio') return `${audioFormatOptions.find(({ value }) => value === selectedAudioSettings.value.format)?.label} · ${selectedAudioSettings.value.sampleRate / 1000} kHz`
   return mediaTypes[props.type].setting
 })
 const displayReferences = computed(() => {
@@ -84,8 +93,9 @@ function updatePrompt(parts) {
   updateNodeData(props.nodeId, {
     promptParts: parts,
     prompt: parts.map((part) => {
-      if (part.type !== 'image') return part.value
-      return `图片${imageReferences.value.findIndex((node) => node.id === part.nodeId) + 1}`
+      if (part.type === 'image') return `图片${imageReferences.value.findIndex((node) => node.id === part.nodeId) + 1}`
+      if (part.type === 'audio') return `@音频${audioReferences.value.findIndex((node) => node.id === part.nodeId) + 1}`
+      return part.value
     }).join(''),
   })
 }
@@ -124,7 +134,7 @@ async function submitTask() {
     }
     return
   }
-  if (!['image', 'video'].includes(props.type)) {
+  if (!['image', 'video', 'audio'].includes(props.type)) {
     return
   }
   const nodeId = props.nodeId
@@ -135,10 +145,12 @@ async function submitTask() {
     generationError: '',
   })
   try {
-    const createGeneration = props.type === 'image' ? createImageGeneration : createVideoGeneration
-    const generationRequest = props.type === 'image'
-      ? buildImageRequest({ ...props.data, prompt: effectivePrompt.value }, imageReferences.value)
-      : buildVideoRequest({ ...props.data, prompt: effectivePrompt.value }, references.value)
+    const createGeneration = { image: createImageGeneration, video: createVideoGeneration, audio: createAudioGeneration }[props.type]
+    const requestBuilders = { image: buildImageRequest, video: buildVideoRequest, audio: buildAudioRequest }
+    const generationRequest = requestBuilders[props.type](
+      { ...props.data, prompt: effectivePrompt.value },
+      props.type === 'image' ? imageReferences.value : references.value,
+    )
     const result = await createGeneration({
       workspace_id: store.workspaceId,
       node_id: nodeId,
@@ -210,6 +222,10 @@ function updateVideoSetting(key, value) {
   if (key === 'aspectRatio') nextTick(() => requestAnimationFrame(updateSettingsPosition))
 }
 
+function updateAudioSetting(key, value) {
+  updateNodeData(props.nodeId, { [key]: value })
+}
+
 watch(() => `${props.type}:${props.data.model}:${references.value.map((node) => node.type).join(',')}`, () => {
   if (props.type !== 'video' || props.data.model !== 'happyhorse-1.1') return
   if (!references.value.some((node) => ['audio', 'video'].includes(node.type))) return
@@ -275,18 +291,21 @@ onBeforeUnmount(() => {
   <section v-if="!data.assetSource && (type !== 'text' || data.textMode === 'task')" class="generation-panel nodrag nowheel" @pointerdown.stop>
     <div v-if="displayReferences.length" class="reference-strip">
       <div v-for="reference in displayReferences" :key="reference.key" class="reference-item" :title="reference.label" :aria-label="reference.label">
-        <img v-if="reference.node.data.asset" :src="reference.node.data.asset" alt="" />
+        <img v-if="reference.node.type === 'image' && reference.node.data.asset" :src="reference.node.data.asset" alt="" />
         <FileText v-else-if="reference.node.type === 'text'" :size="20" />
         <Image v-else-if="reference.node.type === 'image'" :size="20" />
-        <span v-else>{{ reference.number }}</span>
+        <VideoIcon v-else-if="reference.node.type === 'video'" :size="20" />
+        <Music2 v-else :size="20" />
         <b>{{ reference.number }}</b>
       </div>
     </div>
 
     <PromptReferenceEditor
-      v-if="type === 'image'"
+      v-if="['image', 'audio'].includes(type)"
       :model-value="promptParts"
-      :references="imageReferences"
+      :references="mentionReferences"
+      :reference-type="type"
+      :reference-label="type === 'audio' ? '音频' : '图片'"
       :placeholder="mediaTypes[type].placeholder"
       @update:model-value="updatePrompt"
       @pointerdown="settingsOpen = false; modelOpen = false"
@@ -306,7 +325,7 @@ onBeforeUnmount(() => {
       </AppButton>
     </AppMenu>
 
-    <AppMenu v-if="settingsOpen && ['image', 'video'].includes(type)" ref="settingsMenu" class="image-settings-menu media-settings-menu" :style="settingsStyle" @pointerdown.stop>
+    <AppMenu v-if="settingsOpen && ['image', 'video', 'audio'].includes(type)" ref="settingsMenu" class="image-settings-menu media-settings-menu" :style="settingsStyle" @pointerdown.stop>
       <template v-if="type === 'image'">
         <h3>清晰度</h3>
         <div class="image-resolution-options">
@@ -335,7 +354,7 @@ onBeforeUnmount(() => {
         </template>
       </template>
 
-      <template v-else>
+      <template v-else-if="type === 'video'">
         <h3>时长</h3>
         <div v-if="selectedVideoModel.durationOptions" class="video-duration-options">
           <AppButton v-for="duration in selectedVideoModel.durationOptions" :key="duration" :class="{ active: selectedDuration === duration }" @click="updateVideoSetting('duration', duration)">{{ duration }}s</AppButton>
@@ -368,6 +387,25 @@ onBeforeUnmount(() => {
           </label>
         </template>
       </template>
+
+      <template v-else>
+        <div class="audio-setting-grid">
+          <div>
+            <span>格式</span>
+            <AppSelect :model-value="selectedAudioSettings.format" :options="audioFormatOptions" aria-label="音频格式" @update:model-value="updateAudioSetting('format', $event)" />
+          </div>
+          <div>
+            <span>采样率</span>
+            <AppSelect :model-value="selectedAudioSettings.sampleRate" :options="audioSampleRateOptions" aria-label="音频采样率" @update:model-value="updateAudioSetting('sampleRate', $event)" />
+          </div>
+        </div>
+        <h3>声音调整</h3>
+        <div class="audio-slider-list">
+          <AppSlider :model-value="selectedAudioSettings.speechRate" :min="-50" :max="100" label="语速" @update:model-value="updateAudioSetting('speechRate', $event)" />
+          <AppSlider :model-value="selectedAudioSettings.loudnessRate" :min="-50" :max="100" label="音量" @update:model-value="updateAudioSetting('loudnessRate', $event)" />
+          <AppSlider :model-value="selectedAudioSettings.pitchRate" :min="-12" :max="12" label="音调" @update:model-value="updateAudioSetting('pitchRate', $event)" />
+        </div>
+      </template>
     </AppMenu>
 
     <p v-if="panelMessage" class="panel-notice">{{ panelMessage }}</p>
@@ -376,10 +414,10 @@ onBeforeUnmount(() => {
       <AppButton v-if="['image', 'video'].includes(type) || isReverseTask" ref="modelTrigger" class="model-select model-select-trigger" @click="toggleModelMenu">
         <WandSparkles :size="16" />{{ selectedModel.label }}<ChevronDown :size="14" :class="{ rotated: modelOpen }" />
       </AppButton>
-      <span v-else class="model-select"><WandSparkles :size="16" />{{ data.model }}</span>
+      <span v-else class="model-select"><WandSparkles :size="16" />{{ type === 'audio' ? audioModel.label : data.model }}</span>
       <span v-if="type !== 'text'" class="panel-divider"></span>
-      <AppButton v-if="['image', 'video'].includes(type)" ref="settingsTrigger" class="image-settings-trigger media-settings-trigger" @click="toggleSettings">
-        <component :is="type === 'video' ? VideoIcon : Image" :size="16" />{{ settingLabel }}<ChevronDown :size="14" :class="{ rotated: settingsOpen }" />
+      <AppButton v-if="['image', 'video', 'audio'].includes(type)" ref="settingsTrigger" class="image-settings-trigger media-settings-trigger" @click="toggleSettings">
+        <component :is="type === 'video' ? VideoIcon : type === 'audio' ? Music2 : Image" :size="16" />{{ settingLabel }}<ChevronDown :size="14" :class="{ rotated: settingsOpen }" />
       </AppButton>
       <span v-else-if="type !== 'text'" class="setting-select"><Image :size="16" />{{ settingLabel }}</span>
       <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '执行中' : '执行'" @click="submitTask">

@@ -60,20 +60,39 @@ async def update_task(task_id: uuid.UUID, **values):
         await db.commit()
 
 
-async def complete_task(task_id: uuid.UUID, media_type: str, urls: list[str]):
+async def complete_task(
+    task_id: uuid.UUID,
+    media_type: str,
+    urls: list[str],
+    duration: float | None = None,
+    mime_type: str | None = None,
+):
     async with SessionLocal() as db:
         task = await db.get(GenerationTask, task_id)
         if not task:
             return
         task.status = "succeeded"
         task.progress = 100
-        task.result = {"type": media_type, "data": [{"url": url} for url in urls]}
+        result_data = [
+            {
+                "url": url,
+                **({"duration": duration} if duration is not None else {}),
+                **({"mime_type": mime_type} if mime_type else {}),
+            }
+            for url in urls
+        ]
+        task.result = {"type": media_type, "data": result_data}
         task.finished_at = datetime.now(UTC)
-        duration = task.request_snapshot.get("duration") if media_type == "video" else None
+        asset_duration = duration
+        if asset_duration is None and media_type == "video":
+            asset_duration = task.request_snapshot.get("duration")
         for index, url in enumerate(urls, start=1):
             video_mime_types = {".mov": "video/quicktime", ".webm": "video/webm"}
             extension = urlparse(url).path.rsplit(".", 1)[-1].lower()
-            mime_type = video_mime_types.get(f".{extension}", "video/mp4")
+            asset_mime_type = mime_type
+            if media_type == "video":
+                asset_mime_type = video_mime_types.get(f".{extension}", "video/mp4")
+            media_name = {"image": "图片", "video": "视频", "audio": "音频"}[media_type]
             db.add(
                 Asset(
                     user_id=task.user_id,
@@ -82,11 +101,13 @@ async def complete_task(task_id: uuid.UUID, media_type: str, urls: list[str]):
                     node_id=task.node_id,
                     media_type=media_type,
                     source_type="generation",
-                    name=f"生成{'视频' if media_type == 'video' else '图片'} {index}",
+                    name=f"生成{media_name} {index}",
                     object_key=urlparse(url).path.lstrip("/") or None,
                     url=url,
-                    mime_type=mime_type if media_type == "video" else None,
-                    duration=duration if isinstance(duration, int) and duration > 0 else None,
+                    mime_type=asset_mime_type,
+                    duration=asset_duration
+                    if isinstance(asset_duration, (int, float)) and asset_duration > 0
+                    else None,
                 )
             )
         await db.commit()

@@ -22,9 +22,9 @@ export const mediaTypes = {
   },
   audio: {
     label: "音频",
-    model: "MiniMax Speech",
+    model: "seed-audio-1.0-multilingual",
     hint: "广告旁白与商品讲解",
-    placeholder: "输入要合成的商品旁白…",
-    setting: "自然女声 · 1.0x",
+    placeholder: "描述旁白、音效或声音氛围，@ 引用音频…",
+    setting: "MP3 · 48 kHz",
   },
 };

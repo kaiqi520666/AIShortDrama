@@ -6,7 +6,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.models import GenerationTask, Workspace
-from app.schemas.generation import ImageGenerationRequest, VideoGenerationRequest
+from app.schemas.generation import (
+    AudioGenerationRequest,
+    ImageGenerationRequest,
+    VideoGenerationRequest,
+)
 
 
 def task_payload(task: GenerationTask) -> dict[str, Any]:
@@ -39,6 +43,24 @@ async def create_image_task(
         exclude_unset=True,
     )
     return await _create_task(db, redis, request, user_id, "image", provider_payload)
+
+
+async def create_audio_task(
+    db: AsyncSession,
+    redis: Any,
+    request: AudioGenerationRequest,
+    user_id: uuid.UUID,
+) -> GenerationTask:
+    return await _create_task(
+        db,
+        redis,
+        request,
+        user_id,
+        "audio",
+        build_audio_provider_payload(request),
+        provider="volcengine",
+        include_client_business_id=False,
+    )
 
 
 async def create_video_task(
@@ -83,13 +105,33 @@ def build_video_provider_payload(request: VideoGenerationRequest) -> dict[str, A
     return provider_payload
 
 
+def build_audio_provider_payload(request: AudioGenerationRequest) -> dict[str, Any]:
+    references = [{"image_url": str(url)} for url in request.reference_images] or [
+        {"audio_url": str(url)} for url in request.reference_audios
+    ]
+    return {
+        "model": request.model,
+        "text_prompt": request.prompt,
+        "audio_config": {
+            "format": request.format,
+            "sample_rate": request.sample_rate,
+            "speech_rate": request.speech_rate,
+            "loudness_rate": request.loudness_rate,
+            "pitch_rate": request.pitch_rate,
+        },
+        **({"references": references} if references else {}),
+    }
+
+
 async def _create_task(
     db: AsyncSession,
     redis: Any,
-    request: ImageGenerationRequest | VideoGenerationRequest,
+    request: ImageGenerationRequest | VideoGenerationRequest | AudioGenerationRequest,
     user_id: uuid.UUID,
     task_type: str,
     provider_payload: dict[str, Any],
+    provider: str = "toapis",
+    include_client_business_id: bool = True,
 ) -> GenerationTask:
     workspace = await db.scalar(
         select(Workspace).where(
@@ -101,14 +143,15 @@ async def _create_task(
     if not workspace:
         raise RuntimeError("工作台不存在")
     task_id = uuid.uuid4()
-    provider_payload["client_business_id"] = str(task_id)
+    if include_client_business_id:
+        provider_payload["client_business_id"] = str(task_id)
     task = GenerationTask(
         id=task_id,
         user_id=user_id,
         workspace_id=request.workspace_id,
         node_id=request.node_id,
         task_type=task_type,
-        provider="toapis",
+        provider=provider,
         model=request.model,
         prompt=request.prompt,
         request_snapshot=provider_payload,

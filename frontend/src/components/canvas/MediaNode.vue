@@ -20,7 +20,7 @@ const props = defineProps({
 const icons = { text: FileText, image: ImageIcon, video: Video, audio: Music2 }
 const icon = computed(() => icons[props.type])
 const textMode = computed(() => props.type === 'text' ? (props.data.textMode ?? (props.data.content ? 'manual' : null)) : null)
-const acceptsInput = computed(() => props.type !== 'audio' && (props.type === 'text' ? textMode.value === 'task' : !props.data.assetSource))
+const acceptsInput = computed(() => props.type === 'text' ? textMode.value === 'task' : !props.data.assetSource)
 const sourceAspectRatio = computed(() => props.data.assetSource && props.data.sourceAspectRatio > 0 ? props.data.sourceAspectRatio : null)
 const displayAspectRatio = computed(() => {
   if (sourceAspectRatio.value) return sourceAspectRatio.value
@@ -65,19 +65,22 @@ const uploadProgress = ref(0)
 const uploadRules = {
   image: { types: ['image/jpeg', 'image/png', 'image/webp'], maxSize: 20 * 1024 * 1024 },
   video: { types: ['video/mp4', 'video/quicktime', 'video/webm'], maxSize: 500 * 1024 * 1024 },
+  audio: { types: ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4'], maxSize: 100 * 1024 * 1024 },
 }
+const uploadAccept = computed(() => uploadRules[props.type]?.types.join(',') || '')
 const { updateNodeData, viewport } = useVueFlow()
 let resizeState = null
 
 function readMediaMetadata(file) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file)
-    const media = props.type === 'image' ? new Image() : document.createElement('video')
+    const media = props.type === 'image' ? new Image() : document.createElement(props.type)
     const cleanup = () => URL.revokeObjectURL(url)
     media.onload = media.onloadedmetadata = () => {
       const width = media.naturalWidth || media.videoWidth
       const height = media.naturalHeight || media.videoHeight
       cleanup()
+      if (props.type === 'audio') return Number.isFinite(media.duration) ? resolve({ duration: media.duration }) : reject(new Error('无法读取音频时长'))
       width && height ? resolve({ width, height, duration: media.duration || null }) : reject(new Error('无法读取媒体尺寸'))
     }
     media.onerror = () => {
@@ -95,7 +98,7 @@ async function handleUpload(event) {
   if (!file) return
   const rule = uploadRules[props.type]
   if (!rule.types.includes(file.type)) {
-    uploadNotice.value = `不支持的${props.type === 'video' ? '视频' : '图片'}格式`
+    uploadNotice.value = `不支持的${props.type === 'video' ? '视频' : props.type === 'audio' ? '音频' : '图片'}格式`
     return
   }
   if (file.size > rule.maxSize) {
@@ -123,6 +126,7 @@ async function handleUpload(event) {
       sourceAspectRatio: metadata.width / metadata.height,
       ...(replacementWidth ? { displayWidth: replacementWidth } : {}),
       ...(metadata.duration ? { sourceDuration: metadata.duration } : {}),
+      sourceByteSize: result.data.size,
     })
   } catch (error) {
     uploadNotice.value = error.response?.data?.message || error.message || '上传失败'
@@ -188,7 +192,7 @@ onBeforeUnmount(() => {
     <Handle v-if="acceptsInput" id="target" type="target" :position="Position.Left" />
 
     <div class="node-body" :style="bodyStyle">
-      <input v-if="['upload', 'clipboard'].includes(data.assetSource)" ref="fileInput" type="file" :accept="type === 'video' ? 'video/mp4,video/quicktime,video/webm' : 'image/jpeg,image/png,image/webp'" hidden @change="handleUpload" />
+      <input v-if="['upload', 'clipboard'].includes(data.assetSource)" ref="fileInput" type="file" :accept="uploadAccept" hidden @change="handleUpload" />
 
       <div v-if="['generating', 'uploading'].includes(data.status) && type !== 'text'" class="generating-state">
         <span></span>

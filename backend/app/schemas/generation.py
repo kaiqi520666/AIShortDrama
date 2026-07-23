@@ -19,6 +19,8 @@ VideoModel = Literal[
     "happyhorse-1.1",
 ]
 
+AudioModel = Literal["seed-audio-1.0-multilingual"]
+
 SEEDANCE_RATIOS = {"21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "adaptive"}
 HAPPYHORSE_RATIOS = {"16:9", "9:16", "1:1", "4:3", "3:4"}
 VIDEO_MODEL_RULES: dict[str, dict[str, Any]] = {
@@ -245,4 +247,33 @@ class VideoGenerationRequest(BaseModel):
             raise ValueError("HappyHorse 1.1 不支持视频或音频参考")
         if self.reference_audios and not (self.reference_images or self.reference_videos):
             raise ValueError("参考音频需同时提供图片或视频")
+        return self
+
+
+class AudioGenerationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    workspace_id: uuid.UUID
+    node_id: str = Field(min_length=1, max_length=64)
+    model: AudioModel = "seed-audio-1.0-multilingual"
+    prompt: str = Field(min_length=1, max_length=3000)
+    format: Literal["mp3", "wav", "ogg_opus"] = "mp3"
+    sample_rate: Literal[8000, 16000, 24000, 32000, 44100, 48000] = 48000
+    speech_rate: int = Field(default=0, ge=-50, le=100)
+    loudness_rate: int = Field(default=0, ge=-50, le=100)
+    pitch_rate: int = Field(default=0, ge=-12, le=12)
+    reference_images: list[AnyHttpUrl] = Field(default_factory=list, max_length=1)
+    reference_audios: list[AnyHttpUrl] = Field(default_factory=list, max_length=3)
+
+    @field_validator("prompt")
+    @classmethod
+    def validate_prompt(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("音频提示词不能为空")
+        return value.strip()
+
+    @model_validator(mode="after")
+    def validate_references(self):
+        if self.reference_images and self.reference_audios:
+            raise ValueError("参考图片和参考音频不能混用")
         return self

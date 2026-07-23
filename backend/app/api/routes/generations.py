@@ -6,9 +6,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.identity import get_current_user_id
 from app.models import GenerationTask
-from app.schemas.generation import ImageGenerationRequest, VideoGenerationRequest
+from app.schemas.generation import (
+    AudioGenerationRequest,
+    ImageGenerationRequest,
+    VideoGenerationRequest,
+)
 from app.schemas.response import fail, success
-from app.services.generation_tasks import create_image_task, create_video_task, task_payload
+from app.services.generation_tasks import (
+    create_audio_task,
+    create_image_task,
+    create_video_task,
+    task_payload,
+)
 
 router = APIRouter()
 
@@ -36,6 +45,20 @@ async def create_video_generation(
 ):
     try:
         task = await create_video_task(db, request.app.state.redis, payload, user_id)
+    except RuntimeError as exc:
+        return fail(str(exc))
+    return success(task_payload(task))
+
+
+@router.post("/audios")
+async def create_audio_generation(
+    payload: AudioGenerationRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    try:
+        task = await create_audio_task(db, request.app.state.redis, payload, user_id)
     except RuntimeError as exc:
         return fail(str(exc))
     return success(task_payload(task))
