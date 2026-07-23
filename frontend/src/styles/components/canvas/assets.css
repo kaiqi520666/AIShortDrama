@@ -77,6 +77,27 @@
   flex-direction: column;
   gap: 2px;
   overflow-y: auto;
+  scrollbar-color: #3d474e transparent;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+.asset-list::-webkit-scrollbar {
+  width: 6px;
+}
+.asset-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+.asset-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: #3d474e;
+}
+.asset-list::-webkit-scrollbar-thumb:hover {
+  background: #53616a;
+}
+.asset-list::-webkit-scrollbar-button {
+  display: none;
+  width: 0;
+  height: 0;
 }
 .asset-library {
   height: calc(100% - 76px);
