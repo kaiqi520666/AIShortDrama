@@ -167,7 +167,7 @@ watch(
 )
 watch(() => props.data.asset, (asset) => {
   if (props.type === 'audio' && asset) nextTick(() => audioElement.value?.load())
-})
+}, { immediate: true })
 onBeforeUnmount(() => {
   stopResize()
 })
