@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
 import { Background } from '@vue-flow/background'
 import { MiniMap } from '@vue-flow/minimap'
-import { ChevronRight, CircleHelp, Clipboard, Copy, Group, Hand, Image as ImageIcon, Keyboard, Library, Maximize2, MousePointer2, Plus, Redo2, Scan, Trash2, Undo2, Ungroup, Video } from 'lucide-vue-next'
+import { ChevronRight, CircleHelp, Clipboard, Copy, Group, Hand, Image as ImageIcon, Keyboard, Library, Maximize2, MousePointer2, Music2, Plus, Redo2, Scan, Trash2, Undo2, Ungroup, Video } from 'lucide-vue-next'
 import AssetDrawer from '../components/canvas/AssetDrawer.vue'
 import CanvasHeader from '../components/canvas/CanvasHeader.vue'
 import FlowEdge from '../components/canvas/FlowEdge.vue'
@@ -63,6 +63,7 @@ const pastedImageMaxSize = 20 * 1024 * 1024
 const uploadRules = {
   image: { accept: 'image/jpeg,image/png,image/webp', types: ['image/jpeg', 'image/png', 'image/webp'], maxSize: 20 * 1024 * 1024 },
   video: { accept: 'video/mp4,video/quicktime,video/webm', types: ['video/mp4', 'video/quicktime', 'video/webm'], maxSize: 500 * 1024 * 1024 },
+  audio: { accept: 'audio/mpeg,audio/wav,audio/x-wav,audio/mp4', types: ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4'], maxSize: 100 * 1024 * 1024 },
 }
 
 const minimapVisible = ref(false)
@@ -150,7 +151,7 @@ function openPaneCreateMenu(event) {
   contextMenu.value = {
     kind: 'pane',
     x: Math.min(Math.max(10, event.clientX), window.innerWidth - 226),
-    y: Math.min(Math.max(10, event.clientY), window.innerHeight - 318),
+    y: Math.min(Math.max(10, event.clientY), window.innerHeight - 351),
     position: project({ x: event.clientX, y: event.clientY }),
     submenuOpen: false,
   }
@@ -532,9 +533,14 @@ async function pasteImage(file, position) {
 function readMediaMetadata(type, file) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file)
-    const media = type === 'image' ? new Image() : document.createElement('video')
+    const media = type === 'image' ? new Image() : document.createElement(type)
     const cleanup = () => URL.revokeObjectURL(url)
     media.onload = media.onloadedmetadata = () => {
+      if (type === 'audio') {
+        const duration = Number.isFinite(media.duration) ? media.duration : null
+        cleanup()
+        return duration !== null ? resolve({ duration }) : reject(new Error('无法读取音频时长'))
+      }
       const width = media.naturalWidth || media.videoWidth
       const height = media.naturalHeight || media.videoHeight
       cleanup()
@@ -562,7 +568,7 @@ async function handlePaneUpload(event) {
   pendingUpload.value = null
   if (!file || !upload) return
   const rule = uploadRules[upload.type]
-  if (!rule.types.includes(file.type)) return toast.warning(`不支持的${upload.type === 'video' ? '视频' : '图片'}格式`)
+  if (!rule.types.includes(file.type)) return toast.warning(`不支持的${mediaTypes[upload.type].label}格式`)
   if (file.size > rule.maxSize) return toast.warning(`文件不能超过 ${rule.maxSize / 1024 / 1024}MB`)
 
   const id = store.addNode(upload.type, upload.position)
@@ -576,9 +582,7 @@ async function handlePaneUpload(event) {
       asset: result.data.url,
       assetId: result.data.id,
       status: 'ready',
-      sourceWidth: metadata.width,
-      sourceHeight: metadata.height,
-      sourceAspectRatio: metadata.width / metadata.height,
+      ...(metadata.width ? { sourceWidth: metadata.width, sourceHeight: metadata.height, sourceAspectRatio: metadata.width / metadata.height } : {}),
       ...(metadata.duration ? { sourceDuration: metadata.duration } : {}),
     })
   } catch (error) {
@@ -805,6 +809,7 @@ onBeforeUnmount(() => {
         <p class="context-menu-label">上传</p>
         <AppButton @click="chooseUpload('image')"><ImageIcon :size="15" /><span>图片</span></AppButton>
         <AppButton @click="chooseUpload('video')"><Video :size="15" /><span>视频</span></AppButton>
+        <AppButton @click="chooseUpload('audio')"><Music2 :size="15" /><span>音频</span></AppButton>
         <span class="context-menu-divider"></span>
         <div class="context-submenu-trigger" @mouseenter="contextMenu.submenuOpen = true" @mouseleave="contextMenu.submenuOpen = false">
           <AppButton @click="contextMenu.submenuOpen = true"><Plus :size="15" /><span>添加节点</span><ChevronRight class="context-menu-chevron" :size="14" /></AppButton>

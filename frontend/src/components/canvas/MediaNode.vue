@@ -20,7 +20,7 @@ const props = defineProps({
 const icons = { text: FileText, image: ImageIcon, video: Video, audio: Music2 }
 const icon = computed(() => icons[props.type])
 const textMode = computed(() => props.type === 'text' ? (props.data.textMode ?? (props.data.content ? 'manual' : null)) : null)
-const acceptsInput = computed(() => props.type === 'text' ? textMode.value === 'task' : !props.data.assetSource)
+const acceptsInput = computed(() => props.type !== 'audio' && (props.type === 'text' ? textMode.value === 'task' : !props.data.assetSource))
 const sourceAspectRatio = computed(() => props.data.assetSource && props.data.sourceAspectRatio > 0 ? props.data.sourceAspectRatio : null)
 const displayAspectRatio = computed(() => {
   if (sourceAspectRatio.value) return sourceAspectRatio.value
