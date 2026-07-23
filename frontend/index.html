@@ -9,7 +9,8 @@
       (() => {
         const stored = localStorage.getItem('mooncut-theme')
         const mode = ['light', 'dark'].includes(stored) ? stored : 'system'
-        const theme = mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : mode === 'system' ? 'light' : mode
+        const isCanvas = /^\/workspaces\/[^/]+\/?$/.test(location.pathname)
+        const theme = isCanvas ? mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : mode === 'system' ? 'light' : mode : 'dark'
         document.documentElement.dataset.theme = theme
         document.documentElement.style.colorScheme = theme
       })()

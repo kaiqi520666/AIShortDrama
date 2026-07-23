@@ -14,7 +14,7 @@ const root = ref(null)
 const trigger = ref(null)
 const open = ref(false)
 const activeIndex = ref(0)
-const { mode, resolvedTheme, setTheme } = useTheme()
+const { mode, resolvedTheme, activateTheme, deactivateTheme, setTheme } = useTheme()
 const currentIcon = computed(() => mode.value === 'system' ? Monitor : resolvedTheme.value === 'dark' ? Moon : Sun)
 
 function openMenu() {
@@ -52,8 +52,14 @@ function handleOutside(event) {
   if (!root.value?.contains(event.target)) closeMenu()
 }
 
-onMounted(() => window.addEventListener('pointerdown', handleOutside))
-onBeforeUnmount(() => window.removeEventListener('pointerdown', handleOutside))
+onMounted(() => {
+  activateTheme()
+  window.addEventListener('pointerdown', handleOutside)
+})
+onBeforeUnmount(() => {
+  deactivateTheme()
+  window.removeEventListener('pointerdown', handleOutside)
+})
 </script>
 
 <template>

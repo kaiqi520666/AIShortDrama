@@ -27,12 +27,6 @@
   justify-items: center;
   gap: 18px;
 }
-.auth-theme-switch {
-  position: fixed;
-  z-index: 5;
-  top: 20px;
-  right: 20px;
-}
 .auth-brand .app-brand__symbol {
   width: 88px;
   height: 88px;

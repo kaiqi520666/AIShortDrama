@@ -15,6 +15,7 @@ beforeEach(() => {
   }
   globalThis.document = { documentElement: { dataset: {}, style: {} } }
   globalThis.window = {
+    location: { pathname: '/workspaces/test-id' },
     matchMedia: vi.fn(() => ({
       get matches() { return prefersDark },
       addEventListener: (_, listener) => { systemListener = listener },
@@ -51,5 +52,14 @@ describe('theme', () => {
     useTheme().setTheme('light')
     systemListener({ matches: false })
     expect(document.documentElement.dataset.theme).toBe('light')
+  })
+
+  it('keeps non-canvas pages on the fixed dark theme', () => {
+    window.location.pathname = '/workspaces'
+    stored.set('mooncut-theme', 'light')
+    initializeTheme()
+
+    expect(useTheme().mode.value).toBe('light')
+    expect(document.documentElement.dataset.theme).toBe('dark')
   })
 })

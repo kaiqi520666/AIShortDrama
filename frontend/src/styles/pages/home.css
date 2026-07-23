@@ -36,13 +36,8 @@
   backdrop-filter: blur(12px);
 }
 .home-page .app-brand,
-.home-page .theme-switch__trigger.ui-button,
 .home-login-button.ui-button {
   color: var(--color-hero-text);
-}
-.home-page .theme-switch__trigger.ui-button {
-  border-color: transparent;
-  background: transparent;
 }
 .home-login-button.ui-button {
   min-height: 34px;
