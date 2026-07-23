@@ -54,12 +54,20 @@ describe('theme', () => {
     expect(document.documentElement.dataset.theme).toBe('light')
   })
 
-  it('keeps non-canvas pages on the fixed dark theme', () => {
+  it('restores the saved theme on the workspace list', () => {
     window.location.pathname = '/workspaces'
     stored.set('mooncut-theme', 'light')
     initializeTheme()
 
     expect(useTheme().mode.value).toBe('light')
+    expect(document.documentElement.dataset.theme).toBe('light')
+  })
+
+  it('keeps public pages on the fixed dark theme', () => {
+    window.location.pathname = '/login'
+    stored.set('mooncut-theme', 'light')
+    initializeTheme()
+
     expect(document.documentElement.dataset.theme).toBe('dark')
   })
 })
