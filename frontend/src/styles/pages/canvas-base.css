@@ -161,9 +161,6 @@
   color: var(--color-text-muted);
   font-size: 11px;
 }
-.save-state.saved svg {
-  color: var(--color-success);
-}
 .save-state.saving {
   color: var(--color-text-secondary);
 }

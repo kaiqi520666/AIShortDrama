@@ -378,7 +378,7 @@
   width: 32px;
   min-height: 32px;
   padding: 0;
-  border-color: var(--color-border-subtle);
+  border-color: var(--color-border-strong);
   background: var(--color-surface-translucent);
   color: var(--color-text-secondary);
   backdrop-filter: blur(12px);

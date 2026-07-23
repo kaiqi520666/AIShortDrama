@@ -1,5 +1,5 @@
 <script setup>
-import { ArrowLeft, CheckCircle2, CircleAlert, Folder, LoaderCircle, LogOut, UserRound } from 'lucide-vue-next'
+import { ArrowLeft, CircleAlert, Folder, LoaderCircle, LogOut, UserRound } from 'lucide-vue-next'
 import AppBrand from '../ui/AppBrand.vue'
 import AppButton from '../ui/AppButton.vue'
 import AppThemeSwitch from '../ui/AppThemeSwitch.vue'
@@ -23,11 +23,10 @@ const emit = defineEmits(['back', 'logout'])
     </div>
     <div class="canvas-account">
       <AppThemeSwitch />
-      <div class="save-state" :class="saveStatus">
+      <div v-if="saveStatus !== 'saved'" class="save-state" :class="saveStatus">
         <LoaderCircle v-if="saveStatus === 'saving'" :size="13" />
-        <CircleAlert v-else-if="saveStatus === 'failed'" :size="13" />
-        <CheckCircle2 v-else :size="13" />
-        <span>{{ saveStatus === 'saving' ? '保存中' : saveStatus === 'failed' ? '保存失败' : '已保存' }}</span>
+        <CircleAlert v-else :size="13" />
+        <span>{{ saveStatus === 'saving' ? '保存中' : '保存失败' }}</span>
       </div>
       <AppButton class="canvas-user-button" size="sm" variant="soft" title="当前用户"><UserRound :size="15" /><span>{{ username }}</span></AppButton>
       <AppButton class="canvas-logout-button" size="sm" title="退出登录" @click="emit('logout')"><LogOut :size="15" /><span>退出</span></AppButton>
