@@ -17,7 +17,7 @@ const store = useWorkspaceStore()
 const toast = useGlobalToast()
 const { confirm } = useGlobalConfirm()
 const { prompt } = useGlobalPrompt()
-const sortBy = ref('updated')
+const sortBy = ref('created')
 const sortOptions = [
   { value: 'updated', label: '最近更新' },
   { value: 'created', label: '最近创建' },
