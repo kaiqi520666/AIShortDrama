@@ -325,7 +325,7 @@ onBeforeUnmount(() => {
       </AppButton>
     </AppMenu>
 
-    <AppMenu v-if="settingsOpen && ['image', 'video', 'audio'].includes(type)" ref="settingsMenu" class="image-settings-menu media-settings-menu" :style="settingsStyle" @pointerdown.stop>
+    <AppMenu v-if="settingsOpen && ['image', 'video', 'audio'].includes(type)" ref="settingsMenu" class="image-settings-menu media-settings-menu" :class="{ 'audio-settings-menu': type === 'audio' }" :style="settingsStyle" @pointerdown.stop>
       <template v-if="type === 'image'">
         <h3>清晰度</h3>
         <div class="image-resolution-options">
@@ -396,7 +396,7 @@ onBeforeUnmount(() => {
           </div>
           <div>
             <span>采样率</span>
-            <AppSelect :model-value="selectedAudioSettings.sampleRate" :options="audioSampleRateOptions" aria-label="音频采样率" @update:model-value="updateAudioSetting('sampleRate', $event)" />
+            <AppSelect class="audio-sample-select" :model-value="selectedAudioSettings.sampleRate" :options="audioSampleRateOptions" aria-label="音频采样率" @update:model-value="updateAudioSetting('sampleRate', $event)" />
           </div>
         </div>
         <h3>声音调整</h3>

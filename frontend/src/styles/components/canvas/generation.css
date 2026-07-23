@@ -352,11 +352,11 @@
 .audio-setting-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 12px;
 }
 .audio-setting-grid > div {
   display: grid;
-  gap: 7px;
+  gap: 6px;
   color: var(--color-text-secondary);
   font-size: 12px;
 }
@@ -366,8 +366,40 @@
 }
 .audio-slider-list {
   display: grid;
-  gap: 12px;
-  padding: 3px 0 2px;
+  gap: 4px;
+  padding: 0 2px 2px;
+}
+.audio-settings-menu {
+  width: min(390px, calc(100vw - 24px));
+  max-height: none;
+  overflow: visible;
+  padding: 16px;
+}
+.audio-settings-menu h3 {
+  margin-top: 18px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border-default);
+}
+.audio-settings-menu .ui-select {
+  height: 36px;
+}
+.audio-settings-menu .ui-select-trigger.ui-button {
+  min-width: 0;
+  min-height: 36px;
+}
+.audio-settings-menu .ui-select-menu {
+  background: var(--color-surface-raised);
+  backdrop-filter: blur(18px);
+}
+.audio-sample-select .ui-select-menu {
+  right: 0;
+  display: grid;
+  width: 224px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+}
+.audio-sample-select .ui-select-option.ui-button {
+  min-width: 0;
 }
 .video-ratio-grid {
   grid-template-columns: repeat(4, 1fr);
