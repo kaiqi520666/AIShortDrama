@@ -4,6 +4,7 @@ import { animate } from 'motion/mini'
 import { ArrowRight, LogIn, Play, Sparkles } from 'lucide-vue-next'
 import AppBrand from '../components/ui/AppBrand.vue'
 import AppButton from '../components/ui/AppButton.vue'
+import AppThemeSwitch from '../components/ui/AppThemeSwitch.vue'
 import heroVisual from '../assets/mooncut-commerce-hero.webp'
 
 const pageHeader = ref(null)
@@ -56,6 +57,7 @@ onBeforeUnmount(() => {
     <header ref="pageHeader" class="public-header">
       <AppBrand />
       <nav>
+        <AppThemeSwitch />
         <AppButton class="home-login-button" as="RouterLink" to="/login" size="sm" aria-label="登录"><LogIn :size="15" /><span>登录</span></AppButton>
         <AppButton class="home-start-button" as="RouterLink" to="/register" variant="primary" size="sm">开始创作<ArrowRight :size="15" /></AppButton>
       </nav>

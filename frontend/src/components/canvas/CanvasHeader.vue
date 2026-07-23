@@ -2,6 +2,7 @@
 import { ArrowLeft, CheckCircle2, CircleAlert, Folder, LoaderCircle, LogOut, UserRound } from 'lucide-vue-next'
 import AppBrand from '../ui/AppBrand.vue'
 import AppButton from '../ui/AppButton.vue'
+import AppThemeSwitch from '../ui/AppThemeSwitch.vue'
 
 defineProps({
   workspaceName: { type: String, required: true },
@@ -21,6 +22,7 @@ const emit = defineEmits(['back', 'logout'])
       <span class="project-context"><Folder :size="14" /><span class="project-select">{{ workspaceName }}</span></span>
     </div>
     <div class="canvas-account">
+      <AppThemeSwitch />
       <div class="save-state" :class="saveStatus">
         <LoaderCircle v-if="saveStatus === 'saving'" :size="13" />
         <CircleAlert v-else-if="saveStatus === 'failed'" :size="13" />

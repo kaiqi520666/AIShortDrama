@@ -2,12 +2,14 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import { setupAuthInterceptor } from './api/client'
+import { initializeTheme } from './composables/useTheme'
 import { createAppRouter } from './router'
 import { useAuthStore } from './stores/auth'
 import '@vue-flow/core/dist/style.css'
 import '@vue-flow/core/dist/theme-default.css'
 import './styles/index.css'
 
+initializeTheme()
 const pinia = createPinia()
 const authStore = useAuthStore(pinia)
 const router = createAppRouter(authStore)

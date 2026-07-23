@@ -1,13 +1,13 @@
 .vue-flow__minimap {
   overflow: hidden;
-  border: 1px solid #3b3d43;
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
 }
 .vue-flow__minimap-mask {
-  fill: rgba(15, 16, 18, 0.7);
+  fill: var(--color-backdrop);
 }
 .vue-flow__minimap-node {
-  fill: #70747d;
+  fill: var(--color-text-muted);
 }
 
 @media (max-width: 600px) {
@@ -16,8 +16,10 @@
   .project-divider,
   .project-control-separator,
   .canvas-side-tools,
-  .workspace-account .ui-button span,
-  .canvas-account .ui-button span,
+  .workspace-user-button span,
+  .workspace-logout-button span,
+  .canvas-user-button span,
+  .canvas-logout-button span,
   .save-state span {
     display: none;
   }

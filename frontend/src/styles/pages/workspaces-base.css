@@ -2,7 +2,7 @@
   width: 100%;
   height: 100%;
   overflow-y: auto;
-  color: #eceef1;
+  color: var(--color-text-primary);
 }
 .workspace-home-header {
   position: sticky;
@@ -11,13 +11,13 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #2b2d31;
+  border-bottom: 1px solid var(--color-surface-hover);
 }
 .workspace-account {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #92969e;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 .workspace-title-row {
@@ -34,7 +34,7 @@
   font-size: 13px;
 }
 .workspace-title-row > span {
-  color: #777b83;
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 .workspace-grid {
@@ -44,7 +44,7 @@
   position: relative;
   min-width: 0;
   overflow: hidden;
-  border: 1px solid #303238;
+  border: 1px solid var(--color-border-strong);
   border-radius: 8px;
 }
 .workspace-open-area {
@@ -58,12 +58,12 @@
   padding: 18px;
   border: 0;
   background: transparent;
-  color: #dfe1e5;
+  color: var(--color-text-primary);
   text-align: left;
   cursor: pointer;
 }
 .workspace-open-area > svg {
-  color: #818792;
+  color: var(--color-text-muted);
 }
 .workspace-open-area > span {
   max-width: 100%;
@@ -76,12 +76,12 @@
   display: flex;
   align-items: center;
   padding: 0 8px 0 18px;
-  border-top: 1px solid #2d2f33;
+  border-top: 1px solid var(--color-surface-hover);
 }
 .workspace-card footer time {
   min-width: 0;
   flex: 1;
-  color: #747880;
+  color: var(--color-text-muted);
   font-size: 11px;
 }
 .workspace-card footer button {
@@ -92,12 +92,12 @@
   border: 0;
   border-radius: 5px;
   background: transparent;
-  color: #858991;
+  color: var(--color-text-muted);
   cursor: pointer;
 }
 .workspace-card footer button:hover {
-  background: #303237;
-  color: #e5e7ea;
+  background: var(--color-border-strong);
+  color: var(--color-text-primary);
 }
 .workspace-name-input {
   position: absolute;
@@ -105,21 +105,21 @@
   left: 18px;
   width: auto;
   height: 30px;
-  border: 1px solid #60646c;
+  border: 1px solid var(--color-text-muted);
   border-radius: 5px;
   outline: 0;
-  color: #f0f1f3;
+  color: var(--color-text-primary);
 }
 .workspace-empty {
   display: grid;
   min-height: 260px;
   place-items: center;
-  border: 1px dashed #383a40;
+  border: 1px dashed var(--color-border-strong);
   border-radius: 8px;
 }
 .workspace-notice,
 .app-notice {
-  color: #d4a6a3;
+  color: var(--color-danger);
   font-size: 12px;
 }
 .app-notice {
@@ -129,6 +129,6 @@
   left: 50%;
   padding: 8px 12px;
   border-radius: 6px;
-  background: #392526;
+  background: var(--color-border-strong);
   transform: translateX(-50%);
 }

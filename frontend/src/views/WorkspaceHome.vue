@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import AppBrand from '../components/ui/AppBrand.vue'
 import AppButton from '../components/ui/AppButton.vue'
 import AppSelect from '../components/ui/AppSelect.vue'
+import AppThemeSwitch from '../components/ui/AppThemeSwitch.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import { useGlobalConfirm, useGlobalPrompt, useGlobalToast } from '../composables/useGlobalUI'
 import { useAuthStore } from '../stores/auth'
@@ -86,6 +87,7 @@ onMounted(() => store.load())
     <header class="workspace-home-header">
       <AppBrand />
       <div class="workspace-account">
+        <AppThemeSwitch />
         <AppButton class="workspace-user-button" size="sm" variant="soft" title="当前用户"><UserRound :size="15" /><span>{{ authStore.user?.username }}</span></AppButton>
         <AppButton class="workspace-logout-button" size="sm" title="退出登录" @click="signOut"><LogOut :size="15" /><span>退出</span></AppButton>
       </div>

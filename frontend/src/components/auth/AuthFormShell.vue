@@ -1,6 +1,7 @@
 <script setup>
 import { ShieldCheck } from 'lucide-vue-next'
 import AppBrand from '../ui/AppBrand.vue'
+import AppThemeSwitch from '../ui/AppThemeSwitch.vue'
 
 defineProps({
   title: { type: String, required: true },
@@ -10,6 +11,7 @@ defineProps({
 
 <template>
   <main class="auth-page auth-form-page">
+    <AppThemeSwitch class="auth-theme-switch" />
     <div class="auth-form-stack">
       <AppBrand class="auth-brand" icon-only />
       <section class="auth-form-shell">

@@ -1,9 +1,7 @@
 .auth-page {
-  background: #0c0f11;
+  background: var(--color-page);
 }
 .auth-form-page {
-  --auth-background-opacity: 0.72;
-  --auth-overlay: rgba(7, 9, 10, 0.34);
   position: relative;
   isolation: isolate;
   overflow: hidden;
@@ -13,15 +11,14 @@
   z-index: -2;
   inset: 0;
   background: url("../../assets/mooncut-register-bg.webp") center / cover;
-  filter: brightness(1.05);
-  opacity: var(--auth-background-opacity);
+  filter: brightness(var(--image-brightness-auth));
   content: "";
 }
 .auth-form-page::after {
   position: absolute;
   z-index: -1;
   inset: 0;
-  background: var(--auth-overlay);
+  background: var(--image-overlay-auth);
   content: "";
 }
 .auth-form-stack {
@@ -29,6 +26,12 @@
   width: min(420px, 100%);
   justify-items: center;
   gap: 18px;
+}
+.auth-theme-switch {
+  position: fixed;
+  z-index: 5;
+  top: 20px;
+  right: 20px;
 }
 .auth-brand .app-brand__symbol {
   width: 88px;
@@ -39,12 +42,12 @@
   width: 100%;
   overflow: hidden;
   padding: 34px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--color-highlight);
   border-radius: 8px;
-  background: rgba(18, 21, 24, 0.92);
+  background: var(--color-surface-translucent);
   box-shadow:
-    0 28px 80px rgba(0, 0, 0, 0.38),
-    0 1px 0 rgba(255, 255, 255, 0.04) inset;
+    0 28px 80px var(--color-shadow-strong),
+    0 1px 0 var(--color-highlight-subtle) inset;
   backdrop-filter: blur(18px);
 }
 .auth-form-shell::before {
@@ -53,7 +56,7 @@
   right: 34px;
   left: 34px;
   height: 2px;
-  background: var(--accent);
+  background: var(--color-brand);
   content: "";
   opacity: 0.72;
 }
@@ -69,10 +72,10 @@
   width: 42px;
   height: 42px;
   place-items: center;
-  border: 1px solid rgba(101, 217, 238, 0.32);
+  border: 1px solid var(--color-brand-soft);
   border-radius: 7px;
-  background: rgba(82, 204, 231, 0.08);
-  color: var(--accent);
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
 }
 .auth-form-header h1 {
   margin: 0;
@@ -81,7 +84,7 @@
 }
 .auth-form-header p {
   margin: 7px 0 0;
-  color: var(--text-3);
+  color: var(--color-text-muted);
   font-size: 12px;
 }
 .auth-form {
@@ -90,7 +93,7 @@
 .auth-field {
   display: grid;
   gap: 8px;
-  color: var(--text-2);
+  color: var(--color-text-secondary);
   font-size: 12px;
 }
 .auth-field-control {
@@ -102,25 +105,25 @@
   position: absolute;
   z-index: 1;
   left: 14px;
-  color: #66717a;
+  color: var(--color-text-muted);
   pointer-events: none;
   transition: color 0.18s ease;
 }
 .auth-field-control:focus-within .auth-field-icon {
-  color: var(--accent);
+  color: var(--color-brand);
 }
 .auth-form .auth-field-control input {
   height: 44px;
   padding: 0 42px;
-  border-color: var(--line);
-  background: #101316;
+  border-color: var(--color-border-default);
+  background: var(--color-surface-base);
 }
 .auth-form input:hover {
-  border-color: #424b54;
+  border-color: var(--color-border-strong);
 }
 .auth-form input:focus {
-  border-color: var(--accent-strong);
-  box-shadow: 0 0 0 3px rgba(82, 204, 231, 0.1);
+  border-color: var(--color-brand-strong);
+  box-shadow: 0 0 0 3px var(--color-brand-soft);
 }
 .auth-password-toggle {
   position: absolute;
@@ -133,17 +136,17 @@
   border: 0;
   border-radius: 6px;
   background: transparent;
-  color: #68737c;
+  color: var(--color-text-muted);
   cursor: pointer;
 }
 .auth-password-toggle:hover {
-  background: #20262a;
-  color: var(--text);
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
 }
 .auth-form > .ui-button {
   justify-content: space-between;
   margin-top: 3px;
-  box-shadow: 0 10px 28px rgba(82, 204, 231, 0.12);
+  box-shadow: 0 10px 28px var(--color-brand-soft);
 }
 .auth-form > .ui-button svg {
   transition: transform 0.18s ease;
@@ -162,10 +165,10 @@
   margin-top: 1px;
 }
 .auth-switch {
-  color: var(--text-3);
+  color: var(--color-text-muted);
 }
 .auth-switch a {
-  color: var(--accent);
+  color: var(--color-brand);
 }
 @media (max-width: 760px) {
   .auth-form-shell {
