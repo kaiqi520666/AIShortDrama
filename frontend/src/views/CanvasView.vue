@@ -30,7 +30,7 @@ const toast = useGlobalToast()
 const { confirm } = useGlobalConfirm()
 const props = defineProps({ workspace: { type: Object, required: true } })
 const emit = defineEmits(['back', 'ready'])
-const { nodes, edges, groups, saveStatus } = storeToRefs(store)
+const { nodes, edges, groups } = storeToRefs(store)
 const { project, screenToFlowCoordinate, fitView, findNode, setCenter, setViewport, updateNodeData, viewport, zoomIn, zoomOut, removeSelectedElements, addSelectedNodes } = useVueFlow()
 
 const nodeTypes = Object.fromEntries(Object.keys(mediaTypes).map((type) => [type, markRaw(MediaNode)]))
@@ -678,7 +678,7 @@ onBeforeUnmount(() => {
 <template>
   <main class="canvas-page" :class="{ 'assets-open': assetsVisible, 'multi-selected': selectedNodes.length > 1, [`canvas-tool-${canvasTool}`]: canvasTool, [`cursor-${pointerMode}`]: pointerMode }" @pointermove="trackPastePoint" @pointerdown="contextMenu = null; toolMenuOpen = false" @pointerdown.capture="handleCanvasPointerDown" @pointerup.window="resetPointerMode" @pointercancel.window="resetPointerMode" @dragend="canvasDropActive = false">
     <input ref="uploadInput" type="file" :accept="pendingUpload ? uploadRules[pendingUpload.type].accept : ''" hidden @change="handlePaneUpload" />
-    <CanvasHeader :workspace-name="workspace.name" :save-status="saveStatus" :username="authStore.user?.username || '访客'" @back="goHome" @logout="signOut" />
+    <CanvasHeader :workspace-name="workspace.name" :username="authStore.user?.username || '访客'" @back="goHome" @logout="signOut" />
 
     <VueFlow
       v-if="flowMounted"

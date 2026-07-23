@@ -19,8 +19,7 @@
   .workspace-user-button span,
   .workspace-logout-button span,
   .canvas-user-button span,
-  .canvas-logout-button span,
-  .save-state span {
+  .canvas-logout-button span {
     display: none;
   }
   .asset-drawer {
@@ -43,11 +42,6 @@
   .workspace-user-button.ui-button,
   .workspace-logout-button.ui-button {
     width: 32px;
-    padding: 0;
-  }
-  .save-state {
-    width: 32px;
-    justify-content: center;
     padding: 0;
   }
   .canvas-bottom-toolbar {

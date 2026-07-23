@@ -1,12 +1,11 @@
 <script setup>
-import { ArrowLeft, CircleAlert, Folder, LoaderCircle, LogOut, UserRound } from 'lucide-vue-next'
+import { ArrowLeft, Folder, LogOut, UserRound } from 'lucide-vue-next'
 import AppBrand from '../ui/AppBrand.vue'
 import AppButton from '../ui/AppButton.vue'
 import AppThemeSwitch from '../ui/AppThemeSwitch.vue'
 
 defineProps({
   workspaceName: { type: String, required: true },
-  saveStatus: { type: String, required: true },
   username: { type: String, required: true },
 })
 const emit = defineEmits(['back', 'logout'])
@@ -23,11 +22,6 @@ const emit = defineEmits(['back', 'logout'])
     </div>
     <div class="canvas-account">
       <AppThemeSwitch />
-      <div v-if="saveStatus !== 'saved'" class="save-state" :class="saveStatus">
-        <LoaderCircle v-if="saveStatus === 'saving'" :size="13" />
-        <CircleAlert v-else :size="13" />
-        <span>{{ saveStatus === 'saving' ? '保存中' : '保存失败' }}</span>
-      </div>
       <AppButton class="canvas-user-button" size="sm" variant="soft" title="当前用户"><UserRound :size="15" /><span>{{ username }}</span></AppButton>
       <AppButton class="canvas-logout-button" size="sm" title="退出登录" @click="emit('logout')"><LogOut :size="15" /><span>退出</span></AppButton>
     </div>
