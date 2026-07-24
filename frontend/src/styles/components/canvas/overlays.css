@@ -23,13 +23,8 @@
   .asset-drawer {
     width: min(292px, calc(100vw - 40px));
   }
-  .workspace-home-header,
   .public-header {
     padding: 0 16px;
-  }
-  .workspace-content {
-    width: calc(100% - 32px);
-    margin: 32px auto;
   }
   .project-control {
     height: 42px;

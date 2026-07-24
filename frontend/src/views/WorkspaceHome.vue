@@ -2,11 +2,9 @@
 import { computed, onMounted, ref } from 'vue'
 import { Copy, Pencil, Play, Plus, Trash2 } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
-import AppBrand from '../components/ui/AppBrand.vue'
+import AppDashboardShell from '../components/dashboard/AppDashboardShell.vue'
 import AppButton from '../components/ui/AppButton.vue'
 import AppSelect from '../components/ui/AppSelect.vue'
-import AppThemeSwitch from '../components/ui/AppThemeSwitch.vue'
-import AppAccountMenu from '../components/account/AppAccountMenu.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import { useGlobalConfirm, useGlobalPrompt, useGlobalToast } from '../composables/useGlobalUI'
 import { useAuthStore } from '../stores/auth'
@@ -84,15 +82,7 @@ onMounted(() => store.load())
 </script>
 
 <template>
-  <main class="workspace-home">
-    <header class="workspace-home-header">
-      <AppBrand />
-      <div class="workspace-account">
-        <AppThemeSwitch />
-        <AppAccountMenu :username="authStore.user?.username || '用户'" @logout="signOut" />
-      </div>
-    </header>
-
+  <AppDashboardShell active-item="workspaces" :username="authStore.user?.username || '用户'" @logout="signOut">
     <section class="workspace-content">
       <div class="workspace-title-row">
         <div><span class="section-kicker">PROJECT LIBRARY</span><h1>创作项目</h1><p>从上次停下的位置继续推进镜头</p></div>
@@ -121,5 +111,5 @@ onMounted(() => store.load())
         </article>
       </div>
     </section>
-  </main>
+  </AppDashboardShell>
 </template>

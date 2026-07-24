@@ -1,35 +1,30 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { ArrowLeft, CalendarDays, CircleAlert, CirclePause, LayoutDashboard, LockKeyhole, Mail, ShieldCheck, TrendingDown, UserPlus, UserRound, Wallet } from 'lucide-vue-next'
+import { CalendarDays, CircleAlert, CirclePause, LockKeyhole, Mail, ShieldCheck, TrendingDown, UserPlus, UserRound, Wallet } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { getAccount } from '../api/account'
-import AppAccountMenu from '../components/account/AppAccountMenu.vue'
 import AuthInputField from '../components/auth/AuthInputField.vue'
-import AppBrand from '../components/ui/AppBrand.vue'
+import AppDashboardShell from '../components/dashboard/AppDashboardShell.vue'
 import AppButton from '../components/ui/AppButton.vue'
-import AppThemeSwitch from '../components/ui/AppThemeSwitch.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import { useGlobalToast } from '../composables/useGlobalUI'
 import { useAuthStore } from '../stores/auth'
 
-const sections = [
-  { id: 'overview', label: '账户概览', icon: LayoutDashboard },
-  { id: 'profile', label: '个人信息', icon: UserRound },
-  { id: 'security', label: '安全设置', icon: ShieldCheck },
-  { id: 'invite', label: '邀请', icon: UserPlus },
-]
+const sectionIds = new Set(['overview', 'profile', 'security', 'invite'])
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const toast = useGlobalToast()
-const activeSection = ref('overview')
+const activeSection = computed(() => {
+  const section = String(route.query.section || '')
+  return sectionIds.has(section) ? section : 'overview'
+})
 const account = ref(null)
 const loading = ref(true)
 const loadError = ref('')
 const submitting = ref(false)
 const passwordError = ref('')
 const password = reactive({ current: '', next: '', confirm: '' })
-const returnTo = computed(() => /^\/workspaces(?:\/|\?|$)/.test(String(route.query.returnTo || '')) ? route.query.returnTo : '/workspaces')
 
 async function loadAccount() {
   loading.value = true
@@ -83,33 +78,8 @@ onMounted(loadAccount)
 </script>
 
 <template>
-  <main class="account-page">
-    <header class="account-header">
-      <div class="account-header__start">
-        <AppButton icon-only size="sm" title="返回" @click="router.push(returnTo)"><ArrowLeft :size="17" /></AppButton>
-        <span></span>
-        <AppBrand to="/workspaces" />
-      </div>
-      <div class="account-header__actions">
-        <AppThemeSwitch />
-        <AppAccountMenu :username="authStore.user?.username || '用户'" @logout="signOut" />
-      </div>
-    </header>
-
-    <div class="account-shell">
-      <nav class="account-nav" aria-label="个人中心">
-        <AppButton
-          v-for="section in sections"
-          :key="section.id"
-          :class="{ active: activeSection === section.id }"
-          @click="activeSection = section.id"
-        >
-          <component :is="section.icon" :size="16" />
-          <span>{{ section.label }}</span>
-        </AppButton>
-      </nav>
-
-      <section class="account-content">
+  <AppDashboardShell :active-item="activeSection" :username="authStore.user?.username || '用户'" @logout="signOut">
+    <section class="account-content">
         <EmptyState v-if="loading" title="正在加载账户信息" loading />
         <EmptyState v-else-if="loadError" title="账户信息加载失败" :description="loadError" tone="error">
           <AppButton variant="primary" @click="loadAccount">重新加载</AppButton>
@@ -150,7 +120,6 @@ onMounted(loadAccount)
           <header class="account-section-heading"><h1>邀请</h1><p>邀请好友共同使用 Mooncut</p></header>
           <EmptyState class="account-invite" title="邀请功能即将开放" description="正式开放后可在此查看邀请权益" :icon="UserPlus" />
         </template>
-      </section>
-    </div>
-  </main>
+    </section>
+  </AppDashboardShell>
 </template>

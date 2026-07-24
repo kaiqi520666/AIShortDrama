@@ -27,9 +27,8 @@ function closeMenu(focus = false) {
 
 async function openAccount() {
   closeMenu()
-  if (route.name === 'account') return
-  const returnTo = /^\/workspaces(?:\/|\?|$)/.test(route.fullPath) ? route.fullPath : '/workspaces'
-  await router.push({ name: 'account', query: { returnTo } })
+  if (route.name === 'account' && route.query.section === 'overview') return
+  await router.push({ name: 'account', query: { section: 'overview' } })
 }
 
 function logout() {

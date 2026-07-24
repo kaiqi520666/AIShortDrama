@@ -7,7 +7,7 @@ import GlobalToast from './components/global/GlobalToast.vue'
 
 <template>
   <RouterView v-slot="{ Component, route }">
-    <component :is="Component" :key="route.fullPath" />
+    <component :is="Component" :key="route.path" />
   </RouterView>
   <GlobalToast />
   <GlobalConfirm />
