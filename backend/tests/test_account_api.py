@@ -79,6 +79,10 @@ async def test_credit_ledger_filters_and_signed_deltas(override_business_user):
                 id=uuid.uuid4(),
                 user_id=override_business_user,
                 task_id=task_id if entry_type in {"freeze", "consume", "refund"} else None,
+                media_type="image" if entry_type in {"freeze", "consume", "refund"} else None,
+                model="test-image-model"
+                if entry_type in {"freeze", "consume", "refund"}
+                else None,
                 entry_type=entry_type,
                 amount=amount,
                 balance_after=100,
@@ -101,6 +105,10 @@ async def test_credit_ledger_filters_and_signed_deltas(override_business_user):
         db.add(task)
         await db.flush()
         db.add_all(entries)
+        await db.commit()
+
+    async with SessionLocal() as db:
+        await db.delete(await db.get(GenerationTask, task_id))
         await db.commit()
 
     params = {
@@ -134,6 +142,7 @@ async def test_credit_ledger_filters_and_signed_deltas(override_business_user):
         assert consumed["total"] == 1
         assert consumed["items"][0]["delta"] == -7
         assert consumed["items"][0]["media_type"] == "image"
+        assert consumed["items"][0]["model"] == "test-image-model"
     finally:
         async with SessionLocal() as db:
             for entry in entries:

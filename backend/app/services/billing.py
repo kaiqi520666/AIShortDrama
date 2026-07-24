@@ -38,6 +38,13 @@ def _unit_credits(rule: ModelPriceRule) -> int:
     return _ceil(Decimal(rule.cost_per_unit) * multiplier / CREDIT_VALUE_YUAN)
 
 
+def _task_ledger_snapshot(task: GenerationTask) -> dict[str, str]:
+    return {
+        "media_type": task.pricing_snapshot.get("media_type") or task.task_type,
+        "model": task.model,
+    }
+
+
 async def get_price_rule(
     db: AsyncSession,
     media_type: str,
@@ -132,6 +139,7 @@ async def freeze_task_credits(
         CreditLedger(
             user_id=user.id,
             task_id=task.id,
+            **_task_ledger_snapshot(task),
             entry_type="freeze",
             amount=amount,
             balance_after=user.credit_balance,
@@ -177,6 +185,7 @@ async def settle_task_credits(
         CreditLedger(
             user_id=user.id,
             task_id=task.id,
+            **_task_ledger_snapshot(task),
             entry_type="consume",
             amount=charged,
             balance_after=user.credit_balance,
@@ -193,6 +202,7 @@ async def settle_task_credits(
             CreditLedger(
                 user_id=user.id,
                 task_id=task.id,
+                **_task_ledger_snapshot(task),
                 entry_type="refund",
                 amount=refund,
                 balance_after=user.credit_balance,
@@ -222,6 +232,7 @@ async def refund_task_credits(db: AsyncSession, task: GenerationTask, note: str)
         CreditLedger(
             user_id=user.id,
             task_id=task.id,
+            **_task_ledger_snapshot(task),
             entry_type="refund",
             amount=task.frozen_credits,
             balance_after=user.credit_balance,

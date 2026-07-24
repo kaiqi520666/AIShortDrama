@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.identity import get_current_user_id
-from app.models import CreditLedger, GenerationTask, User
+from app.models import CreditLedger, User
 from app.schemas.response import success
 
 router = APIRouter()
@@ -80,44 +80,36 @@ async def list_credit_ledger(
         stored_type = "adjustment" if entry_type == "system" else entry_type
         conditions.append(CreditLedger.entry_type == stored_type)
     if media_type != "all":
-        conditions.append(
-            GenerationTask.pricing_snapshot["media_type"].as_string() == media_type
-        )
+        conditions.append(CreditLedger.media_type == media_type)
     if start_at:
         conditions.append(CreditLedger.created_at >= start_at)
     if end_at:
         conditions.append(CreditLedger.created_at < end_at)
 
-    join_on = GenerationTask.id == CreditLedger.task_id
     total = await db.scalar(
-        select(func.count())
-        .select_from(CreditLedger)
-        .outerjoin(GenerationTask, join_on)
-        .where(*conditions)
+        select(func.count()).select_from(CreditLedger).where(*conditions)
     )
-    rows = (
-        await db.execute(
-            select(CreditLedger, GenerationTask)
-            .outerjoin(GenerationTask, join_on)
+    rows = list(
+        await db.scalars(
+            select(CreditLedger)
             .where(*conditions)
             .order_by(CreditLedger.created_at.desc(), CreditLedger.id.desc())
             .offset((page - 1) * page_size)
             .limit(page_size)
         )
-    ).all()
+    )
     items = []
-    for entry, task in rows:
+    for entry in rows:
         public_type = LEDGER_TYPES[entry.entry_type]
         delta = -abs(entry.amount) if public_type == "consume" else entry.amount
-        media = task.pricing_snapshot.get("media_type") if task else None
         items.append(
             {
                 "id": str(entry.id),
                 "type": public_type,
                 "delta": delta,
                 "balance_after": entry.balance_after,
-                "media_type": media,
-                "model": task.model if task else None,
+                "media_type": entry.media_type,
+                "model": entry.model,
                 "note": entry.note,
                 "created_at": entry.created_at.isoformat(),
             }

@@ -65,6 +65,8 @@ class CreditLedger(Base):
     task_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("generation_tasks.id", ondelete="SET NULL")
     )
+    media_type: Mapped[str | None] = mapped_column(String(16))
+    model: Mapped[str | None] = mapped_column(String(64))
     entry_type: Mapped[str] = mapped_column(String(20))
     amount: Mapped[int] = mapped_column(BigInteger)
     balance_after: Mapped[int] = mapped_column(BigInteger)
