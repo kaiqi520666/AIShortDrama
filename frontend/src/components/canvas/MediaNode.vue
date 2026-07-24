@@ -22,10 +22,10 @@ const icon = computed(() => icons[props.type])
 const textMode = computed(() => props.type === 'text' ? (props.data.textMode ?? (props.data.content ? 'manual' : null)) : null)
 const acceptsInput = computed(() => props.type === 'text' ? textMode.value === 'task' : !props.data.assetSource)
 const sourceAspectRatio = computed(() => props.data.assetSource && props.data.sourceAspectRatio > 0 ? props.data.sourceAspectRatio : null)
+const selectedAspectRatio = computed(() => props.data.aspectRatio === 'adaptive' ? '16:9' : props.data.aspectRatio || (props.type === 'image' ? '1:1' : '16:9'))
 const displayAspectRatio = computed(() => {
   if (sourceAspectRatio.value) return sourceAspectRatio.value
-  const value = props.data.aspectRatio === 'adaptive' ? '16:9' : props.data.aspectRatio || '16:9'
-  const [width, height] = value.split(':').map(Number)
+  const [width, height] = selectedAspectRatio.value.split(':').map(Number)
   return width / height
 })
 const mediaWidth = computed(() => {
@@ -35,7 +35,7 @@ const mediaWidth = computed(() => {
     const width = Math.sqrt(baseWidth * (baseWidth / (16 / 9)) * sourceAspectRatio.value)
     return Math.min(570, Math.max(96, Math.round(width)))
   }
-  const aspectRatio = props.data.aspectRatio === 'adaptive' ? '16:9' : props.data.aspectRatio || '16:9'
+  const aspectRatio = selectedAspectRatio.value
   const ratio = imageAspectRatios.find((item) => item.value === aspectRatio)
     || imageAspectRatios.find((item) => item.value === '16:9')
   const baseWidth = props.type === 'video' ? 390 : 380
