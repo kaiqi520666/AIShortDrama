@@ -1,10 +1,8 @@
 <script setup>
 import { ArrowLeft, Folder } from 'lucide-vue-next'
-import AppAccountMenu from '../account/AppAccountMenu.vue'
 import AppBrand from '../ui/AppBrand.vue'
 import AppButton from '../ui/AppButton.vue'
-import AppCreditBalance from '../ui/AppCreditBalance.vue'
-import AppThemeSwitch from '../ui/AppThemeSwitch.vue'
+import AppHeaderAccountControls from '../ui/AppHeaderAccountControls.vue'
 
 defineProps({
   workspaceName: { type: String, required: true },
@@ -24,10 +22,11 @@ const emit = defineEmits(['back', 'logout'])
       <span class="project-divider"></span>
       <span class="project-context"><Folder :size="14" /><span class="project-select">{{ workspaceName }}</span></span>
     </div>
-    <div class="canvas-account">
-      <AppThemeSwitch />
-      <AppCreditBalance :balance="creditBalance" :frozen="creditFrozen" />
-      <AppAccountMenu :username="username" @logout="emit('logout')" />
-    </div>
+    <AppHeaderAccountControls
+      :username="username"
+      :credit-balance="creditBalance"
+      :credit-frozen="creditFrozen"
+      @logout="emit('logout')"
+    />
   </header>
 </template>

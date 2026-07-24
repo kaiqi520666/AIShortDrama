@@ -91,7 +91,7 @@
   pointer-events: none;
 }
 .canvas-header .project-control,
-.canvas-header .canvas-account {
+.canvas-header .app-header-account-controls {
   pointer-events: auto;
 }
 .project-control {
@@ -148,13 +148,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 12px;
-}
-.canvas-account {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--color-text-muted);
-  font-size: 11px;
 }
 .media-node {
   position: relative;

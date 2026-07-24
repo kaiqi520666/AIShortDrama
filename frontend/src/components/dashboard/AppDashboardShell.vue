@@ -1,9 +1,7 @@
 <script setup>
 import { LayoutDashboard, PanelsTopLeft, ReceiptText, Tags } from 'lucide-vue-next'
-import AppAccountMenu from '../account/AppAccountMenu.vue'
 import AppBrand from '../ui/AppBrand.vue'
-import AppCreditBalance from '../ui/AppCreditBalance.vue'
-import AppThemeSwitch from '../ui/AppThemeSwitch.vue'
+import AppHeaderAccountControls from '../ui/AppHeaderAccountControls.vue'
 
 defineProps({
   activeItem: { type: String, required: true },
@@ -24,11 +22,12 @@ const accountItems = [
   <main class="dashboard-shell">
     <header class="dashboard-header">
       <AppBrand to="/dashboard/workspaces" />
-      <div class="dashboard-header__actions">
-        <AppThemeSwitch />
-        <AppCreditBalance :balance="creditBalance" :frozen="creditFrozen" />
-        <AppAccountMenu :username="username" @logout="emit('logout')" />
-      </div>
+      <AppHeaderAccountControls
+        :username="username"
+        :credit-balance="creditBalance"
+        :credit-frozen="creditFrozen"
+        @logout="emit('logout')"
+      />
     </header>
 
     <div class="dashboard-body">

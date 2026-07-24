@@ -45,6 +45,13 @@
 .app-credit-balance svg {
   color: var(--color-warning);
 }
+.app-header-account-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
 .ui-button--sm {
   min-height: 32px;
   padding: 0 10px;
