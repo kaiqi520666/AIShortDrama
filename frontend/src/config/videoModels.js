@@ -9,10 +9,9 @@ export const videoModels = [
     aspectRatios: seedanceRatios,
     defaultResolution: '720p',
     defaultAspectRatio: '16:9',
-    defaultDuration: 0,
+    defaultDuration: 5,
     durationMin: 4,
     durationMax: 15,
-    durationAuto: true,
     generateAudio: true,
     referenceLimits: { image: 9, video: 3, audio: 3 },
   },
@@ -23,10 +22,9 @@ export const videoModels = [
     aspectRatios: seedanceRatios,
     defaultResolution: '720p',
     defaultAspectRatio: '16:9',
-    defaultDuration: 0,
+    defaultDuration: 5,
     durationMin: 4,
     durationMax: 15,
-    durationAuto: true,
     generateAudio: true,
     referenceLimits: { image: 9, video: 3, audio: 3 },
   },
@@ -68,11 +66,9 @@ export function normalizeVideoSettings(data = {}) {
   const requestedDuration = Number(data.duration)
   const duration = model.durationOptions
     ? model.durationOptions.includes(requestedDuration) ? requestedDuration : model.defaultDuration
-    : model.durationAuto && [0, -1].includes(requestedDuration)
-      ? 0
-      : Number.isInteger(requestedDuration) && requestedDuration >= model.durationMin && requestedDuration <= model.durationMax
-        ? requestedDuration
-        : model.defaultDuration
+    : Number.isInteger(requestedDuration) && requestedDuration >= model.durationMin && requestedDuration <= model.durationMax
+      ? requestedDuration
+      : model.defaultDuration
 
   return {
     model,

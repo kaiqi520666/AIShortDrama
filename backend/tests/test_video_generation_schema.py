@@ -23,6 +23,7 @@ def video_request(**updates):
     "updates",
     [
         {"prompt": "   "},
+        {"duration": 0},
         {"duration": 3},
         {"resolution": "1080P"},
         {"aspect_ratio": "2:1"},

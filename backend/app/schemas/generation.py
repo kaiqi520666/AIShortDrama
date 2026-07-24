@@ -28,14 +28,12 @@ VIDEO_MODEL_RULES: dict[str, dict[str, Any]] = {
         "resolutions": {"480p", "720p", "1080p", "4k"},
         "ratios": SEEDANCE_RATIOS,
         "duration_range": range(4, 16),
-        "duration_auto": True,
         "audio": True,
     },
     "seedance-2-fast": {
         "resolutions": {"480p", "720p"},
         "ratios": SEEDANCE_RATIOS,
         "duration_range": range(4, 16),
-        "duration_auto": True,
         "audio": True,
     },
     "seedance-2-mini": {
@@ -237,8 +235,6 @@ class VideoGenerationRequest(BaseModel):
         valid_duration = self.duration in rules.get("durations", set()) or (
             self.duration in rules.get("duration_range", range(0))
         )
-        if rules.get("duration_auto") and self.duration == 0:
-            valid_duration = True
         if not valid_duration:
             raise ValueError(f"{self.model} 不支持时长 {self.duration}")
         if self.generate_audio is not None and not rules["audio"]:

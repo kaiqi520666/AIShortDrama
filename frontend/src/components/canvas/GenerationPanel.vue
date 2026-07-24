@@ -79,7 +79,7 @@ const referenceError = computed(() => {
 const panelMessage = computed(() => notice.value || props.data.generationError || referenceError.value || promptError.value)
 const settingLabel = computed(() => {
   if (props.type === 'image') return `${selectedAspectRatio.value} · ${selectedResolution.value}`
-  if (props.type === 'video') return `${selectedAspectRatio.value === 'adaptive' ? '自适应' : selectedAspectRatio.value} · ${selectedResolution.value} · ${selectedDuration.value === 0 ? '自动' : `${selectedDuration.value}s`}`
+  if (props.type === 'video') return `${selectedAspectRatio.value === 'adaptive' ? '自适应' : selectedAspectRatio.value} · ${selectedResolution.value} · ${selectedDuration.value}s`
   if (props.type === 'audio') return `${audioFormatOptions.find(({ value }) => value === selectedAudioSettings.value.format)?.label} · ${selectedAudioSettings.value.sampleRate / 1000} kHz`
   return mediaTypes[props.type].setting
 })
@@ -211,7 +211,7 @@ function updateVideoModel(model) {
   if (!model.resolutions.includes(selectedResolution.value)) updates.resolution = model.defaultResolution
   if (!model.aspectRatios.includes(selectedAspectRatio.value)) updates.aspectRatio = model.defaultAspectRatio
   if (model.durationOptions && !model.durationOptions.includes(selectedDuration.value)) updates.duration = model.defaultDuration
-  else if (!model.durationOptions && selectedDuration.value !== 0 && (selectedDuration.value < model.durationMin || selectedDuration.value > model.durationMax)) updates.duration = model.defaultDuration
+  else if (!model.durationOptions && (selectedDuration.value < model.durationMin || selectedDuration.value > model.durationMax)) updates.duration = model.defaultDuration
   updateNodeData(props.nodeId, updates)
   modelOpen.value = false
 }
@@ -368,9 +368,8 @@ onBeforeUnmount(() => {
           <AppButton v-for="duration in selectedVideoModel.durationOptions" :key="duration" :class="{ active: selectedDuration === duration }" @click="updateVideoSetting('duration', duration)">{{ duration }}s</AppButton>
         </div>
         <div v-else class="video-duration-slider">
-          <AppButton v-if="selectedVideoModel.durationAuto" :class="{ active: selectedDuration === 0 }" @click="updateVideoSetting('duration', 0)">自动</AppButton>
-          <input type="range" :min="selectedVideoModel.durationMin" :max="selectedVideoModel.durationMax" step="1" :value="selectedDuration || selectedVideoModel.defaultDuration" aria-label="视频时长" @input="updateVideoSetting('duration', Number($event.target.value))" />
-          <span>{{ selectedDuration === 0 ? '自动' : `${selectedDuration}s` }}</span>
+          <input type="range" :min="selectedVideoModel.durationMin" :max="selectedVideoModel.durationMax" step="1" :value="selectedDuration" aria-label="视频时长" @input="updateVideoSetting('duration', Number($event.target.value))" />
+          <span>{{ selectedDuration }}s</span>
         </div>
 
         <h3>清晰度</h3>

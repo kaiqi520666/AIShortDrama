@@ -1,11 +1,16 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildVideoRequest, getVideoModelError, getVideoReferenceError } from './videoModels'
+import { buildVideoRequest, getVideoModelError, getVideoReferenceError, normalizeVideoSettings } from './videoModels'
 
 const imageNode = (id) => ({ id, type: 'image', data: { asset: `https://example.com/${id}.png` } })
 const mediaNode = (type, id) => ({ id, type, data: { asset: `https://example.com/${id}.${type === 'audio' ? 'mp3' : 'mp4'}` } })
 
 describe('buildVideoRequest', () => {
+  it('replaces legacy automatic duration with the fixed default', () => {
+    expect(normalizeVideoSettings({ model: 'seedance-2', duration: 0 }).duration).toBe(5)
+    expect(normalizeVideoSettings({ model: 'seedance-2-fast', duration: 0 }).duration).toBe(5)
+  })
+
   it('builds a standard Seedance reference request', () => {
     expect(buildVideoRequest({
       model: 'seedance-2',
