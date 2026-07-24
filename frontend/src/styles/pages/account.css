@@ -205,7 +205,7 @@
 .credit-table th:first-child { width: 158px; }
 .credit-table th:nth-child(2) { width: 78px; }
 .credit-table th:nth-child(3) { width: 92px; }
-.credit-table th:nth-child(4) { width: 150px; }
+.credit-table th:nth-child(4) { width: 220px; }
 .credit-table th:nth-child(6),
 .credit-table th:nth-child(7) { width: 92px; text-align: right; }
 .credit-table td:nth-child(6),
