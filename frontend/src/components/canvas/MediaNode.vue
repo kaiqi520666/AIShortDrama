@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
 import { AudioWaveform, FileText, GripVertical, Image as ImageIcon, MoveDiagonal2, Music2, Upload, Video } from 'lucide-vue-next'
 import { uploadMedia } from '../../api/uploads'
@@ -60,7 +60,6 @@ const bodyStyle = computed(() => {
 const store = useCanvasStore()
 const uploadNotice = ref('')
 const fileInput = ref(null)
-const audioElement = ref(null)
 const uploading = ref(false)
 const uploadProgress = ref(0)
 const uploadRules = {
@@ -170,9 +169,6 @@ watch(
   },
   { immediate: true },
 )
-watch(audioSource, (asset) => {
-  if (props.type === 'audio' && asset) nextTick(() => audioElement.value?.load())
-}, { immediate: true })
 onBeforeUnmount(() => {
   stopResize()
 })
@@ -235,7 +231,7 @@ onBeforeUnmount(() => {
 
       <div v-else-if="type === 'audio' && data.asset" class="audio-preview">
         <AudioWaveform :size="60" />
-        <audio ref="audioElement" class="node-audio nodrag nopan nowheel" :src="audioSource" controls preload="metadata"></audio>
+        <audio class="node-audio nodrag nopan nowheel" :src="audioSource" controls preload="metadata"></audio>
       </div>
 
       <div v-else-if="type === 'audio' && data.status === 'ready'" class="audio-preview">
