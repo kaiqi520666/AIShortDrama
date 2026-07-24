@@ -1,6 +1,6 @@
 <script setup>
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { ChevronDown, LogOut, UserRound } from 'lucide-vue-next'
+import { ChevronDown, LogOut, PanelsTopLeft, UserRound } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
 import AppButton from '../ui/AppButton.vue'
@@ -15,7 +15,7 @@ const root = ref(null)
 const trigger = ref(null)
 const open = ref(false)
 const activeIndex = ref(0)
-const itemCount = 2
+const itemCount = 3
 
 function openMenu() {
   activeIndex.value = 0
@@ -33,6 +33,12 @@ async function openAccount() {
   await router.push({ name: 'account' })
 }
 
+async function openWorkspaces() {
+  closeMenu()
+  if (route.name === 'workspaces') return
+  await router.push({ name: 'workspaces' })
+}
+
 async function logout() {
   closeMenu()
   const accepted = await confirm({
@@ -45,7 +51,8 @@ async function logout() {
 }
 
 function selectActive() {
-  if (activeIndex.value === 0) openAccount()
+  if (activeIndex.value === 0) openWorkspaces()
+  else if (activeIndex.value === 1) openAccount()
   else logout()
 }
 
@@ -91,11 +98,14 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', handleOutside))
     </AppButton>
     <Transition name="theme-menu">
       <AppMenu v-if="open" class="account-menu__popup" aria-label="账户菜单">
-        <AppButton class="account-menu__item" role="menuitem" :class="{ active: activeIndex === 0 }" @pointerenter="activeIndex = 0" @click="openAccount">
+        <AppButton class="account-menu__item" role="menuitem" :class="{ active: activeIndex === 0 }" @pointerenter="activeIndex = 0" @click="openWorkspaces">
+          <PanelsTopLeft :size="15" /><span>工作台</span>
+        </AppButton>
+        <AppButton class="account-menu__item" role="menuitem" :class="{ active: activeIndex === 1 }" @pointerenter="activeIndex = 1" @click="openAccount">
           <UserRound :size="15" /><span>个人中心</span>
         </AppButton>
         <span class="account-menu__divider"></span>
-        <AppButton class="account-menu__item account-menu__item--danger" role="menuitem" :class="{ active: activeIndex === 1 }" @pointerenter="activeIndex = 1" @click="logout">
+        <AppButton class="account-menu__item account-menu__item--danger" role="menuitem" :class="{ active: activeIndex === 2 }" @pointerenter="activeIndex = 2" @click="logout">
           <LogOut :size="15" /><span>退出登录</span>
         </AppButton>
       </AppMenu>
