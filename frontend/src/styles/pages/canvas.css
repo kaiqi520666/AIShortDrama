@@ -218,7 +218,6 @@
 }
 .selection-frame.active {
   border-color: var(--color-brand-strong);
-  background: var(--color-brand-soft);
 }
 .selection-toolbar {
   border-color: var(--color-border-strong);
