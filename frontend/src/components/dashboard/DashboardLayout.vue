@@ -19,7 +19,13 @@ async function signOut() {
 </script>
 
 <template>
-  <AppDashboardShell :active-item="activeItem" :username="authStore.user?.username || '用户'" @logout="signOut">
+  <AppDashboardShell
+    :active-item="activeItem"
+    :username="authStore.user?.username || '用户'"
+    :credit-balance="authStore.user?.credit_balance ?? 0"
+    :credit-frozen="authStore.user?.credit_frozen ?? 0"
+    @logout="signOut"
+  >
     <RouterView />
   </AppDashboardShell>
 </template>

@@ -1,8 +1,9 @@
 <script setup>
-import { ArrowLeft, Coins, Folder } from 'lucide-vue-next'
+import { ArrowLeft, Folder } from 'lucide-vue-next'
 import AppAccountMenu from '../account/AppAccountMenu.vue'
 import AppBrand from '../ui/AppBrand.vue'
 import AppButton from '../ui/AppButton.vue'
+import AppCreditBalance from '../ui/AppCreditBalance.vue'
 import AppThemeSwitch from '../ui/AppThemeSwitch.vue'
 
 defineProps({
@@ -25,7 +26,7 @@ const emit = defineEmits(['back', 'logout'])
     </div>
     <div class="canvas-account">
       <AppThemeSwitch />
-      <span class="canvas-credits" :title="`冻结积分 ${creditFrozen}`"><Coins :size="15" />{{ creditBalance }}</span>
+      <AppCreditBalance :balance="creditBalance" :frozen="creditFrozen" />
       <AppAccountMenu :username="username" @logout="emit('logout')" />
     </div>
   </header>

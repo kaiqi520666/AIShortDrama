@@ -30,6 +30,21 @@
   cursor: not-allowed;
   opacity: 0.48;
 }
+.app-credit-balance {
+  display: inline-flex;
+  height: 34px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 7px;
+  background: var(--color-surface-translucent);
+  color: var(--color-text-primary);
+  font-size: 12px;
+}
+.app-credit-balance svg {
+  color: var(--color-warning);
+}
 .ui-button--sm {
   min-height: 32px;
   padding: 0 10px;
