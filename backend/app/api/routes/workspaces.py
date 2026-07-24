@@ -15,11 +15,21 @@ from app.schemas.workspace import CanvasUpdate, WorkspaceCreate, WorkspaceUpdate
 router = APIRouter()
 
 
+def workspace_thumbnail(canvas: dict[str, Any]) -> str | None:
+    for node in reversed(canvas.get("nodes", [])):
+        data = node.get("data")
+        url = data.get("asset") if isinstance(data, dict) else None
+        if node.get("type") == "image" and isinstance(url, str) and url:
+            return url
+    return None
+
+
 def workspace_payload(workspace: Workspace, include_canvas: bool = False) -> dict[str, Any]:
     payload = {
         "id": str(workspace.id),
         "name": workspace.name,
         "version": workspace.version,
+        "thumbnail_url": workspace_thumbnail(workspace.canvas),
         "created_at": workspace.created_at.isoformat(),
         "updated_at": workspace.updated_at.isoformat(),
     }

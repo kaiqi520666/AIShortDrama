@@ -88,7 +88,10 @@ onMounted(() => store.load())
       </AppButton>
       <article v-for="workspace in displayedItems" :key="workspace.id" class="workspace-card" @dblclick="router.push({ name: 'canvas', params: { workspaceId: workspace.id } })">
         <AppButton class="workspace-open-area" @click="router.push({ name: 'canvas', params: { workspaceId: workspace.id } })">
-          <span class="workspace-cover" aria-hidden="true"><b>{{ workspaceNumbers.get(workspace.id) }}</b><i></i><Play :size="17" fill="currentColor" /></span>
+          <span class="workspace-cover" :class="{ 'has-image': workspace.thumbnail_url }" aria-hidden="true">
+            <img v-if="workspace.thumbnail_url" :src="workspace.thumbnail_url" alt="" loading="lazy" referrerpolicy="no-referrer" />
+            <b>{{ workspaceNumbers.get(workspace.id) }}</b><i></i><Play :size="17" fill="currentColor" />
+          </span>
           <span class="workspace-card-name">{{ workspace.name }}</span>
           <small>WORKFLOW CANVAS</small>
         </AppButton>

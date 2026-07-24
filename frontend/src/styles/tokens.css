@@ -56,6 +56,10 @@
   --color-loading-backdrop: rgb(239 244 246 / 76%);
   --color-highlight: rgb(255 255 255 / 82%);
   --color-highlight-subtle: rgb(255 255 255 / 46%);
+  --color-media-cover: rgb(8 12 16 / 58%);
+  --color-media-cover-border: rgb(255 255 255 / 26%);
+  --color-media-cover-text: #ffffff;
+  --image-overlay-card: linear-gradient(180deg, transparent 45%, rgb(0 0 0 / 48%));
   --color-shadow: rgb(26 42 49 / 15%);
   --color-shadow-strong: rgb(20 34 40 / 24%);
   --shadow-sm: 0 8px 22px var(--color-shadow);
@@ -118,6 +122,10 @@
   --color-loading-backdrop: rgb(7 9 10 / 68%);
   --color-highlight: rgb(255 255 255 / 12%);
   --color-highlight-subtle: rgb(255 255 255 / 4%);
+  --color-media-cover: rgb(8 12 16 / 58%);
+  --color-media-cover-border: rgb(255 255 255 / 26%);
+  --color-media-cover-text: #ffffff;
+  --image-overlay-card: linear-gradient(180deg, transparent 45%, rgb(0 0 0 / 48%));
   --color-shadow: rgb(0 0 0 / 34%);
   --color-shadow-strong: rgb(0 0 0 / 48%);
   --shadow-sm: 0 8px 22px rgb(0 0 0 / 18%);

@@ -16,7 +16,22 @@ async def test_workspace_crud_duplicate_and_canvas_isolation(override_business_u
         workspace_id = uuid.UUID(created["id"])
         canvas = {
             "schema_version": 1,
-            "nodes": [{"id": "text-1", "type": "text", "position": {"x": 10, "y": 20}, "data": {}}],
+            "nodes": [
+                {"id": "text-1", "type": "text", "position": {"x": 10, "y": 20}, "data": {}},
+                {
+                    "id": "image-2",
+                    "type": "image",
+                    "position": {"x": 30, "y": 20},
+                    "data": {"asset": "https://example.com/old.webp"},
+                },
+                {"id": "image-3", "type": "image", "position": {"x": 50, "y": 20}, "data": {}},
+                {
+                    "id": "image-4",
+                    "type": "image",
+                    "position": {"x": 70, "y": 20},
+                    "data": {"asset": "https://example.com/latest.webp"},
+                },
+            ],
             "edges": [],
             "groups": [],
             "sequence": 2,
@@ -25,6 +40,7 @@ async def test_workspace_crud_duplicate_and_canvas_isolation(override_business_u
         }
         saved = (await client.put(f"/api/workspaces/{workspace_id}/canvas", json=canvas)).json()
         loaded = (await client.get(f"/api/workspaces/{workspace_id}")).json()["data"]
+        listed_before_delete = (await client.get("/api/workspaces")).json()["data"]
         renamed = (await client.patch(f"/api/workspaces/{workspace_id}", json={"name": "新名称"})).json()
         duplicate = (await client.post(f"/api/workspaces/{workspace_id}/duplicate")).json()["data"]
         duplicate_id = uuid.UUID(duplicate["id"])
@@ -49,7 +65,10 @@ async def test_workspace_crud_duplicate_and_canvas_isolation(override_business_u
 
     try:
         assert saved["code"] == 0
+        assert created["thumbnail_url"] is None
         assert loaded["canvas"] == canvas
+        listed_workspace = next(item for item in listed_before_delete if item["id"] == str(workspace_id))
+        assert listed_workspace["thumbnail_url"] == "https://example.com/latest.webp"
         assert renamed["data"]["name"] == "新名称"
         assert duplicate["canvas"] == canvas
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
