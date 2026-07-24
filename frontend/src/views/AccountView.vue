@@ -81,7 +81,7 @@ onMounted(loadAccount)
         </div>
       </section>
 
-      <section class="account-overview-section">
+      <section class="account-overview-section account-profile-section">
         <header class="account-section-heading"><h2>个人信息</h2><p>账户基础信息仅供查看</p></header>
         <dl class="account-profile">
           <div><dt><UserRound :size="16" />用户名</dt><dd>{{ account.user.username }}</dd></div>
@@ -90,21 +90,23 @@ onMounted(loadAccount)
         </dl>
       </section>
 
-      <section class="account-overview-section">
-        <header class="account-section-heading"><h2>安全设置</h2><p>修改后其他设备将立即退出登录</p></header>
-        <form class="account-security-form" @submit.prevent="changePassword">
-          <AuthInputField v-model="password.current" label="原密码" :icon="LockKeyhole" type="password" autocomplete="current-password" revealable required />
-          <AuthInputField v-model="password.next" label="新密码" :icon="LockKeyhole" type="password" autocomplete="new-password" minlength="8" maxlength="72" revealable required />
-          <AuthInputField v-model="password.confirm" label="确认新密码" :icon="ShieldCheck" type="password" autocomplete="new-password" minlength="8" maxlength="72" revealable required />
-          <p v-if="passwordError" class="account-form-error"><CircleAlert :size="14" />{{ passwordError }}</p>
-          <AppButton type="submit" variant="primary" :disabled="submitting">{{ submitting ? '正在修改…' : '修改密码' }}</AppButton>
-        </form>
-      </section>
+      <div class="account-detail-grid">
+        <section class="account-overview-section">
+          <header class="account-section-heading"><h2>安全设置</h2><p>修改后其他设备将立即退出登录</p></header>
+          <form class="account-security-form" @submit.prevent="changePassword">
+            <AuthInputField v-model="password.current" label="原密码" :icon="LockKeyhole" type="password" autocomplete="current-password" revealable required />
+            <AuthInputField v-model="password.next" label="新密码" :icon="LockKeyhole" type="password" autocomplete="new-password" minlength="8" maxlength="72" revealable required />
+            <AuthInputField v-model="password.confirm" label="确认新密码" :icon="ShieldCheck" type="password" autocomplete="new-password" minlength="8" maxlength="72" revealable required />
+            <p v-if="passwordError" class="account-form-error"><CircleAlert :size="14" />{{ passwordError }}</p>
+            <AppButton type="submit" variant="primary" :disabled="submitting">{{ submitting ? '正在修改…' : '修改密码' }}</AppButton>
+          </form>
+        </section>
 
-      <section class="account-overview-section">
-        <header class="account-section-heading"><h2>邀请</h2><p>邀请好友共同使用 Mooncut</p></header>
-        <EmptyState class="account-invite" title="邀请功能即将开放" description="正式开放后可在此查看邀请权益" :icon="UserPlus" />
-      </section>
+        <section class="account-overview-section">
+          <header class="account-section-heading"><h2>邀请</h2><p>邀请好友共同使用 Mooncut</p></header>
+          <EmptyState class="account-invite" title="邀请功能即将开放" description="正式开放后可在此查看邀请权益" :icon="UserPlus" />
+        </section>
+      </div>
     </template>
   </section>
 </template>

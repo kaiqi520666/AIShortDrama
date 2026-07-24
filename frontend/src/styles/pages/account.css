@@ -26,6 +26,21 @@
   border: 0;
   background: transparent;
 }
+.account-profile-section {
+  padding: 22px 24px;
+}
+.account-profile-section .account-section-heading {
+  margin-bottom: 18px;
+}
+.account-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.account-detail-grid .account-overview-section + .account-overview-section {
+  margin-top: 0;
+}
 .account-overview-section .account-section-heading {
   margin-bottom: 24px;
   padding-bottom: 0;
@@ -119,7 +134,7 @@
 }
 .account-security-form {
   display: grid;
-  width: min(100%, 430px);
+  width: 100%;
   gap: 18px;
 }
 .account-security-form .auth-field {
@@ -348,6 +363,9 @@
   .account-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .account-detail-grid {
+    grid-template-columns: 1fr;
+  }
 }
 @media (max-width: 760px) {
   .account-content {
@@ -358,6 +376,9 @@
   }
   .account-summary-section {
     padding: 0;
+  }
+  .account-profile-section {
+    padding: 20px;
   }
   .account-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));

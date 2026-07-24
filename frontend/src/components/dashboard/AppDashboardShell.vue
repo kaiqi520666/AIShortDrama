@@ -33,18 +33,15 @@ const accountItems = [
           <RouterLink class="dashboard-nav__item" :class="{ active: activeItem === 'workspaces' }" :to="{ name: 'workspaces' }">
             <PanelsTopLeft :size="16" /><span>工作台</span>
           </RouterLink>
-          <div class="dashboard-nav__group">
-            <span class="dashboard-nav__label">账户</span>
-            <RouterLink
-              v-for="item in accountItems"
-              :key="item.id"
-              class="dashboard-nav__item"
-              :class="{ active: activeItem === item.id }"
-              :to="item.to"
-            >
-              <component :is="item.icon" :size="16" /><span>{{ item.label }}</span>
-            </RouterLink>
-          </div>
+          <RouterLink
+            v-for="item in accountItems"
+            :key="item.id"
+            class="dashboard-nav__item"
+            :class="{ active: activeItem === item.id }"
+            :to="item.to"
+          >
+            <component :is="item.icon" :size="16" /><span>{{ item.label }}</span>
+          </RouterLink>
         </nav>
       </aside>
       <section class="dashboard-content"><slot /></section>
