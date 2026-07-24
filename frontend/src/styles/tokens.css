@@ -63,10 +63,8 @@
   --shadow-lg: 0 28px 80px var(--color-shadow-strong);
   --image-overlay-home: rgb(5 12 15 / 30%);
   --image-overlay-auth: rgb(246 249 250 / 18%);
-  --image-overlay-workspaces: rgb(246 249 250 / 72%);
   --image-brightness-home: 0.88;
   --image-brightness-auth: 1;
-  --image-brightness-workspaces: 1.03;
 }
 
 :root[data-theme="dark"] {
@@ -127,10 +125,8 @@
   --shadow-lg: 0 28px 80px var(--color-shadow-strong);
   --image-overlay-home: rgb(4 9 11 / 38%);
   --image-overlay-auth: rgb(5 9 11 / 38%);
-  --image-overlay-workspaces: rgb(7 9 10 / 82%);
   --image-brightness-home: 0.72;
   --image-brightness-auth: 0.78;
-  --image-brightness-workspaces: 0.58;
 }
 
 html {
