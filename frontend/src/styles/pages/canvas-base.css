@@ -330,7 +330,7 @@
   color: var(--color-text-muted);
   font-size: 11px;
 }
-.text-drag-handle {
+.node-drag-handle {
   position: absolute;
   z-index: 2;
   top: 6px;
@@ -342,10 +342,10 @@
   color: var(--color-text-muted);
   cursor: grab;
 }
-.text-drag-handle:hover {
+.node-drag-handle:hover {
   color: var(--color-text-primary);
 }
-.text-drag-handle:active {
+.node-drag-handle:active {
   cursor: grabbing;
 }
 .text-resize-handle,
