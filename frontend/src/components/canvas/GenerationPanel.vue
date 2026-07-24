@@ -44,7 +44,10 @@ const running = computed(() => props.data.status === 'generating')
 const references = computed(() => store.incomingNodes(props.nodeId))
 const imageReferences = computed(() => references.value.filter((node) => node.type === 'image' && node.data.asset))
 const audioReferences = computed(() => references.value.filter((node) => node.type === 'audio' && node.data.asset))
-const mentionReferences = computed(() => props.type === 'audio' ? audioReferences.value : imageReferences.value)
+const mentionReferences = computed(() => {
+  if (props.type === 'video') return references.value.filter((node) => ['image', 'video', 'audio'].includes(node.type) && node.data.asset)
+  return props.type === 'audio' ? audioReferences.value : imageReferences.value
+})
 const isReverseTask = computed(() => props.type === 'text' && ['image', 'video'].includes(props.data.reverseType))
 const reverseReference = computed(() => isReverseTask.value
   ? references.value.find((node) => node.type === props.data.reverseType && node.data.asset)
@@ -96,8 +99,10 @@ function updatePrompt(parts) {
   updateNodeData(props.nodeId, {
     promptParts: parts,
     prompt: parts.map((part) => {
-      if (part.type === 'image') return `图片${imageReferences.value.findIndex((node) => node.id === part.nodeId) + 1}`
-      if (part.type === 'audio') return `@音频${audioReferences.value.findIndex((node) => node.id === part.nodeId) + 1}`
+      if (['image', 'video', 'audio'].includes(part.type)) {
+        const number = mentionReferences.value.filter((node) => node.type === part.type).findIndex((node) => node.id === part.nodeId) + 1
+        return `${props.type === 'image' ? '' : '@'}${mediaTypes[part.type].label}${number}`
+      }
       return part.value
     }).join(''),
   })
@@ -304,11 +309,11 @@ onBeforeUnmount(() => {
     </div>
 
     <PromptReferenceEditor
-      v-if="['image', 'audio'].includes(type)"
+      v-if="['image', 'video', 'audio'].includes(type)"
       :model-value="promptParts"
       :references="mentionReferences"
       :reference-type="type"
-      :reference-label="type === 'audio' ? '音频' : '图片'"
+      :reference-label="type === 'video' ? '素材' : type === 'audio' ? '音频' : '图片'"
       :placeholder="mediaTypes[type].placeholder"
       @update:model-value="updatePrompt"
       @pointerdown="settingsOpen = false; modelOpen = false"

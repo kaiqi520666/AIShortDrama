@@ -1,6 +1,6 @@
 <script setup>
 import { nextTick, onMounted, ref, watch } from 'vue'
-import { Music2 } from 'lucide-vue-next'
+import { Image, Music2, Video as VideoIcon } from 'lucide-vue-next'
 import AppButton from '../ui/AppButton.vue'
 import AppMenu from '../ui/AppMenu.vue'
 
@@ -18,44 +18,56 @@ const menuVisible = ref(false)
 const menuStyle = ref({})
 const activeIndex = ref(0)
 let mentionRange = null
+const referenceLabels = { image: '图片', video: '视频', audio: '音频' }
+
+function getReferenceType(reference) {
+  return reference?.type || props.referenceType
+}
+
+function getReferenceLabel(type) {
+  return referenceLabels[type] || props.referenceLabel
+}
+
+function getReferenceNumber(reference) {
+  const type = getReferenceType(reference)
+  return props.references.filter((item) => getReferenceType(item) === type).findIndex((item) => item.id === reference.id) + 1
+}
 
 function createToken(part) {
   const reference = props.references.find((item) => item.id === part.nodeId)
+  const type = getReferenceType(reference || part)
   const token = document.createElement('span')
   const label = document.createElement('span')
   token.className = 'prompt-reference-token'
   token.contentEditable = 'false'
   token.dataset.nodeId = part.nodeId
   token.dataset.mentionId = part.id
-  token.dataset.referenceType = props.referenceType
+  token.dataset.referenceType = type
   token.title = reference.data.title
-  if (props.referenceType === 'image') {
+  if (type === 'image') {
     const image = document.createElement('img')
     image.src = reference.data.asset
     image.alt = ''
     token.append(image)
   }
   label.className = 'prompt-reference-label'
-  label.textContent = props.referenceLabel
+  label.textContent = getReferenceLabel(type)
   token.append(label)
   return token
 }
 
 function renumberTokens() {
   editor.value.querySelectorAll('.prompt-reference-token').forEach((token) => {
-    const number = props.references.findIndex((item) => item.id === token.dataset.nodeId) + 1
-    token.querySelector('.prompt-reference-label').textContent = `${props.referenceLabel}${number}`
+    const reference = props.references.find((item) => item.id === token.dataset.nodeId)
+    if (reference) token.querySelector('.prompt-reference-label').textContent = `${getReferenceLabel(getReferenceType(reference))}${getReferenceNumber(reference)}`
   })
 }
 
 function renderEditor() {
   const fragment = document.createDocumentFragment()
   props.modelValue.forEach((part) => {
-    if (part.type === props.referenceType) {
-      if (props.references.some((item) => item.id === part.nodeId)) fragment.append(createToken(part))
-    } else {
-      fragment.append(document.createTextNode(part.value))
-    }
+    if (part.nodeId && props.references.some((item) => item.id === part.nodeId)) fragment.append(createToken(part))
+    else if (part.value) fragment.append(document.createTextNode(part.value))
   })
   editor.value.replaceChildren(fragment)
   renumberTokens()
@@ -127,7 +139,7 @@ function insertReference(reference) {
   const offset = mentionRange.startOffset
   if (container.nodeType === 3 && container.textContent[offset - 1] === '@') mentionRange.setStart(container, offset - 1)
   mentionRange.deleteContents()
-  const token = createToken({ id: crypto.randomUUID(), nodeId: reference.id })
+  const token = createToken({ type: getReferenceType(reference), id: crypto.randomUUID(), nodeId: reference.id })
   const space = document.createTextNode(' ')
   mentionRange.insertNode(token)
   token.after(space)
@@ -192,8 +204,10 @@ onMounted(renderEditor)
         @mouseenter="activeIndex = index"
         @click="insertReference(reference)"
       >
-        <img v-if="referenceType === 'image'" :src="reference.data.asset" alt="" />
-        <Music2 v-else :size="24" />
+        <img v-if="getReferenceType(reference) === 'image'" :src="reference.data.asset" alt="" />
+        <VideoIcon v-else-if="getReferenceType(reference) === 'video'" :size="24" />
+        <Music2 v-else-if="getReferenceType(reference) === 'audio'" :size="24" />
+        <Image v-else :size="24" />
         <span>{{ reference.data.title }}</span>
       </AppButton>
       <p v-if="!references.length">暂无可引用资产，请连入后操作</p>
