@@ -245,6 +245,75 @@
   height: 32px;
   border: 1px solid var(--color-border-default);
 }
+.pricing-table-wrap {
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  background: var(--color-surface-raised);
+}
+.pricing-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 12px;
+}
+.pricing-table th,
+.pricing-table td {
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  text-align: left;
+}
+.pricing-table th {
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.pricing-table th:first-child { width: 110px; }
+.pricing-table th:nth-child(2) { width: 34%; }
+.pricing-table th:nth-child(3) { width: 90px; }
+.pricing-table th:nth-child(4) { width: 110px; }
+.pricing-table th:last-child { width: 190px; }
+.pricing-table tbody tr:last-child td { border-bottom: 0; }
+.pricing-table td:nth-child(2) strong,
+.pricing-table td:nth-child(2) small {
+  display: block;
+  overflow-wrap: anywhere;
+}
+.pricing-table td:nth-child(2) strong {
+  color: var(--color-text-primary);
+  font-size: 13px;
+}
+.pricing-table td:nth-child(2) small {
+  margin-top: 4px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+.pricing-media-type {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+}
+.pricing-points strong,
+.pricing-points span { display: inline; }
+.pricing-points strong {
+  color: var(--color-text-primary);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+.pricing-points span {
+  margin-left: 4px;
+  color: var(--color-text-muted);
+}
+.pricing-points small {
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
 @media (max-width: 1100px) {
   .account-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -289,6 +358,32 @@
     text-align: left;
   }
   .credit-table td::before {
+    content: attr(data-label);
+    color: var(--color-text-muted);
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .pricing-table-wrap { border: 0; background: transparent; }
+  .pricing-table,
+  .pricing-table tbody { display: block; }
+  .pricing-table thead { display: none; }
+  .pricing-table tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 18px;
+    margin-bottom: 10px;
+    padding: 16px;
+    border: 1px solid var(--color-border-default);
+    border-radius: 6px;
+    background: var(--color-surface-raised);
+  }
+  .pricing-table td {
+    display: grid;
+    gap: 5px;
+    padding: 0;
+    border: 0;
+  }
+  .pricing-table td::before {
     content: attr(data-label);
     color: var(--color-text-muted);
     font-size: 10px;

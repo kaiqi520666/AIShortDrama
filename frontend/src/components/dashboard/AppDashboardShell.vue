@@ -1,5 +1,5 @@
 <script setup>
-import { LayoutDashboard, PanelsTopLeft, ReceiptText, ShieldCheck, UserPlus, UserRound } from 'lucide-vue-next'
+import { LayoutDashboard, PanelsTopLeft, ReceiptText, ShieldCheck, Tags, UserPlus, UserRound } from 'lucide-vue-next'
 import AppAccountMenu from '../account/AppAccountMenu.vue'
 import AppBrand from '../ui/AppBrand.vue'
 import AppThemeSwitch from '../ui/AppThemeSwitch.vue'
@@ -13,6 +13,7 @@ const emit = defineEmits(['logout'])
 const accountItems = [
   { id: 'overview', label: '账户概览', icon: LayoutDashboard },
   { id: 'credits', label: '积分明细', icon: ReceiptText },
+  { id: 'pricing', label: '计费标准', icon: Tags },
   { id: 'profile', label: '个人信息', icon: UserRound },
   { id: 'security', label: '安全设置', icon: ShieldCheck },
   { id: 'invite', label: '邀请', icon: UserPlus },

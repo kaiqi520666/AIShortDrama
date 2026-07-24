@@ -4,6 +4,7 @@ import { CalendarDays, CircleAlert, CirclePause, LockKeyhole, Mail, ShieldCheck,
 import { useRoute, useRouter } from 'vue-router'
 import { getAccount } from '../api/account'
 import AuthInputField from '../components/auth/AuthInputField.vue'
+import BillingStandardsPanel from '../components/account/BillingStandardsPanel.vue'
 import CreditLedgerPanel from '../components/account/CreditLedgerPanel.vue'
 import AppDashboardShell from '../components/dashboard/AppDashboardShell.vue'
 import AppButton from '../components/ui/AppButton.vue'
@@ -11,7 +12,7 @@ import EmptyState from '../components/ui/EmptyState.vue'
 import { useGlobalToast } from '../composables/useGlobalUI'
 import { useAuthStore } from '../stores/auth'
 
-const sectionIds = new Set(['overview', 'credits', 'profile', 'security', 'invite'])
+const sectionIds = new Set(['overview', 'credits', 'pricing', 'profile', 'security', 'invite'])
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
@@ -98,6 +99,8 @@ onMounted(loadAccount)
         </template>
 
         <CreditLedgerPanel v-else-if="activeSection === 'credits'" />
+
+        <BillingStandardsPanel v-else-if="activeSection === 'pricing'" />
 
         <template v-else-if="activeSection === 'profile'">
           <header class="account-section-heading"><h1>个人信息</h1><p>账户基础信息仅供查看</p></header>
