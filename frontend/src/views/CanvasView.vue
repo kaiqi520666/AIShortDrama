@@ -210,6 +210,12 @@ function openContextMenu({ event, node }) {
   contextMenu.value = { x: event.clientX, y: event.clientY, nodeId: node.id, nodeIds }
 }
 
+function openSelectionContextMenu({ event, nodes: selected }) {
+  event.preventDefault()
+  const nodeIds = selected.map((node) => node.id)
+  contextMenu.value = { x: event.clientX, y: event.clientY, nodeId: nodeIds[0], nodeIds }
+}
+
 function openEdgeContextMenu({ event, edge }) {
   event.preventDefault()
   contextMenu.value = { x: event.clientX, y: event.clientY, edgeId: edge.id }
@@ -307,7 +313,7 @@ function handleCanvasPointerDown(event) {
     pointerMode.value = 'moving'
     activeGroupId.value = null
     const nodeId = nodeElement.getAttribute('data-id')
-    if (groups.value.some((group) => group.nodeIds.includes(nodeId))) {
+    if (!event.shiftKey && groups.value.some((group) => group.nodeIds.includes(nodeId))) {
       const node = findNode(nodeId)
       if (node) {
         removeSelectedElements()
@@ -763,6 +769,7 @@ onBeforeUnmount(() => {
       :select-nodes-on-drag="canvasTool === 'move'"
       :pan-on-drag="canvasTool === 'hand' ? [0, 1] : [1]"
       @node-context-menu="openContextMenu"
+      @selection-context-menu="openSelectionContextMenu"
       @edge-context-menu="openEdgeContextMenu"
       @pane-context-menu="openPaneCreateMenu"
       @pane-click="contextMenu = null"
