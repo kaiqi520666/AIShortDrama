@@ -2,6 +2,7 @@
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ChevronDown, LogOut, UserRound } from 'lucide-vue-next'
 import { useRoute, useRouter } from 'vue-router'
+import { useGlobalConfirm } from '../../composables/useGlobalUI'
 import AppButton from '../ui/AppButton.vue'
 import AppMenu from '../ui/AppMenu.vue'
 
@@ -9,6 +10,7 @@ defineProps({ username: { type: String, required: true } })
 const emit = defineEmits(['logout'])
 const route = useRoute()
 const router = useRouter()
+const { confirm } = useGlobalConfirm()
 const root = ref(null)
 const trigger = ref(null)
 const open = ref(false)
@@ -31,9 +33,15 @@ async function openAccount() {
   await router.push({ name: 'account', query: { section: 'overview' } })
 }
 
-function logout() {
+async function logout() {
   closeMenu()
-  emit('logout')
+  const accepted = await confirm({
+    title: '退出登录',
+    message: '确定退出当前账号吗？',
+    confirmText: '退出',
+    tone: 'danger',
+  })
+  if (accepted) emit('logout')
 }
 
 function selectActive() {
