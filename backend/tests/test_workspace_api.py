@@ -71,6 +71,7 @@ async def test_workspace_crud_duplicate_and_canvas_isolation(override_business_u
         assert listed_workspace["thumbnail_url"] == "https://example.com/latest.webp"
         assert renamed["data"]["name"] == "新名称"
         assert duplicate["canvas"] == canvas
+        assert duplicate["thumbnail_url"] == "https://example.com/latest.webp"
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             listed = (await client.get("/api/workspaces")).json()["data"]
         assert str(workspace_id) not in {item["id"] for item in listed}

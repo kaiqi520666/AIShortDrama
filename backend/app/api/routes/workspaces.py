@@ -29,7 +29,7 @@ def workspace_payload(workspace: Workspace, include_canvas: bool = False) -> dic
         "id": str(workspace.id),
         "name": workspace.name,
         "version": workspace.version,
-        "thumbnail_url": workspace_thumbnail(workspace.canvas),
+        "thumbnail_url": workspace.thumbnail_url,
         "created_at": workspace.created_at.isoformat(),
         "updated_at": workspace.updated_at.isoformat(),
     }
@@ -131,6 +131,7 @@ async def duplicate_workspace(
         user_id=user_id,
         name=f"{source.name} 副本"[:100],
         canvas=source.canvas,
+        thumbnail_url=source.thumbnail_url,
     )
     db.add(workspace)
     await db.commit()
@@ -148,7 +149,9 @@ async def save_canvas(
     workspace = await owned_workspace(db, workspace_id, user_id)
     if not workspace:
         return fail("工作台不存在")
-    workspace.canvas = payload.model_dump(mode="json")
+    canvas = payload.model_dump(mode="json")
+    workspace.canvas = canvas
+    workspace.thumbnail_url = workspace_thumbnail(canvas)
     workspace.version += 1
     await db.commit()
     await db.refresh(workspace)
