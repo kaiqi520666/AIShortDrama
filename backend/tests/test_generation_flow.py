@@ -94,6 +94,7 @@ async def test_image_generation_flow():
                 select(Asset).where(Asset.generation_task_id == completed.id)
             ))
             assert len(assets) == 1
+            assert completed.result["data"][0]["asset_id"] == str(assets[0].id)
     finally:
         async with SessionLocal() as db:
             for asset in (

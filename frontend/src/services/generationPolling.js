@@ -26,6 +26,7 @@ async function pollTask(taskId, nodeId, updateNodeData) {
       }
       updateNodeData(nodeId, {
         asset,
+        ...(generated.asset_id ? { assetId: generated.asset_id } : {}),
         status: 'ready',
         generationProgress: 100,
         generationError: '',

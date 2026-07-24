@@ -73,19 +73,11 @@ async def complete_task(
             return
         task.status = "succeeded"
         task.progress = 100
-        result_data = [
-            {
-                "url": url,
-                **({"duration": duration} if duration is not None else {}),
-                **({"mime_type": mime_type} if mime_type else {}),
-            }
-            for url in urls
-        ]
-        task.result = {"type": media_type, "data": result_data}
         task.finished_at = datetime.now(UTC)
         asset_duration = duration
         if asset_duration is None and media_type == "video":
             asset_duration = task.request_snapshot.get("duration")
+        assets = []
         for index, url in enumerate(urls, start=1):
             video_mime_types = {".mov": "video/quicktime", ".webm": "video/webm"}
             extension = urlparse(url).path.rsplit(".", 1)[-1].lower()
@@ -93,21 +85,34 @@ async def complete_task(
             if media_type == "video":
                 asset_mime_type = video_mime_types.get(f".{extension}", "video/mp4")
             media_name = {"image": "图片", "video": "视频", "audio": "音频"}[media_type]
-            db.add(
-                Asset(
-                    user_id=task.user_id,
-                    workspace_id=task.workspace_id,
-                    generation_task_id=task.id,
-                    node_id=task.node_id,
-                    media_type=media_type,
-                    source_type="generation",
-                    name=f"生成{media_name} {index}",
-                    object_key=urlparse(url).path.lstrip("/") or None,
-                    url=url,
-                    mime_type=asset_mime_type,
-                    duration=asset_duration
-                    if isinstance(asset_duration, (int, float)) and asset_duration > 0
-                    else None,
-                )
+            asset = Asset(
+                user_id=task.user_id,
+                workspace_id=task.workspace_id,
+                generation_task_id=task.id,
+                node_id=task.node_id,
+                media_type=media_type,
+                source_type="generation",
+                name=f"生成{media_name} {index}",
+                object_key=urlparse(url).path.lstrip("/") or None,
+                url=url,
+                mime_type=asset_mime_type,
+                duration=asset_duration
+                if isinstance(asset_duration, (int, float)) and asset_duration > 0
+                else None,
             )
+            db.add(asset)
+            assets.append(asset)
+        await db.flush()
+        task.result = {
+            "type": media_type,
+            "data": [
+                {
+                    "url": url,
+                    "asset_id": str(asset.id),
+                    **({"duration": duration} if duration is not None else {}),
+                    **({"mime_type": mime_type} if mime_type else {}),
+                }
+                for url, asset in zip(urls, assets, strict=True)
+            ],
+        }
         await db.commit()

@@ -22,6 +22,7 @@ const icon = computed(() => icons[props.type])
 const textMode = computed(() => props.type === 'text' ? (props.data.textMode ?? (props.data.content ? 'manual' : null)) : null)
 const acceptsInput = computed(() => props.type === 'text' ? textMode.value === 'task' : !props.data.assetSource)
 const sourceAspectRatio = computed(() => props.data.assetSource && props.data.sourceAspectRatio > 0 ? props.data.sourceAspectRatio : null)
+const audioSource = computed(() => props.data.assetId ? `/api/assets/${props.data.assetId}/content` : props.data.asset)
 const displayAspectRatio = computed(() => {
   if (sourceAspectRatio.value) return sourceAspectRatio.value
   const value = props.data.aspectRatio === 'adaptive' ? '16:9' : props.data.aspectRatio || '16:9'
@@ -169,7 +170,7 @@ watch(
   },
   { immediate: true },
 )
-watch(() => props.data.asset, (asset) => {
+watch(audioSource, (asset) => {
   if (props.type === 'audio' && asset) nextTick(() => audioElement.value?.load())
 }, { immediate: true })
 onBeforeUnmount(() => {
@@ -234,7 +235,7 @@ onBeforeUnmount(() => {
 
       <div v-else-if="type === 'audio' && data.asset" class="audio-preview">
         <AudioWaveform :size="60" />
-        <audio ref="audioElement" class="node-audio nodrag nopan nowheel" :src="data.asset" controls preload="metadata"></audio>
+        <audio ref="audioElement" class="node-audio nodrag nopan nowheel" :src="audioSource" controls preload="metadata"></audio>
       </div>
 
       <div v-else-if="type === 'audio' && data.status === 'ready'" class="audio-preview">
