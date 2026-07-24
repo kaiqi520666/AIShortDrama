@@ -20,7 +20,7 @@ async function submit() {
   submitting.value = true
   try {
     await authStore.login({ email: email.value, password: password.value })
-    const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') ? route.query.redirect : '/workspaces'
+    const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') ? route.query.redirect : '/dashboard/workspaces'
     await router.replace(redirect)
   } catch (error) {
     errorMessage.value = error.response?.data?.message || error.message || '登录失败'

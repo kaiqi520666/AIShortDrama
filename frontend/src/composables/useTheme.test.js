@@ -15,7 +15,7 @@ beforeEach(() => {
   }
   globalThis.document = { documentElement: { dataset: {}, style: {} } }
   globalThis.window = {
-    location: { pathname: '/workspaces/test-id' },
+    location: { pathname: '/canvas/test-id' },
     matchMedia: vi.fn(() => ({
       get matches() { return prefersDark },
       addEventListener: (_, listener) => { systemListener = listener },
@@ -55,7 +55,7 @@ describe('theme', () => {
   })
 
   it('restores the saved theme on the workspace list', () => {
-    window.location.pathname = '/workspaces'
+    window.location.pathname = '/dashboard/workspaces'
     stored.set('mooncut-theme', 'light')
     initializeTheme()
 

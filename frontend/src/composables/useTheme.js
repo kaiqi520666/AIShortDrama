@@ -39,7 +39,7 @@ export function initializeTheme() {
     mediaQuery.removeEventListener?.('change', handleSystemTheme)
     mediaQuery.addEventListener?.('change', handleSystemTheme)
   }
-  active = typeof window !== 'undefined' && /^\/workspaces(?:\/[^/]+)?\/?$/.test(window.location.pathname)
+  active = typeof window !== 'undefined' && /^(?:\/dashboard(?:\/.*)?|\/canvas\/[^/]+)\/?$/.test(window.location.pathname)
   if (active) applyTheme()
   else applyFixedTheme()
 }

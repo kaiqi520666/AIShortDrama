@@ -20,7 +20,7 @@ async function submit() {
   submitting.value = true
   try {
     await authStore.register({ username: username.value, email: email.value, password: password.value })
-    await router.replace('/workspaces')
+    await router.replace({ name: 'workspaces' })
   } catch (error) {
     errorMessage.value = error.response?.data?.message || error.message || '注册失败'
   } finally {

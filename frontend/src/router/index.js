@@ -3,6 +3,7 @@ import HomeView from '../views/HomeView.vue'
 import AccountView from '../views/AccountView.vue'
 import BillingStandardsView from '../views/BillingStandardsView.vue'
 import CreditLedgerView from '../views/CreditLedgerView.vue'
+import DashboardLayout from '../components/dashboard/DashboardLayout.vue'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import WorkspaceCanvasView from '../views/WorkspaceCanvasView.vue'
@@ -15,11 +16,19 @@ export function createAppRouter(authStore) {
       { path: '/', name: 'home', component: HomeView, meta: { guestOnly: true } },
       { path: '/login', name: 'login', component: LoginView, meta: { guestOnly: true } },
       { path: '/register', name: 'register', component: RegisterView, meta: { guestOnly: true } },
-      { path: '/workspaces', name: 'workspaces', component: WorkspaceHome, meta: { requiresAuth: true } },
-      { path: '/workspaces/:id', name: 'canvas', component: WorkspaceCanvasView, meta: { requiresAuth: true } },
-      { path: '/account', name: 'account', component: AccountView, meta: { requiresAuth: true } },
-      { path: '/credits', name: 'credits', component: CreditLedgerView, meta: { requiresAuth: true } },
-      { path: '/pricing', name: 'pricing', component: BillingStandardsView, meta: { requiresAuth: true } },
+      {
+        path: '/dashboard',
+        component: DashboardLayout,
+        redirect: { name: 'workspaces' },
+        meta: { requiresAuth: true },
+        children: [
+          { path: 'workspaces', name: 'workspaces', component: WorkspaceHome, meta: { navKey: 'workspaces' } },
+          { path: 'account', name: 'account', component: AccountView, meta: { navKey: 'overview' } },
+          { path: 'credits', name: 'credits', component: CreditLedgerView, meta: { navKey: 'credits' } },
+          { path: 'pricing', name: 'pricing', component: BillingStandardsView, meta: { navKey: 'pricing' } },
+        ],
+      },
+      { path: '/canvas/:workspaceId', name: 'canvas', component: WorkspaceCanvasView, meta: { requiresAuth: true } },
       { path: '/:pathMatch(.*)*', redirect: '/' },
     ],
   })

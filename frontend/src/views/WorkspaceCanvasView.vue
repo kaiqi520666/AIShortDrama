@@ -26,7 +26,7 @@ function finishLoading() {
 onMounted(async () => {
   loadingId = loading.showLoading('正在打开工作台…')
   try {
-    await workspaceStore.open(route.params.id)
+    await workspaceStore.open(route.params.workspaceId)
   } catch (error) {
     errorMessage.value = error.response?.data?.message || error.message || '工作台打开失败'
     finishLoading()
@@ -36,7 +36,7 @@ onBeforeUnmount(finishLoading)
 
 function leaveCanvas() {
   if (!authStore.user) workspaceStore.$reset()
-  router.push(authStore.user ? '/workspaces' : '/')
+  router.push(authStore.user ? { name: 'workspaces' } : '/')
 }
 </script>
 
@@ -44,7 +44,7 @@ function leaveCanvas() {
   <CanvasView v-if="workspaceStore.current" :workspace="workspaceStore.current" @back="leaveCanvas" @ready="finishLoading" />
   <main v-else-if="errorMessage" class="route-state">
     <EmptyState title="工作台打开失败" :description="errorMessage" tone="error">
-      <AppButton variant="primary" @click="router.push('/workspaces')">返回工作台</AppButton>
+      <AppButton variant="primary" @click="router.push({ name: 'workspaces' })">返回工作台</AppButton>
     </EmptyState>
   </main>
 </template>

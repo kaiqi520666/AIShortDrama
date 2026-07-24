@@ -20,7 +20,7 @@ const accountItems = [
 <template>
   <main class="dashboard-shell">
     <header class="dashboard-header">
-      <AppBrand to="/workspaces" />
+      <AppBrand to="/dashboard/workspaces" />
       <div class="dashboard-header__actions">
         <AppThemeSwitch />
         <AppAccountMenu :username="username" @logout="emit('logout')" />
@@ -30,7 +30,7 @@ const accountItems = [
     <div class="dashboard-body">
       <aside class="dashboard-sidebar">
         <nav class="dashboard-nav" aria-label="用户中心">
-          <RouterLink class="dashboard-nav__item" :class="{ active: activeItem === 'workspaces' }" to="/workspaces">
+          <RouterLink class="dashboard-nav__item" :class="{ active: activeItem === 'workspaces' }" :to="{ name: 'workspaces' }">
             <PanelsTopLeft :size="16" /><span>工作台</span>
           </RouterLink>
           <div class="dashboard-nav__group">

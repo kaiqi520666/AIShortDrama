@@ -1,13 +1,15 @@
 <script setup>
-import { useRouter } from 'vue-router'
+import { computed } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth'
 import { useWorkspaceStore } from '../../stores/workspaces'
 import AppDashboardShell from './AppDashboardShell.vue'
 
-defineProps({ activeItem: { type: String, required: true } })
+const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const workspaceStore = useWorkspaceStore()
+const activeItem = computed(() => route.meta.navKey)
 
 async function signOut() {
   await authStore.logout()
@@ -18,6 +20,6 @@ async function signOut() {
 
 <template>
   <AppDashboardShell :active-item="activeItem" :username="authStore.user?.username || '用户'" @logout="signOut">
-    <slot />
+    <RouterView />
   </AppDashboardShell>
 </template>

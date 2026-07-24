@@ -2,7 +2,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { Copy, Pencil, Play, Plus, Trash2 } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
-import DashboardPageShell from '../components/dashboard/DashboardPageShell.vue'
 import AppButton from '../components/ui/AppButton.vue'
 import AppSelect from '../components/ui/AppSelect.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
@@ -42,7 +41,7 @@ async function run(action, successMessage) {
 }
 
 async function create() {
-  await run(async () => router.push(`/workspaces/${(await store.create()).id}`))
+  await run(async () => router.push({ name: 'canvas', params: { workspaceId: (await store.create()).id } }))
 }
 
 async function rename(workspace) {
@@ -74,34 +73,32 @@ onMounted(() => store.load())
 </script>
 
 <template>
-  <DashboardPageShell active-item="workspaces">
-    <section class="workspace-content">
-      <div class="workspace-title-row">
-        <div><span class="section-kicker">PROJECT LIBRARY</span><h1>创作项目</h1><p>从上次停下的位置继续推进镜头</p></div>
-        <div class="workspace-filters"><span>{{ store.items.length }} 个项目</span><AppSelect v-model="sortBy" :options="sortOptions" aria-label="项目排序" /></div>
-      </div>
-      <p v-if="store.error" class="workspace-notice">{{ store.error }}</p>
-      <EmptyState v-if="store.loading" class="workspace-empty" title="正在加载项目" loading />
-      <div v-else class="workspace-grid">
-        <AppButton class="workspace-create-card" aria-label="新建项目" @click="create">
-          <span class="workspace-create-icon"><Plus :size="22" /></span>
-          <strong>新建项目</strong>
-          <small>创建新的工作流画布</small>
+  <section class="workspace-content">
+    <div class="workspace-title-row">
+      <div><span class="section-kicker">PROJECT LIBRARY</span><h1>创作项目</h1><p>从上次停下的位置继续推进镜头</p></div>
+      <div class="workspace-filters"><span>{{ store.items.length }} 个项目</span><AppSelect v-model="sortBy" :options="sortOptions" aria-label="项目排序" /></div>
+    </div>
+    <p v-if="store.error" class="workspace-notice">{{ store.error }}</p>
+    <EmptyState v-if="store.loading" class="workspace-empty" title="正在加载项目" loading />
+    <div v-else class="workspace-grid">
+      <AppButton class="workspace-create-card" aria-label="新建项目" @click="create">
+        <span class="workspace-create-icon"><Plus :size="22" /></span>
+        <strong>新建项目</strong>
+        <small>创建新的工作流画布</small>
+      </AppButton>
+      <article v-for="workspace in displayedItems" :key="workspace.id" class="workspace-card" @dblclick="router.push({ name: 'canvas', params: { workspaceId: workspace.id } })">
+        <AppButton class="workspace-open-area" @click="router.push({ name: 'canvas', params: { workspaceId: workspace.id } })">
+          <span class="workspace-cover" aria-hidden="true"><b>{{ workspaceNumbers.get(workspace.id) }}</b><i></i><Play :size="17" fill="currentColor" /></span>
+          <span class="workspace-card-name">{{ workspace.name }}</span>
+          <small>WORKFLOW CANVAS</small>
         </AppButton>
-        <article v-for="workspace in displayedItems" :key="workspace.id" class="workspace-card" @dblclick="router.push(`/workspaces/${workspace.id}`)">
-          <AppButton class="workspace-open-area" @click="router.push(`/workspaces/${workspace.id}`)">
-            <span class="workspace-cover" aria-hidden="true"><b>{{ workspaceNumbers.get(workspace.id) }}</b><i></i><Play :size="17" fill="currentColor" /></span>
-            <span class="workspace-card-name">{{ workspace.name }}</span>
-            <small>WORKFLOW CANVAS</small>
-          </AppButton>
-          <footer>
-            <time>{{ new Date(workspace.created_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</time>
-            <AppButton icon-only size="sm" title="重命名" @click="rename(workspace)"><Pencil :size="14" /></AppButton>
-            <AppButton icon-only size="sm" title="复制" @click="duplicate(workspace)"><Copy :size="14" /></AppButton>
-            <AppButton icon-only size="sm" title="删除" variant="danger" @click="remove(workspace)"><Trash2 :size="14" /></AppButton>
-          </footer>
-        </article>
-      </div>
-    </section>
-  </DashboardPageShell>
+        <footer>
+          <time>{{ new Date(workspace.created_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</time>
+          <AppButton icon-only size="sm" title="重命名" @click="rename(workspace)"><Pencil :size="14" /></AppButton>
+          <AppButton icon-only size="sm" title="复制" @click="duplicate(workspace)"><Copy :size="14" /></AppButton>
+          <AppButton icon-only size="sm" title="删除" variant="danger" @click="remove(workspace)"><Trash2 :size="14" /></AppButton>
+        </footer>
+      </article>
+    </div>
+  </section>
 </template>

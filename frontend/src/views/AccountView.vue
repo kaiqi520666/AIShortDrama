@@ -3,7 +3,6 @@ import { onMounted, reactive, ref } from 'vue'
 import { CalendarDays, CircleAlert, CirclePause, LockKeyhole, Mail, ShieldCheck, TrendingDown, UserPlus, UserRound, Wallet } from 'lucide-vue-next'
 import { getAccount } from '../api/account'
 import AuthInputField from '../components/auth/AuthInputField.vue'
-import DashboardPageShell from '../components/dashboard/DashboardPageShell.vue'
 import AppButton from '../components/ui/AppButton.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import { useGlobalToast } from '../composables/useGlobalUI'
@@ -65,50 +64,48 @@ onMounted(loadAccount)
 </script>
 
 <template>
-  <DashboardPageShell active-item="overview">
-    <section class="account-content">
-      <EmptyState v-if="loading" title="正在加载账户信息" loading />
-      <EmptyState v-else-if="loadError" title="账户信息加载失败" :description="loadError" tone="error">
-        <AppButton variant="primary" @click="loadAccount">重新加载</AppButton>
-      </EmptyState>
+  <section class="account-content">
+    <EmptyState v-if="loading" title="正在加载账户信息" loading />
+    <EmptyState v-else-if="loadError" title="账户信息加载失败" :description="loadError" tone="error">
+      <AppButton variant="primary" @click="loadAccount">重新加载</AppButton>
+    </EmptyState>
 
-      <template v-else>
-        <section class="account-overview-section">
-          <header class="account-section-heading"><h1>账户概览</h1><p>查看当前积分使用情况</p></header>
-          <div class="account-stats">
-            <article><span><Wallet :size="18" /></span><small>可用积分</small><strong>{{ account.credits.available }}</strong></article>
-            <article><span><CirclePause :size="18" /></span><small>冻结积分</small><strong>{{ account.credits.frozen }}</strong></article>
-            <article><span><TrendingDown :size="18" /></span><small>累计消耗</small><strong>{{ account.credits.consumed_total }}</strong></article>
-            <article><span><CalendarDays :size="18" /></span><small>今日消耗</small><strong>{{ account.credits.consumed_today }}</strong></article>
-          </div>
-          <p class="account-time-note"><CalendarDays :size="14" />今日消耗按北京时间统计</p>
-        </section>
+    <template v-else>
+      <section class="account-overview-section">
+        <header class="account-section-heading"><h1>账户概览</h1><p>查看当前积分使用情况</p></header>
+        <div class="account-stats">
+          <article><span><Wallet :size="18" /></span><small>可用积分</small><strong>{{ account.credits.available }}</strong></article>
+          <article><span><CirclePause :size="18" /></span><small>冻结积分</small><strong>{{ account.credits.frozen }}</strong></article>
+          <article><span><TrendingDown :size="18" /></span><small>累计消耗</small><strong>{{ account.credits.consumed_total }}</strong></article>
+          <article><span><CalendarDays :size="18" /></span><small>今日消耗</small><strong>{{ account.credits.consumed_today }}</strong></article>
+        </div>
+        <p class="account-time-note"><CalendarDays :size="14" />今日消耗按北京时间统计</p>
+      </section>
 
-        <section class="account-overview-section">
-          <header class="account-section-heading"><h2>个人信息</h2><p>账户基础信息仅供查看</p></header>
-          <dl class="account-profile">
-            <div><dt><UserRound :size="16" />用户名</dt><dd>{{ account.user.username }}</dd></div>
-            <div><dt><Mail :size="16" />邮箱</dt><dd>{{ account.user.email }}</dd></div>
-            <div><dt><CalendarDays :size="16" />注册时间</dt><dd>{{ formatDate(account.user.created_at) }}</dd></div>
-          </dl>
-        </section>
+      <section class="account-overview-section">
+        <header class="account-section-heading"><h2>个人信息</h2><p>账户基础信息仅供查看</p></header>
+        <dl class="account-profile">
+          <div><dt><UserRound :size="16" />用户名</dt><dd>{{ account.user.username }}</dd></div>
+          <div><dt><Mail :size="16" />邮箱</dt><dd>{{ account.user.email }}</dd></div>
+          <div><dt><CalendarDays :size="16" />注册时间</dt><dd>{{ formatDate(account.user.created_at) }}</dd></div>
+        </dl>
+      </section>
 
-        <section class="account-overview-section">
-          <header class="account-section-heading"><h2>安全设置</h2><p>修改后其他设备将立即退出登录</p></header>
-          <form class="account-security-form" @submit.prevent="changePassword">
-            <AuthInputField v-model="password.current" label="原密码" :icon="LockKeyhole" type="password" autocomplete="current-password" revealable required />
-            <AuthInputField v-model="password.next" label="新密码" :icon="LockKeyhole" type="password" autocomplete="new-password" minlength="8" maxlength="72" revealable required />
-            <AuthInputField v-model="password.confirm" label="确认新密码" :icon="ShieldCheck" type="password" autocomplete="new-password" minlength="8" maxlength="72" revealable required />
-            <p v-if="passwordError" class="account-form-error"><CircleAlert :size="14" />{{ passwordError }}</p>
-            <AppButton type="submit" variant="primary" :disabled="submitting">{{ submitting ? '正在修改…' : '修改密码' }}</AppButton>
-          </form>
-        </section>
+      <section class="account-overview-section">
+        <header class="account-section-heading"><h2>安全设置</h2><p>修改后其他设备将立即退出登录</p></header>
+        <form class="account-security-form" @submit.prevent="changePassword">
+          <AuthInputField v-model="password.current" label="原密码" :icon="LockKeyhole" type="password" autocomplete="current-password" revealable required />
+          <AuthInputField v-model="password.next" label="新密码" :icon="LockKeyhole" type="password" autocomplete="new-password" minlength="8" maxlength="72" revealable required />
+          <AuthInputField v-model="password.confirm" label="确认新密码" :icon="ShieldCheck" type="password" autocomplete="new-password" minlength="8" maxlength="72" revealable required />
+          <p v-if="passwordError" class="account-form-error"><CircleAlert :size="14" />{{ passwordError }}</p>
+          <AppButton type="submit" variant="primary" :disabled="submitting">{{ submitting ? '正在修改…' : '修改密码' }}</AppButton>
+        </form>
+      </section>
 
-        <section class="account-overview-section">
-          <header class="account-section-heading"><h2>邀请</h2><p>邀请好友共同使用 Mooncut</p></header>
-          <EmptyState class="account-invite" title="邀请功能即将开放" description="正式开放后可在此查看邀请权益" :icon="UserPlus" />
-        </section>
-      </template>
-    </section>
-  </DashboardPageShell>
+      <section class="account-overview-section">
+        <header class="account-section-heading"><h2>邀请</h2><p>邀请好友共同使用 Mooncut</p></header>
+        <EmptyState class="account-invite" title="邀请功能即将开放" description="正式开放后可在此查看邀请权益" :icon="UserPlus" />
+      </section>
+    </template>
+  </section>
 </template>
