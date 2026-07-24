@@ -153,6 +153,98 @@
   border-radius: 7px;
   background: var(--color-surface-raised);
 }
+.credit-filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+.credit-filters .ui-select {
+  width: 150px;
+}
+.credit-filters .ui-select-trigger,
+.credit-filters .ui-input {
+  height: 38px;
+}
+.credit-filters .ui-input {
+  width: 150px;
+}
+.credit-filters__separator {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+.credit-filters .ui-button {
+  gap: 6px;
+}
+.credit-table-wrap {
+  overflow: visible;
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  background: var(--color-surface-raised);
+}
+.credit-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 12px;
+}
+.credit-table th,
+.credit-table td {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.credit-table th {
+  background: var(--color-surface-sunken);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.credit-table th:first-child { width: 158px; }
+.credit-table th:nth-child(2) { width: 78px; }
+.credit-table th:nth-child(3) { width: 92px; }
+.credit-table th:nth-child(4) { width: 150px; }
+.credit-table th:nth-child(6),
+.credit-table th:nth-child(7) { width: 92px; text-align: right; }
+.credit-table td:nth-child(6),
+.credit-table td:nth-child(7) { text-align: right; }
+.credit-table tbody tr:last-child td { border-bottom: 0; }
+.credit-type {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  padding: 0 8px;
+  border-radius: 4px;
+  background: var(--color-surface-sunken);
+  color: var(--color-text-secondary);
+}
+.credit-type--consume { color: var(--color-danger); }
+.credit-type--refund,
+.credit-type--recharge { color: var(--color-success); }
+.credit-delta,
+.credit-balance { font-variant-numeric: tabular-nums; font-weight: 600; }
+.credit-delta.positive { color: var(--color-success); }
+.credit-delta.negative { color: var(--color-danger); }
+.credit-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+.credit-pagination > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.credit-pagination .ui-button {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border-default);
+}
 @media (max-width: 1100px) {
   .account-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -167,6 +259,40 @@
   }
   .account-profile > div {
     grid-template-columns: 120px minmax(0, 1fr);
+  }
+  .credit-filters .ui-select,
+  .credit-filters .ui-input {
+    width: calc(50% - 5px);
+  }
+  .credit-filters__separator { display: none; }
+  .credit-table-wrap { border: 0; background: transparent; }
+  .credit-table,
+  .credit-table tbody { display: block; }
+  .credit-table thead { display: none; }
+  .credit-table tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px 18px;
+    margin-bottom: 10px;
+    padding: 16px;
+    border: 1px solid var(--color-border-default);
+    border-radius: 6px;
+    background: var(--color-surface-raised);
+  }
+  .credit-table td,
+  .credit-table td:nth-child(6),
+  .credit-table td:nth-child(7) {
+    display: grid;
+    gap: 5px;
+    padding: 0;
+    border: 0;
+    text-align: left;
+  }
+  .credit-table td::before {
+    content: attr(data-label);
+    color: var(--color-text-muted);
+    font-size: 10px;
+    font-weight: 500;
   }
 }
 @media (max-width: 460px) {
