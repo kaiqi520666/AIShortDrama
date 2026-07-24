@@ -572,13 +572,15 @@ async function pasteImage(file, position) {
     bitmap.close()
     const result = await uploadMedia('image', file, { workspaceId: store.workspaceId, nodeId: id, timeout: 60_000, ...metadata })
     if (result.code !== 0) throw new Error(result.message)
+    const sourceWidth = result.data.width || metadata.width
+    const sourceHeight = result.data.height || metadata.height
     updateNodeData(id, {
       asset: result.data.url,
       assetId: result.data.id,
       status: 'ready',
-      sourceWidth: metadata.width,
-      sourceHeight: metadata.height,
-      sourceAspectRatio: metadata.width / metadata.height,
+      sourceWidth,
+      sourceHeight,
+      sourceAspectRatio: sourceWidth / sourceHeight,
     })
     toast.success('图片已粘贴到画布')
   } catch (error) {
@@ -635,11 +637,13 @@ async function handlePaneUpload(event) {
     const metadata = await readMediaMetadata(upload.type, file)
     const result = await uploadMedia(upload.type, file, { workspaceId: store.workspaceId, nodeId: id, timeout: 60_000, ...metadata })
     if (result.code !== 0) throw new Error(result.message)
+    const sourceWidth = result.data.width || metadata.width
+    const sourceHeight = result.data.height || metadata.height
     updateNodeData(id, {
       asset: result.data.url,
       assetId: result.data.id,
       status: 'ready',
-      ...(metadata.width ? { sourceWidth: metadata.width, sourceHeight: metadata.height, sourceAspectRatio: metadata.width / metadata.height } : {}),
+      ...(sourceWidth ? { sourceWidth, sourceHeight, sourceAspectRatio: sourceWidth / sourceHeight } : {}),
       ...(metadata.duration ? { sourceDuration: metadata.duration } : {}),
       sourceByteSize: result.data.size,
     })

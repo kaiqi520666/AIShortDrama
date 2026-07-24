@@ -1,7 +1,9 @@
 import uuid
+from io import BytesIO
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from PIL import Image
 
 from app.api.routes import uploads as uploads_route
 from app.core.database import SessionLocal
@@ -18,11 +20,17 @@ class FakeStorage:
         return f"https://cdn.example.com/{object_key}"
 
 
+def png_bytes():
+    output = BytesIO()
+    Image.new("RGB", (3, 2), (20, 40, 60)).save(output, "PNG")
+    return output.getvalue()
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("media_type", "filename", "content_type", "content"),
     [
-        ("image", "source.png", "image/png", b"image-data"),
+        ("image", "source.png", "image/png", png_bytes()),
         ("video", "source.mp4", "video/mp4", b"video-data"),
     ],
 )

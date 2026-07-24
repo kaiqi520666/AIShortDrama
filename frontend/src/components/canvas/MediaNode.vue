@@ -116,13 +116,15 @@ async function handleUpload(event) {
       ...metadata,
     }, (progress) => { uploadProgress.value = progress })
     if (result.code !== 0) throw new Error(result.message)
+    const sourceWidth = result.data.width || metadata.width
+    const sourceHeight = result.data.height || metadata.height
     updateNodeData(props.id, {
       asset: result.data.url,
       assetId: result.data.id,
       status: 'ready',
-      sourceWidth: metadata.width,
-      sourceHeight: metadata.height,
-      sourceAspectRatio: metadata.width / metadata.height,
+      sourceWidth,
+      sourceHeight,
+      sourceAspectRatio: sourceWidth / sourceHeight,
       ...(replacementWidth ? { displayWidth: replacementWidth } : {}),
       ...(metadata.duration ? { sourceDuration: metadata.duration } : {}),
       sourceByteSize: result.data.size,

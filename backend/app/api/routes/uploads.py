@@ -1,3 +1,4 @@
+import asyncio
 import uuid
 from datetime import UTC, datetime
 
@@ -9,6 +10,7 @@ from app.core.database import get_db
 from app.core.identity import get_current_user_id
 from app.models import Asset, Workspace
 from app.schemas.response import fail, success
+from app.services.image_processing import normalize_image
 from app.services.storage import OssStorage
 
 router = APIRouter()
@@ -88,7 +90,17 @@ async def upload_media(
     object_key = f"uploads/{media_type}s/{date_path}/{uuid.uuid4().hex}{extension}"
     try:
         await file.seek(0)
-        url = await OssStorage().store_upload(object_key, file.file, content_type)
+        upload_stream = file.file
+        if media_type == "image":
+            normalized = await asyncio.to_thread(normalize_image, file.file, content_type)
+            if normalized.size > rule["max_size"]:
+                return fail(f"重编码后的图片不能超过 {rule['max_size'] // (1024 * 1024)}MB")
+            upload_stream = normalized.stream
+            byte_size = normalized.size
+            width, height = normalized.width, normalized.height
+        url = await OssStorage().store_upload(object_key, upload_stream, content_type)
+    except ValueError as exc:
+        return fail(str(exc))
     except Exception as exc:
         return fail(f"上传失败：{exc}")
     finally:
@@ -119,5 +131,7 @@ async def upload_media(
             "object_key": object_key,
             "content_type": content_type,
             "size": byte_size,
+            "width": width,
+            "height": height,
         }
     )
