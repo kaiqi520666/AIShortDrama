@@ -25,6 +25,9 @@ const props = defineProps({
   type: { type: String, required: true },
 })
 
+const modelIcons = { text: FileText, image: Image, video: VideoIcon, audio: Music2 }
+const modelIcon = computed(() => modelIcons[props.type] || WandSparkles)
+
 const store = useCanvasStore()
 const toast = useGlobalToast()
 const { updateNodeData } = useVueFlow()
@@ -320,7 +323,7 @@ onBeforeUnmount(() => {
 
     <AppMenu v-if="modelOpen && (['image', 'video'].includes(type) || isReverseTask)" ref="modelMenu" class="model-menu" :style="modelStyle" @pointerdown.stop>
       <AppButton v-for="model in selectableModels" :key="model.id" :class="{ active: selectedModel.id === model.id }" :disabled="type === 'video' && Boolean(getVideoModelError({ ...data, model: model.id }, references))" :title="type === 'video' ? getVideoModelError({ ...data, model: model.id }, references) : ''" @click="updateModel(model)">
-        <WandSparkles :size="15" />
+        <component :is="modelIcon" :size="15" />
         <span>{{ model.label }}</span>
       </AppButton>
     </AppMenu>
@@ -412,9 +415,9 @@ onBeforeUnmount(() => {
 
     <footer>
       <AppButton v-if="['image', 'video'].includes(type) || isReverseTask" ref="modelTrigger" class="model-select model-select-trigger" @click="toggleModelMenu">
-        <WandSparkles :size="16" />{{ selectedModel.label }}<ChevronDown :size="14" :class="{ rotated: modelOpen }" />
+        <component :is="modelIcon" :size="16" />{{ selectedModel.label }}<ChevronDown :size="14" :class="{ rotated: modelOpen }" />
       </AppButton>
-      <span v-else class="model-select"><WandSparkles :size="16" />{{ type === 'audio' ? audioModel.label : data.model }}</span>
+      <span v-else class="model-select"><component :is="modelIcon" :size="16" />{{ type === 'audio' ? audioModel.label : data.model }}</span>
       <span v-if="type !== 'text'" class="panel-divider"></span>
       <AppButton v-if="['image', 'video', 'audio'].includes(type)" ref="settingsTrigger" class="image-settings-trigger media-settings-trigger" @click="toggleSettings">
         <component :is="type === 'video' ? VideoIcon : type === 'audio' ? Music2 : Image" :size="16" />{{ settingLabel }}<ChevronDown :size="14" :class="{ rotated: settingsOpen }" />
