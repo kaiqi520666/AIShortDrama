@@ -12,10 +12,19 @@
   padding-bottom: 22px;
   border-bottom: 1px solid var(--color-border-subtle);
 }
+.account-overview-section {
+  padding: 28px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+  background: var(--color-surface-raised);
+}
 .account-overview-section + .account-overview-section {
-  margin-top: 44px;
-  padding-top: 38px;
-  border-top: 1px solid var(--color-border-default);
+  margin-top: 16px;
+}
+.account-overview-section .account-section-heading {
+  margin-bottom: 24px;
+  padding-bottom: 0;
+  border-bottom: 0;
 }
 .account-section-heading h1,
 .account-section-heading h2 {
@@ -43,6 +52,12 @@
   border: 1px solid var(--color-border-default);
   border-radius: 6px;
   background: var(--color-surface-raised);
+}
+.account-overview-section .account-stats article {
+  min-height: 104px;
+  padding: 12px;
+  border: 0;
+  background: transparent;
 }
 .account-stats article > span {
   display: grid;
@@ -76,6 +91,19 @@
 .account-profile {
   margin: 0;
   border-top: 1px solid var(--color-border-subtle);
+}
+.account-overview-section .account-profile {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  border-top: 0;
+}
+.account-overview-section .account-profile > div {
+  min-height: 0;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  align-content: start;
+  border-bottom: 0;
 }
 .account-profile > div {
   display: grid;
@@ -158,6 +186,11 @@
   border: 1px dashed var(--color-border-strong);
   border-radius: 7px;
   background: var(--color-surface-raised);
+}
+.account-overview-section .account-invite {
+  min-height: 180px;
+  border: 0;
+  background: transparent;
 }
 .credit-filters {
   display: flex;
@@ -329,11 +362,20 @@
   .account-content {
     padding: 28px 20px 38px;
   }
+  .account-overview-section {
+    padding: 22px;
+  }
   .account-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .account-profile > div {
     grid-template-columns: 120px minmax(0, 1fr);
+  }
+  .account-overview-section .account-profile {
+    grid-template-columns: 1fr;
+  }
+  .account-overview-section .account-profile > div {
+    grid-template-columns: 1fr;
   }
   .credit-filters .ui-select,
   .credit-filters .ui-input {
