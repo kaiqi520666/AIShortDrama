@@ -15,3 +15,7 @@ export async function logout() {
 export async function getCurrentUser() {
   return (await apiClient.get('/auth/me')).data
 }
+
+export async function changePassword(payload) {
+  return (await apiClient.post('/auth/change-password', payload)).data
+}

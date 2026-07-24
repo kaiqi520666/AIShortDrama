@@ -32,3 +32,16 @@ class LoginRequest(BaseModel):
 
     email: EmailStr
     password: str
+
+
+class ChangePasswordRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    current_password: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value: str) -> str:
+        validate_password(value)
+        return value

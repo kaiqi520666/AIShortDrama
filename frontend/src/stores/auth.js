@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { getCurrentUser, login as loginRequest, logout as logoutRequest, register as registerRequest } from '../api/auth'
+import { changePassword as changePasswordRequest, getCurrentUser, login as loginRequest, logout as logoutRequest, register as registerRequest } from '../api/auth'
 import { getCredits } from '../api/credits'
 
 export const useAuthStore = defineStore('auth', {
@@ -43,6 +43,11 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.clear()
       }
+    },
+    async changePassword(payload) {
+      const result = await changePasswordRequest(payload)
+      if (result.code !== 0) throw new Error(result.message)
+      this.user = result.data
     },
     async refreshCredits() {
       if (!this.user) return

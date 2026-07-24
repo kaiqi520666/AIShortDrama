@@ -1,5 +1,6 @@
 <script setup>
-import { ArrowLeft, Coins, Folder, LogOut, UserRound } from 'lucide-vue-next'
+import { ArrowLeft, Coins, Folder } from 'lucide-vue-next'
+import AppAccountMenu from '../account/AppAccountMenu.vue'
 import AppBrand from '../ui/AppBrand.vue'
 import AppButton from '../ui/AppButton.vue'
 import AppThemeSwitch from '../ui/AppThemeSwitch.vue'
@@ -25,8 +26,7 @@ const emit = defineEmits(['back', 'logout'])
     <div class="canvas-account">
       <AppThemeSwitch />
       <span class="canvas-credits" :title="`冻结积分 ${creditFrozen}`"><Coins :size="15" />{{ creditBalance }}</span>
-      <AppButton class="canvas-user-button" size="sm" variant="soft" title="当前用户"><UserRound :size="15" /><span>{{ username }}</span></AppButton>
-      <AppButton class="canvas-logout-button" size="sm" title="退出登录" @click="emit('logout')"><LogOut :size="15" /><span>退出</span></AppButton>
+      <AppAccountMenu :username="username" @logout="emit('logout')" />
     </div>
   </header>
 </template>

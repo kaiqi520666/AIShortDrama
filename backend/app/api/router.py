@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 
 from app.api.routes.auth import router as auth_router
+from app.api.routes.account import router as account_router
 from app.api.routes.credits import router as credits_router
 from app.api.routes.assets import router as assets_router
 from app.api.routes.generations import router as generations_router
@@ -11,6 +12,7 @@ from app.api.routes.workspaces import router as workspaces_router
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(health_router, tags=["health"])
+api_router.include_router(account_router, prefix="/account", tags=["account"])
 api_router.include_router(auth_router, prefix="/auth", tags=["auth"])
 api_router.include_router(credits_router, prefix="/credits", tags=["credits"])
 api_router.include_router(generations_router, prefix="/generations", tags=["generations"])

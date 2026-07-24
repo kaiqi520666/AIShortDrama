@@ -23,7 +23,7 @@ from app.core.auth import (
 from app.core.database import get_db
 from app.core.identity import get_current_user
 from app.models import User
-from app.schemas.auth import LoginRequest, RegisterRequest
+from app.schemas.auth import ChangePasswordRequest, LoginRequest, RegisterRequest
 from app.schemas.response import fail, success
 from app.services.authentication import RegistrationError, register_user, user_payload
 
@@ -147,6 +147,41 @@ async def logout(request: Request, response: Response):
             pass
     clear_auth_cookies(response)
     return success(None)
+
+
+@router.post("/change-password")
+async def change_password(
+    payload: ChangePasswordRequest,
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    current = await db.scalar(select(User).where(User.id == user.id).with_for_update())
+    if not await asyncio.to_thread(verify_password, payload.current_password, current.password_hash):
+        return JSONResponse(status_code=400, content=fail("原密码错误"))
+    if payload.current_password == payload.new_password:
+        return JSONResponse(status_code=400, content=fail("新密码不能与原密码相同"))
+
+    current.password_hash = await asyncio.to_thread(hash_password, payload.new_password)
+    current.auth_version += 1
+    tokens = await create_refresh_session(
+        request.app.state.redis,
+        current.id,
+        current.auth_version,
+    )
+    await db.commit()
+    token = request.cookies.get(REFRESH_COOKIE)
+    if token:
+        try:
+            await revoke_refresh_session(
+                request.app.state.redis,
+                decode_token(token, "refresh")["sid"],
+            )
+        except Exception:
+            pass
+    set_auth_cookies(response, *tokens)
+    return success(user_payload(current))
 
 
 @router.get("/me")

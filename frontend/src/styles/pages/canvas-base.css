@@ -171,37 +171,6 @@
 .canvas-credits svg {
   color: var(--color-warning);
 }
-.canvas-user-button.ui-button,
-.canvas-logout-button.ui-button,
-.workspace-user-button.ui-button,
-.workspace-logout-button.ui-button {
-  width: auto;
-  min-height: 34px;
-  gap: 7px;
-  padding: 0 10px;
-  border-radius: 7px;
-  font-size: 12px;
-}
-.canvas-user-button.ui-button,
-.workspace-user-button.ui-button {
-  border-color: var(--color-border-strong);
-  background: var(--color-surface-translucent);
-  color: var(--color-text-primary);
-}
-.canvas-user-button.ui-button svg,
-.workspace-user-button.ui-button svg {
-  color: var(--color-brand);
-}
-.canvas-logout-button.ui-button,
-.workspace-logout-button.ui-button {
-  color: var(--color-text-muted);
-}
-.canvas-logout-button.ui-button:hover,
-.workspace-logout-button.ui-button:hover {
-  background: var(--color-surface-raised);
-  color: var(--color-text-primary);
-}
-
 .media-node {
   position: relative;
   width: 380px;

@@ -16,10 +16,8 @@
   .project-divider,
   .project-control-separator,
   .canvas-side-tools,
-  .workspace-user-button span,
-  .workspace-logout-button span,
-  .canvas-user-button span,
-  .canvas-logout-button span {
+  .account-menu__trigger span,
+  .account-menu__chevron {
     display: none;
   }
   .asset-drawer {
@@ -37,10 +35,7 @@
     height: 42px;
     padding: 4px;
   }
-  .canvas-user-button.ui-button,
-  .canvas-logout-button.ui-button,
-  .workspace-user-button.ui-button,
-  .workspace-logout-button.ui-button {
+  .account-menu__trigger.ui-button {
     width: 32px;
     padding: 0;
   }

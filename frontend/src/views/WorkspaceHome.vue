@@ -1,11 +1,12 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { Copy, LogOut, Pencil, Play, Plus, Trash2, UserRound } from 'lucide-vue-next'
+import { Copy, Pencil, Play, Plus, Trash2 } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import AppBrand from '../components/ui/AppBrand.vue'
 import AppButton from '../components/ui/AppButton.vue'
 import AppSelect from '../components/ui/AppSelect.vue'
 import AppThemeSwitch from '../components/ui/AppThemeSwitch.vue'
+import AppAccountMenu from '../components/account/AppAccountMenu.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import { useGlobalConfirm, useGlobalPrompt, useGlobalToast } from '../composables/useGlobalUI'
 import { useAuthStore } from '../stores/auth'
@@ -88,8 +89,7 @@ onMounted(() => store.load())
       <AppBrand />
       <div class="workspace-account">
         <AppThemeSwitch />
-        <AppButton class="workspace-user-button" size="sm" variant="soft" title="当前用户"><UserRound :size="15" /><span>{{ authStore.user?.username }}</span></AppButton>
-        <AppButton class="workspace-logout-button" size="sm" title="退出登录" @click="signOut"><LogOut :size="15" /><span>退出</span></AppButton>
+        <AppAccountMenu :username="authStore.user?.username || '用户'" @logout="signOut" />
       </div>
     </header>
 

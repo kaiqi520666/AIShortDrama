@@ -210,3 +210,71 @@ async def test_cross_site_auth_request_is_rejected():
         )
     assert response.status_code == 403
     assert response.json()["message"] == "请求来源无效"
+
+
+@pytest.mark.asyncio
+async def test_change_password_keeps_current_device_and_revokes_others():
+    user_id = uuid.uuid4()
+    workspace_id = uuid.uuid4()
+    email = f"password-{user_id.hex[:8]}@example.com"
+    async with SessionLocal() as db:
+        db.add(
+            User(
+                id=user_id,
+                username=f"password-{user_id.hex[:8]}",
+                email=email,
+                password_hash=hash_password("password-123"),
+                is_system=False,
+            )
+        )
+        db.add(Workspace(id=workspace_id, user_id=user_id, name="改密测试", canvas={}))
+        await db.commit()
+
+    app.state.redis = FakeRedis()
+    first = AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+    second = AsyncClient(transport=ASGITransport(app=app), base_url="http://test")
+    try:
+        for client in (first, second):
+            response = await client.post(
+                "/api/auth/login",
+                json={"email": email, "password": "password-123"},
+            )
+            assert response.status_code == 200
+
+        wrong = await first.post(
+            "/api/auth/change-password",
+            json={"current_password": "wrong-password", "new_password": "password-456"},
+        )
+        assert wrong.status_code == 400
+        assert (await first.get("/api/auth/me")).status_code == 200
+
+        invalid = await first.post(
+            "/api/auth/change-password",
+            json={"current_password": "password-123", "new_password": "short"},
+        )
+        assert invalid.status_code == 422
+
+        unchanged = await first.post(
+            "/api/auth/change-password",
+            json={"current_password": "password-123", "new_password": "password-123"},
+        )
+        assert unchanged.status_code == 400
+
+        changed = await first.post(
+            "/api/auth/change-password",
+            json={"current_password": "password-123", "new_password": "password-456"},
+        )
+        assert changed.status_code == 200
+        assert (await first.get("/api/auth/me")).status_code == 200
+        assert (await second.get("/api/auth/me")).status_code == 401
+    finally:
+        await first.aclose()
+        await second.aclose()
+        async with SessionLocal() as db:
+            workspace = await db.get(Workspace, workspace_id)
+            if workspace:
+                await db.delete(workspace)
+            user = await db.get(User, user_id)
+            if user:
+                await db.delete(user)
+            await db.commit()
