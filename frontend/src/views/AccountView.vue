@@ -71,7 +71,7 @@ onMounted(loadAccount)
     </EmptyState>
 
     <template v-else>
-      <section class="account-overview-section">
+      <section class="account-overview-section account-summary-section">
         <header class="account-section-heading"><h1>账户概览</h1><p>查看当前积分使用情况</p></header>
         <div class="account-stats">
           <article><span><Wallet :size="18" /></span><small>可用积分</small><strong>{{ account.credits.available }}</strong></article>
@@ -79,7 +79,6 @@ onMounted(loadAccount)
           <article><span><TrendingDown :size="18" /></span><small>累计消耗</small><strong>{{ account.credits.consumed_total }}</strong></article>
           <article><span><CalendarDays :size="18" /></span><small>今日消耗</small><strong>{{ account.credits.consumed_today }}</strong></article>
         </div>
-        <p class="account-time-note"><CalendarDays :size="14" />今日消耗按北京时间统计</p>
       </section>
 
       <section class="account-overview-section">

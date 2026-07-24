@@ -21,6 +21,11 @@
 .account-overview-section + .account-overview-section {
   margin-top: 16px;
 }
+.account-summary-section {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
 .account-overview-section .account-section-heading {
   margin-bottom: 24px;
   padding-bottom: 0;
@@ -53,12 +58,6 @@
   border-radius: 6px;
   background: var(--color-surface-raised);
 }
-.account-overview-section .account-stats article {
-  min-height: 104px;
-  padding: 12px;
-  border: 0;
-  background: transparent;
-}
 .account-stats article > span {
   display: grid;
   width: 32px;
@@ -79,14 +78,6 @@
   font-size: 27px;
   font-weight: 650;
   font-variant-numeric: tabular-nums;
-}
-.account-time-note {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  margin: 18px 0 0;
-  color: var(--color-text-muted);
-  font-size: 11px;
 }
 .account-profile {
   margin: 0;
@@ -364,6 +355,9 @@
   }
   .account-overview-section {
     padding: 22px;
+  }
+  .account-summary-section {
+    padding: 0;
   }
   .account-stats {
     grid-template-columns: repeat(2, minmax(0, 1fr));
