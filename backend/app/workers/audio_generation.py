@@ -7,7 +7,7 @@ from app.core.database import SessionLocal
 from app.models import GenerationTask
 from app.providers.volcengine_audio import VolcengineAudioError, VolcengineAudioProvider
 from app.services.storage import OssStorage
-from app.workers.generation import complete_task, update_task
+from app.workers.generation import complete_task, fail_task, update_task
 
 
 AUDIO_MIME_TYPES = {
@@ -29,7 +29,7 @@ async def run_audio_generation(
     task_uuid = uuid.UUID(task_id)
     async with SessionLocal() as db:
         task = await db.get(GenerationTask, task_uuid)
-        if not task or task.status in {"succeeded", "cancelled"}:
+        if not task or task.status in {"succeeded", "failed", "timeout", "cancelled"}:
             return
         payload = task.request_snapshot
         task.status = "running"
@@ -55,20 +55,19 @@ async def run_audio_generation(
         else:
             raise VolcengineAudioError("火山音频接口未返回音频地址或数据")
         duration = response.get("duration")
+        original_duration = response.get("original_duration")
+        if not isinstance(original_duration, (int, float)) or original_duration <= 0:
+            raise VolcengineAudioError("火山音频接口未返回有效计费时长")
         await complete_task(
             task_uuid,
             "audio",
             urls,
             duration=float(duration) if isinstance(duration, (int, float)) else None,
+            original_duration=float(original_duration),
             mime_type=AUDIO_MIME_TYPES[audio_format],
         )
     except Exception as exc:
-        await update_task(
-            task_uuid,
-            status="failed",
-            error_message=str(exc)[:2000],
-            finished_at=datetime.now(UTC),
-        )
+        await fail_task(task_uuid, "failed", str(exc))
         raise
     finally:
         if owns_provider and provider:

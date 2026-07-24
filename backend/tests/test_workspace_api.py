@@ -4,13 +4,12 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.core.database import SessionLocal
-from app.core.identity import LOCAL_USER_ID
 from app.main import app
 from app.models import Asset, Workspace
 
 
 @pytest.mark.asyncio
-async def test_workspace_crud_duplicate_and_canvas_isolation():
+async def test_workspace_crud_duplicate_and_canvas_isolation(override_business_user):
     asset_id = None
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         created = (await client.post("/api/workspaces", json={"name": "测试工作台"})).json()["data"]
@@ -31,7 +30,7 @@ async def test_workspace_crud_duplicate_and_canvas_isolation():
         duplicate_id = uuid.UUID(duplicate["id"])
         async with SessionLocal() as db:
             asset = Asset(
-                user_id=LOCAL_USER_ID,
+                    user_id=override_business_user,
                 workspace_id=workspace_id,
                 node_id="image-asset-test",
                 media_type="image",

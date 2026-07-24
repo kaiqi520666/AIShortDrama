@@ -113,7 +113,7 @@ IMAGE_MODEL_RULES: dict[str, dict[str, Any]] = {
             "1:8",
             "8:1",
         },
-        "resolutions": {"0.5K", "1K", "2K", "4K"},
+        "resolutions": {"1K", "2K", "4K"},
         "request_fields": {"metadata", "image_urls"},
         "metadata_fields": {"resolution", "google_search", "google_image_search"},
         "reference_field": "image_urls",

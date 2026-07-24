@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
-import { ArrowUp, ChevronDown, FileText, Image, LoaderCircle, Music2, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
+import { ArrowUp, ChevronDown, Coins, FileText, Image, LoaderCircle, Music2, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
 import { createAudioGeneration, createImageGeneration, createVideoGeneration } from '../../api/generations'
 import { streamReversePrompt } from '../../api/reversals'
 import { audioFormatOptions, audioModel, audioSampleRateOptions, buildAudioRequest, getAudioReferenceError, maxAudioPromptLength, normalizeAudioSettings } from '../../config/audioModels'
@@ -12,6 +12,7 @@ import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { buildVideoRequest, defaultVideoModel, getVideoModelError, getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
 import { useGlobalToast } from '../../composables/useGlobalUI'
 import { useCanvasStore } from '../../stores/canvas'
+import { useAuthStore } from '../../stores/auth'
 import AppButton from '../ui/AppButton.vue'
 import AppMenu from '../ui/AppMenu.vue'
 import AppSelect from '../ui/AppSelect.vue'
@@ -29,6 +30,7 @@ const modelIcons = { text: FileText, image: Image, video: VideoIcon, audio: Musi
 const modelIcon = computed(() => modelIcons[props.type] || WandSparkles)
 
 const store = useCanvasStore()
+const authStore = useAuthStore()
 const toast = useGlobalToast()
 const { updateNodeData } = useVueFlow()
 const settingsTrigger = ref(null)
@@ -55,7 +57,7 @@ const reverseReference = computed(() => isReverseTask.value
 const effectivePrompt = computed(() => ['image', 'video', 'audio'].includes(props.type)
   ? getEffectivePrompt(props.data, references.value)
   : props.data.prompt?.trim() || '')
-const promptLimit = computed(() => props.type === 'audio' ? maxAudioPromptLength : maxGenerationPromptLength)
+const promptLimit = computed(() => isReverseTask.value ? 3000 : props.type === 'audio' ? maxAudioPromptLength : maxGenerationPromptLength)
 const promptError = computed(() => effectivePrompt.value.length > promptLimit.value ? `提示词不能超过 ${promptLimit.value} 个字符` : '')
 const promptParts = computed(() => props.data.promptParts ?? (props.data.prompt ? [{ type: 'text', value: props.data.prompt }] : []))
 const selectedImageSettings = computed(() => normalizeImageSettings(props.data))
@@ -69,6 +71,17 @@ const selectedModel = computed(() => props.type === 'image' ? selectedImageModel
 const selectedResolution = computed(() => props.type === 'image' ? selectedImageSettings.value.resolution : selectedVideoSettings.value.resolution)
 const selectedAspectRatio = computed(() => props.type === 'image' ? selectedImageSettings.value.aspectRatio : selectedVideoSettings.value.aspectRatio)
 const selectedDuration = computed(() => selectedVideoSettings.value.duration)
+const estimatedCredits = computed(() => {
+  if (isReverseTask.value) return authStore.estimateCredits('text', selectedReverseModel.value.id)
+  if (!['image', 'video', 'audio'].includes(props.type)) return null
+  const model = props.type === 'image' ? selectedImageModel.value.id : props.type === 'video' ? selectedVideoModel.value.id : audioModel.id
+  return authStore.estimateCredits(props.type, model, {
+    resolution: selectedResolution.value,
+    duration: selectedDuration.value,
+  })
+})
+const insufficientCredits = computed(() => estimatedCredits.value !== null && (authStore.user?.credit_balance || 0) < estimatedCredits.value)
+const creditLabel = computed(() => `${props.type === 'audio' ? '冻结' : '本次'} ${estimatedCredits.value} 积分`)
 const referenceError = computed(() => {
   if (props.type === 'video') return getVideoReferenceError(props.data, references.value)
   if (props.type === 'audio') return getAudioReferenceError(references.value)
@@ -76,7 +89,7 @@ const referenceError = computed(() => {
     ? `当前模型最多支持 ${selectedImageModel.value.maxReferences} 张参考图片`
     : ''
 })
-const panelMessage = computed(() => notice.value || props.data.generationError || referenceError.value || promptError.value)
+const panelMessage = computed(() => notice.value || props.data.generationError || referenceError.value || promptError.value || (insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
 const settingLabel = computed(() => {
   if (props.type === 'image') return `${selectedAspectRatio.value} · ${selectedResolution.value}`
   if (props.type === 'video') return `${selectedAspectRatio.value === 'adaptive' ? '自适应' : selectedAspectRatio.value} · ${selectedResolution.value} · ${selectedDuration.value}s`
@@ -88,7 +101,7 @@ const displayReferences = computed(() => {
   return references.value.map((node) => ({ key: node.id, node, number: ++counts[node.type], label: `${mediaTypes[node.type].label}${counts[node.type]}` }))
 })
 const canSubmit = computed(() => {
-  if (running.value || !effectivePrompt.value || referenceError.value || promptError.value) return false
+  if (running.value || !effectivePrompt.value || referenceError.value || promptError.value || insufficientCredits.value) return false
   if (isReverseTask.value) return Boolean(reverseReference.value)
   if (props.type !== 'text') return true
   return references.value.some((node) => node.type === 'text' ? node.data.content?.trim() : node.data.asset)
@@ -139,6 +152,8 @@ async function submitTask() {
       const message = error.message || '反推生成失败'
       notice.value = message
       updateNodeData(nodeId, { status: 'failed', content, generationError: message })
+    } finally {
+      await authStore.refreshCredits().catch(() => {})
     }
     return
   }
@@ -170,6 +185,7 @@ async function submitTask() {
       generationStatus: result.data.status,
       status: 'generating',
     })
+    await authStore.refreshCredits().catch(() => {})
   } catch (error) {
     updateNodeData(nodeId, {
       status: 'failed',
@@ -322,6 +338,7 @@ onBeforeUnmount(() => {
       v-else
       :model-value="data.prompt"
       :placeholder="mediaTypes[type].placeholder"
+      :maxlength="promptLimit"
       @input="updateTextPrompt"
       @pointerdown="settingsOpen = false; modelOpen = false"
     />
@@ -427,6 +444,7 @@ onBeforeUnmount(() => {
         <component :is="type === 'video' ? VideoIcon : type === 'audio' ? Music2 : Image" :size="16" />{{ settingLabel }}<ChevronDown :size="14" :class="{ rotated: settingsOpen }" />
       </AppButton>
       <span v-else-if="type !== 'text'" class="setting-select"><Image :size="16" />{{ settingLabel }}</span>
+      <span v-if="estimatedCredits !== null" class="task-credit-cost"><Coins :size="14" />{{ creditLabel }}</span>
       <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '执行中' : '执行'" @click="submitTask">
         <LoaderCircle v-if="running" class="run-task-spinner" :size="20" />
         <ArrowUp v-else :size="20" />

@@ -1,9 +1,9 @@
 import uuid
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import GenerationTask, Workspace
 from app.schemas.generation import (
@@ -11,6 +11,7 @@ from app.schemas.generation import (
     ImageGenerationRequest,
     VideoGenerationRequest,
 )
+from app.services.billing import freeze_task_credits, refund_task_credits
 
 
 def task_payload(task: GenerationTask) -> dict[str, Any]:
@@ -24,6 +25,9 @@ def task_payload(task: GenerationTask) -> dict[str, Any]:
         "progress": task.progress,
         "result": task.result,
         "error_message": task.error_message,
+        "frozen_credits": task.frozen_credits,
+        "charged_credits": task.charged_credits,
+        "credit_status": task.credit_status,
         "created_at": _iso(task.created_at),
         "started_at": _iso(task.started_at),
         "finished_at": _iso(task.finished_at),
@@ -157,6 +161,23 @@ async def _create_task(
         request_snapshot=provider_payload,
     )
     db.add(task)
+    resolution = None
+    duration = None
+    if task_type == "image":
+        resolution = (
+            request.resolution.upper()
+            if request.resolution
+            else request.metadata.resolution if request.metadata else None
+        )
+    elif task_type == "video":
+        duration = request.duration
+    await freeze_task_credits(
+        db,
+        task,
+        task_type,
+        resolution=resolution,
+        duration=duration,
+    )
     await db.commit()
     await db.refresh(task)
     try:
@@ -166,6 +187,8 @@ async def _create_task(
     except Exception as exc:
         task.status = "failed"
         task.error_message = "任务入队失败"
+        task.finished_at = datetime.now(UTC)
+        await refund_task_credits(db, task, "任务入队失败，退还冻结积分")
         await db.commit()
         raise RuntimeError("任务入队失败") from exc
     return task

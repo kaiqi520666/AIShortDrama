@@ -37,6 +37,7 @@ class FakeAudioProvider:
             "code": 0,
             "url": "https://example.com/temp.mp3",
             "duration": 8.5,
+            "original_duration": 8.5,
         }
 
 
@@ -209,7 +210,11 @@ async def test_audio_generation_flow():
 async def test_audio_generation_base64_fallback():
     class Base64Provider:
         async def synthesize(self, _payload):
-            return {"code": 0, "audio": base64.b64encode(b"audio").decode()}
+            return {
+                "code": 0,
+                "audio": base64.b64encode(b"audio").decode(),
+                "original_duration": 3.2,
+            }
 
     async with SessionLocal() as db:
         workspace = await db.get(Workspace, DEFAULT_WORKSPACE_ID)

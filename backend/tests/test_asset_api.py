@@ -4,17 +4,17 @@ from httpx import ASGITransport, AsyncClient
 
 from app.api.routes import assets as assets_module
 from app.core.database import SessionLocal
-from app.core.identity import DEFAULT_WORKSPACE_ID, LOCAL_USER_ID
+from app.core.identity import DEFAULT_WORKSPACE_ID
 from app.main import app
 from app.models import Asset
 
 
 @pytest.mark.asyncio
-async def test_filter_rename_and_delete_asset():
+async def test_filter_rename_and_delete_asset(override_business_user):
     asset_ids = []
     async with SessionLocal() as db:
         scoped = Asset(
-            user_id=LOCAL_USER_ID,
+            user_id=override_business_user,
             workspace_id=DEFAULT_WORKSPACE_ID,
             media_type="image",
             source_type="upload",
@@ -22,7 +22,7 @@ async def test_filter_rename_and_delete_asset():
             url="https://example.com/scoped.png",
         )
         global_asset = Asset(
-            user_id=LOCAL_USER_ID,
+            user_id=override_business_user,
             workspace_id=None,
             media_type="image",
             source_type="upload",
@@ -63,11 +63,11 @@ async def test_filter_rename_and_delete_asset():
 
 
 @pytest.mark.asyncio
-async def test_stream_asset_forwards_range(monkeypatch):
+async def test_stream_asset_forwards_range(monkeypatch, override_business_user):
     asset_id = None
     async with SessionLocal() as db:
         asset = Asset(
-            user_id=LOCAL_USER_ID,
+            user_id=override_business_user,
             workspace_id=DEFAULT_WORKSPACE_ID,
             media_type="audio",
             source_type="upload",

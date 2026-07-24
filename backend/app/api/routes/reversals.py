@@ -8,12 +8,14 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.database import SessionLocal, get_db
+from app.core.database import get_db
 from app.core.identity import get_current_user_id
 from app.models import GenerationTask, Workspace
 from app.providers.dashscope import DashScopeProvider
 from app.schemas.response import fail
 from app.schemas.reversal import ReversePromptRequest
+from app.services.billing import BillingError, freeze_task_credits
+from app.workers.generation import complete_text_task, fail_task
 
 router = APIRouter()
 
@@ -33,11 +35,6 @@ async def stream_reverse_prompt(
     )
     if not workspace:
         return JSONResponse(status_code=404, content=fail("工作台不存在"))
-    try:
-        provider = DashScopeProvider()
-    except RuntimeError as exc:
-        return JSONResponse(status_code=503, content=fail(str(exc)))
-
     task = GenerationTask(
         user_id=user_id,
         workspace_id=payload.workspace_id,
@@ -51,16 +48,16 @@ async def stream_reverse_prompt(
         started_at=datetime.now(UTC),
     )
     db.add(task)
-    await db.commit()
-    await db.refresh(task)
-
-    async def update_task(**values):
-        async with SessionLocal() as session:
-            current = await session.get(GenerationTask, task.id)
-            if current:
-                for key, value in values.items():
-                    setattr(current, key, value)
-                await session.commit()
+    try:
+        await freeze_task_credits(db, task, "text")
+        await db.commit()
+        provider = DashScopeProvider()
+    except BillingError as exc:
+        await db.rollback()
+        return JSONResponse(status_code=402, content=fail(str(exc)))
+    except RuntimeError as exc:
+        await fail_task(task.id, "failed", str(exc))
+        return JSONResponse(status_code=503, content=fail(str(exc)))
 
     async def events():
         content = ""
@@ -73,31 +70,21 @@ async def stream_reverse_prompt(
                     media_url=str(payload.media_url),
                     prompt=payload.prompt,
                 ):
+                    content_chunk = content_chunk[: 3000 - len(content)]
+                    if not content_chunk:
+                        break
                     content += content_chunk
                     yield (
                         json.dumps({"type": "delta", "content": content_chunk}, ensure_ascii=False)
                         + "\n"
                     )
-            await update_task(
-                status="succeeded",
-                progress=100,
-                result={"type": "text", "content": content},
-                finished_at=datetime.now(UTC),
-            )
+            await complete_text_task(task.id, content)
             yield '{"type":"done"}\n'
         except asyncio.CancelledError:
-            await update_task(
-                status="cancelled",
-                error_message="客户端已中断反推任务",
-                finished_at=datetime.now(UTC),
-            )
+            await fail_task(task.id, "cancelled", "客户端已中断反推任务")
             raise
         except Exception as exc:
-            await update_task(
-                status="failed",
-                error_message=str(exc)[:2000],
-                finished_at=datetime.now(UTC),
-            )
+            await fail_task(task.id, "failed", str(exc))
             yield json.dumps({"type": "error", "message": str(exc)}, ensure_ascii=False) + "\n"
 
     return StreamingResponse(

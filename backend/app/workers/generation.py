@@ -1,13 +1,16 @@
 import asyncio
 import uuid
 from collections.abc import Awaitable, Callable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import urlparse
+
+from sqlalchemy import select
 
 from app.core.database import SessionLocal
 from app.models import Asset, GenerationTask
 from app.providers.toapis import ToApisError
+from app.services.billing import refund_task_credits, settle_task_credits
 
 
 class GenerationPollTimeout(RuntimeError):
@@ -65,11 +68,14 @@ async def complete_task(
     media_type: str,
     urls: list[str],
     duration: float | None = None,
+    original_duration: float | None = None,
     mime_type: str | None = None,
 ):
     async with SessionLocal() as db:
-        task = await db.get(GenerationTask, task_id)
-        if not task:
+        task = await db.scalar(
+            select(GenerationTask).where(GenerationTask.id == task_id).with_for_update()
+        )
+        if not task or task.status in {"succeeded", "failed", "timeout", "cancelled"}:
             return
         task.status = "succeeded"
         task.progress = 100
@@ -115,4 +121,50 @@ async def complete_task(
                 for url, asset in zip(urls, assets, strict=True)
             ],
         }
+        await settle_task_credits(db, task, original_duration=original_duration)
         await db.commit()
+
+
+async def fail_task(task_id: uuid.UUID, status: str, message: str) -> None:
+    async with SessionLocal() as db:
+        task = await db.scalar(
+            select(GenerationTask).where(GenerationTask.id == task_id).with_for_update()
+        )
+        if not task or task.status in {"succeeded", "failed", "timeout", "cancelled"}:
+            return
+        task.status = status
+        task.error_message = message[:2000]
+        task.finished_at = datetime.now(UTC)
+        await refund_task_credits(db, task, f"{message[:220]}，退还冻结积分")
+        await db.commit()
+
+
+async def complete_text_task(task_id: uuid.UUID, content: str) -> None:
+    async with SessionLocal() as db:
+        task = await db.scalar(
+            select(GenerationTask).where(GenerationTask.id == task_id).with_for_update()
+        )
+        if not task or task.status in {"succeeded", "failed", "timeout", "cancelled"}:
+            return
+        task.status = "succeeded"
+        task.progress = 100
+        task.result = {"type": "text", "content": content}
+        task.finished_at = datetime.now(UTC)
+        await settle_task_credits(db, task)
+        await db.commit()
+
+
+async def compensate_stale_generation_tasks(_ctx) -> None:
+    cutoff = datetime.now(UTC) - timedelta(minutes=30)
+    async with SessionLocal() as db:
+        task_ids = list(
+            await db.scalars(
+                select(GenerationTask.id).where(
+                    GenerationTask.credit_status == "frozen",
+                    GenerationTask.status.in_({"queued", "running"}),
+                    GenerationTask.created_at < cutoff,
+                )
+            )
+        )
+    for task_id in task_ids:
+        await fail_task(task_id, "timeout", "生成任务超时")

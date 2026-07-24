@@ -8,6 +8,7 @@ from app.services.storage import OssStorage
 from app.workers.generation import (
     GenerationPollTimeout,
     complete_task,
+    fail_task,
     poll_generation,
     result_urls,
     update_task,
@@ -28,7 +29,7 @@ async def run_image_generation(
     task_uuid = uuid.UUID(task_id)
     async with SessionLocal() as db:
         task = await db.get(GenerationTask, task_uuid)
-        if not task or task.status in {"succeeded", "cancelled"}:
+        if not task or task.status in {"succeeded", "failed", "timeout", "cancelled"}:
             return
         payload = task.request_snapshot
         task.status = "running"
@@ -56,16 +57,9 @@ async def run_image_generation(
         urls = result_urls(state, "图片")
         await complete_task(task_uuid, "image", await storage.store_remote_images(task_id, urls))
     except GenerationPollTimeout as exc:
-        await update_task(
-            task_uuid, status="timeout", error_message=str(exc), finished_at=datetime.now(UTC)
-        )
+        await fail_task(task_uuid, "timeout", str(exc))
     except Exception as exc:
-        await update_task(
-            task_uuid,
-            status="failed",
-            error_message=str(exc)[:2000],
-            finished_at=datetime.now(UTC),
-        )
+        await fail_task(task_uuid, "failed", str(exc))
         raise
     finally:
         if owns_provider and provider:

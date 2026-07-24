@@ -1,10 +1,12 @@
 import { defineStore } from 'pinia'
 import { getCurrentUser, login as loginRequest, logout as logoutRequest, register as registerRequest } from '../api/auth'
+import { getCredits } from '../api/credits'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
     initialized: false,
+    creditPrices: [],
   }),
   actions: {
     setUser(user) {
@@ -12,6 +14,7 @@ export const useAuthStore = defineStore('auth', {
     },
     clear() {
       this.user = null
+      this.creditPrices = []
     },
     async restore() {
       if (this.initialized) return
@@ -40,6 +43,22 @@ export const useAuthStore = defineStore('auth', {
       } finally {
         this.clear()
       }
+    },
+    async refreshCredits() {
+      if (!this.user) return
+      const result = await getCredits()
+      if (result.code !== 0) throw new Error(result.message)
+      Object.assign(this.user, {
+        credit_balance: result.data.balance,
+        credit_frozen: result.data.frozen,
+      })
+      this.creditPrices = result.data.prices
+    },
+    estimateCredits(mediaType, model, { resolution = '', duration = 1 } = {}) {
+      const rule = this.creditPrices.find((item) => item.media_type === mediaType && item.model === model && item.specification === (mediaType === 'image' ? resolution : ''))
+      if (!rule) return null
+      if (mediaType === 'audio') return rule.freeze_credits
+      return rule.unit_credits * (mediaType === 'video' ? duration : 1)
     },
   },
 })

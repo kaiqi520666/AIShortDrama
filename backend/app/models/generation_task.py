@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import DateTime, ForeignKey, Index, SmallInteger, String, Text, Uuid, func, text
+from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, SmallInteger, String, Text, Uuid, func, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -33,6 +33,14 @@ class GenerationTask(Base):
         default=dict,
         server_default=text("'{}'::jsonb"),
     )
+    pricing_snapshot: Mapped[dict[str, Any]] = mapped_column(
+        JSONB,
+        default=dict,
+        server_default=text("'{}'::jsonb"),
+    )
+    frozen_credits: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))
+    charged_credits: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))
+    credit_status: Mapped[str] = mapped_column(String(20), server_default=text("'none'"))
     result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     error_message: Mapped[str | None] = mapped_column(Text)
     retry_count: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))

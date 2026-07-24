@@ -171,6 +171,7 @@ async def test_register_creates_default_workspace_without_exposing_token():
 async def test_first_user_transfer_rolls_back_cleanly():
     user_id = uuid.uuid4()
     async with SessionLocal() as db:
+        original_status = (await db.get(User, LOCAL_USER_ID)).status
         user = User(
             id=user_id,
             username=f"transfer-{user_id.hex[:8]}",
@@ -191,7 +192,7 @@ async def test_first_user_transfer_rolls_back_cleanly():
 
     async with SessionLocal() as db:
         local_user = await db.get(User, LOCAL_USER_ID)
-        assert local_user.status == "active"
+        assert local_user.status == original_status
         assert await db.get(User, user_id) is None
 
 

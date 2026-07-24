@@ -58,7 +58,7 @@ IMAGE_REQUESTS = [
         "model": "gemini-3.1-flash-image-preview",
         "prompt": "test image",
         "size": "1:4",
-        "metadata": {"resolution": "0.5K", "google_search": True, "google_image_search": True},
+        "metadata": {"resolution": "1K", "google_search": True, "google_image_search": True},
         "image_urls": [{"url": "https://example.com/reference.png"}],
     },
 ]
@@ -71,7 +71,7 @@ VIDEO_REQUESTS = [
         "node_id": "video-seedance-test",
         "model": "seedance-2",
         "prompt": "test video",
-        "duration": 0,
+        "duration": 5,
         "resolution": "1080p",
         "aspect_ratio": "adaptive",
         "generate_audio": True,

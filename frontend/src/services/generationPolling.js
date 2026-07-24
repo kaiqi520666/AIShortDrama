@@ -1,4 +1,5 @@
 import { getGenerationTask } from '../api/generations'
+import { useAuthStore } from '../stores/auth'
 
 const pollTimers = new Map()
 
@@ -16,6 +17,7 @@ async function pollTask(taskId, nodeId, updateNodeData) {
       generationProgress: task.progress,
     })
     if (task.status === 'succeeded') {
+      useAuthStore().refreshCredits().catch(() => {})
       const generated = task.result?.data?.[0]
       const asset = generated?.url
       const mediaLabel = { image: '图片', video: '视频', audio: '音频' }[task.task_type] || '内容'
@@ -35,6 +37,7 @@ async function pollTask(taskId, nodeId, updateNodeData) {
       return
     }
     if (['failed', 'cancelled', 'timeout'].includes(task.status)) {
+      useAuthStore().refreshCredits().catch(() => {})
       const mediaLabel = { image: '图片', video: '视频', audio: '音频' }[task.task_type] || '内容'
       pollTimers.delete(taskId)
       updateNodeData(nodeId, {

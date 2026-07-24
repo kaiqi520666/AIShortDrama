@@ -22,6 +22,8 @@ def user_payload(user: User) -> dict[str, Any]:
         "username": user.username,
         "email": user.email,
         "status": user.status,
+        "credit_balance": user.credit_balance,
+        "credit_frozen": user.credit_frozen,
         "created_at": user.created_at.isoformat(),
     }
 

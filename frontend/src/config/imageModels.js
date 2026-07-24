@@ -50,7 +50,7 @@ export const imageModels = [
   {
     id: 'gemini-3.1-flash-image-preview',
     label: 'Gemini 3.1 Flash',
-    resolutions: ['0.5K', '1K', '2K', '4K'],
+    resolutions: ['1K', '2K', '4K'],
     aspectRatios: geminiFlashRatios,
     defaultResolution: '1K',
     defaultAspectRatio: '16:9',
