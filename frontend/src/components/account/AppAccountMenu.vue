@@ -29,8 +29,8 @@ function closeMenu(focus = false) {
 
 async function openAccount() {
   closeMenu()
-  if (route.name === 'account' && route.query.section === 'overview') return
-  await router.push({ name: 'account', query: { section: 'overview' } })
+  if (route.name === 'account') return
+  await router.push({ name: 'account' })
 }
 
 async function logout() {

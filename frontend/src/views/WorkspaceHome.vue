@@ -2,16 +2,14 @@
 import { computed, onMounted, ref } from 'vue'
 import { Copy, Pencil, Play, Plus, Trash2 } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
-import AppDashboardShell from '../components/dashboard/AppDashboardShell.vue'
+import DashboardPageShell from '../components/dashboard/DashboardPageShell.vue'
 import AppButton from '../components/ui/AppButton.vue'
 import AppSelect from '../components/ui/AppSelect.vue'
 import EmptyState from '../components/ui/EmptyState.vue'
 import { useGlobalConfirm, useGlobalPrompt, useGlobalToast } from '../composables/useGlobalUI'
-import { useAuthStore } from '../stores/auth'
 import { useWorkspaceStore } from '../stores/workspaces'
 
 const router = useRouter()
-const authStore = useAuthStore()
 const store = useWorkspaceStore()
 const toast = useGlobalToast()
 const { confirm } = useGlobalConfirm()
@@ -47,12 +45,6 @@ async function create() {
   await run(async () => router.push(`/workspaces/${(await store.create()).id}`))
 }
 
-async function signOut() {
-  await authStore.logout()
-  store.$reset()
-  await router.replace('/')
-}
-
 async function rename(workspace) {
   const name = await prompt({
     title: '重命名项目',
@@ -82,7 +74,7 @@ onMounted(() => store.load())
 </script>
 
 <template>
-  <AppDashboardShell active-item="workspaces" :username="authStore.user?.username || '用户'" @logout="signOut">
+  <DashboardPageShell active-item="workspaces">
     <section class="workspace-content">
       <div class="workspace-title-row">
         <div><span class="section-kicker">PROJECT LIBRARY</span><h1>创作项目</h1><p>从上次停下的位置继续推进镜头</p></div>
@@ -111,5 +103,5 @@ onMounted(() => store.load())
         </article>
       </div>
     </section>
-  </AppDashboardShell>
+  </DashboardPageShell>
 </template>

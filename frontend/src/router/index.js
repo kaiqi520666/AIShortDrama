@@ -1,6 +1,8 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import HomeView from '../views/HomeView.vue'
 import AccountView from '../views/AccountView.vue'
+import BillingStandardsView from '../views/BillingStandardsView.vue'
+import CreditLedgerView from '../views/CreditLedgerView.vue'
 import LoginView from '../views/LoginView.vue'
 import RegisterView from '../views/RegisterView.vue'
 import WorkspaceCanvasView from '../views/WorkspaceCanvasView.vue'
@@ -16,6 +18,8 @@ export function createAppRouter(authStore) {
       { path: '/workspaces', name: 'workspaces', component: WorkspaceHome, meta: { requiresAuth: true } },
       { path: '/workspaces/:id', name: 'canvas', component: WorkspaceCanvasView, meta: { requiresAuth: true } },
       { path: '/account', name: 'account', component: AccountView, meta: { requiresAuth: true } },
+      { path: '/credits', name: 'credits', component: CreditLedgerView, meta: { requiresAuth: true } },
+      { path: '/pricing', name: 'pricing', component: BillingStandardsView, meta: { requiresAuth: true } },
       { path: '/:pathMatch(.*)*', redirect: '/' },
     ],
   })

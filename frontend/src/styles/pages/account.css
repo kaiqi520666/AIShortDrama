@@ -12,7 +12,13 @@
   padding-bottom: 22px;
   border-bottom: 1px solid var(--color-border-subtle);
 }
-.account-section-heading h1 {
+.account-overview-section + .account-overview-section {
+  margin-top: 44px;
+  padding-top: 38px;
+  border-top: 1px solid var(--color-border-default);
+}
+.account-section-heading h1,
+.account-section-heading h2 {
   margin: 0;
   font-size: 24px;
   font-weight: 650;
