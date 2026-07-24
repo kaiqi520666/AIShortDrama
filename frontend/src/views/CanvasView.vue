@@ -72,7 +72,10 @@ const activeGroupId = ref(null)
 const selectedNodes = computed(() => nodes.value.filter((node) => node.selected))
 const selectedNode = computed(() => selectedNodes.value.length === 1 ? selectedNodes.value[0] : null)
 const selectedGroup = computed(() => groups.value.find((group) => group.id === activeGroupId.value) || groups.value.find((group) => group.nodeIds.length === selectedNodes.value.length && group.nodeIds.every((id) => selectedNodes.value.some((node) => node.id === id))))
-const contextGroup = computed(() => groups.value.find((group) => group.nodeIds.includes(contextMenu.value?.nodeId)))
+const selectedPartialGroup = computed(() => groups.value.find((group) => selectedNodes.value.length > 1 && group.nodeIds.length > selectedNodes.value.length && selectedNodes.value.every((node) => group.nodeIds.includes(node.id))))
+const contextNodeIds = computed(() => contextMenu.value?.nodeIds || [])
+const contextCompleteGroup = computed(() => groups.value.find((group) => contextNodeIds.value.length > 1 && group.nodeIds.length === contextNodeIds.value.length && group.nodeIds.every((id) => contextNodeIds.value.includes(id))))
+const contextPartialGroup = computed(() => groups.value.find((group) => contextNodeIds.value.length > 1 && group.nodeIds.length > contextNodeIds.value.length && contextNodeIds.value.every((id) => group.nodeIds.includes(id))))
 const panelConfig = { width: 600, gap: 16, margin: 16 }
 function frameStyle(nodeIds) {
   const flowNodes = nodeIds.map((id) => findNode(id)).filter(Boolean)
@@ -199,7 +202,12 @@ function handleConnectEnd(event) {
 
 function openContextMenu({ event, node }) {
   event.preventDefault()
-  contextMenu.value = { x: event.clientX, y: event.clientY, nodeId: node.id }
+  const nodeIds = node.selected && selectedNodes.value.length > 1 ? selectedNodes.value.map((item) => item.id) : [node.id]
+  if (nodeIds.length === 1) {
+    store.selectNodes(nodeIds)
+    activeGroupId.value = null
+  }
+  contextMenu.value = { x: event.clientX, y: event.clientY, nodeId: node.id, nodeIds }
 }
 
 function openEdgeContextMenu({ event, edge }) {
@@ -208,9 +216,48 @@ function openEdgeContextMenu({ event, edge }) {
 }
 
 function runContextAction(action) {
-  if (action === 'groupSelected') store.groupSelected()
-  else store[action](action === 'deleteEdge' ? contextMenu.value.edgeId : contextMenu.value.nodeId)
+  store[action](action === 'deleteEdge' ? contextMenu.value.edgeId : contextMenu.value.nodeId)
   contextMenu.value = null
+}
+
+function groupContextNodes() {
+  store.selectNodes(contextNodeIds.value)
+  store.groupSelected()
+  contextMenu.value = null
+}
+
+function ungroupContextNodes() {
+  store.ungroupNode(contextCompleteGroup.value.nodeIds[0])
+  activeGroupId.value = null
+  contextMenu.value = null
+}
+
+function removeContextNodesFromGroup() {
+  store.removeNodesFromGroup(contextPartialGroup.value.id, contextNodeIds.value)
+  contextMenu.value = null
+}
+
+function duplicateContextNodes() {
+  if (contextNodeIds.value.length > 1) store.duplicateNodes(contextNodeIds.value)
+  else store.duplicateWithInputs(contextNodeIds.value[0])
+  activeGroupId.value = null
+  contextMenu.value = null
+}
+
+async function deleteContextNodes() {
+  const nodeIds = [...contextNodeIds.value]
+  contextMenu.value = null
+  if (nodeIds.length > 1) {
+    const accepted = await confirm({
+      title: '删除所选节点',
+      message: `确定删除选中的 ${nodeIds.length} 个节点吗？`,
+      confirmText: '删除',
+      tone: 'danger',
+    })
+    if (!accepted) return
+  }
+  store.deleteNodes(nodeIds)
+  activeGroupId.value = null
 }
 
 function moveGroup(event) {
@@ -315,9 +362,8 @@ function toggleToolMenu() {
 }
 
 function ungroupSelected() {
-  const group = selectedGroup.value || groups.value.find((item) => item.nodeIds.some((id) => selectedNodes.value.some((node) => node.id === id)))
-  if (!group) return
-  store.ungroupNode(group.nodeIds[0])
+  if (selectedGroup.value) store.ungroupNode(selectedGroup.value.nodeIds[0])
+  else if (selectedPartialGroup.value) store.removeNodesFromGroup(selectedPartialGroup.value.id, selectedNodes.value.map((node) => node.id))
   activeGroupId.value = null
 }
 
@@ -768,8 +814,9 @@ onBeforeUnmount(() => {
         @keydown.stop
       />
       <span>{{ selectedGroup ? selectedGroup.nodeIds.length : selectedNodes.length }} 个节点</span>
-      <AppButton v-if="selectedNodes.length > 1 && !selectedGroup" size="sm" title="编组" @click="store.groupSelected"><Group :size="15" />编组</AppButton>
-      <AppButton v-if="selectedGroup" size="sm" title="解组" @click="ungroupSelected"><Ungroup :size="15" />解组</AppButton>
+      <AppButton v-if="selectedNodes.length > 1 && !selectedGroup && !selectedPartialGroup" size="sm" title="编组" @click="store.groupSelected"><Group :size="15" />编组</AppButton>
+      <AppButton v-if="selectedPartialGroup" size="sm" title="移出编组" @click="ungroupSelected"><Ungroup :size="15" />移出编组</AppButton>
+      <AppButton v-if="selectedGroup" size="sm" title="取消编组" @click="ungroupSelected"><Ungroup :size="15" />取消编组</AppButton>
     </div>
 
     <nav class="canvas-bottom-toolbar" aria-label="画布快捷工具">
@@ -830,11 +877,12 @@ onBeforeUnmount(() => {
         <AppButton @click="pasteFromMenu"><Clipboard :size="15" /><span>粘贴</span><kbd>Ctrl+V</kbd></AppButton>
       </template>
       <template v-else>
-        <AppButton @click="runContextAction('duplicateWithInputs')"><Copy :size="15" />创建副本</AppButton>
-        <AppButton v-if="selectedNodes.length > 1 && !contextGroup" @click="runContextAction('groupSelected')"><Group :size="15" />编组</AppButton>
-        <AppButton v-if="contextGroup" @click="runContextAction('ungroupNode')"><Ungroup :size="15" />解组</AppButton>
-        <span v-if="selectedNodes.length > 1 || contextGroup"></span>
-        <AppButton variant="danger" @click="runContextAction('deleteNode')"><Trash2 :size="15" />删除</AppButton>
+        <AppButton v-if="contextNodeIds.length > 1 && !contextCompleteGroup && !contextPartialGroup" @click="groupContextNodes"><Group :size="15" />编组</AppButton>
+        <AppButton v-if="contextCompleteGroup" @click="ungroupContextNodes"><Ungroup :size="15" />取消编组</AppButton>
+        <AppButton v-if="contextPartialGroup" @click="removeContextNodesFromGroup"><Ungroup :size="15" />移出编组</AppButton>
+        <AppButton @click="duplicateContextNodes"><Copy :size="15" />创建副本</AppButton>
+        <span v-if="contextNodeIds.length > 1" class="context-menu-divider"></span>
+        <AppButton variant="danger" @click="deleteContextNodes"><Trash2 :size="15" />{{ contextNodeIds.length > 1 ? `删除所选（${contextNodeIds.length}）` : '删除' }}</AppButton>
       </template>
     </AppMenu>
   </main>

@@ -98,6 +98,32 @@ describe('canvas grouping and duplication', () => {
     expect(store.edges.at(-1)).toEqual(expect.objectContaining({ source: 'b', target: id }))
   })
 
+  it('moves selected nodes out of a group and removes groups with fewer than two nodes', () => {
+    const store = useCanvasStore()
+    store.$patch({ groups: [{ id: 'group-1', title: '组合', nodeIds: ['a', 'b', 'c'] }] })
+
+    store.removeNodesFromGroup('group-1', ['a'])
+    expect(store.groups[0].nodeIds).toEqual(['b', 'c'])
+
+    store.removeNodesFromGroup('group-1', ['b'])
+    expect(store.groups).toEqual([])
+  })
+
+  it('deletes multiple nodes with their edges and group membership', () => {
+    const store = useCanvasStore()
+    store.$patch({
+      nodes: ['a', 'b', 'c'].map((id) => ({ id, type: 'text', data: {} })),
+      edges: [{ id: 'edge-1', source: 'a', target: 'b' }, { id: 'edge-2', source: 'b', target: 'c' }],
+      groups: [{ id: 'group-1', title: '组合', nodeIds: ['a', 'b', 'c'] }],
+    })
+
+    store.deleteNodes(['a', 'b'])
+
+    expect(store.nodes.map((node) => node.id)).toEqual(['c'])
+    expect(store.edges).toEqual([])
+    expect(store.groups).toEqual([])
+  })
+
   it('deletes a group with its nodes and connected edges', () => {
     const store = useCanvasStore()
     store.$patch({

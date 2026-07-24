@@ -223,6 +223,13 @@ export const useCanvasStore = defineStore('canvas', {
       if (!group) return
       this.groups = this.groups.filter((item) => item.id !== group.id)
     },
+    removeNodesFromGroup(groupId, nodeIds) {
+      const group = this.groups.find((item) => item.id === groupId)
+      if (!group) return
+      const removedIds = new Set(nodeIds)
+      group.nodeIds = group.nodeIds.filter((id) => !removedIds.has(id))
+      if (group.nodeIds.length < 2) this.groups = this.groups.filter((item) => item.id !== groupId)
+    },
     duplicateNodes(nodeIds, positions = {}) {
       const sourceIds = new Set(nodeIds)
       const sources = this.nodes.filter((node) => sourceIds.has(node.id))
@@ -265,12 +272,16 @@ export const useCanvasStore = defineStore('canvas', {
       const node = this.nodes.find((item) => item.id === id)
       if (node && title.trim()) node.data.title = title.trim()
     },
-    deleteNode(id) {
-      this.nodes = this.nodes.filter((node) => node.id !== id)
-      this.edges = this.edges.filter((edge) => edge.source !== id && edge.target !== id)
+    deleteNodes(nodeIds) {
+      const removedIds = new Set(nodeIds)
+      this.nodes = this.nodes.filter((node) => !removedIds.has(node.id))
+      this.edges = this.edges.filter((edge) => !removedIds.has(edge.source) && !removedIds.has(edge.target))
       this.groups = this.groups
-        .map((group) => ({ ...group, nodeIds: group.nodeIds.filter((nodeId) => nodeId !== id) }))
+        .map((group) => ({ ...group, nodeIds: group.nodeIds.filter((nodeId) => !removedIds.has(nodeId)) }))
         .filter((group) => group.nodeIds.length > 1)
+    },
+    deleteNode(id) {
+      this.deleteNodes([id])
     },
     deleteGroup(id) {
       const group = this.groups.find((item) => item.id === id)
