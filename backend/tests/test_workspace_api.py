@@ -17,20 +17,7 @@ async def test_workspace_crud_duplicate_and_canvas_isolation(override_business_u
         canvas = {
             "schema_version": 1,
             "nodes": [
-                {"id": "text-1", "type": "text", "position": {"x": 10, "y": 20}, "data": {}},
-                {
-                    "id": "image-2",
-                    "type": "image",
-                    "position": {"x": 30, "y": 20},
-                    "data": {"asset": "https://example.com/old.webp"},
-                },
-                {"id": "image-3", "type": "image", "position": {"x": 50, "y": 20}, "data": {}},
-                {
-                    "id": "image-4",
-                    "type": "image",
-                    "position": {"x": 70, "y": 20},
-                    "data": {"asset": "https://example.com/latest.webp"},
-                },
+                {"id": "text-1", "type": "text", "position": {"x": 10, "y": 20}, "data": {}}
             ],
             "edges": [],
             "groups": [],
@@ -39,6 +26,10 @@ async def test_workspace_crud_duplicate_and_canvas_isolation(override_business_u
             "viewport": {"x": 12, "y": 14, "zoom": 0.8},
         }
         saved = (await client.put(f"/api/workspaces/{workspace_id}/canvas", json=canvas)).json()
+        async with SessionLocal() as db:
+            workspace = await db.get(Workspace, workspace_id)
+            workspace.thumbnail_url = "https://example.com/latest.webp"
+            await db.commit()
         loaded = (await client.get(f"/api/workspaces/{workspace_id}")).json()["data"]
         listed_before_delete = (await client.get("/api/workspaces")).json()["data"]
         renamed = (await client.patch(f"/api/workspaces/{workspace_id}", json={"name": "新名称"})).json()

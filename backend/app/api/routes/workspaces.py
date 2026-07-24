@@ -15,15 +15,6 @@ from app.schemas.workspace import CanvasUpdate, WorkspaceCreate, WorkspaceUpdate
 router = APIRouter()
 
 
-def workspace_thumbnail(canvas: dict[str, Any]) -> str | None:
-    for node in reversed(canvas.get("nodes", [])):
-        data = node.get("data")
-        url = data.get("asset") if isinstance(data, dict) else None
-        if node.get("type") == "image" and isinstance(url, str) and url:
-            return url
-    return None
-
-
 def workspace_payload(workspace: Workspace, include_canvas: bool = False) -> dict[str, Any]:
     payload = {
         "id": str(workspace.id),
@@ -149,9 +140,7 @@ async def save_canvas(
     workspace = await owned_workspace(db, workspace_id, user_id)
     if not workspace:
         return fail("工作台不存在")
-    canvas = payload.model_dump(mode="json")
-    workspace.canvas = canvas
-    workspace.thumbnail_url = workspace_thumbnail(canvas)
+    workspace.canvas = payload.model_dump(mode="json")
     workspace.version += 1
     await db.commit()
     await db.refresh(workspace)

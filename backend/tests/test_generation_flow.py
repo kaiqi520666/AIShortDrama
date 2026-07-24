@@ -64,6 +64,8 @@ async def default_workspace_owner():
 async def test_image_generation_flow():
     user_id = await default_workspace_owner()
     async with SessionLocal() as db:
+        workspace = await db.get(Workspace, DEFAULT_WORKSPACE_ID)
+        original_thumbnail = workspace.thumbnail_url
         task = await create_image_task(
             db,
             FakeRedis(),
@@ -90,6 +92,11 @@ async def test_image_generation_flow():
             assert completed.status == "succeeded"
             assert completed.provider_task_id == "provider-task-1"
             assert completed.result["data"][0]["url"].startswith("https://image.nodepass.net/")
+            workspace = await db.get(Workspace, DEFAULT_WORKSPACE_ID)
+            assert workspace.thumbnail_url == (
+                f"{completed.result['data'][0]['url']}"
+                "?x-oss-process=image/resize,w_480/quality,q_80/format,webp"
+            )
             assets = list(completed.id and await db.scalars(
                 select(Asset).where(Asset.generation_task_id == completed.id)
             ))
@@ -104,7 +111,9 @@ async def test_image_generation_flow():
             task = await db.get(GenerationTask, uuid.UUID(str(task_id)))
             if task:
                 await db.delete(task)
-                await db.commit()
+            workspace = await db.get(Workspace, DEFAULT_WORKSPACE_ID)
+            workspace.thumbnail_url = original_thumbnail
+            await db.commit()
 
 
 @pytest.mark.asyncio

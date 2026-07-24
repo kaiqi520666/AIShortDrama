@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 from sqlalchemy import select
 
 from app.core.database import SessionLocal
-from app.models import Asset, GenerationTask
+from app.models import Asset, GenerationTask, Workspace
 from app.providers.toapis import ToApisError
 from app.services.billing import refund_task_credits, settle_task_credits
 
@@ -121,6 +121,13 @@ async def complete_task(
                 for url, asset in zip(urls, assets, strict=True)
             ],
         }
+        if media_type == "image":
+            workspace = await db.get(Workspace, task.workspace_id)
+            if workspace:
+                separator = "&" if "?" in urls[0] else "?"
+                workspace.thumbnail_url = (
+                    f"{urls[0]}{separator}x-oss-process=image/resize,w_480/quality,q_80/format,webp"
+                )
         await settle_task_credits(db, task, original_duration=original_duration)
         await db.commit()
 
