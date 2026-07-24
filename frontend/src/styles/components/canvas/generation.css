@@ -159,7 +159,7 @@
 }
 .panel-notice {
   margin: 0 2px 7px;
-  color: var(--color-text-secondary);
+  color: var(--color-danger);
   font-size: 11px;
 }
 .generation-panel footer {
