@@ -218,6 +218,7 @@
 }
 .selection-frame.active {
   border-color: var(--color-brand-strong);
+  background: color-mix(in srgb, var(--color-brand-soft) 55%, transparent);
 }
 .selection-toolbar {
   border-color: var(--color-border-strong);
