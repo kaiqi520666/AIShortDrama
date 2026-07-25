@@ -1,5 +1,4 @@
 import uuid
-from decimal import Decimal
 from typing import Any
 
 from sqlalchemy import func, select
@@ -14,6 +13,7 @@ def user_snapshot(user: User) -> dict[str, Any]:
         "email": user.email,
         "role": user.role,
         "status": user.status,
+        "auth_version": user.auth_version,
         "credit_balance": user.credit_balance,
         "credit_frozen": user.credit_frozen,
     }

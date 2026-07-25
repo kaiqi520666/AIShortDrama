@@ -24,6 +24,7 @@ async function signOut() {
     :username="authStore.user?.username || '用户'"
     :credit-balance="authStore.user?.credit_balance ?? 0"
     :credit-frozen="authStore.user?.credit_frozen ?? 0"
+    :is-admin="authStore.user?.role === 'admin'"
     @logout="signOut"
   >
     <RouterView />

@@ -8,6 +8,10 @@ import LoginView from '../views/auth/LoginView.vue'
 import RegisterView from '../views/auth/RegisterView.vue'
 import WorkspaceCanvasView from '../views/canvas/WorkspaceCanvasView.vue'
 import WorkspaceHome from '../views/dashboard/WorkspaceHome.vue'
+import AdminUsersView from '../views/admin/AdminUsersView.vue'
+import AdminPricingView from '../views/admin/AdminPricingView.vue'
+import AdminTasksView from '../views/admin/AdminTasksView.vue'
+import AdminAuditsView from '../views/admin/AdminAuditsView.vue'
 
 export function createAppRouter(authStore) {
   const router = createRouter({
@@ -28,6 +32,18 @@ export function createAppRouter(authStore) {
           { path: 'pricing', name: 'pricing', component: BillingStandardsView, meta: { navKey: 'pricing' } },
         ],
       },
+      {
+        path: '/admin',
+        component: DashboardLayout,
+        redirect: { name: 'admin-users' },
+        meta: { requiresAuth: true, requiresAdmin: true },
+        children: [
+          { path: 'users', name: 'admin-users', component: AdminUsersView, meta: { navKey: 'admin-users' } },
+          { path: 'pricing', name: 'admin-pricing', component: AdminPricingView, meta: { navKey: 'admin-pricing' } },
+          { path: 'tasks', name: 'admin-tasks', component: AdminTasksView, meta: { navKey: 'admin-tasks' } },
+          { path: 'audits', name: 'admin-audits', component: AdminAuditsView, meta: { navKey: 'admin-audits' } },
+        ],
+      },
       { path: '/canvas/:workspaceId', name: 'canvas', component: WorkspaceCanvasView, meta: { requiresAuth: true } },
       { path: '/:pathMatch(.*)*', redirect: '/' },
     ],
@@ -38,6 +54,7 @@ export function createAppRouter(authStore) {
     if (to.meta.requiresAuth && !authStore.user) {
       return { name: 'login', query: { redirect: to.fullPath } }
     }
+    if (to.meta.requiresAdmin && authStore.user?.role !== 'admin') return { name: 'workspaces' }
     if (to.meta.guestOnly && authStore.user) return { name: 'workspaces' }
   })
   return router
