@@ -6,13 +6,14 @@ import { createRechargeOrder, getRechargeConfig, getRechargeOrder } from '../../
 import AppButton from '../../components/ui/AppButton.vue'
 import AppInput from '../../components/ui/AppInput.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
-import { useGlobalToast } from '../../composables/useGlobalUI'
+import { useGlobalConfirm, useGlobalToast } from '../../composables/useGlobalUI'
 import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const toast = useGlobalToast()
+const { confirm } = useGlobalConfirm()
 const config = ref(null)
 const amount = ref('35')
 const order = ref(null)
@@ -76,9 +77,19 @@ function startPolling() {
 
 async function submit() {
   if (!validAmount.value) return
+  const cents = amountCents.value
+  const base = baseCredits.value
+  const bonus = bonusCredits.value
+  const total = totalCredits.value
+  const accepted = await confirm({
+    title: '确认微信支付',
+    message: `支付 ¥${cents / 100}，基础积分 ${base}，赠送积分 ${bonus}，预计到账 ${total} 积分。`,
+    confirmText: `确认支付 ¥${cents / 100}`,
+  })
+  if (!accepted) return
   creating.value = true
   try {
-    const result = await createRechargeOrder(amountCents.value)
+    const result = await createRechargeOrder(cents)
     if (result.code !== 0) throw new Error(result.message)
     order.value = result.data
     await router.replace({ query: { order: result.data.id } })
