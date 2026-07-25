@@ -12,6 +12,7 @@ class User(Base):
     __table_args__ = (
         CheckConstraint("credit_balance >= 0", name="ck_users_credit_balance_nonnegative"),
         CheckConstraint("credit_frozen >= 0", name="ck_users_credit_frozen_nonnegative"),
+        CheckConstraint("role IN ('user', 'admin')", name="ck_users_role"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -21,6 +22,7 @@ class User(Base):
     auth_version: Mapped[int] = mapped_column(Integer, server_default=text("0"))
     is_system: Mapped[bool] = mapped_column(Boolean, server_default=text("false"))
     status: Mapped[str] = mapped_column(String(20), server_default=text("'active'"))
+    role: Mapped[str] = mapped_column(String(16), server_default=text("'user'"))
     credit_balance: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))
     credit_frozen: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

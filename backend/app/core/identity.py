@@ -36,3 +36,9 @@ async def get_current_user(
 
 async def get_current_user_id(user: User = Depends(get_current_user)) -> uuid.UUID:
     return user.id
+
+
+async def get_current_admin(user: User = Depends(get_current_user)) -> User:
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="需要管理员权限")
+    return user
