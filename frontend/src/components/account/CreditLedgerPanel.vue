@@ -3,7 +3,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ChevronLeft, ChevronRight, Search } from 'lucide-vue-next'
 import { getCreditLedger } from '../../api/account'
 import AppButton from '../ui/AppButton.vue'
-import AppInput from '../ui/AppInput.vue'
+import AppDateTime from '../ui/AppDateTime.vue'
 import AppSelect from '../ui/AppSelect.vue'
 import EmptyState from '../ui/EmptyState.vue'
 
@@ -51,8 +51,8 @@ function dateParams() {
   const today = beijingDate()
   if (filters.time === 'custom') {
     return {
-      start_at: filters.start ? `${filters.start}T00:00:00+08:00` : undefined,
-      end_at: filters.end ? `${shiftDate(filters.end, 1)}T00:00:00+08:00` : undefined,
+      start_at: filters.start ? `${filters.start}:00+08:00` : undefined,
+      end_at: filters.end ? `${filters.end}:00+08:00` : undefined,
     }
   }
   const days = filters.time === 'today' ? 1 : filters.time === '7days' ? 7 : 30
@@ -102,9 +102,9 @@ onMounted(load)
     <AppSelect v-model="filters.media_type" :options="mediaOptions" aria-label="模型类型" />
     <AppSelect v-model="filters.time" :options="timeOptions" aria-label="时间范围" />
     <template v-if="filters.time === 'custom'">
-      <AppInput v-model="filters.start" type="date" aria-label="开始日期" />
+      <AppDateTime v-model="filters.start" aria-label="开始时间" placeholder="开始时间" />
       <span class="credit-filters__separator">至</span>
-      <AppInput v-model="filters.end" type="date" aria-label="结束日期" />
+      <AppDateTime v-model="filters.end" aria-label="结束时间" placeholder="结束时间" />
       <AppButton type="button" variant="secondary" :disabled="!filters.start && !filters.end" @click="load()">
         <Search :size="15" />查询
       </AppButton>

@@ -216,9 +216,12 @@
 }
 .credit-filters .ui-select-trigger,
 .credit-filters .ui-input {
-  height: 38px;
+  height: 34px;
 }
 .credit-filters .ui-input {
+  width: 150px;
+}
+.credit-filters .app-date-time {
   width: 150px;
 }
 .credit-filters__separator {
@@ -409,7 +412,8 @@
     border-left: 0;
   }
   .credit-filters .ui-select,
-  .credit-filters .ui-input {
+  .credit-filters .ui-input,
+  .credit-filters .app-date-time {
     width: calc(50% - 5px);
   }
   .credit-filters__separator { display: none; }
