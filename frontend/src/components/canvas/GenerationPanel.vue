@@ -7,6 +7,7 @@ import { streamReversePrompt } from '../../api/reversals'
 import { audioFormatOptions, audioModel, audioSampleRateOptions, buildAudioRequest, getAudioReferenceError, maxAudioPromptLength, normalizeAudioSettings } from '../../config/audioModels'
 import { getEffectivePrompt, maxGenerationPromptLength } from '../../config/generationPrompt'
 import { buildImageRequest, imageModels, normalizeImageSettings } from '../../config/imageModels'
+import { mergeProductProfile, parseProductProfile, productRecognitionPrompt } from '../../config/canvas/ecommerce'
 import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { buildVideoRequest, defaultVideoModel, getVideoModelError, getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
@@ -51,13 +52,13 @@ const mentionReferences = computed(() => {
   return props.type === 'audio' ? audioReferences.value : imageReferences.value
 })
 const isReverseTask = computed(() => props.type === 'text' && ['image', 'video'].includes(props.data.reverseType))
-const reverseReference = computed(() => isReverseTask.value
-  ? references.value.find((node) => node.type === props.data.reverseType && node.data.asset)
-  : null)
+const isProductRecognition = computed(() => props.type === 'product')
+const isVisionTextTask = computed(() => isReverseTask.value || isProductRecognition.value)
+const reverseReference = computed(() => references.value.find((node) => node.type === (isProductRecognition.value ? 'image' : props.data.reverseType) && node.data.asset))
 const effectivePrompt = computed(() => ['image', 'video', 'audio'].includes(props.type)
   ? getEffectivePrompt(props.data, references.value)
   : props.data.prompt?.trim() || '')
-const promptLimit = computed(() => isReverseTask.value ? 3000 : props.type === 'audio' ? maxAudioPromptLength : maxGenerationPromptLength)
+const promptLimit = computed(() => isVisionTextTask.value ? 3000 : props.type === 'audio' ? maxAudioPromptLength : maxGenerationPromptLength)
 const promptError = computed(() => effectivePrompt.value.length > promptLimit.value ? `提示词不能超过 ${promptLimit.value} 个字符` : '')
 const promptParts = computed(() => props.data.promptParts ?? (props.data.prompt ? [{ type: 'text', value: props.data.prompt }] : []))
 const selectedImageSettings = computed(() => normalizeImageSettings(props.data))
@@ -72,7 +73,7 @@ const selectedResolution = computed(() => props.type === 'image' ? selectedImage
 const selectedAspectRatio = computed(() => props.type === 'image' ? selectedImageSettings.value.aspectRatio : selectedVideoSettings.value.aspectRatio)
 const selectedDuration = computed(() => selectedVideoSettings.value.duration)
 const estimatedCredits = computed(() => {
-  if (isReverseTask.value) return authStore.estimateCredits('text', selectedReverseModel.value.id)
+  if (isVisionTextTask.value) return authStore.estimateCredits('text', selectedReverseModel.value.id)
   if (!['image', 'video', 'audio'].includes(props.type)) return null
   const model = props.type === 'image' ? selectedImageModel.value.id : props.type === 'video' ? selectedVideoModel.value.id : audioModel.id
   return authStore.estimateCredits(props.type, model, {
@@ -105,7 +106,7 @@ const displayReferences = computed(() => {
 })
 const canSubmit = computed(() => {
   if (running.value || !effectivePrompt.value || referenceError.value || promptError.value || insufficientCredits.value) return false
-  if (isReverseTask.value) return Boolean(reverseReference.value)
+  if (isVisionTextTask.value) return Boolean(reverseReference.value)
   if (props.type !== 'text') return true
   return references.value.some((node) => node.type === 'text' ? node.data.content?.trim() : node.data.asset)
 })
@@ -131,30 +132,33 @@ function updateTextPrompt(event) {
 
 async function submitTask() {
   if (!canSubmit.value) return
-  if (isReverseTask.value) {
+  if (isVisionTextTask.value) {
     const nodeId = props.nodeId
     let content = ''
     notice.value = ''
-    updateNodeData(nodeId, { status: 'generating', content: '', generationError: '' })
+    updateNodeData(nodeId, { status: 'generating', ...(isReverseTask.value ? { content: '' } : {}), generationError: '' })
     try {
       await streamReversePrompt({
         workspace_id: store.workspaceId,
         node_id: nodeId,
         model: selectedReverseModel.value.id,
-        media_type: props.data.reverseType,
+        media_type: isProductRecognition.value ? 'image' : props.data.reverseType,
         media_url: reverseReference.value.data.asset,
         prompt: effectivePrompt.value,
+        ...(isProductRecognition.value ? { response_mode: 'product_profile' } : {}),
       }, (delta) => {
         content += delta
-        updateNodeData(nodeId, { content })
+        if (isReverseTask.value) updateNodeData(nodeId, { content })
       }, (taskId) => {
         updateNodeData(nodeId, { generationTaskId: taskId, generationStatus: 'running' })
       })
-      updateNodeData(nodeId, { status: 'ready', content })
+      updateNodeData(nodeId, isProductRecognition.value
+        ? { status: 'ready', product: mergeProductProfile(props.data.product, parseProductProfile(content)), generationStatus: 'succeeded' }
+        : { status: 'ready', content })
     } catch (error) {
-      const message = error.message || '反推生成失败'
+      const message = error.message || (isProductRecognition.value ? '商品识别失败' : '反推生成失败')
       notice.value = message
-      updateNodeData(nodeId, { status: 'failed', content, generationError: message })
+      updateNodeData(nodeId, { status: 'failed', ...(isReverseTask.value ? { content } : {}), generationError: message })
     } finally {
       await authStore.refreshCredits().catch(() => {})
     }
@@ -304,7 +308,8 @@ function closeSettings(event) {
 
 watch(() => props.nodeId, () => {
   notice.value = ''
-  if (isReverseTask.value && selectedReverseModel.value.id !== props.data.model) {
+  if (isProductRecognition.value && !props.data.prompt?.trim()) updateNodeData(props.nodeId, { prompt: productRecognitionPrompt })
+  if (isVisionTextTask.value && selectedReverseModel.value.id !== props.data.model) {
     updateNodeData(props.nodeId, { model: selectedReverseModel.value.id })
   }
 }, { immediate: true })
@@ -348,7 +353,7 @@ onBeforeUnmount(() => {
       @pointerdown="settingsOpen = false; modelOpen = false"
     />
 
-    <AppMenu v-if="modelOpen && (['image', 'video'].includes(type) || isReverseTask)" ref="modelMenu" class="model-menu" :style="modelStyle" @pointerdown.stop>
+    <AppMenu v-if="modelOpen && (['image', 'video'].includes(type) || isVisionTextTask)" ref="modelMenu" class="model-menu" :style="modelStyle" @pointerdown.stop>
       <AppButton v-for="model in selectableModels" :key="model.id" :class="{ active: selectedModel.id === model.id }" :disabled="type === 'video' && Boolean(getVideoModelError({ ...data, model: model.id }, references))" :title="type === 'video' ? getVideoModelError({ ...data, model: model.id }, references) : ''" @click="updateModel(model)">
         <component :is="modelIcon" :size="15" />
         <span>{{ model.label }}</span>
@@ -440,15 +445,15 @@ onBeforeUnmount(() => {
     <p v-if="panelMessage" class="panel-notice">{{ panelMessage }}</p>
 
     <footer>
-      <AppButton v-if="['image', 'video'].includes(type) || isReverseTask" ref="modelTrigger" class="model-select model-select-trigger" @click="toggleModelMenu">
+      <AppButton v-if="['image', 'video'].includes(type) || isVisionTextTask" ref="modelTrigger" class="model-select model-select-trigger" @click="toggleModelMenu">
         <component :is="modelIcon" :size="16" />{{ selectedModel.label }}<ChevronDown :size="14" :class="{ rotated: modelOpen }" />
       </AppButton>
       <span v-else class="model-select"><component :is="modelIcon" :size="16" />{{ type === 'audio' ? audioModel.label : data.model }}</span>
-      <span v-if="type !== 'text'" class="panel-divider"></span>
+      <span v-if="!['text', 'product'].includes(type)" class="panel-divider"></span>
       <AppButton v-if="['image', 'video', 'audio'].includes(type)" ref="settingsTrigger" class="image-settings-trigger media-settings-trigger" @click="toggleSettings">
         <component :is="type === 'video' ? VideoIcon : type === 'audio' ? Music2 : Image" :size="16" />{{ settingLabel }}<ChevronDown :size="14" :class="{ rotated: settingsOpen }" />
       </AppButton>
-      <span v-else-if="type !== 'text'" class="setting-select"><Image :size="16" />{{ settingLabel }}</span>
+      <span v-else-if="!['text', 'product'].includes(type)" class="setting-select"><Image :size="16" />{{ settingLabel }}</span>
       <span v-if="estimatedCredits !== null" class="task-credit-cost"><Coins :size="14" />{{ creditLabel }}</span>
       <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '执行中' : '执行'" @click="submitTask">
         <LoaderCircle v-if="running" class="run-task-spinner" :size="20" />

@@ -41,7 +41,7 @@ function updateField(key, value) {
         <label><span>目标人群</span><AppInput :model-value="product.audience" placeholder="目标用户" @input="updateField('audience', $event.target.value)" /></label>
         <label><span>使用场景</span><AppInput :model-value="product.scenario" placeholder="通勤、户外等" @input="updateField('scenario', $event.target.value)" /></label>
       </div>
-      <div class="structured-node-foot"><Sparkles :size="13" />{{ data.recognitionStatus === 'generating' ? '正在识别商品信息…' : '选中节点可 AI 识别商品信息' }}</div>
+      <div class="structured-node-foot"><Sparkles :size="13" />{{ data.status === 'generating' ? '正在识别商品信息…' : '选中节点可 AI 识别商品信息' }}</div>
     </div>
   </StructuredNodeShell>
 </template>
