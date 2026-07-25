@@ -3,6 +3,7 @@ import HomeView from '../views/public/HomeView.vue'
 import AccountView from '../views/dashboard/AccountView.vue'
 import BillingStandardsView from '../views/dashboard/BillingStandardsView.vue'
 import CreditLedgerView from '../views/dashboard/CreditLedgerView.vue'
+import GenerationHistoryView from '../views/dashboard/GenerationHistoryView.vue'
 import RechargeView from '../views/dashboard/RechargeView.vue'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import LoginView from '../views/auth/LoginView.vue'
@@ -32,6 +33,7 @@ export function createAppRouter(authStore) {
           { path: 'account', name: 'account', component: AccountView, meta: { navKey: 'overview' } },
           { path: 'credits', name: 'credits', component: CreditLedgerView, meta: { navKey: 'credits' } },
           { path: 'recharge', name: 'recharge', component: RechargeView, meta: { navKey: 'recharge' } },
+          { path: 'generations', name: 'generations', component: GenerationHistoryView, meta: { navKey: 'generations' } },
           { path: 'pricing', name: 'pricing', component: BillingStandardsView, meta: { navKey: 'pricing' } },
         ],
       },

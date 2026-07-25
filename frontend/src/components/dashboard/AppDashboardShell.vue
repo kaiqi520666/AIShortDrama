@@ -15,6 +15,7 @@ const emit = defineEmits(['logout'])
 const accountItems = [
   { id: 'overview', label: '账户概览', icon: LayoutDashboard, to: { name: 'account' } },
   { id: 'recharge', label: '积分充值', icon: CreditCard, to: { name: 'recharge' } },
+  { id: 'generations', label: '生成记录', icon: ClipboardList, to: { name: 'generations' } },
   { id: 'credits', label: '积分明细', icon: ReceiptText, to: { name: 'credits' } },
   { id: 'pricing', label: '计费标准', icon: Tags, to: { name: 'pricing' } },
 ]
