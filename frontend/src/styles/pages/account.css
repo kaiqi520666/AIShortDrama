@@ -307,11 +307,12 @@
 .generation-detail-summary > div:nth-child(odd) { border-right: 1px solid var(--color-border-subtle); }
 .generation-detail-summary > div:nth-last-child(-n + 2) { border-bottom: 0; }
 .generation-detail-summary dt,
-.generation-specs dt { color: var(--color-text-muted); font-size: 11px; }
+.generation-specs dt { color: var(--color-text-muted); font-size: 12px; }
 .generation-detail-summary dd,
-.generation-specs dd { margin: 4px 0 0; overflow-wrap: anywhere; }
+.generation-specs dd { margin: 4px 0 0; overflow-wrap: anywhere; font-size: 12px; }
+.generation-detail-summary .generation-status { font-size: 12px; }
 .generation-detail-section { display: grid; gap: 8px; }
-.generation-detail-section h3 { margin: 2px 0 0; font-size: 13px; }
+.generation-detail-section h3 { margin: 2px 0 0; font-size: 12px; }
 .generation-specs {
   display: flex;
   flex-wrap: wrap;
@@ -334,6 +335,7 @@
   border-radius: 6px;
   background: var(--color-surface-sunken);
   color: var(--color-text-secondary);
+  font-size: 12px;
   line-height: 1.65;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
