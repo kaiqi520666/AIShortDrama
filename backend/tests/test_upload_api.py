@@ -63,6 +63,33 @@ async def test_upload_media(monkeypatch, media_type, filename, content_type, con
 
 
 @pytest.mark.asyncio
+async def test_reencodes_image_when_declared_format_differs_from_content(monkeypatch):
+    monkeypatch.setattr(uploads_route, "OssStorage", FakeStorage)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/uploads/image",
+            data={"workspace_id": str(DEFAULT_WORKSPACE_ID), "node_id": "image-mismatch"},
+            files={"file": ("source.jpg", png_bytes(), "image/jpeg")},
+        )
+
+    payload = response.json()
+    try:
+        assert payload["code"] == 0
+        assert FakeStorage.uploaded[0].endswith(".jpg")
+        assert FakeStorage.uploaded[2] == "image/jpeg"
+        with Image.open(BytesIO(FakeStorage.uploaded[1])) as uploaded:
+            assert uploaded.format == "JPEG"
+            assert uploaded.size == (3, 2)
+    finally:
+        if payload.get("data", {}).get("id"):
+            async with SessionLocal() as db:
+                asset = await db.get(Asset, uuid.UUID(payload["data"]["id"]))
+                if asset:
+                    await db.delete(asset)
+                    await db.commit()
+
+
+@pytest.mark.asyncio
 async def test_rejects_unsupported_format():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(

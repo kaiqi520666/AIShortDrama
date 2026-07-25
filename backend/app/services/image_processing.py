@@ -27,8 +27,6 @@ def normalize_image(stream, content_type: str) -> NormalizedImage:
         with warnings.catch_warnings():
             warnings.simplefilter("error", Image.DecompressionBombWarning)
             with Image.open(stream) as source:
-                if source.format != image_format:
-                    raise ValueError("图片格式与文件内容不匹配")
                 image = ImageOps.exif_transpose(source)
                 image.load()
     except (Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:

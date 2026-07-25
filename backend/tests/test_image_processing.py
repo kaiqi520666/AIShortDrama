@@ -28,6 +28,9 @@ def test_rejects_invalid_image():
         normalize_image(BytesIO(b"not-an-image"), "image/png")
 
 
-def test_rejects_mismatched_content_type():
-    with pytest.raises(ValueError, match="图片格式与文件内容不匹配"):
-        normalize_image(BytesIO(image_bytes("PNG")), "image/jpeg")
+def test_reencodes_mismatched_content_type():
+    normalized = normalize_image(BytesIO(image_bytes("PNG")), "image/jpeg")
+
+    with Image.open(normalized.stream) as image:
+        assert image.format == "JPEG"
+        assert image.size == (3, 2)
