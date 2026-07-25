@@ -23,7 +23,7 @@ function updateField(key, value) {
 </script>
 
 <template>
-  <StructuredNodeShell :id="id" :type="type" :data="data" :icon="Package" :selected="selected">
+  <StructuredNodeShell :id="id" :type="type" :data="data" :icon="Package" :selected="selected" has-target>
     <div class="product-node-content nodrag nopan nowheel" @keydown.stop>
       <div class="structured-node-summary">
         <span><Package :size="15" />商品档案</span>
