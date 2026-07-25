@@ -39,6 +39,13 @@
   padding-top: 18px;
   border-top: 1px solid var(--color-border-subtle);
 }
+.dashboard-nav__group > small {
+  padding: 0 13px 7px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
 .dashboard-nav__item {
   display: flex;
   min-height: 42px;
@@ -103,6 +110,9 @@
   }
   .dashboard-nav__group {
     display: contents;
+  }
+  .dashboard-nav__group > small {
+    display: none;
   }
   .dashboard-nav__item {
     min-height: 38px;

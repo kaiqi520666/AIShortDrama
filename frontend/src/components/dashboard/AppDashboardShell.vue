@@ -44,6 +44,7 @@ const adminItems = [
             <PanelsTopLeft :size="16" /><span>工作台</span>
           </RouterLink>
           <div class="dashboard-nav__group">
+            <small>个人中心</small>
             <RouterLink
               v-for="item in accountItems"
               :key="item.id"
