@@ -1,5 +1,5 @@
 <script setup>
-import { ClipboardList, History, LayoutDashboard, PanelsTopLeft, ReceiptText, Tags, UsersRound } from 'lucide-vue-next'
+import { ClipboardList, CreditCard, History, LayoutDashboard, PanelsTopLeft, ReceiptText, Tags, UsersRound } from 'lucide-vue-next'
 import AppBrand from '../ui/AppBrand.vue'
 import AppHeaderAccountControls from '../ui/AppHeaderAccountControls.vue'
 
@@ -14,6 +14,7 @@ const emit = defineEmits(['logout'])
 
 const accountItems = [
   { id: 'overview', label: '账户概览', icon: LayoutDashboard, to: { name: 'account' } },
+  { id: 'recharge', label: '积分充值', icon: CreditCard, to: { name: 'recharge' } },
   { id: 'credits', label: '积分明细', icon: ReceiptText, to: { name: 'credits' } },
   { id: 'pricing', label: '计费标准', icon: Tags, to: { name: 'pricing' } },
 ]
@@ -22,6 +23,7 @@ const adminItems = [
   { id: 'admin-pricing', label: '模型计费', icon: Tags, to: { name: 'admin-pricing' } },
   { id: 'admin-tasks', label: '生成任务', icon: ClipboardList, to: { name: 'admin-tasks' } },
   { id: 'admin-audits', label: '操作审计', icon: History, to: { name: 'admin-audits' } },
+  { id: 'admin-recharge', label: '充值管理', icon: CreditCard, to: { name: 'admin-recharge' } },
 ]
 </script>
 

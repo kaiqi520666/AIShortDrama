@@ -62,3 +62,16 @@ class PriceRuleUpdateRequest(AdminMutation):
     freeze_credits: int | None = Field(default=None, ge=0)
     multiplier: Decimal = Field(gt=0, le=100)
     enabled: bool
+
+
+class RechargeTierMutationRequest(AdminMutation):
+    min_amount_cents: int = Field(ge=3500, le=350000)
+    bonus_rate_bps: int = Field(ge=0, le=3000)
+    enabled: bool = True
+
+    @field_validator("min_amount_cents")
+    @classmethod
+    def require_whole_yuan(cls, value: int) -> int:
+        if value % 100:
+            raise ValueError("阶梯金额必须为整数元")
+        return value

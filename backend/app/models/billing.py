@@ -5,6 +5,7 @@ from decimal import Decimal
 from sqlalchemy import (
     BigInteger,
     Boolean,
+    CheckConstraint,
     DateTime,
     ForeignKey,
     Index,
@@ -66,6 +67,9 @@ class CreditLedger(Base):
     task_id: Mapped[uuid.UUID | None] = mapped_column(
         ForeignKey("generation_tasks.id", ondelete="SET NULL")
     )
+    recharge_order_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("recharge_orders.id", ondelete="SET NULL"), unique=True
+    )
     media_type: Mapped[str | None] = mapped_column(String(16))
     model: Mapped[str | None] = mapped_column(String(64))
     entry_type: Mapped[str] = mapped_column(String(20))
@@ -93,3 +97,60 @@ class AdminAuditLog(Base):
     before_snapshot: Mapped[dict] = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"))
     after_snapshot: Mapped[dict] = mapped_column(JSONB, default=dict, server_default=text("'{}'::jsonb"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class RechargeTier(Base):
+    __tablename__ = "recharge_tiers"
+    __table_args__ = (
+        CheckConstraint("min_amount_cents >= 3500", name="ck_recharge_tiers_min_amount"),
+        CheckConstraint(
+            "bonus_rate_bps BETWEEN 0 AND 3000", name="ck_recharge_tiers_bonus_rate"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    min_amount_cents: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
+    bonus_rate_bps: Mapped[int] = mapped_column(Integer, nullable=False)
+    enabled: Mapped[bool] = mapped_column(Boolean, server_default=text("true"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
+class RechargeOrder(Base):
+    __tablename__ = "recharge_orders"
+    __table_args__ = (
+        Index("ix_recharge_orders_user_created_at", "user_id", "created_at"),
+        Index("ix_recharge_orders_status_created_at", "status", "created_at"),
+        CheckConstraint(
+            "status IN ('pending', 'paid', 'failed')", name="ck_recharge_orders_status"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("users.id"), nullable=False)
+    tier_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("recharge_tiers.id", ondelete="SET NULL")
+    )
+    out_trade_no: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
+    provider: Mapped[str] = mapped_column(String(32), server_default=text("'zpay'"))
+    provider_trade_no: Mapped[str | None] = mapped_column(String(64))
+    amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
+    base_credits: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    bonus_credits: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    total_credits: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    tier_snapshot: Mapped[dict] = mapped_column(
+        JSONB, default=dict, server_default=text("'{}'::jsonb")
+    )
+    pay_type: Mapped[str] = mapped_column(String(20), server_default=text("'wxpay'"))
+    status: Mapped[str] = mapped_column(String(20), server_default=text("'pending'"))
+    pay_url: Mapped[str | None] = mapped_column(String(500))
+    qr_code: Mapped[str | None] = mapped_column(String(500))
+    qr_img: Mapped[str | None] = mapped_column(String(500))
+    error_message: Mapped[str | None] = mapped_column(String(255))
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )

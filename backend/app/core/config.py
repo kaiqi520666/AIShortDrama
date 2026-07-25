@@ -29,6 +29,12 @@ class Settings(BaseSettings):
     dashscope_api_key: str = ""
     dashscope_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     dashscope_workspace_id: str = ""
+    zpay_pid: str = ""
+    zpay_key: str = ""
+    zpay_gateway: str = "https://zpayz.cn"
+    zpay_notify_url: str = ""
+    zpay_return_url: str = ""
+    frontend_base_url: str = "http://localhost:5173"
 
     @property
     def redis_queue_name(self) -> str:

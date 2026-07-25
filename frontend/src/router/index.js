@@ -3,6 +3,7 @@ import HomeView from '../views/public/HomeView.vue'
 import AccountView from '../views/dashboard/AccountView.vue'
 import BillingStandardsView from '../views/dashboard/BillingStandardsView.vue'
 import CreditLedgerView from '../views/dashboard/CreditLedgerView.vue'
+import RechargeView from '../views/dashboard/RechargeView.vue'
 import DashboardLayout from '../layouts/DashboardLayout.vue'
 import LoginView from '../views/auth/LoginView.vue'
 import RegisterView from '../views/auth/RegisterView.vue'
@@ -12,6 +13,7 @@ import AdminUsersView from '../views/admin/AdminUsersView.vue'
 import AdminPricingView from '../views/admin/AdminPricingView.vue'
 import AdminTasksView from '../views/admin/AdminTasksView.vue'
 import AdminAuditsView from '../views/admin/AdminAuditsView.vue'
+import AdminRechargeView from '../views/admin/AdminRechargeView.vue'
 
 export function createAppRouter(authStore) {
   const router = createRouter({
@@ -29,6 +31,7 @@ export function createAppRouter(authStore) {
           { path: 'workspaces', name: 'workspaces', component: WorkspaceHome, meta: { navKey: 'workspaces' } },
           { path: 'account', name: 'account', component: AccountView, meta: { navKey: 'overview' } },
           { path: 'credits', name: 'credits', component: CreditLedgerView, meta: { navKey: 'credits' } },
+          { path: 'recharge', name: 'recharge', component: RechargeView, meta: { navKey: 'recharge' } },
           { path: 'pricing', name: 'pricing', component: BillingStandardsView, meta: { navKey: 'pricing' } },
         ],
       },
@@ -42,6 +45,7 @@ export function createAppRouter(authStore) {
           { path: 'pricing', name: 'admin-pricing', component: AdminPricingView, meta: { navKey: 'admin-pricing' } },
           { path: 'tasks', name: 'admin-tasks', component: AdminTasksView, meta: { navKey: 'admin-tasks' } },
           { path: 'audits', name: 'admin-audits', component: AdminAuditsView, meta: { navKey: 'admin-audits' } },
+          { path: 'recharge', name: 'admin-recharge', component: AdminRechargeView, meta: { navKey: 'admin-recharge' } },
         ],
       },
       { path: '/canvas/:workspaceId', name: 'canvas', component: WorkspaceCanvasView, meta: { requiresAuth: true } },

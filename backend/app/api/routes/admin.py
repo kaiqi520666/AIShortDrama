@@ -9,16 +9,18 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import hash_password
 from app.core.database import get_db
 from app.core.identity import get_current_admin
-from app.models import AdminAuditLog, GenerationTask, ModelPriceRule, User
+from app.models import AdminAuditLog, GenerationTask, ModelPriceRule, RechargeOrder, RechargeTier, User
 from app.schemas.admin import (
     AdminResetPasswordRequest,
     CreditAdjustmentRequest,
     PriceRuleUpdateRequest,
+    RechargeTierMutationRequest,
     UserRoleRequest,
     UserStatusRequest,
 )
 from app.schemas.response import success
 from app.services.admin import active_admin_count, add_audit, adjust_credits, price_snapshot, user_snapshot
+from app.services.recharge import RechargeError, order_data, tier_data, validate_tiers
 
 router = APIRouter()
 
@@ -245,4 +247,138 @@ async def list_audits(
         "target_type": audit.target_type, "target_id": audit.target_id, "reason": audit.reason,
         "before_snapshot": audit.before_snapshot, "after_snapshot": audit.after_snapshot, "created_at": audit.created_at.isoformat(),
     } for audit, admin in rows]
+    return success(page_data(page, page_size, total, items))
+
+
+@router.get("/recharge/tiers")
+async def list_recharge_tiers(
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+):
+    tiers = list(
+        await db.scalars(select(RechargeTier).order_by(RechargeTier.min_amount_cents))
+    )
+    return success([tier_data(tier) for tier in tiers])
+
+
+@router.post("/recharge/tiers")
+async def create_recharge_tier(
+    payload: RechargeTierMutationRequest,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    tiers = list(await db.scalars(select(RechargeTier).with_for_update()))
+    if any(tier.min_amount_cents == payload.min_amount_cents for tier in tiers):
+        raise HTTPException(status_code=400, detail="该充值金额阶梯已存在")
+    tier = RechargeTier(**payload.model_dump(exclude={"reason"}))
+    try:
+        validate_tiers([*tiers, tier])
+    except RechargeError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    db.add(tier)
+    await db.flush()
+    add_audit(
+        db,
+        admin_id=admin.id,
+        action="create_recharge_tier",
+        target_type="recharge_tier",
+        target_id=tier.id,
+        reason=payload.reason,
+        before={},
+        after=tier_data(tier),
+    )
+    await db.commit()
+    await db.refresh(tier)
+    return success(tier_data(tier))
+
+
+@router.put("/recharge/tiers/{tier_id}")
+async def update_recharge_tier(
+    tier_id: uuid.UUID,
+    payload: RechargeTierMutationRequest,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    tiers = list(await db.scalars(select(RechargeTier).with_for_update()))
+    tier = next((item for item in tiers if item.id == tier_id), None)
+    if not tier:
+        raise HTTPException(status_code=404, detail="充值阶梯不存在")
+    if any(
+        item.id != tier_id and item.min_amount_cents == payload.min_amount_cents
+        for item in tiers
+    ):
+        raise HTTPException(status_code=400, detail="该充值金额阶梯已存在")
+    before = tier_data(tier)
+    tier.min_amount_cents = payload.min_amount_cents
+    tier.bonus_rate_bps = payload.bonus_rate_bps
+    tier.enabled = payload.enabled
+    try:
+        validate_tiers(tiers)
+    except RechargeError as exc:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    add_audit(
+        db,
+        admin_id=admin.id,
+        action="update_recharge_tier",
+        target_type="recharge_tier",
+        target_id=tier.id,
+        reason=payload.reason,
+        before=before,
+        after=tier_data(tier),
+    )
+    await db.commit()
+    await db.refresh(tier)
+    return success(tier_data(tier))
+
+
+@router.get("/recharge/orders")
+async def list_recharge_orders(
+    q: str = "",
+    status: str = Query("all", pattern="^(all|pending|paid|failed)$"),
+    start_at: datetime | None = None,
+    end_at: datetime | None = None,
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+):
+    filters = []
+    if q.strip():
+        term = f"%{q.strip()}%"
+        filters.append(
+            or_(
+                User.username.ilike(term),
+                User.email.ilike(term),
+                RechargeOrder.out_trade_no.ilike(term),
+                RechargeOrder.provider_trade_no.ilike(term),
+            )
+        )
+    if status != "all":
+        filters.append(RechargeOrder.status == status)
+    if start_at:
+        filters.append(RechargeOrder.created_at >= start_at)
+    if end_at:
+        filters.append(RechargeOrder.created_at < end_at)
+    statement = select(RechargeOrder, User).join(User, User.id == RechargeOrder.user_id).where(*filters)
+    total = int(
+        await db.scalar(
+            select(func.count()).select_from(RechargeOrder).join(User).where(*filters)
+        )
+        or 0
+    )
+    rows = (
+        await db.execute(
+            statement.order_by(RechargeOrder.created_at.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+    ).all()
+    items = [
+        {
+            **order_data(order),
+            "user": {"id": str(user.id), "username": user.username, "email": user.email},
+        }
+        for order, user in rows
+    ]
     return success(page_data(page, page_size, total, items))

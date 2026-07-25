@@ -35,3 +35,19 @@ export async function getAdminTasks(params) {
 export async function getAdminAudits(params) {
   return (await apiClient.get('/admin/audits', { params })).data
 }
+
+export async function getAdminRechargeTiers() {
+  return (await apiClient.get('/admin/recharge/tiers')).data
+}
+
+export async function createAdminRechargeTier(payload) {
+  return (await apiClient.post('/admin/recharge/tiers', payload)).data
+}
+
+export async function updateAdminRechargeTier(tierId, payload) {
+  return (await apiClient.put(`/admin/recharge/tiers/${tierId}`, payload)).data
+}
+
+export async function getAdminRechargeOrders(params) {
+  return (await apiClient.get('/admin/recharge/orders', { params })).data
+}
