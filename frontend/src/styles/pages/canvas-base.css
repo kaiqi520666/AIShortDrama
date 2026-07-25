@@ -353,6 +353,16 @@
 .selling-copy-panel-controls .ui-select-trigger {
   width: 100%;
 }
+.product-recognition-panel .selling-copy-panel-controls {
+  grid-template-columns: 1fr;
+}
+.product-recognition-panel footer .run-task-button {
+  display: inline-flex;
+  width: auto;
+  min-width: 88px;
+  gap: 6px;
+  padding: 0 12px;
+}
 .node-image {
   display: block;
   width: 100%;

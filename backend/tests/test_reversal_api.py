@@ -12,6 +12,8 @@ from app.models import GenerationTask
 
 
 class FakeProvider:
+    last_kwargs = None
+
     async def __aenter__(self):
         return self
 
@@ -19,6 +21,7 @@ class FakeProvider:
         pass
 
     async def stream_reverse_prompt(self, **_kwargs):
+        self.__class__.last_kwargs = _kwargs
         yield "第一段"
         yield "第二段"
 
@@ -36,6 +39,7 @@ async def test_stream_reverse_prompt(monkeypatch):
                 "media_type": "image",
                 "media_url": "https://example.com/image.png",
                 "prompt": "分析图片",
+                "response_mode": "product_profile",
             },
         )
 
@@ -47,6 +51,7 @@ async def test_stream_reverse_prompt(monkeypatch):
         {"type": "delta", "content": "第二段"},
         {"type": "done"},
     ]
+    assert FakeProvider.last_kwargs["response_mode"] == "product_profile"
     async with SessionLocal() as db:
         task = await db.get(GenerationTask, task_id)
         assert task.status == "succeeded"

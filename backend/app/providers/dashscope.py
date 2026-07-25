@@ -39,6 +39,7 @@ class DashScopeProvider:
         media_type: str,
         media_url: str,
         prompt: str,
+        response_mode: str = "prompt",
     ) -> AsyncIterator[str]:
         media = (
             {"type": "image_url", "image_url": {"url": media_url}}
@@ -52,7 +53,11 @@ class DashScopeProvider:
             "messages": [
                 {
                     "role": "system",
-                    "content": "你是专业的中文视觉提示词反推助手。仅输出最终中文提示词，不解释，不使用 Markdown。",
+                    "content": (
+                        "你是专业的中文商品视觉识别助手。严格按用户指定的 JSON 结构输出，不解释，不使用 Markdown。"
+                        if response_mode == "product_profile"
+                        else "你是专业的中文视觉提示词反推助手。仅输出最终中文提示词，不解释，不使用 Markdown。"
+                    ),
                 },
                 {"role": "user", "content": [media, {"type": "text", "text": prompt}]},
             ],

@@ -118,6 +118,12 @@ export const useCanvasStore = defineStore('canvas', {
     },
     addNode(type, position, sourceId) {
       if (!isNodeTypeAvailable(this.workspaceType, type)) return
+      if (type === 'product' && !sourceId) {
+        const imageId = this.addNode('image', { x: position.x - 460, y: position.y + 3 })
+        const image = this.nodes.find((node) => node.id === imageId)
+        image.data = { ...image.data, title: '商品参考图', assetSource: 'upload' }
+        return this.addNode(type, position, imageId)
+      }
       const source = this.nodes.find((node) => node.id === sourceId)
       if (sourceId && (!source || !canConnect(source.type, type, this.workspaceType))) return
       const number = this.sequence++

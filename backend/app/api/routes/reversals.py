@@ -69,6 +69,7 @@ async def stream_reverse_prompt(
                     media_type=payload.media_type,
                     media_url=str(payload.media_url),
                     prompt=payload.prompt,
+                    response_mode=payload.response_mode,
                 ):
                     content_chunk = content_chunk[: 3000 - len(content)]
                     if not content_chunk:

@@ -192,9 +192,28 @@ describe('canvas node packs', () => {
     const productId = store.addNode('product', { x: 0, y: 0 })
     const copyId = store.addNode('selling_copy', { x: 500, y: 0 }, productId)
 
-    expect(productId).toBe('product-1')
-    expect(store.nodes[0].data.product).toEqual(expect.objectContaining({ name: '', sellingPoints: '' }))
-    expect(copyId).toBe('selling_copy-2')
-    expect(store.edges[0]).toEqual(expect.objectContaining({ source: productId, target: copyId }))
+    expect(productId).toBe('product-2')
+    expect(store.nodes[0]).toEqual(expect.objectContaining({ id: 'image-1', data: expect.objectContaining({ title: '商品参考图', assetSource: 'upload' }) }))
+    expect(store.nodes[1].data.product).toEqual(expect.objectContaining({ name: '', sellingPoints: '' }))
+    expect(copyId).toBe('selling_copy-3')
+    expect(store.edges).toEqual([
+      expect.objectContaining({ source: 'image-1', target: productId }),
+      expect.objectContaining({ source: productId, target: copyId }),
+    ])
+  })
+
+  it('uses an existing image when product creation is contextual', async () => {
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1',
+      workspace_type: 'ecommerce',
+      canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
+    })
+
+    const imageId = store.addNode('image', { x: 0, y: 0 })
+    const productId = store.addNode('product', { x: 460, y: 0 }, imageId)
+
+    expect(store.nodes).toHaveLength(2)
+    expect(store.edges[0]).toEqual(expect.objectContaining({ source: imageId, target: productId }))
   })
 })

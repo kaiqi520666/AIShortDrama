@@ -54,6 +54,7 @@ export const nodeDefinitions = {
     createData: ({ number }) => ({
       title: `商品资料 ${number}`,
       status: 'empty',
+      model: defaultReverseModel.id,
       product: { name: '', brand: '', category: '', price: '', specifications: '', sellingPoints: '', audience: '', scenario: '' },
     }),
   },

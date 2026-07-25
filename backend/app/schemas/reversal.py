@@ -13,3 +13,4 @@ class ReversePromptRequest(BaseModel):
     media_type: Literal["image", "video"]
     media_url: AnyHttpUrl
     prompt: str = Field(min_length=1, max_length=3000)
+    response_mode: Literal["prompt", "product_profile"] = "prompt"
