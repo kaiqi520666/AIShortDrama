@@ -373,6 +373,7 @@
   min-height: 34px;
   padding: 0 11px;
 }
+.ui-input { font-size: 12px; }
 :where(.ui-textarea) {
   min-height: 96px;
   resize: vertical;
