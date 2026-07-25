@@ -6,6 +6,7 @@ import { imageModels } from '../../config/imageModels'
 import { reverseModels } from '../../config/reverseModels'
 import { videoModels } from '../../config/videoModels'
 import AppButton from '../ui/AppButton.vue'
+import AppDataTable from '../ui/AppDataTable.vue'
 import EmptyState from '../ui/EmptyState.vue'
 
 const mediaLabels = { text: '文本', image: '图片', video: '视频', audio: '音频' }
@@ -17,6 +18,13 @@ const modelLabels = Object.fromEntries([
   ...videoModels,
   audioModel,
 ].map(({ id, label }) => [id, label]))
+const columns = [
+  { key: 'media_type', label: '模型类型', width: '110px' },
+  { key: 'model', label: '模型', width: '34%' },
+  { key: 'specification', label: '规格', width: '90px' },
+  { key: 'billing_unit', label: '计费方式', width: '110px' },
+  { key: 'unit_credits', label: '积分标准', width: '190px' },
+]
 const rules = ref([])
 const loading = ref(true)
 const error = ref('')
@@ -45,27 +53,25 @@ onMounted(load)
 <template>
   <header class="account-section-heading"><h1>计费标准</h1><p>生成任务按下列积分标准结算</p></header>
 
-  <EmptyState v-if="loading" compact loading title="正在加载计费标准" />
-  <EmptyState v-else-if="error" compact tone="error" title="计费标准加载失败" :description="error">
+  <EmptyState v-if="error" compact tone="error" title="计费标准加载失败" :description="error">
     <AppButton variant="primary" @click="load">重新加载</AppButton>
   </EmptyState>
-  <EmptyState v-else-if="!rules.length" compact title="暂无计费标准" />
-
-  <div v-else class="pricing-table-wrap">
-    <table class="pricing-table">
-      <thead><tr><th>模型类型</th><th>模型</th><th>规格</th><th>计费方式</th><th>积分标准</th></tr></thead>
-      <tbody>
-        <tr v-for="rule in rules" :key="`${rule.media_type}-${rule.model}-${rule.specification}`">
-          <td data-label="模型类型"><span class="pricing-media-type">{{ mediaLabels[rule.media_type] }}</span></td>
-          <td data-label="模型"><strong>{{ modelLabels[rule.model] || rule.model }}</strong><small>{{ rule.model }}</small></td>
-          <td data-label="规格">{{ rule.specification || '—' }}</td>
-          <td data-label="计费方式">按{{ unitLabels[rule.billing_unit] }}</td>
-          <td data-label="积分标准" class="pricing-points">
-            <strong>{{ rule.unit_credits }} 积分</strong><span>/ {{ unitLabels[rule.billing_unit] }}</span>
-            <small v-if="rule.media_type === 'audio'">提交时冻结 {{ rule.freeze_credits }} 积分</small>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
+  <AppDataTable
+    v-else
+    :columns="columns"
+    :items="rules"
+    :row-key="(rule) => `${rule.media_type}-${rule.model}-${rule.specification}`"
+    :loading="loading"
+    loading-title="正在加载计费标准"
+    empty-title="暂无计费标准"
+    min-width="760px"
+  >
+    <template #cell-media_type="{ value }"><span class="pricing-media-type">{{ mediaLabels[value] }}</span></template>
+    <template #cell-model="{ value }"><strong>{{ modelLabels[value] || value }}</strong><small>{{ value }}</small></template>
+    <template #cell-specification="{ value }">{{ value || '—' }}</template>
+    <template #cell-billing_unit="{ value }">按{{ unitLabels[value] }}</template>
+    <template #cell-unit_credits="{ item }">
+      <span class="pricing-points"><strong>{{ item.unit_credits }} 积分</strong><span>/ {{ unitLabels[item.billing_unit] }}</span><small v-if="item.media_type === 'audio'">提交时冻结 {{ item.freeze_credits }} 积分</small></span>
+    </template>
+  </AppDataTable>
 </template>

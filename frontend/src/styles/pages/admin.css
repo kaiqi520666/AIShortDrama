@@ -8,22 +8,11 @@
 .admin-search { display: flex; align-items: center; gap: 6px; padding-left: 10px; border: 1px solid var(--color-border-default); border-radius: 6px; background: var(--color-surface-base); color: var(--color-text-muted); }
 .admin-search .ui-input { border: 0; box-shadow: none; }
 .admin-filters > .app-date-time { min-width: 0; }
-.admin-table-wrap { overflow-x: auto; border: 1px solid var(--color-border-subtle); border-radius: 10px; background: var(--color-surface-elevated); }
-.admin-table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; }
-.admin-table th { height: 44px; padding: 0 14px; background: var(--color-surface-raised); color: var(--color-text-muted); font-size: 11px; text-align: left; }
-.admin-table td { height: 58px; padding: 9px 14px; border-top: 1px solid var(--color-border-subtle); color: var(--color-text-secondary); }
-.admin-table tr:hover td { background: var(--color-surface-hover); }
-.admin-table td strong, .admin-table td small { display: block; }
-.admin-table td strong { color: var(--color-text-primary); }
-.admin-table td small { max-width: 260px; margin-top: 3px; overflow: hidden; color: var(--color-text-muted); font-size: 11px; text-overflow: ellipsis; }
-.admin-table__actions { text-align: right !important; }
-.admin-table__actions .ui-button { margin-left: 5px; }
+.admin-table-actions { display: flex; justify-content: flex-end; gap: 5px; }
 .admin-badge, .admin-status { display: inline-flex; min-height: 24px; align-items: center; padding: 0 8px; border-radius: 999px; background: var(--color-surface-sunken); color: var(--color-text-secondary); font-size: 11px; }
 .admin-badge.is-admin, .admin-status.is-active, .admin-status.is-succeeded, .admin-status.is-paid { background: var(--color-success-soft); color: var(--color-success); }
 .admin-status.is-disabled, .admin-status.is-failed, .admin-status.is-timeout { background: var(--color-danger-soft); color: var(--color-danger); }
 .admin-status.is-running, .admin-status.is-queued, .admin-status.is-pending { background: var(--color-warning-soft); color: var(--color-warning); }
-.admin-pagination { display: flex; align-items: center; justify-content: space-between; color: var(--color-text-muted); font-size: 12px; }
-.admin-pagination div { display: flex; align-items: center; gap: 10px; }
 .admin-dialog-backdrop { position: fixed; z-index: 1000; inset: 0; display: grid; place-items: center; padding: 24px; background: var(--color-backdrop); }
 .admin-dialog { width: min(720px, 100%); max-height: calc(100vh - 48px); overflow-y: auto; border: 1px solid var(--color-border-default); border-radius: 12px; background: var(--color-surface-overlay); box-shadow: var(--shadow-lg); }
 .admin-dialog > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 20px; padding: 20px 22px 16px; border-bottom: 1px solid var(--color-border-subtle); }

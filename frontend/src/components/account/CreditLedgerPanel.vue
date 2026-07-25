@@ -1,8 +1,9 @@
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
-import { ChevronLeft, ChevronRight, Search } from 'lucide-vue-next'
+import { onMounted, reactive, ref, watch } from 'vue'
+import { Search } from 'lucide-vue-next'
 import { getCreditLedger } from '../../api/account'
 import AppButton from '../ui/AppButton.vue'
+import AppDataTable from '../ui/AppDataTable.vue'
 import AppDateTime from '../ui/AppDateTime.vue'
 import AppSelect from '../ui/AppSelect.vue'
 import EmptyState from '../ui/EmptyState.vue'
@@ -29,11 +30,19 @@ const timeOptions = [
 ]
 const typeLabels = { recharge: '充值', consume: '消费', refund: '退回', system: '系统' }
 const mediaLabels = { text: '文本', image: '图片', video: '视频', audio: '音频' }
+const columns = [
+  { key: 'created_at', label: '时间', width: '158px' },
+  { key: 'type', label: '类型', width: '78px' },
+  { key: 'media_type', label: '模型类型', width: '92px' },
+  { key: 'model', label: '模型', width: '220px', class: 'credit-model-cell' },
+  { key: 'note', label: '说明' },
+  { key: 'delta', label: '积分变化', width: '92px', align: 'right' },
+  { key: 'balance_after', label: '余额', width: '92px', align: 'right' },
+]
 const filters = reactive({ type: 'all', media_type: 'all', time: '30days', start: '', end: '' })
 const result = ref({ items: [], page: 1, page_size: 20, total: 0 })
 const loading = ref(true)
 const error = ref('')
-const totalPages = computed(() => Math.max(1, Math.ceil(result.value.total / result.value.page_size)))
 
 function beijingDate() {
   return new Intl.DateTimeFormat('en-CA', {
@@ -111,36 +120,27 @@ onMounted(load)
     </template>
   </div>
 
-  <EmptyState v-if="loading" compact loading title="正在加载积分明细" />
-  <EmptyState v-else-if="error" compact tone="error" title="积分明细加载失败" :description="error">
+  <EmptyState v-if="error" compact tone="error" title="积分明细加载失败" :description="error">
     <AppButton variant="primary" @click="load(result.page)">重新加载</AppButton>
   </EmptyState>
-  <EmptyState v-else-if="!result.items.length" compact title="暂无积分记录" description="当前筛选条件下没有相关明细" />
-
-  <template v-else>
-    <div class="credit-table-wrap">
-      <table class="credit-table">
-        <thead><tr><th>时间</th><th>类型</th><th>模型类型</th><th>模型</th><th>说明</th><th>积分变化</th><th>余额</th></tr></thead>
-        <tbody>
-          <tr v-for="item in result.items" :key="item.id">
-            <td data-label="时间">{{ formatDate(item.created_at) }}</td>
-            <td data-label="类型"><span class="credit-type" :class="`credit-type--${item.type}`">{{ typeLabels[item.type] }}</span></td>
-            <td data-label="模型类型">{{ mediaLabels[item.media_type] || '—' }}</td>
-            <td data-label="模型">{{ item.model || '—' }}</td>
-            <td data-label="说明">{{ item.note || '—' }}</td>
-            <td data-label="积分变化" class="credit-delta" :class="item.delta >= 0 ? 'positive' : 'negative'">{{ item.delta > 0 ? '+' : '' }}{{ item.delta }}</td>
-            <td data-label="余额" class="credit-balance">{{ item.balance_after }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-    <footer class="credit-pagination">
-      <span>共 {{ result.total }} 条</span>
-      <div>
-        <AppButton icon-only aria-label="上一页" :disabled="result.page <= 1" @click="load(result.page - 1)"><ChevronLeft :size="16" /></AppButton>
-        <span>{{ result.page }} / {{ totalPages }}</span>
-        <AppButton icon-only aria-label="下一页" :disabled="result.page >= totalPages" @click="load(result.page + 1)"><ChevronRight :size="16" /></AppButton>
-      </div>
-    </footer>
-  </template>
+  <AppDataTable
+    v-else
+    :columns="columns"
+    :items="result.items"
+    :loading="loading"
+    loading-title="正在加载积分明细"
+    empty-title="暂无积分记录"
+    empty-description="当前筛选条件下没有相关明细"
+    min-width="960px"
+    :pagination="{ page: result.page, pageSize: result.page_size, total: result.total }"
+    @page-change="load"
+  >
+    <template #cell-created_at="{ value }">{{ formatDate(value) }}</template>
+    <template #cell-type="{ item }"><span class="credit-type" :class="`credit-type--${item.type}`">{{ typeLabels[item.type] }}</span></template>
+    <template #cell-media_type="{ value }">{{ mediaLabels[value] || '—' }}</template>
+    <template #cell-model="{ value }">{{ value || '—' }}</template>
+    <template #cell-note="{ value }">{{ value || '—' }}</template>
+    <template #cell-delta="{ value }"><span class="credit-delta" :class="value >= 0 ? 'positive' : 'negative'">{{ value > 0 ? '+' : '' }}{{ value }}</span></template>
+    <template #cell-balance_after="{ value }"><span class="credit-balance">{{ value }}</span></template>
+  </AppDataTable>
 </template>

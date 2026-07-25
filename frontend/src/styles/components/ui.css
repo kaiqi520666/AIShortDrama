@@ -501,6 +501,81 @@
   }
 }
 
+.app-data-table {
+  min-width: 0;
+}
+.app-data-table__scroll {
+  overflow-x: auto;
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+  background: var(--color-surface-elevated);
+}
+.app-data-table__table {
+  width: 100%;
+  border-collapse: collapse;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.app-data-table__table th,
+.app-data-table__table td {
+  height: 48px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--color-border-subtle);
+  text-align: left;
+  vertical-align: middle;
+}
+.app-data-table__table th {
+  height: 42px;
+  background: var(--color-surface-raised);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.app-data-table__table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.app-data-table__table tbody tr:hover td {
+  background: var(--color-surface-hover);
+}
+.app-data-table__table td strong,
+.app-data-table__table td small {
+  display: block;
+}
+.app-data-table__table td strong {
+  color: var(--color-text-primary);
+}
+.app-data-table__table td small {
+  max-width: 260px;
+  margin-top: 3px;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+.app-data-table__cell--right {
+  text-align: right !important;
+}
+.app-data-table__pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 16px;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+.app-data-table__pagination > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.app-data-table__pagination b {
+  min-width: 58px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
 .theme-switch {
   position: relative;
   display: inline-flex;
