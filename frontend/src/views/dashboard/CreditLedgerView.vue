@@ -1,5 +1,5 @@
 <script setup>
-import CreditLedgerPanel from '../components/account/CreditLedgerPanel.vue'
+import CreditLedgerPanel from '../../components/account/CreditLedgerPanel.vue'
 </script>
 
 <template>

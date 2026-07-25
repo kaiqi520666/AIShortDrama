@@ -2,10 +2,10 @@
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, CircleAlert, LockKeyhole, Mail } from 'lucide-vue-next'
-import AuthFormShell from '../components/auth/AuthFormShell.vue'
-import AuthInputField from '../components/auth/AuthInputField.vue'
-import AppButton from '../components/ui/AppButton.vue'
-import { useAuthStore } from '../stores/auth'
+import AuthFormShell from '../../components/auth/AuthFormShell.vue'
+import AuthInputField from '../../components/auth/AuthInputField.vue'
+import AppButton from '../../components/ui/AppButton.vue'
+import { useAuthStore } from '../../stores/auth'
 
 const route = useRoute()
 const router = useRouter()

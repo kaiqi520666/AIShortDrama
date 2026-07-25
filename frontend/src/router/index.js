@@ -1,13 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/HomeView.vue'
-import AccountView from '../views/AccountView.vue'
-import BillingStandardsView from '../views/BillingStandardsView.vue'
-import CreditLedgerView from '../views/CreditLedgerView.vue'
-import DashboardLayout from '../components/dashboard/DashboardLayout.vue'
-import LoginView from '../views/LoginView.vue'
-import RegisterView from '../views/RegisterView.vue'
-import WorkspaceCanvasView from '../views/WorkspaceCanvasView.vue'
-import WorkspaceHome from '../views/WorkspaceHome.vue'
+import HomeView from '../views/public/HomeView.vue'
+import AccountView from '../views/dashboard/AccountView.vue'
+import BillingStandardsView from '../views/dashboard/BillingStandardsView.vue'
+import CreditLedgerView from '../views/dashboard/CreditLedgerView.vue'
+import DashboardLayout from '../layouts/DashboardLayout.vue'
+import LoginView from '../views/auth/LoginView.vue'
+import RegisterView from '../views/auth/RegisterView.vue'
+import WorkspaceCanvasView from '../views/canvas/WorkspaceCanvasView.vue'
+import WorkspaceHome from '../views/dashboard/WorkspaceHome.vue'
 
 export function createAppRouter(authStore) {
   const router = createRouter({

@@ -2,11 +2,11 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import CanvasView from './CanvasView.vue'
-import AppButton from '../components/ui/AppButton.vue'
-import EmptyState from '../components/ui/EmptyState.vue'
-import { useGlobalLoading } from '../composables/useGlobalLoading'
-import { useAuthStore } from '../stores/auth'
-import { useWorkspaceStore } from '../stores/workspaces'
+import AppButton from '../../components/ui/AppButton.vue'
+import EmptyState from '../../components/ui/EmptyState.vue'
+import { useGlobalLoading } from '../../composables/useGlobalLoading'
+import { useAuthStore } from '../../stores/auth'
+import { useWorkspaceStore } from '../../stores/workspaces'
 
 const route = useRoute()
 const router = useRouter()

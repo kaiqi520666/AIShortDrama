@@ -2,9 +2,9 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { animate } from 'motion/mini'
 import { ArrowRight, LogIn, Play, Sparkles } from 'lucide-vue-next'
-import AppBrand from '../components/ui/AppBrand.vue'
-import AppButton from '../components/ui/AppButton.vue'
-import heroVisual from '../assets/mooncut-commerce-hero.webp'
+import AppBrand from '../../components/ui/AppBrand.vue'
+import AppButton from '../../components/ui/AppButton.vue'
+import heroVisual from '../../assets/mooncut-commerce-hero.webp'
 
 const pageHeader = ref(null)
 const hero = ref(null)

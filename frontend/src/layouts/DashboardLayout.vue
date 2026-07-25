@@ -1,9 +1,9 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuthStore } from '../../stores/auth'
-import { useWorkspaceStore } from '../../stores/workspaces'
-import AppDashboardShell from './AppDashboardShell.vue'
+import { useAuthStore } from '../stores/auth'
+import { useWorkspaceStore } from '../stores/workspaces'
+import AppDashboardShell from '../components/dashboard/AppDashboardShell.vue'
 
 const route = useRoute()
 const router = useRouter()

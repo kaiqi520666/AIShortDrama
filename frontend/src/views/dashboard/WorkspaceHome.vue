@@ -2,11 +2,11 @@
 import { computed, onMounted, ref } from 'vue'
 import { Copy, Pencil, Play, Plus, Trash2 } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
-import AppButton from '../components/ui/AppButton.vue'
-import AppSelect from '../components/ui/AppSelect.vue'
-import EmptyState from '../components/ui/EmptyState.vue'
-import { useGlobalConfirm, useGlobalPrompt, useGlobalToast } from '../composables/useGlobalUI'
-import { useWorkspaceStore } from '../stores/workspaces'
+import AppButton from '../../components/ui/AppButton.vue'
+import AppSelect from '../../components/ui/AppSelect.vue'
+import EmptyState from '../../components/ui/EmptyState.vue'
+import { useGlobalConfirm, useGlobalPrompt, useGlobalToast } from '../../composables/useGlobalUI'
+import { useWorkspaceStore } from '../../stores/workspaces'
 
 const router = useRouter()
 const store = useWorkspaceStore()

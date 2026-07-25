@@ -1,5 +1,5 @@
 <script setup>
-import BillingStandardsPanel from '../components/account/BillingStandardsPanel.vue'
+import BillingStandardsPanel from '../../components/account/BillingStandardsPanel.vue'
 </script>
 
 <template>

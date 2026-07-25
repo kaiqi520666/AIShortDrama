@@ -1,12 +1,12 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue'
 import { CalendarDays, CircleAlert, CirclePause, LockKeyhole, Mail, ShieldCheck, TrendingDown, UserPlus, UserRound, Wallet } from 'lucide-vue-next'
-import { getAccount } from '../api/account'
-import AuthInputField from '../components/auth/AuthInputField.vue'
-import AppButton from '../components/ui/AppButton.vue'
-import EmptyState from '../components/ui/EmptyState.vue'
-import { useGlobalToast } from '../composables/useGlobalUI'
-import { useAuthStore } from '../stores/auth'
+import { getAccount } from '../../api/account'
+import AuthInputField from '../../components/auth/AuthInputField.vue'
+import AppButton from '../../components/ui/AppButton.vue'
+import EmptyState from '../../components/ui/EmptyState.vue'
+import { useGlobalToast } from '../../composables/useGlobalUI'
+import { useAuthStore } from '../../stores/auth'
 
 const authStore = useAuthStore()
 const toast = useGlobalToast()
