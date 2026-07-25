@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { Package, Sparkles } from 'lucide-vue-next'
+import { Package } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import AppInput from '../ui/AppInput.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
@@ -37,11 +37,10 @@ function updateField(key, value) {
       </div>
       <label class="product-field-wide"><span>规格 / SKU</span><AppInput :model-value="product.specifications" placeholder="颜色、尺码、容量等" @input="updateField('specifications', $event.target.value)" /></label>
       <label class="product-field-wide"><span>核心卖点</span><AppTextarea :model-value="product.sellingPoints" maxlength="800" placeholder="用换行分隔主要卖点" @input="updateField('sellingPoints', $event.target.value)" /></label>
-      <div class="product-fields two-columns">
+      <div class="product-fields product-fields--secondary two-columns">
         <label><span>目标人群</span><AppInput :model-value="product.audience" placeholder="目标用户" @input="updateField('audience', $event.target.value)" /></label>
         <label><span>使用场景</span><AppInput :model-value="product.scenario" placeholder="通勤、户外等" @input="updateField('scenario', $event.target.value)" /></label>
       </div>
-      <div class="structured-node-foot"><Sparkles :size="13" />{{ data.status === 'generating' ? '正在识别商品信息…' : '选中节点可 AI 识别商品信息' }}</div>
     </div>
   </StructuredNodeShell>
 </template>

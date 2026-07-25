@@ -268,11 +268,15 @@
 .product-field-wide {
   margin-top: 10px;
 }
-.product-node-content .ui-input {
-  width: 100%;
+.product-fields--secondary {
+  margin-top: 10px;
 }
+.product-node-content .ui-input,
 .product-node-content .ui-textarea {
   width: 100%;
+  font-size: 12px;
+}
+.product-node-content .ui-textarea {
   height: 72px;
   resize: none;
 }
