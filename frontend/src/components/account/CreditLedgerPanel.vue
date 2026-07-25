@@ -105,7 +105,7 @@ onMounted(load)
       <AppDateTime v-model="filters.start" aria-label="开始时间" placeholder="开始时间" />
       <span class="credit-filters__separator">至</span>
       <AppDateTime v-model="filters.end" aria-label="结束时间" placeholder="结束时间" />
-      <AppButton type="button" variant="secondary" :disabled="!filters.start && !filters.end" @click="load()">
+      <AppButton type="button" variant="primary" :disabled="!filters.start && !filters.end" @click="load()">
         <Search :size="15" />查询
       </AppButton>
     </template>
