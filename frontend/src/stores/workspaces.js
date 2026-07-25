@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { createWorkspace, deleteWorkspace, duplicateWorkspace, getWorkspace, listWorkspaces, renameWorkspace } from '../api/workspaces'
+import { getWorkspaceType } from '../config/canvas/nodePacks'
 
 export const useWorkspaceStore = defineStore('workspaces', {
   state: () => ({
@@ -30,8 +31,9 @@ export const useWorkspaceStore = defineStore('workspaces', {
     close() {
       this.current = null
     },
-    async create(name = '未命名工作台') {
-      const result = await createWorkspace(name)
+    async create(workspaceType) {
+      const definition = getWorkspaceType(workspaceType)
+      const result = await createWorkspace(definition.defaultName, workspaceType)
       if (result.code !== 0) throw new Error(result.message)
       this.items.unshift(result.data)
       return result.data

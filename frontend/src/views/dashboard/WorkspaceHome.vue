@@ -2,10 +2,12 @@
 import { computed, onMounted, ref } from 'vue'
 import { Copy, Pencil, Play, Plus, Trash2 } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
+import WorkspaceCreateDialog from '../../components/workspace/WorkspaceCreateDialog.vue'
 import AppButton from '../../components/ui/AppButton.vue'
 import AppSelect from '../../components/ui/AppSelect.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import { useGlobalConfirm, useGlobalPrompt, useGlobalToast } from '../../composables/useGlobalUI'
+import { getWorkspaceType } from '../../config/canvas/nodePacks'
 import { useWorkspaceStore } from '../../stores/workspaces'
 
 const router = useRouter()
@@ -14,6 +16,8 @@ const toast = useGlobalToast()
 const { confirm } = useGlobalConfirm()
 const { prompt } = useGlobalPrompt()
 const sortBy = ref('created')
+const createDialogOpen = ref(false)
+const creating = ref(false)
 const sortOptions = [
   { value: 'updated', label: '最近更新' },
   { value: 'created', label: '最近创建' },
@@ -40,8 +44,16 @@ async function run(action, successMessage) {
   }
 }
 
-async function create() {
-  await run(async () => router.push({ name: 'canvas', params: { workspaceId: (await store.create()).id } }))
+async function create(workspaceType) {
+  creating.value = true
+  try {
+    const workspace = await run(() => store.create(workspaceType))
+    if (!workspace) return
+    createDialogOpen.value = false
+    await router.push({ name: 'canvas', params: { workspaceId: workspace.id } })
+  } finally {
+    creating.value = false
+  }
 }
 
 async function rename(workspace) {
@@ -81,7 +93,7 @@ onMounted(() => store.load())
     <p v-if="store.error" class="workspace-notice">{{ store.error }}</p>
     <EmptyState v-if="store.loading" class="workspace-empty" title="正在加载项目" loading />
     <div v-else class="workspace-grid">
-      <AppButton class="workspace-create-card" aria-label="新建项目" @click="create">
+      <AppButton class="workspace-create-card" aria-label="新建项目" @click="createDialogOpen = true">
         <span class="workspace-create-icon"><Plus :size="22" /></span>
         <strong>新建项目</strong>
         <small>创建新的工作流画布</small>
@@ -93,7 +105,7 @@ onMounted(() => store.load())
             <b>{{ workspaceNumbers.get(workspace.id) }}</b><i></i><Play :size="17" fill="currentColor" />
           </span>
           <span class="workspace-card-name">{{ workspace.name }}</span>
-          <small>WORKFLOW CANVAS</small>
+          <small>{{ getWorkspaceType(workspace.workspace_type).label }}</small>
         </AppButton>
         <footer>
           <time>{{ new Date(workspace.created_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</time>
@@ -103,5 +115,6 @@ onMounted(() => store.load())
         </footer>
       </article>
     </div>
+    <WorkspaceCreateDialog v-if="createDialogOpen" :submitting="creating" @close="createDialogOpen = false" @select="create" />
   </section>
 </template>

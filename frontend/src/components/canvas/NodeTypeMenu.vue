@@ -1,8 +1,8 @@
 <script setup>
 import { computed } from 'vue'
-import { FileText, Image, Music2, Video } from 'lucide-vue-next'
-import { canConnect } from '../../config/connectionRules'
-import { mediaTypes } from '../../config/mediaTypes'
+import { canConnect } from '../../config/canvas/connectionRules'
+import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
+import { getNodeTypes } from '../../config/canvas/nodePacks'
 import { useCanvasStore } from '../../stores/canvas'
 import AppButton from '../ui/AppButton.vue'
 
@@ -13,12 +13,11 @@ const props = defineProps({
 
 defineEmits(['select'])
 
-const icons = { text: FileText, image: Image, video: Video, audio: Music2 }
 const store = useCanvasStore()
 const source = computed(() => store.nodes.find((node) => node.id === props.sourceId))
-const options = computed(() => Object.entries(mediaTypes)
-  .filter(([type]) => !props.contextual || canConnect(source.value?.type, type))
-  .map(([type, { label, hint }]) => ({ type, label, hint, icon: icons[type] })))
+const options = computed(() => getNodeTypes(store.workspaceType)
+  .filter((type) => !props.contextual || canConnect(source.value?.type, type, store.workspaceType))
+  .map((type) => nodeDefinitions[type]))
 </script>
 
 <template>

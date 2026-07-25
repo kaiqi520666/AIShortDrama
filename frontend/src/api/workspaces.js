@@ -4,8 +4,8 @@ export async function listWorkspaces() {
   return (await apiClient.get('/workspaces')).data
 }
 
-export async function createWorkspace(name) {
-  return (await apiClient.post('/workspaces', { name })).data
+export async function createWorkspace(name, workspaceType) {
+  return (await apiClient.post('/workspaces', { name, workspace_type: workspaceType })).data
 }
 
 export async function getWorkspace(id) {

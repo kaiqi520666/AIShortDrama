@@ -7,7 +7,7 @@ import { streamReversePrompt } from '../../api/reversals'
 import { audioFormatOptions, audioModel, audioSampleRateOptions, buildAudioRequest, getAudioReferenceError, maxAudioPromptLength, normalizeAudioSettings } from '../../config/audioModels'
 import { getEffectivePrompt, maxGenerationPromptLength } from '../../config/generationPrompt'
 import { buildImageRequest, imageModels, normalizeImageSettings } from '../../config/imageModels'
-import { mediaTypes } from '../../config/mediaTypes'
+import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { buildVideoRequest, defaultVideoModel, getVideoModelError, getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
 import { useGlobalToast } from '../../composables/useGlobalUI'
@@ -94,11 +94,11 @@ const settingLabel = computed(() => {
   if (props.type === 'image') return `${selectedAspectRatio.value} · ${selectedResolution.value}`
   if (props.type === 'video') return `${selectedAspectRatio.value === 'adaptive' ? '自适应' : selectedAspectRatio.value} · ${selectedResolution.value} · ${selectedDuration.value}s`
   if (props.type === 'audio') return `${audioFormatOptions.find(({ value }) => value === selectedAudioSettings.value.format)?.label} · ${selectedAudioSettings.value.sampleRate / 1000} kHz`
-  return mediaTypes[props.type].setting
+  return nodeDefinitions[props.type].setting
 })
 const displayReferences = computed(() => {
   const counts = { text: 0, image: 0, video: 0, audio: 0 }
-  return references.value.map((node) => ({ key: node.id, node, number: ++counts[node.type], label: `${mediaTypes[node.type].label}${counts[node.type]}` }))
+  return references.value.map((node) => ({ key: node.id, node, number: ++counts[node.type], label: `${nodeDefinitions[node.type].label}${counts[node.type]}` }))
 })
 const canSubmit = computed(() => {
   if (running.value || !effectivePrompt.value || referenceError.value || promptError.value || insufficientCredits.value) return false
@@ -114,7 +114,7 @@ function updatePrompt(parts) {
     prompt: parts.map((part) => {
       if (['image', 'video', 'audio'].includes(part.type)) {
         const number = mentionReferences.value.filter((node) => node.type === part.type).findIndex((node) => node.id === part.nodeId) + 1
-        return `${props.type === 'image' ? '' : '@'}${mediaTypes[part.type].label}${number}`
+        return `${props.type === 'image' ? '' : '@'}${nodeDefinitions[part.type].label}${number}`
       }
       return part.value
     }).join(''),
@@ -330,14 +330,14 @@ onBeforeUnmount(() => {
       :references="mentionReferences"
       :reference-type="type"
       :reference-label="type === 'video' ? '素材' : type === 'audio' ? '音频' : '图片'"
-      :placeholder="mediaTypes[type].placeholder"
+      :placeholder="nodeDefinitions[type].placeholder"
       @update:model-value="updatePrompt"
       @pointerdown="settingsOpen = false; modelOpen = false"
     />
     <AppTextarea
       v-else
       :model-value="data.prompt"
-      :placeholder="mediaTypes[type].placeholder"
+      :placeholder="nodeDefinitions[type].placeholder"
       :maxlength="promptLimit"
       @input="updateTextPrompt"
       @pointerdown="settingsOpen = false; modelOpen = false"

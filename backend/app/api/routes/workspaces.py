@@ -19,6 +19,7 @@ def workspace_payload(workspace: Workspace, include_canvas: bool = False) -> dic
     payload = {
         "id": str(workspace.id),
         "name": workspace.name,
+        "workspace_type": workspace.workspace_type,
         "version": workspace.version,
         "thumbnail_url": workspace.thumbnail_url,
         "created_at": workspace.created_at.isoformat(),
@@ -62,7 +63,12 @@ async def create_workspace(
     db: AsyncSession = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
-    workspace = Workspace(user_id=user_id, name=payload.name.strip(), canvas=empty_canvas())
+    workspace = Workspace(
+        user_id=user_id,
+        name=payload.name.strip(),
+        workspace_type=payload.workspace_type,
+        canvas=empty_canvas(),
+    )
     db.add(workspace)
     await db.commit()
     await db.refresh(workspace)
@@ -76,7 +82,11 @@ async def get_workspace(
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
     workspace = await owned_workspace(db, workspace_id, user_id)
-    return success(workspace_payload(workspace, include_canvas=True)) if workspace else fail("工作台不存在")
+    return (
+        success(workspace_payload(workspace, include_canvas=True))
+        if workspace
+        else fail("工作台不存在")
+    )
 
 
 @router.patch("/{workspace_id}")
@@ -121,6 +131,7 @@ async def duplicate_workspace(
     workspace = Workspace(
         user_id=user_id,
         name=f"{source.name} 副本"[:100],
+        workspace_type=source.workspace_type,
         canvas=source.canvas,
         thumbnail_url=source.thumbnail_url,
     )

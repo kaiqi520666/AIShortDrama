@@ -1,16 +1,11 @@
 import { defineStore } from 'pinia'
-import { canConnect, getConnectionError } from '../config/connectionRules'
-import { defaultImageModel } from '../config/imageModels'
-import { mediaTypes } from '../config/mediaTypes'
+import { canConnect, getConnectionError } from '../config/canvas/connectionRules'
+import { createNodeData, getNodeDefinition, getReversePrompt } from '../config/canvas/nodeDefinitions'
+import { isNodeTypeAvailable } from '../config/canvas/nodePacks'
 import { defaultReverseModel } from '../config/reverseModels'
-import { defaultVideoModel } from '../config/videoModels'
 import { saveWorkspaceCanvas } from '../api/workspaces'
 
 const createEdge = (id, source, target) => ({ id, source, target, type: 'cinematic' })
-const reversePrompts = {
-  image: '根据图片生成结构化中文提示词，包括主体描述、环境、光影、镜头语言、风格关键词。',
-  video: '根据视频生成结构化中文提示词，包括主体与场景、动作、运镜、景别、光影色彩、节奏转场、声音氛围和风格关键词，并按时间顺序描述关键画面。',
-}
 const defaultWorkspaceId = '00000000-0000-0000-0000-000000000101'
 let activeSave = null
 let saveQueued = false
@@ -27,21 +22,10 @@ function stripTransientNodes(nodes = [], edges = [], groups = []) {
   }
 }
 
-function createNodeData(type, number, source) {
-  const textTask = type === 'text' && Boolean(source)
-  const reverseType = type === 'text' && ['image', 'video'].includes(source?.type) ? source.type : null
-  return {
-    model: reverseType ? defaultReverseModel.id : textTask ? 'Qwen3-VL-Flash' : type === 'image' ? defaultImageModel.id : type === 'video' ? defaultVideoModel.id : mediaTypes[type].model,
-    title: reverseType ? `${mediaTypes[reverseType].label}反推提示词` : textTask ? `AI 文本任务 ${number}` : `${mediaTypes[type].label}节点 ${number}`,
-    status: 'empty',
-    prompt: reverseType ? reversePrompts[reverseType] : '',
-    ...(type === 'text' ? { textMode: textTask ? 'task' : null, content: '', ...(reverseType ? { reverseType } : {}) } : {}),
-  }
-}
-
 export const useCanvasStore = defineStore('canvas', {
   state: () => ({
     workspaceId: null,
+    workspaceType: 'general',
     nodes: [],
     edges: [],
     sequence: 1,
@@ -63,6 +47,7 @@ export const useCanvasStore = defineStore('canvas', {
     async loadWorkspace(workspace) {
       this.ready = false
       this.workspaceId = workspace.id
+      this.workspaceType = workspace.workspace_type
       let canvas = workspace.canvas || {}
       const legacy = this.readLegacyCanvas()
       if (workspace.id === defaultWorkspaceId && !canvas.nodes?.length && legacy?.nodes?.length) {
@@ -132,8 +117,9 @@ export const useCanvasStore = defineStore('canvas', {
       this.viewportData = { x: viewport.x, y: viewport.y, zoom: viewport.zoom }
     },
     addNode(type, position, sourceId) {
+      if (!isNodeTypeAvailable(this.workspaceType, type)) return
       const source = this.nodes.find((node) => node.id === sourceId)
-      if (sourceId && (!source || !canConnect(source.type, type))) return
+      if (sourceId && (!source || !canConnect(source.type, type, this.workspaceType))) return
       const number = this.sequence++
       const id = `${type}-${number}`
       this.nodes.forEach((node) => { node.selected = false })
@@ -151,12 +137,12 @@ export const useCanvasStore = defineStore('canvas', {
       if (this.edges.some((edge) => edge.source === connection.source && edge.target === connection.target)) return false
       const source = this.nodes.find((node) => node.id === connection.source)
       const target = this.nodes.find((node) => node.id === connection.target)
-      if (!source || !target || source.id === target.id || !canConnect(source.type, target.type)) return false
+      if (!source || !target || source.id === target.id || !canConnect(source.type, target.type, this.workspaceType)) return false
       const incomingTypes = this.edges
         .filter((edge) => edge.target === target.id)
         .map((edge) => this.nodes.find((node) => node.id === edge.source)?.type)
         .filter(Boolean)
-      if (getConnectionError(source.type, target.type, incomingTypes)) return false
+      if (getConnectionError(source.type, target.type, incomingTypes, this.workspaceType)) return false
       this.edges.push({ id: `edge-${crypto.randomUUID()}`, ...connection, type: 'cinematic' })
       return true
     },
@@ -189,8 +175,9 @@ export const useCanvasStore = defineStore('canvas', {
       const mediaType = mode === 'videoReverse' ? 'video' : 'image'
       const mediaId = this.addNode(mediaType, { x: node.position.x - 460, y: node.position.y + 3 })
       const media = this.nodes.find((item) => item.id === mediaId)
-      media.data = { ...media.data, title: `参考${mediaTypes[mediaType].label}`, assetSource: 'upload' }
-      node.data = { ...node.data, textMode: 'task', title: `${mediaTypes[mediaType].label}反推提示词`, model: defaultReverseModel.id, prompt: reversePrompts[mediaType], reverseType: mediaType }
+      const mediaLabel = getNodeDefinition(mediaType).label
+      media.data = { ...media.data, title: `参考${mediaLabel}`, assetSource: 'upload' }
+      node.data = { ...node.data, textMode: 'task', title: `${mediaLabel}反推提示词`, model: defaultReverseModel.id, prompt: getReversePrompt(mediaType), reverseType: mediaType }
       this.edges.push(createEdge(`edge-${crypto.randomUUID()}`, mediaId, id))
       this.selectNodes([id])
     },
@@ -244,7 +231,7 @@ export const useCanvasStore = defineStore('canvas', {
           type: source.type,
           position: positions[source.id] || { x: source.position.x + 56, y: source.position.y + 56 },
           selected: true,
-          data: { ...JSON.parse(JSON.stringify(source.data)), title: `${source.data.title || mediaTypes[source.type].label} 副本` },
+          data: { ...JSON.parse(JSON.stringify(source.data)), title: `${source.data.title || getNodeDefinition(source.type).label} 副本` },
         }
       })
       this.nodes.push(...copies)

@@ -1,5 +1,5 @@
 import uuid
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -20,6 +20,7 @@ class WorkspaceCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(default="未命名工作台", min_length=1, max_length=100)
+    workspace_type: Literal["general", "ecommerce", "drama"]
 
     @field_validator("name")
     @classmethod
@@ -51,9 +52,7 @@ class CanvasUpdate(BaseModel):
     groups: list[dict[str, Any]] = Field(default_factory=list)
     sequence: int = Field(default=1, ge=1)
     group_sequence: int = Field(default=1, ge=1)
-    viewport: dict[str, float] = Field(
-        default_factory=lambda: {"x": 0, "y": 0, "zoom": 1}
-    )
+    viewport: dict[str, float] = Field(default_factory=lambda: {"x": 0, "y": 0, "zoom": 1})
 
 
 class WorkspaceIdRequest(BaseModel):

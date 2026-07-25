@@ -9,7 +9,6 @@ import AssetDrawer from '../../components/canvas/AssetDrawer.vue'
 import CanvasHeader from '../../components/canvas/CanvasHeader.vue'
 import FlowEdge from '../../components/canvas/FlowEdge.vue'
 import GenerationPanel from '../../components/canvas/GenerationPanel.vue'
-import MediaNode from '../../components/canvas/MediaNode.vue'
 import NodeCreateMenu from '../../components/canvas/NodeCreateMenu.vue'
 import NodeTypeMenu from '../../components/canvas/NodeTypeMenu.vue'
 import ShortcutPanel from '../../components/canvas/ShortcutPanel.vue'
@@ -18,8 +17,10 @@ import AppInput from '../../components/ui/AppInput.vue'
 import AppMenu from '../../components/ui/AppMenu.vue'
 import AppTooltip from '../../components/ui/AppTooltip.vue'
 import { uploadMedia } from '../../api/uploads'
-import { canConnect, getConnectionError } from '../../config/connectionRules'
-import { mediaTypes } from '../../config/mediaTypes'
+import { canConnect, getConnectionError } from '../../config/canvas/connectionRules'
+import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
+import { nodeRegistry } from '../../config/canvas/nodeRegistry'
+import { getNodeTypes } from '../../config/canvas/nodePacks'
 import { useGlobalConfirm, useGlobalToast } from '../../composables/useGlobalUI'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
@@ -33,7 +34,7 @@ const emit = defineEmits(['back', 'ready'])
 const { nodes, edges, groups } = storeToRefs(store)
 const { project, screenToFlowCoordinate, fitView, findNode, setCenter, setViewport, updateNodeData, viewport, zoomIn, zoomOut, removeSelectedElements, addSelectedNodes } = useVueFlow()
 
-const nodeTypes = Object.fromEntries(Object.keys(mediaTypes).map((type) => [type, markRaw(MediaNode)]))
+const nodeTypes = Object.fromEntries(getNodeTypes(props.workspace.workspace_type).map((type) => [type, markRaw(nodeRegistry[type].component)]))
 const edgeTypes = { cinematic: markRaw(FlowEdge) }
 const createMenu = ref(null)
 const contextMenu = ref(null)
@@ -71,6 +72,7 @@ const assetsVisible = ref(false)
 const activeGroupId = ref(null)
 const selectedNodes = computed(() => nodes.value.filter((node) => node.selected))
 const selectedNode = computed(() => selectedNodes.value.length === 1 ? selectedNodes.value[0] : null)
+const selectedNodeDefinition = computed(() => selectedNode.value && nodeDefinitions[selectedNode.value.type])
 const selectedGroup = computed(() => groups.value.find((group) => group.id === activeGroupId.value) || groups.value.find((group) => group.nodeIds.length === selectedNodes.value.length && group.nodeIds.every((id) => selectedNodes.value.some((node) => node.id === id))))
 const selectedPartialGroup = computed(() => groups.value.find((group) => selectedNodes.value.length > 1 && group.nodeIds.length > selectedNodes.value.length && selectedNodes.value.every((node) => group.nodeIds.includes(node.id))))
 const contextNodeIds = computed(() => contextMenu.value?.nodeIds || [])
@@ -172,7 +174,7 @@ function handleConnectStart({ nodeId, handleType }) {
 function handleConnect(connection) {
   const source = nodes.value.find((node) => node.id === connection.source)
   const target = nodes.value.find((node) => node.id === connection.target)
-  const error = source && target ? getConnectionError(source.type, target.type, store.incomingNodes(target.id).map((node) => node.type)) : '节点不存在'
+  const error = source && target ? getConnectionError(source.type, target.type, store.incomingNodes(target.id).map((node) => node.type), store.workspaceType) : '节点不存在'
   if (error) toast.warning(error)
   else if (!store.addEdge(connection)) toast.warning('节点已经连接')
   connectionSource.value = null
@@ -181,8 +183,8 @@ function handleConnect(connection) {
 function connectSelected() {
   if (selectedNodes.value.length !== 2) return toast.warning('请选择两个节点后连接')
   let [source, target] = [...selectedNodes.value].sort((a, b) => a.position.x - b.position.x)
-  if (!canConnect(source.type, target.type) && canConnect(target.type, source.type)) [source, target] = [target, source]
-  const error = getConnectionError(source.type, target.type, store.incomingNodes(target.id).map((node) => node.type))
+  if (!canConnect(source.type, target.type, store.workspaceType) && canConnect(target.type, source.type, store.workspaceType)) [source, target] = [target, source]
+  const error = getConnectionError(source.type, target.type, store.incomingNodes(target.id).map((node) => node.type), store.workspaceType)
   if (error) return toast.warning(error)
   if (!store.addEdge({ source: source.id, target: target.id })) toast.warning('节点已经连接')
 }
@@ -627,7 +629,7 @@ async function handlePaneUpload(event) {
   pendingUpload.value = null
   if (!file || !upload) return
   const rule = uploadRules[upload.type]
-  if (!rule.types.includes(file.type)) return toast.warning(`不支持的${mediaTypes[upload.type].label}格式`)
+  if (!rule.types.includes(file.type)) return toast.warning(`不支持的${nodeDefinitions[upload.type].label}格式`)
   if (file.size > rule.maxSize) return toast.warning(`文件不能超过 ${rule.maxSize / 1024 / 1024}MB`)
 
   const id = store.addNode(upload.type, upload.position)
@@ -795,7 +797,7 @@ onBeforeUnmount(() => {
     <div v-if="selectedNodes.length > 1 && !selectedGroup" class="selection-frame active" :style="selectionFrameStyle"></div>
 
     <GenerationPanel
-      v-if="selectedNode && !selectedNode.data.pasted"
+      v-if="selectedNodeDefinition?.generationPanel && !selectedNode.data.pasted"
       ref="generationPanel"
       :node-id="selectedNode.id"
       :type="selectedNode.type"

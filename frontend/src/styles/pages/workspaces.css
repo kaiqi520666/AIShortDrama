@@ -218,6 +218,66 @@
   background: var(--color-surface-base);
   color: var(--color-text-muted);
 }
+.workspace-create-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--color-backdrop);
+}
+.workspace-create-dialog {
+  width: min(720px, 100%);
+  border: 1px solid var(--color-border-default);
+  border-radius: 8px;
+  background: var(--color-surface-overlay);
+  box-shadow: var(--shadow-lg);
+}
+.workspace-create-dialog > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px 22px 16px;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.workspace-create-dialog h2 { margin: 0; font-size: 18px; }
+.workspace-create-dialog header p { margin: 5px 0 0; color: var(--color-text-muted); font-size: 12px; }
+.workspace-type-options {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  padding: 22px;
+}
+.workspace-type-option.ui-button {
+  min-width: 0;
+  min-height: 150px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  flex-direction: column;
+  gap: 9px;
+  padding: 18px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 7px;
+  background: var(--color-surface-base);
+  text-align: left;
+}
+.workspace-type-option.ui-button:hover {
+  border-color: var(--color-brand-strong);
+  background: var(--color-surface-hover);
+}
+.workspace-type-option > span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
+}
+.workspace-type-option strong { font-size: 14px; }
+.workspace-type-option small { color: var(--color-text-muted); font-size: 11px; line-height: 1.55; white-space: normal; }
 @media (max-width: 760px) {
   .workspace-content {
     width: 100%;
@@ -236,4 +296,6 @@
   .workspace-grid {
     grid-template-columns: 1fr;
   }
+  .workspace-type-options { grid-template-columns: 1fr; }
+  .workspace-type-option.ui-button { min-height: 112px; }
 }

@@ -12,13 +12,16 @@ from app.models import Asset, Workspace
 async def test_workspace_crud_duplicate_and_canvas_isolation(override_business_user):
     asset_id = None
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        created = (await client.post("/api/workspaces", json={"name": "测试工作台"})).json()["data"]
+        created = (
+            await client.post(
+                "/api/workspaces",
+                json={"name": "测试工作台", "workspace_type": "ecommerce"},
+            )
+        ).json()["data"]
         workspace_id = uuid.UUID(created["id"])
         canvas = {
             "schema_version": 1,
-            "nodes": [
-                {"id": "text-1", "type": "text", "position": {"x": 10, "y": 20}, "data": {}}
-            ],
+            "nodes": [{"id": "text-1", "type": "text", "position": {"x": 10, "y": 20}, "data": {}}],
             "edges": [],
             "groups": [],
             "sequence": 2,
@@ -32,12 +35,14 @@ async def test_workspace_crud_duplicate_and_canvas_isolation(override_business_u
             await db.commit()
         loaded = (await client.get(f"/api/workspaces/{workspace_id}")).json()["data"]
         listed_before_delete = (await client.get("/api/workspaces")).json()["data"]
-        renamed = (await client.patch(f"/api/workspaces/{workspace_id}", json={"name": "新名称"})).json()
+        renamed = (
+            await client.patch(f"/api/workspaces/{workspace_id}", json={"name": "新名称"})
+        ).json()
         duplicate = (await client.post(f"/api/workspaces/{workspace_id}/duplicate")).json()["data"]
         duplicate_id = uuid.UUID(duplicate["id"])
         async with SessionLocal() as db:
             asset = Asset(
-                    user_id=override_business_user,
+                user_id=override_business_user,
                 workspace_id=workspace_id,
                 node_id="image-asset-test",
                 media_type="image",
@@ -57,12 +62,16 @@ async def test_workspace_crud_duplicate_and_canvas_isolation(override_business_u
     try:
         assert saved["code"] == 0
         assert created["thumbnail_url"] is None
+        assert created["workspace_type"] == "ecommerce"
         assert loaded["canvas"] == canvas
-        listed_workspace = next(item for item in listed_before_delete if item["id"] == str(workspace_id))
+        listed_workspace = next(
+            item for item in listed_before_delete if item["id"] == str(workspace_id)
+        )
         assert listed_workspace["thumbnail_url"] == "https://example.com/latest.webp"
         assert renamed["data"]["name"] == "新名称"
         assert duplicate["canvas"] == canvas
         assert duplicate["thumbnail_url"] == "https://example.com/latest.webp"
+        assert duplicate["workspace_type"] == "ecommerce"
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             listed = (await client.get("/api/workspaces")).json()["data"]
         assert str(workspace_id) not in {item["id"] for item in listed}
@@ -78,3 +87,31 @@ async def test_workspace_crud_duplicate_and_canvas_isolation(override_business_u
                 if item:
                     await db.delete(item)
             await db.commit()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("workspace_type", ["general", "ecommerce", "drama"])
+async def test_workspace_create_accepts_supported_type(
+    override_business_user, workspace_type
+):
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        created = (
+            await client.post(
+                "/api/workspaces",
+                json={"name": "类型测试", "workspace_type": workspace_type},
+            )
+        ).json()["data"]
+        await client.delete(f"/api/workspaces/{created['id']}")
+
+    assert created["workspace_type"] == workspace_type
+
+
+@pytest.mark.asyncio
+async def test_workspace_create_rejects_invalid_type():
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/workspaces",
+            json={"name": "错误类型", "workspace_type": "unknown"},
+        )
+
+    assert response.status_code == 422

@@ -35,6 +35,7 @@ describe('canvas transient uploads', () => {
     const store = useCanvasStore()
     await store.loadWorkspace({
       id: 'workspace-1',
+      workspace_type: 'general',
       canvas: { nodes: [readyNode, uploadingNode], edges: [], groups: [], sequence: 3 },
     })
 
@@ -163,5 +164,20 @@ describe('audio reference connections', () => {
 
     expect(store.addEdge({ source: 'audio-1', target: 'audio-2' })).toBe(false)
     expect(store.edges).toHaveLength(1)
+  })
+})
+
+describe('canvas node packs', () => {
+  it('loads the workspace type and rejects nodes outside its pack', async () => {
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1',
+      workspace_type: 'drama',
+      canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
+    })
+
+    expect(store.workspaceType).toBe('drama')
+    expect(store.addNode('product', { x: 0, y: 0 })).toBeUndefined()
+    expect(store.addNode('image', { x: 0, y: 0 })).toBe('image-1')
   })
 })
