@@ -109,7 +109,7 @@ onBeforeUnmount(stopPolling)
 </script>
 
 <template>
-  <section class="recharge-page">
+  <section class="account-content recharge-page">
     <header class="account-section-heading"><h1>积分充值</h1><p>1000 积分 = 35 元，充值越多赠送越多</p></header>
     <EmptyState v-if="loading" loading title="正在加载充值配置" />
     <div v-else-if="config" class="recharge-layout">
