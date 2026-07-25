@@ -60,6 +60,22 @@ class DashScopeProvider:
         async for content in self._stream_content(payload):
             yield content
 
+    async def stream_text(self, *, model: str, prompt: str) -> AsyncIterator[str]:
+        payload = {
+            "model": model,
+            "stream": True,
+            "enable_thinking": False,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "你是专业的中文电商文案助手。严格按用户要求输出可直接使用的最终文案。",
+                },
+                {"role": "user", "content": prompt},
+            ],
+        }
+        async for content in self._stream_content(payload):
+            yield content
+
     async def _stream_content(self, payload: dict) -> AsyncIterator[str]:
         received_content = False
         received_done = False

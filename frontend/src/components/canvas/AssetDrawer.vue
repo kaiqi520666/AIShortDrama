@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ChevronDown, ChevronRight, FileText, Folder, Image, LayoutGrid, Library, Music2, Pencil, RefreshCw, Trash2, Video, Workflow, X } from 'lucide-vue-next'
+import { ChevronDown, ChevronRight, FileText, Folder, Image, LayoutGrid, Library, Megaphone, Music2, Package, Pencil, RefreshCw, Trash2, Video, Workflow, X } from 'lucide-vue-next'
 import { deleteAsset, listAssets, renameAsset } from '../../api/assets'
 import { useGlobalConfirm, useGlobalPrompt, useGlobalToast } from '../../composables/useGlobalUI'
 import AppButton from '../ui/AppButton.vue'
@@ -14,7 +14,7 @@ const props = defineProps({
   activeGroupId: { type: String, default: null },
 })
 const emit = defineEmits(['focus', 'focus-group', 'rename-node', 'rename-group', 'delete-node', 'delete-group', 'close'])
-const icons = { text: FileText, image: Image, video: Video, audio: Music2 }
+const icons = { text: FileText, image: Image, video: Video, audio: Music2, product: Package, selling_copy: Megaphone }
 const drawerTabs = [{ value: 'nodes', label: '节点', icon: Workflow }, { value: 'assets', label: '资产', icon: Library }]
 const assetTypeOptions = [
   { value: '', label: '全部', icon: LayoutGrid },

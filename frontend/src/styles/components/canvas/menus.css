@@ -187,6 +187,14 @@
 .context-submenu .node-option--audio .menu-icon {
   color: var(--color-media-audio);
 }
+.context-submenu .node-option--product .menu-icon,
+.node-create-menu .node-option--product .menu-icon {
+  color: var(--color-warning);
+}
+.context-submenu .node-option--selling_copy .menu-icon,
+.node-create-menu .node-option--selling_copy .menu-icon {
+  color: var(--color-brand);
+}
 .context-submenu button > span:last-child {
   min-width: 0;
   text-align: left;

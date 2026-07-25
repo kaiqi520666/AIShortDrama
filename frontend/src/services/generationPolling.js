@@ -18,6 +18,16 @@ async function pollTask(taskId, nodeId, updateNodeData) {
     })
     if (task.status === 'succeeded') {
       useAuthStore().refreshCredits().catch(() => {})
+      if (task.result?.type === 'text') {
+        pollTimers.delete(taskId)
+        updateNodeData(nodeId, {
+          content: task.result.content || '',
+          status: 'ready',
+          generationProgress: 100,
+          generationError: '',
+        })
+        return
+      }
       const generated = task.result?.data?.[0]
       const asset = generated?.url
       const mediaLabel = { image: '图片', video: '视频', audio: '音频' }[task.task_type] || '内容'

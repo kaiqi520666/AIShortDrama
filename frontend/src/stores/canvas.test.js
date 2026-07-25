@@ -180,4 +180,21 @@ describe('canvas node packs', () => {
     expect(store.addNode('product', { x: 0, y: 0 })).toBeUndefined()
     expect(store.addNode('image', { x: 0, y: 0 })).toBe('image-1')
   })
+
+  it('creates ecommerce business nodes with persistent defaults', async () => {
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1',
+      workspace_type: 'ecommerce',
+      canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
+    })
+
+    const productId = store.addNode('product', { x: 0, y: 0 })
+    const copyId = store.addNode('selling_copy', { x: 500, y: 0 }, productId)
+
+    expect(productId).toBe('product-1')
+    expect(store.nodes[0].data.product).toEqual(expect.objectContaining({ name: '', sellingPoints: '' }))
+    expect(copyId).toBe('selling_copy-2')
+    expect(store.edges[0]).toEqual(expect.objectContaining({ source: productId, target: copyId }))
+  })
 })

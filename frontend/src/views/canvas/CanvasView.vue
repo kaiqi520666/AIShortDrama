@@ -8,7 +8,6 @@ import { ChevronRight, CircleHelp, Clipboard, Copy, Group, Hand, Image as ImageI
 import AssetDrawer from '../../components/canvas/AssetDrawer.vue'
 import CanvasHeader from '../../components/canvas/CanvasHeader.vue'
 import FlowEdge from '../../components/canvas/FlowEdge.vue'
-import GenerationPanel from '../../components/canvas/GenerationPanel.vue'
 import NodeCreateMenu from '../../components/canvas/NodeCreateMenu.vue'
 import NodeTypeMenu from '../../components/canvas/NodeTypeMenu.vue'
 import ShortcutPanel from '../../components/canvas/ShortcutPanel.vue'
@@ -73,12 +72,13 @@ const activeGroupId = ref(null)
 const selectedNodes = computed(() => nodes.value.filter((node) => node.selected))
 const selectedNode = computed(() => selectedNodes.value.length === 1 ? selectedNodes.value[0] : null)
 const selectedNodeDefinition = computed(() => selectedNode.value && nodeDefinitions[selectedNode.value.type])
+const selectedNodeRegistry = computed(() => selectedNode.value && nodeRegistry[selectedNode.value.type])
 const selectedGroup = computed(() => groups.value.find((group) => group.id === activeGroupId.value) || groups.value.find((group) => group.nodeIds.length === selectedNodes.value.length && group.nodeIds.every((id) => selectedNodes.value.some((node) => node.id === id))))
 const selectedPartialGroup = computed(() => groups.value.find((group) => selectedNodes.value.length > 1 && group.nodeIds.length > selectedNodes.value.length && selectedNodes.value.every((node) => group.nodeIds.includes(node.id))))
 const contextNodeIds = computed(() => contextMenu.value?.nodeIds || [])
 const contextCompleteGroup = computed(() => groups.value.find((group) => contextNodeIds.value.length > 1 && group.nodeIds.length === contextNodeIds.value.length && group.nodeIds.every((id) => contextNodeIds.value.includes(id))))
 const contextPartialGroup = computed(() => groups.value.find((group) => contextNodeIds.value.length > 1 && group.nodeIds.length > contextNodeIds.value.length && contextNodeIds.value.every((id) => group.nodeIds.includes(id))))
-const panelConfig = { width: 600, gap: 16, margin: 16 }
+const panelConfig = { width: 600, height: 260, gap: 16, margin: 16, header: 72 }
 function frameStyle(nodeIds) {
   const flowNodes = nodeIds.map((id) => findNode(id)).filter(Boolean)
   if (flowNodes.length < 2) return {}
@@ -121,9 +121,12 @@ const panelStyle = computed(() => {
   const top = viewport.value.y + node.computedPosition.y * zoom
   const bottom = top + node.dimensions.height * zoom
   const below = bottom + panelConfig.gap
+  const maxTop = window.innerHeight - panelConfig.height - panelConfig.margin
+  const above = top - panelConfig.height - panelConfig.gap
+  const panelTop = below <= maxTop ? below : above >= panelConfig.header ? above : Math.max(panelConfig.header, maxTop)
   return {
     left: `clamp(${panelConfig.margin}px, ${center - panelConfig.width / 2}px, calc(100vw - ${panelConfig.width + panelConfig.margin}px))`,
-    top: `${below}px`,
+    top: `${panelTop}px`,
   }
 })
 function openGlobalMenu(event) {
@@ -796,8 +799,9 @@ onBeforeUnmount(() => {
     ></div>
     <div v-if="selectedNodes.length > 1 && !selectedGroup" class="selection-frame active" :style="selectionFrameStyle"></div>
 
-    <GenerationPanel
-      v-if="selectedNodeDefinition?.generationPanel && !selectedNode.data.pasted"
+    <component
+      :is="selectedNodeRegistry?.panelComponent"
+      v-if="selectedNodeRegistry?.panelComponent && !selectedNode.data.pasted"
       ref="generationPanel"
       :node-id="selectedNode.id"
       :type="selectedNode.type"

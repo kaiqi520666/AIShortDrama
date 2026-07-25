@@ -3,9 +3,16 @@ import { canConnect, getConnectionError } from './connectionRules'
 import { getNodeTypes, getWorkspaceType } from './nodePacks'
 
 describe('canvas node packs', () => {
-  it.each(['general', 'ecommerce', 'drama'])('provides core nodes for %s', (workspaceType) => {
+  it.each(['general', 'drama'])('provides core nodes for %s', (workspaceType) => {
     expect(getNodeTypes(workspaceType)).toEqual(['text', 'image', 'video', 'audio'])
     expect(getWorkspaceType(workspaceType).id).toBe(workspaceType)
+  })
+
+  it('adds product and copy nodes to ecommerce canvas', () => {
+    expect(getNodeTypes('ecommerce')).toEqual(['product', 'selling_copy', 'text', 'image', 'video', 'audio'])
+    expect(canConnect('product', 'selling_copy', 'ecommerce')).toBe(true)
+    expect(canConnect('selling_copy', 'image', 'ecommerce')).toBe(true)
+    expect(canConnect('product', 'selling_copy', 'general')).toBe(false)
   })
 
   it('keeps existing media connection rules', () => {

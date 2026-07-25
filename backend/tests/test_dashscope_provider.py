@@ -91,3 +91,34 @@ async def test_stream_requires_done(monkeypatch):
                     prompt="分析图片",
                 )
             ]
+
+
+@pytest.mark.asyncio
+async def test_stream_text(monkeypatch):
+    requests = []
+    chunks = [frame({"choices": [{"delta": {"content": "文案"}}]}), frame("[DONE]")]
+
+    async def handler(request):
+        requests.append(request)
+        return httpx.Response(200, stream=ChunkStream(chunks))
+
+    monkeypatch.setattr(
+        dashscope_module,
+        "get_settings",
+        lambda: SimpleNamespace(
+            dashscope_api_key="secret",
+            dashscope_url="https://provider.test/compatible-mode/v1",
+        ),
+    )
+    async with DashScopeProvider(transport=httpx.MockTransport(handler)) as provider:
+        content = [
+            item
+            async for item in provider.stream_text(
+                model="qwen3.7-plus", prompt="生成商品文案"
+            )
+        ]
+
+    payload = json.loads(requests[0].content)
+    assert content == ["文案"]
+    assert payload["messages"][1] == {"role": "user", "content": "生成商品文案"}
+    assert payload["enable_thinking"] is False

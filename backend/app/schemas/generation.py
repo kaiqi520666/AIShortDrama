@@ -20,6 +20,7 @@ VideoModel = Literal[
 ]
 
 AudioModel = Literal["seed-audio-1.0-multilingual"]
+TextModel = Literal["qwen3.7-plus", "qwen3.6-flash"]
 
 SEEDANCE_RATIOS = {"21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "adaptive"}
 HAPPYHORSE_RATIOS = {"16:9", "9:16", "1:1", "4:3", "3:4"}
@@ -49,6 +50,23 @@ VIDEO_MODEL_RULES: dict[str, dict[str, Any]] = {
         "audio": False,
     },
 }
+
+
+class TextGenerationRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    workspace_id: uuid.UUID
+    node_id: str = Field(min_length=1, max_length=64)
+    model: TextModel
+    prompt: str = Field(min_length=1, max_length=3000)
+
+    @field_validator("prompt")
+    @classmethod
+    def validate_prompt(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("文本提示词不能为空")
+        return value.strip()
+
 
 IMAGE_MODEL_RULES: dict[str, dict[str, Any]] = {
     "gpt-image-2": {

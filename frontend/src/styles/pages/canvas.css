@@ -23,6 +23,12 @@
 .media-node--audio {
   --node-accent: var(--color-media-audio);
 }
+.media-node--product {
+  --node-accent: var(--color-warning);
+}
+.media-node--selling_copy {
+  --node-accent: var(--color-brand);
+}
 .node-title {
   color: var(--color-text-secondary);
 }
@@ -72,6 +78,39 @@
 }
 .generation-failed-state {
   background: var(--color-surface-translucent);
+  color: var(--color-danger);
+}
+.structured-node-summary > span,
+.selling-copy-panel-header > span {
+  color: var(--color-text-primary);
+}
+.structured-node-summary small,
+.structured-node-foot,
+.selling-copy-panel-header small,
+.selling-copy-empty {
+  color: var(--color-text-muted);
+}
+.product-node-content .ui-input,
+.product-node-content .ui-textarea {
+  border-color: var(--color-border-subtle);
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}
+.product-node-content .ui-input:focus,
+.product-node-content .ui-textarea:focus {
+  border-color: var(--node-accent);
+}
+.selling-copy-result {
+  color: var(--color-text-primary);
+}
+.selling-copy-empty > svg,
+.selling-copy-panel-header > span > svg {
+  color: var(--node-accent);
+}
+.structured-node-error {
+  border: 1px solid var(--color-danger-soft);
+  border-radius: 6px;
+  background: var(--color-danger-soft);
   color: var(--color-danger);
 }
 .media-node .vue-flow__handle::after {

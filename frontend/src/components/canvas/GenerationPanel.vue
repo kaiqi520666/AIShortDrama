@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
-import { ArrowUp, ChevronDown, Coins, FileText, Image, LoaderCircle, Music2, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
+import { ArrowUp, ChevronDown, Coins, FileText, Image, LoaderCircle, Megaphone, Music2, Package, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
 import { createAudioGeneration, createImageGeneration, createVideoGeneration } from '../../api/generations'
 import { streamReversePrompt } from '../../api/reversals'
 import { audioFormatOptions, audioModel, audioSampleRateOptions, buildAudioRequest, getAudioReferenceError, maxAudioPromptLength, normalizeAudioSettings } from '../../config/audioModels'
@@ -26,7 +26,7 @@ const props = defineProps({
   type: { type: String, required: true },
 })
 
-const modelIcons = { text: FileText, image: Image, video: VideoIcon, audio: Music2 }
+const modelIcons = { text: FileText, image: Image, video: VideoIcon, audio: Music2, product: Package, selling_copy: Megaphone }
 const modelIcon = computed(() => modelIcons[props.type] || WandSparkles)
 
 const store = useCanvasStore()
@@ -97,8 +97,11 @@ const settingLabel = computed(() => {
   return nodeDefinitions[props.type].setting
 })
 const displayReferences = computed(() => {
-  const counts = { text: 0, image: 0, video: 0, audio: 0 }
-  return references.value.map((node) => ({ key: node.id, node, number: ++counts[node.type], label: `${nodeDefinitions[node.type].label}${counts[node.type]}` }))
+  const counts = {}
+  return references.value.map((node) => {
+    counts[node.type] = (counts[node.type] || 0) + 1
+    return { key: node.id, node, number: counts[node.type], label: `${nodeDefinitions[node.type].label}${counts[node.type]}` }
+  })
 })
 const canSubmit = computed(() => {
   if (running.value || !effectivePrompt.value || referenceError.value || promptError.value || insufficientCredits.value) return false
@@ -319,7 +322,9 @@ onBeforeUnmount(() => {
         <FileText v-else-if="reference.node.type === 'text'" :size="20" />
         <Image v-else-if="reference.node.type === 'image'" :size="20" />
         <VideoIcon v-else-if="reference.node.type === 'video'" :size="20" />
-        <Music2 v-else :size="20" />
+        <Music2 v-else-if="reference.node.type === 'audio'" :size="20" />
+        <Package v-else-if="reference.node.type === 'product'" :size="20" />
+        <Megaphone v-else :size="20" />
         <b>{{ reference.number }}</b>
       </div>
     </div>
