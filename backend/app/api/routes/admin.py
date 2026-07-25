@@ -1,10 +1,8 @@
 import asyncio
 import uuid
 from datetime import datetime
-from decimal import Decimal
-
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import and_, func, or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
