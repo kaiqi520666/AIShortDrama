@@ -13,8 +13,9 @@
 .recharge-tiers span { color: var(--color-text-secondary); font-size: 12px; }
 .recharge-custom { display: grid; gap: 8px; margin-top: 18px; color: var(--color-text-secondary); font-size: 13px; }
 .recharge-custom > div { display: flex; align-items: center; border: 1px solid var(--color-border-default); border-radius: 6px; background: var(--color-surface-raised); }
+.recharge-custom > div:focus-within { border-color: var(--color-brand-strong); box-shadow: 0 0 0 3px var(--color-brand-soft); }
 .recharge-custom b { padding-left: 12px; color: var(--color-text-primary); }
-.recharge-custom .app-input { border: 0; background: transparent; }
+.recharge-custom .ui-input, .recharge-custom .ui-input:hover, .recharge-custom .ui-input:focus { border: 0; background: transparent; box-shadow: none; }
 .recharge-error { margin: 7px 0 0; color: var(--color-danger); font-size: 12px; }
 .recharge-summary { display: grid; grid-template-columns: repeat(3, 1fr); margin: 20px 0; border-block: 1px solid var(--color-border-default); }
 .recharge-summary div { display: grid; gap: 5px; padding: 16px 10px; }
