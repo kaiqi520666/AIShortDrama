@@ -116,7 +116,7 @@ onMounted(loadTiers)
     </template>
 
     <template v-else>
-      <form class="admin-filters" @submit.prevent="loadOrders(1)"><label class="admin-search"><Search :size="15" /><AppInput v-model="filters.q" placeholder="用户、邮箱或订单号" /></label><AppSelect v-model="filters.status" :options="statusOptions" aria-label="支付状态" /><AppDateTime v-model="filters.start_at" aria-label="开始时间" placeholder="开始时间" /><AppDateTime v-model="filters.end_at" aria-label="结束时间" placeholder="结束时间" /><AppButton type="submit" variant="primary">查询</AppButton></form>
+      <form class="admin-filters admin-filters--orders" @submit.prevent="loadOrders(1)"><label class="admin-search"><Search :size="15" /><AppInput v-model="filters.q" placeholder="用户、邮箱或订单号" /></label><AppSelect v-model="filters.status" :options="statusOptions" aria-label="支付状态" /><AppDateTime v-model="filters.start_at" aria-label="开始时间" placeholder="开始时间" /><AppDateTime v-model="filters.end_at" aria-label="结束时间" placeholder="结束时间" /><AppButton type="submit" variant="primary">查询</AppButton></form>
       <AppDataTable :columns="orderColumns" :items="orders.items" :loading="loading" loading-title="正在加载充值订单" empty-title="没有符合条件的充值订单" min-width="980px" :pagination="{ page: orders.page, pageSize: orders.page_size, total: orders.total }" @page-change="loadOrders">
         <template #cell-user="{ item }"><strong>{{ item.user.username }}</strong><small>{{ item.user.email }}</small></template>
         <template #cell-out_trade_no="{ item }"><strong>{{ item.out_trade_no }}</strong><small>{{ item.provider_trade_no || '—' }}</small></template>
