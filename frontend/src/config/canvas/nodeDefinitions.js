@@ -2,7 +2,6 @@ import { FileText, Image, Megaphone, Music2, Package, Video } from 'lucide-vue-n
 import { defaultImageModel } from '../imageModels'
 import { defaultReverseModel } from '../reverseModels'
 import { defaultVideoModel } from '../videoModels'
-import { productRecognitionPrompt } from './ecommerce'
 
 const reversePrompts = {
   image: '根据图片生成结构化中文提示词，包括主体描述、环境、光影、镜头语言、风格关键词。',
@@ -50,14 +49,14 @@ export const nodeDefinitions = {
   },
   product: {
     type: 'product', label: '商品资料', model: '', hint: '商品、规格与核心卖点',
-    placeholder: '描述需要从商品图片中识别的信息…', setting: '', icon: Package,
+    placeholder: '可选：补充识别要求，例如重点读取容量、材质或包装文字…', setting: '', icon: Package,
     generationPanel: true, inputs: ['image'], outputs: ['selling_copy', 'image', 'video'],
     createData: ({ number }) => ({
       title: `商品资料 ${number}`,
       status: 'empty',
       model: defaultReverseModel.id,
-      prompt: productRecognitionPrompt,
-      product: { name: '', brand: '', category: '', price: '', specifications: '', sellingPoints: '', audience: '', scenario: '' },
+      prompt: '',
+      product: { name: '', brand: '', category: '', price: '', specifications: '', sellingPoints: '', audience: '', scenario: '', additionalInfo: '' },
     }),
   },
   selling_copy: {

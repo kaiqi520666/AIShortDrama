@@ -7,7 +7,7 @@ import { streamReversePrompt } from '../../api/reversals'
 import { audioFormatOptions, audioModel, audioSampleRateOptions, buildAudioRequest, getAudioReferenceError, maxAudioPromptLength, normalizeAudioSettings } from '../../config/audioModels'
 import { getEffectivePrompt, maxGenerationPromptLength } from '../../config/generationPrompt'
 import { buildImageRequest, imageModels, normalizeImageSettings } from '../../config/imageModels'
-import { mergeProductProfile, parseProductProfile, productRecognitionPrompt } from '../../config/canvas/ecommerce'
+import { mergeProductProfile, parseProductProfile } from '../../config/canvas/ecommerce'
 import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { buildVideoRequest, defaultVideoModel, getVideoModelError, getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
@@ -55,9 +55,10 @@ const isReverseTask = computed(() => props.type === 'text' && ['image', 'video']
 const isProductRecognition = computed(() => props.type === 'product')
 const isVisionTextTask = computed(() => isReverseTask.value || isProductRecognition.value)
 const reverseReference = computed(() => references.value.find((node) => node.type === (isProductRecognition.value ? 'image' : props.data.reverseType) && node.data.asset))
+const legacyProductPrompt = computed(() => isProductRecognition.value && props.data.prompt?.startsWith('识别图片中的商品并严格输出一个 JSON 对象'))
 const effectivePrompt = computed(() => ['image', 'video', 'audio'].includes(props.type)
   ? getEffectivePrompt(props.data, references.value)
-  : props.data.prompt?.trim() || '')
+  : legacyProductPrompt.value ? '' : props.data.prompt?.trim() || '')
 const promptLimit = computed(() => isVisionTextTask.value ? 3000 : props.type === 'audio' ? maxAudioPromptLength : maxGenerationPromptLength)
 const promptError = computed(() => effectivePrompt.value.length > promptLimit.value ? `提示词不能超过 ${promptLimit.value} 个字符` : '')
 const promptParts = computed(() => props.data.promptParts ?? (props.data.prompt ? [{ type: 'text', value: props.data.prompt }] : []))
@@ -105,7 +106,7 @@ const displayReferences = computed(() => {
   })
 })
 const canSubmit = computed(() => {
-  if (running.value || !effectivePrompt.value || referenceError.value || promptError.value || insufficientCredits.value) return false
+  if (running.value || (!effectivePrompt.value && !isProductRecognition.value) || referenceError.value || promptError.value || insufficientCredits.value) return false
   if (isVisionTextTask.value) return Boolean(reverseReference.value)
   if (props.type !== 'text') return true
   return references.value.some((node) => node.type === 'text' ? node.data.content?.trim() : node.data.asset)
@@ -308,7 +309,7 @@ function closeSettings(event) {
 
 watch(() => props.nodeId, () => {
   notice.value = ''
-  if (isProductRecognition.value && !props.data.prompt?.trim()) updateNodeData(props.nodeId, { prompt: productRecognitionPrompt })
+  if (legacyProductPrompt.value) updateNodeData(props.nodeId, { prompt: '' })
   if (isVisionTextTask.value && selectedReverseModel.value.id !== props.data.model) {
     updateNodeData(props.nodeId, { model: selectedReverseModel.value.id })
   }

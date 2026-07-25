@@ -3,12 +3,13 @@ import { mergeProductProfile, parseProductProfile } from './ecommerce'
 
 describe('product profile parsing', () => {
   it('parses fenced JSON and normalizes selling point arrays', () => {
-    const product = parseProductProfile('```json\n{"name":"冲锋衣","brand":"Moon","sellingPoints":["防风","轻量"]}\n```')
+    const product = parseProductProfile('```json\n{"name":"冲锋衣","brand":"Moon","sellingPoints":["防风","轻量"],"additionalInfo":"可机洗"}\n```')
 
     expect(product).toEqual(expect.objectContaining({
       name: '冲锋衣',
       brand: 'Moon',
       sellingPoints: '防风\n轻量',
+      additionalInfo: '可机洗',
       category: '',
     }))
   })

@@ -116,13 +116,16 @@ async def test_product_profile_uses_structured_system_prompt(monkeypatch):
                 model="qwen3.7-plus",
                 media_type="image",
                 media_url="https://example.com/product.png",
-                prompt="识别商品",
+                prompt="重点读取包装容量",
                 response_mode="product_profile",
             )
         ]
 
     payload = json.loads(requests[0].content)
     assert "JSON" in payload["messages"][0]["content"]
+    prompt = payload["messages"][1]["content"][1]["text"]
+    assert '"additionalInfo"' in prompt
+    assert "重点读取包装容量" in prompt
 
 
 @pytest.mark.asyncio

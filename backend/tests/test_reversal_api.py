@@ -38,7 +38,7 @@ async def test_stream_reverse_prompt(monkeypatch):
                 "model": "qwen3.7-plus",
                 "media_type": "image",
                 "media_url": "https://example.com/image.png",
-                "prompt": "分析图片",
+                "prompt": "",
                 "response_mode": "product_profile",
             },
         )
@@ -52,6 +52,7 @@ async def test_stream_reverse_prompt(monkeypatch):
         {"type": "done"},
     ]
     assert FakeProvider.last_kwargs["response_mode"] == "product_profile"
+    assert FakeProvider.last_kwargs["prompt"] == ""
     async with SessionLocal() as db:
         task = await db.get(GenerationTask, task_id)
         assert task.status == "succeeded"

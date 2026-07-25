@@ -198,7 +198,7 @@ describe('canvas node packs', () => {
       position: { x: -460, y: 3 },
       data: expect.objectContaining({ title: '商品参考图', assetSource: 'upload' }),
     }))
-    expect(store.nodes[1].data).toEqual(expect.objectContaining({ product: expect.objectContaining({ name: '', sellingPoints: '' }), prompt: expect.stringContaining('JSON') }))
+    expect(store.nodes[1].data).toEqual(expect.objectContaining({ product: expect.objectContaining({ name: '', sellingPoints: '', additionalInfo: '' }), prompt: '' }))
     expect(copyId).toBe('selling_copy-3')
     expect(store.edges).toEqual([
       expect.objectContaining({ source: 'image-1', target: productId }),

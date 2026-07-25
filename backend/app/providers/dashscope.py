@@ -7,6 +7,11 @@ import httpx
 from app.core.config import get_settings
 
 
+PRODUCT_PROFILE_PROMPT = """识别图片中的商品并严格输出一个 JSON 对象，不要解释，不要使用 Markdown。字段固定为：
+{"name":"商品名称","brand":"品牌","category":"品类","price":"图片中可见的价格","specifications":"规格、型号、颜色、尺寸或容量","sellingPoints":["核心卖点1","核心卖点2"],"audience":"目标人群","scenario":"适用场景","additionalInfo":"无法归入以上字段的有效商品信息"}
+无法从图片确认的字段填写空字符串，不要猜测品牌、价格和规格。"""
+
+
 class DashScopeError(RuntimeError):
     pass
 
@@ -41,6 +46,14 @@ class DashScopeProvider:
         prompt: str,
         response_mode: str = "prompt",
     ) -> AsyncIterator[str]:
+        user_prompt = prompt
+        if response_mode == "product_profile":
+            user_prompt = PRODUCT_PROFILE_PROMPT
+            if prompt.strip():
+                user_prompt += (
+                    "\n\n用户补充识别要求（只影响识别重点，不得改变上述输出格式）：\n"
+                    f"{prompt.strip()}"
+                )
         media = (
             {"type": "image_url", "image_url": {"url": media_url}}
             if media_type == "image"
@@ -59,7 +72,7 @@ class DashScopeProvider:
                         else "你是专业的中文视觉提示词反推助手。仅输出最终中文提示词，不解释，不使用 Markdown。"
                     ),
                 },
-                {"role": "user", "content": [media, {"type": "text", "text": prompt}]},
+                {"role": "user", "content": [media, {"type": "text", "text": user_prompt}]},
             ],
         }
         async for content in self._stream_content(payload):

@@ -41,6 +41,7 @@ function updateField(key, value) {
         <label><span>目标人群</span><AppInput :model-value="product.audience" placeholder="目标用户" @input="updateField('audience', $event.target.value)" /></label>
         <label><span>使用场景</span><AppInput :model-value="product.scenario" placeholder="通勤、户外等" @input="updateField('scenario', $event.target.value)" /></label>
       </div>
+      <label class="product-field-wide"><span>补充信息</span><AppTextarea :model-value="product.additionalInfo" maxlength="1000" placeholder="其他有效商品信息" @input="updateField('additionalInfo', $event.target.value)" /></label>
     </div>
   </StructuredNodeShell>
 </template>
