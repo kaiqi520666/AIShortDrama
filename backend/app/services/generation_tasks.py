@@ -63,6 +63,8 @@ def build_image_provider_payload(request: ImageGenerationRequest) -> dict[str, A
     metadata: dict[str, Any] = {}
     if request.resolution:
         metadata["resolution"] = request.resolution
+    if request.model in {"doubao-seedream-5-0", "doubao-seedream-5-0-pro"}:
+        metadata["watermark"] = False
     if request.google_search:
         metadata["google_search"] = True
     if request.google_image_search:

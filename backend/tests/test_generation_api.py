@@ -164,6 +164,8 @@ async def test_create_image_generation(monkeypatch, payload, generation_user_id)
                 expected_payload["response_format"] = "url"
             else:
                 expected_payload["metadata"] = {"resolution": payload["resolution"]}
+                if payload["model"].startswith("doubao-seedream-5-0"):
+                    expected_payload["metadata"]["watermark"] = False
                 if payload.get("google_search"):
                     expected_payload["metadata"]["google_search"] = True
                 if payload.get("google_image_search"):
