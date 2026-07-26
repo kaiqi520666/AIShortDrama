@@ -1,6 +1,7 @@
 import asyncio
 import uuid
 from datetime import UTC, datetime
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
 from sqlalchemy import select
@@ -53,12 +54,15 @@ async def upload_media(
     width: int | None = Form(default=None),
     height: int | None = Form(default=None),
     duration: float | None = Form(default=None),
+    category: Literal["general", "model", "character"] = Form(default="general"),
     db: AsyncSession = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
     rule = UPLOAD_RULES.get(media_type)
     if not rule:
         return fail("不支持的媒体类型")
+    if media_type != "image" and category != "general":
+        return fail("当前媒体类型不支持该素材分类")
     if file.content_type not in rule["content_types"]:
         label = {"image": "图片", "video": "视频", "audio": "音频"}[media_type]
         return fail(f"不支持的{label}格式")
@@ -120,6 +124,7 @@ async def upload_media(
         width=width,
         height=height,
         duration=duration,
+        asset_metadata={"category": category},
     )
     db.add(asset)
     await db.commit()
@@ -133,5 +138,9 @@ async def upload_media(
             "size": byte_size,
             "width": width,
             "height": height,
+            "category": category,
+            "name": asset.name,
+            "media_type": media_type,
+            "source_type": asset.source_type,
         }
     )

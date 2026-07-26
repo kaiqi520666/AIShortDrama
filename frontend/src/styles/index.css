@@ -11,6 +11,7 @@
 @import "./components/canvas/overlays.css";
 @import "./components/ui.css";
 @import "./components/feedback.css";
+@import "./components/asset-picker.css";
 @import "./components/brand.css";
 @import "./components/dashboard.css";
 @import "./pages/home.css";

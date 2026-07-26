@@ -607,6 +607,22 @@
   background: var(--color-surface-raised);
   color: var(--color-brand);
 }
+.media-library-button.ui-button {
+  position: absolute;
+  z-index: 5;
+  top: 7px;
+  left: 7px;
+  width: 28px;
+  height: 28px;
+  min-height: 28px;
+  padding: 0;
+  border: 1px solid var(--color-highlight);
+  border-radius: 5px;
+  background: var(--color-brand-soft);
+  color: var(--color-text-primary);
+  backdrop-filter: blur(8px);
+}
+.media-library-button.ui-button:hover { border-color: var(--color-brand-strong); background: var(--color-surface-raised); color: var(--color-brand); }
 .media-upload-state {
   display: grid;
   width: 100%;
@@ -615,16 +631,25 @@
   place-content: center;
   text-align: center;
 }
-.media-upload-state button {
+.media-upload-actions {
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 12px;
+}
+.media-upload-actions > .ui-button {
   display: grid;
+  width: 94px;
   place-items: center;
   gap: 9px;
-  border: 0;
-  background: transparent;
+  padding: 14px 8px;
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-raised);
   color: var(--color-text-muted);
   cursor: pointer;
 }
-.media-upload-state button:hover {
+.media-upload-actions > .ui-button:hover {
+  border-color: var(--color-border-strong);
   color: var(--color-text-primary);
 }
 .media-upload-state p {

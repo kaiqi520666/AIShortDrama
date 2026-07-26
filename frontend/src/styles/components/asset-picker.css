@@ -1,0 +1,115 @@
+.app-modal-backdrop {
+  position: fixed;
+  z-index: 160;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: var(--color-backdrop);
+}
+.app-modal {
+  display: grid;
+  width: min(920px, calc(100vw - 48px));
+  max-height: min(760px, calc(100vh - 48px));
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  overflow: hidden;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 8px;
+  background: var(--color-surface-base);
+  box-shadow: var(--shadow-lg);
+}
+.app-modal-header,
+.app-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+}
+.app-modal-header { border-bottom: 1px solid var(--color-border-subtle); }
+.app-modal-header h2 { margin: 0; color: var(--color-text-primary); font-size: 15px; font-weight: 650; }
+.app-modal-header p { margin: 5px 0 0; color: var(--color-text-muted); font-size: 11px; }
+.app-modal-body { min-height: 0; overflow: hidden; padding: 16px 18px 18px; }
+.app-modal-footer { justify-content: flex-end; border-top: 1px solid var(--color-border-subtle); }
+.app-modal-enter-active, .app-modal-leave-active { transition: opacity 0.16s ease; }
+.app-modal-enter-active .app-modal, .app-modal-leave-active .app-modal { transition: opacity 0.16s ease, transform 0.16s ease; }
+.app-modal-enter-from, .app-modal-leave-to { opacity: 0; }
+.app-modal-enter-from .app-modal, .app-modal-leave-to .app-modal { opacity: 0; transform: translateY(8px); }
+
+.asset-picker-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.asset-picker-toolbar .ui-tabs { flex: none; }
+.asset-picker-search {
+  display: flex;
+  width: 220px;
+  height: 34px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  border: 1px solid var(--color-border-default);
+  border-radius: 6px;
+  background: var(--color-surface-base);
+  color: var(--color-text-muted);
+}
+.asset-picker-search .ui-input { width: 100%; height: 32px; padding: 0; border: 0; background: transparent; }
+.asset-picker-grid {
+  display: grid;
+  max-height: min(590px, calc(100vh - 220px));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+  overflow-y: auto;
+  padding: 1px 3px 3px 1px;
+}
+.asset-picker-upload.ui-button,
+.asset-picker-item.ui-button {
+  position: relative;
+  aspect-ratio: 3 / 4;
+  min-height: 0;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid var(--color-border-default);
+  border-radius: 7px;
+  background: var(--color-surface-raised);
+}
+.asset-picker-upload.ui-button {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  color: var(--color-text-muted);
+}
+.asset-picker-upload strong { color: var(--color-text-secondary); font-size: 12px; }
+.asset-picker-upload small { font-size: 10px; }
+.asset-picker-upload:hover { border-color: var(--color-brand-strong); color: var(--color-brand); }
+.asset-picker-spinner { animation: ui-spin 0.9s linear infinite; }
+.asset-picker-item.ui-button img { width: 100%; height: 100%; object-fit: cover; }
+.asset-picker-item.ui-button span {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  overflow: hidden;
+  padding: 24px 8px 8px;
+  background: linear-gradient(transparent, rgb(0 0 0 / 72%));
+  color: #fff;
+  font-size: 11px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.asset-picker-item.ui-button:hover { border-color: var(--color-border-strong); }
+.asset-picker-item.ui-button.selected { border-color: var(--color-brand); box-shadow: 0 0 0 2px var(--color-brand-soft); }
+.asset-picker-grid > .ui-empty-state { grid-column: 1 / -1; min-height: 220px; }
+
+@media (max-width: 760px) {
+  .app-modal-backdrop { padding: 12px; }
+  .app-modal { width: calc(100vw - 24px); max-height: calc(100vh - 24px); }
+  .asset-picker-toolbar { align-items: stretch; flex-direction: column; }
+  .asset-picker-toolbar .ui-tabs { overflow-x: auto; }
+  .asset-picker-search { width: 100%; }
+  .asset-picker-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}

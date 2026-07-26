@@ -20,6 +20,7 @@ async def test_filter_rename_and_delete_asset(override_business_user):
             source_type="upload",
             name="原名称",
             url="https://example.com/scoped.png",
+            asset_metadata={"category": "model"},
         )
         global_asset = Asset(
             user_id=override_business_user,
@@ -40,6 +41,7 @@ async def test_filter_rename_and_delete_asset(override_business_user):
             listed = (
                 await client.get("/api/assets", params={"workspace_id": str(DEFAULT_WORKSPACE_ID)})
             ).json()["data"]
+            all_images = (await client.get("/api/assets", params={"type": "image"})).json()["data"]
             renamed = (
                 await client.patch(f"/api/assets/{asset_ids[0]}", json={"name": " 新名称 "})
             ).json()
@@ -49,6 +51,8 @@ async def test_filter_rename_and_delete_asset(override_business_user):
             ).json()["data"]
 
         assert str(asset_ids[0]) in {item["id"] for item in listed}
+        assert next(item for item in listed if item["id"] == str(asset_ids[0]))["category"] == "model"
+        assert next(item for item in all_images if item["id"] == str(asset_ids[1]))["category"] == "general"
         assert str(asset_ids[1]) not in {item["id"] for item in listed}
         assert renamed["data"]["name"] == "新名称"
         assert deleted["data"]["id"] == str(asset_ids[0])
