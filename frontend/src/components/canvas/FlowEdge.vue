@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { getBezierPath } from '@vue-flow/core'
+import { getBezierPath, useVueFlow } from '@vue-flow/core'
 
 defineOptions({ inheritAttrs: false })
 
@@ -11,9 +11,13 @@ const props = defineProps({
   targetY: { type: Number, required: true },
   sourcePosition: { type: String, required: true },
   targetPosition: { type: String, required: true },
+  source: { type: String, required: true },
+  target: { type: String, required: true },
   selected: Boolean,
 })
 
+const { findNode } = useVueFlow()
+const active = computed(() => Boolean(findNode(props.source)?.selected || findNode(props.target)?.selected))
 const path = computed(() => getBezierPath({
   sourceX: props.sourceX,
   sourceY: props.sourceY,
@@ -28,5 +32,5 @@ const path = computed(() => getBezierPath({
 <template>
   <path class="flow-edge-hit" :d="path" />
   <path class="flow-edge-base" :class="{ selected }" :d="path" />
-  <path class="flow-edge-pulse" :class="{ selected }" :d="path" pathLength="1" />
+  <path v-if="active" class="flow-edge-pulse" :class="{ selected }" :d="path" pathLength="1" />
 </template>
