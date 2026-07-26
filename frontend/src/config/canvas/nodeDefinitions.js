@@ -33,7 +33,7 @@ export const nodeDefinitions = {
   image: {
     type: 'image', label: '图片', model: 'Moon Image', hint: '商品图与视觉生成',
     placeholder: '描述你想生成的商品画面，@ 引用素材…', setting: '16:9 · 2K', icon: Image,
-    generationPanel: true, inputs: ['text', 'image', 'product', 'selling_copy'], outputs: ['text', 'image', 'video', 'audio', 'product'],
+    generationPanel: true, inputs: ['text', 'image', 'product', 'product_visual', 'selling_copy'], outputs: ['text', 'image', 'video', 'audio', 'product'],
     createData: ({ number }) => ({ model: defaultImageModel.id, title: `图片节点 ${number}`, status: 'empty', prompt: '' }),
   },
   video: {

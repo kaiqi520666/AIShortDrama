@@ -129,6 +129,39 @@ async def test_product_profile_uses_structured_system_prompt(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_product_visual_plan_uses_json_system_prompt(monkeypatch):
+    requests = []
+
+    async def handler(request):
+        requests.append(request)
+        return httpx.Response(
+            200,
+            stream=ChunkStream([frame({"choices": [{"delta": {"content": "[]"}}]}), frame("[DONE]")]),
+        )
+
+    monkeypatch.setattr(
+        dashscope_module,
+        "get_settings",
+        lambda: SimpleNamespace(dashscope_api_key="secret", dashscope_url="https://provider.test"),
+    )
+    async with DashScopeProvider(transport=httpx.MockTransport(handler)) as provider:
+        _ = [
+            item
+            async for item in provider.stream_reverse_prompt(
+                model="qwen3.7-plus",
+                media_type="image",
+                media_url="https://example.com/product.png",
+                prompt="生成白底图方案",
+                response_mode="product_visual_plan",
+            )
+        ]
+
+    payload = json.loads(requests[0].content)
+    assert "JSON 数组" in payload["messages"][0]["content"]
+    assert payload["messages"][1]["content"][1]["text"] == "生成白底图方案"
+
+
+@pytest.mark.asyncio
 async def test_stream_text(monkeypatch):
     requests = []
     chunks = [frame({"choices": [{"delta": {"content": "文案"}}]}), frame("[DONE]")]

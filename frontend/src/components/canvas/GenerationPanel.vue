@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
-import { ArrowUp, ChevronDown, Coins, FileText, Image, LoaderCircle, Megaphone, Music2, Package, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
+import { ArrowUp, ChevronDown, Coins, FileText, Image, Images, LoaderCircle, Megaphone, Music2, Package, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
 import { createAudioGeneration, createImageGeneration, createVideoGeneration } from '../../api/generations'
 import { streamReversePrompt } from '../../api/reversals'
 import { audioFormatOptions, audioModel, audioSampleRateOptions, buildAudioRequest, getAudioReferenceError, maxAudioPromptLength, normalizeAudioSettings } from '../../config/audioModels'
@@ -330,6 +330,7 @@ onBeforeUnmount(() => {
         <VideoIcon v-else-if="reference.node.type === 'video'" :size="20" />
         <Music2 v-else-if="reference.node.type === 'audio'" :size="20" />
         <Package v-else-if="reference.node.type === 'product'" :size="20" />
+        <Images v-else-if="reference.node.type === 'product_visual'" :size="20" />
         <Megaphone v-else :size="20" />
         <b>{{ reference.number }}</b>
       </div>

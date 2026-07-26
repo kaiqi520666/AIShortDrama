@@ -3,12 +3,14 @@ import uuid
 
 import pytest
 from httpx import ASGITransport, AsyncClient
+from pydantic import ValidationError
 
 from app.api.routes import reversals as reversals_route
 from app.core.database import SessionLocal
 from app.core.identity import DEFAULT_WORKSPACE_ID
 from app.main import app
 from app.models import GenerationTask
+from app.schemas.reversal import ReversePromptRequest
 
 
 class FakeProvider:
@@ -24,6 +26,20 @@ class FakeProvider:
         self.__class__.last_kwargs = _kwargs
         yield "第一段"
         yield "第二段"
+
+
+def test_product_visual_plan_requires_prompt():
+    payload = {
+        "workspace_id": str(DEFAULT_WORKSPACE_ID),
+        "node_id": "product-visual-1",
+        "model": "qwen3.7-plus",
+        "media_type": "image",
+        "media_url": "https://example.com/product.png",
+        "response_mode": "product_visual_plan",
+    }
+    with pytest.raises(ValidationError, match="提示词不能为空"):
+        ReversePromptRequest(**payload)
+    assert ReversePromptRequest(**{**payload, "prompt": "生成出图方案"}).response_mode == "product_visual_plan"
 
 
 @pytest.mark.asyncio

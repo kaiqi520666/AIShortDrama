@@ -152,6 +152,34 @@ export const useCanvasStore = defineStore('canvas', {
       this.edges.push({ id: `edge-${crypto.randomUUID()}`, ...connection, type: 'cinematic' })
       return true
     },
+    addProductVisualNodes(plannerId, productId, referenceId, plans, settings) {
+      const planner = this.nodes.find((node) => node.id === plannerId)
+      if (!planner || !plans.length) return []
+
+      const columns = Math.min(3, plans.length)
+      const ids = plans.map((plan, index) => {
+        const id = this.addNode('image', {
+          x: planner.position.x + 500 + (index % columns) * 440,
+          y: planner.position.y + Math.floor(index / columns) * 340,
+        })
+        const node = this.nodes.find((item) => item.id === id)
+        node.data = {
+          ...node.data,
+          title: plan.label,
+          prompt: plan.prompt,
+          promptParts: [{ type: 'text', value: plan.prompt }],
+          model: settings.model,
+          aspectRatio: settings.aspectRatio,
+          resolution: settings.resolution,
+        }
+        this.addEdge({ source: plannerId, target: id })
+        this.addEdge({ source: referenceId, target: id })
+        this.addEdge({ source: productId, target: id })
+        return id
+      })
+      this.selectNodes(ids.slice(0, 1))
+      return ids
+    },
     addAssetNode(asset, position) {
       const id = this.addNode(asset.media_type, position)
       const node = this.nodes.find((item) => item.id === id)

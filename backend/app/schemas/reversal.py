@@ -13,10 +13,10 @@ class ReversePromptRequest(BaseModel):
     media_type: Literal["image", "video"]
     media_url: AnyHttpUrl
     prompt: str = Field(default="", max_length=3000)
-    response_mode: Literal["prompt", "product_profile"] = "prompt"
+    response_mode: Literal["prompt", "product_profile", "product_visual_plan"] = "prompt"
 
     @model_validator(mode="after")
     def validate_prompt(self):
-        if self.response_mode == "prompt" and not self.prompt.strip():
+        if self.response_mode != "product_profile" and not self.prompt.strip():
             raise ValueError("提示词不能为空")
         return self
