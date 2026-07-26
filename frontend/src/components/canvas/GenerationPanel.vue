@@ -26,6 +26,7 @@ const props = defineProps({
   nodeId: { type: String, required: true },
   data: { type: Object, required: true },
   type: { type: String, required: true },
+  embedded: Boolean,
 })
 
 const modelIcons = { text: FileText, image: Image, video: VideoIcon, audio: Music2, product: Package, selling_copy: Megaphone }
@@ -154,7 +155,7 @@ async function submitTask() {
         updateNodeData(nodeId, { generationTaskId: taskId, generationStatus: 'running' })
       })
       updateNodeData(nodeId, isProductRecognition.value
-        ? { status: 'ready', product: mergeProductProfile(props.data.product, parseProductProfile(content)), generationStatus: 'succeeded' }
+        ? { status: 'ready', product: mergeProductProfile(props.data.product, parseProductProfile(content)), generationStatus: 'succeeded', workflowStep: 'visual' }
         : { status: 'ready', content })
     } catch (error) {
       const message = error.message || (isProductRecognition.value ? '商品识别失败' : '反推生成失败')
@@ -302,7 +303,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section v-if="!data.assetSource && (type !== 'text' || data.textMode === 'task')" class="generation-panel nodrag nowheel" @pointerdown.stop>
+  <section v-if="!data.assetSource && (type !== 'text' || data.textMode === 'task')" class="generation-panel nodrag nowheel" :class="{ embedded }" @pointerdown.stop>
     <div v-if="displayReferences.length" class="reference-strip">
       <div v-for="reference in displayReferences" :key="reference.key" class="reference-item" :title="reference.label" :aria-label="reference.label">
         <img v-if="reference.node.type === 'image' && reference.node.data.asset" :src="reference.node.data.asset" alt="" />

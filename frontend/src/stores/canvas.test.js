@@ -239,7 +239,14 @@ describe('canvas node packs', () => {
       position: { x: -460, y: 3 },
       data: expect.objectContaining({ title: '商品参考图', assetSource: 'upload' }),
     }))
-    expect(store.nodes[1].data).toEqual(expect.objectContaining({ product: expect.objectContaining({ name: '', sellingPoints: '', additionalInfo: '' }), prompt: '' }))
+    expect(store.nodes[1].data).toEqual(expect.objectContaining({
+      workflowStep: 'recognition',
+      product: expect.objectContaining({ name: '', sellingPoints: '', additionalInfo: '' }),
+      textModel: 'qwen3.7-plus',
+      imageModel: 'gpt-image-2',
+      items: expect.arrayContaining([expect.objectContaining({ id: 'white-bg', enabled: true })]),
+      prompt: '',
+    }))
     expect(copyId).toBe('selling_copy-3')
     expect(store.edges).toEqual([
       expect.objectContaining({ source: 'image-1', target: productId }),
@@ -263,7 +270,7 @@ describe('canvas node packs', () => {
     expect(store.edges[0]).toEqual(expect.objectContaining({ source: imageId, target: productId }))
   })
 
-  it('creates planned image nodes with shared settings and product references', async () => {
+  it('creates planned image nodes from product creation with shared settings and references', async () => {
     const store = useCanvasStore()
     await store.loadWorkspace({
       id: 'workspace-1',
@@ -274,28 +281,22 @@ describe('canvas node packs', () => {
     const productId = store.addNode('product', { x: 0, y: 0 })
     const referenceId = store.nodes[0].id
     store.nodes[0].data.asset = 'https://example.com/product.png'
-    const plannerId = store.addNode('product_visual', { x: 500, y: 0 }, productId)
-    expect(store.nodes.find((node) => node.id === plannerId).data).toEqual(expect.objectContaining({
-      textModel: 'qwen3.7-plus', imageModel: 'gpt-image-2', aspectRatio: '1:1', resolution: '1K',
-    }))
-    expect(store.nodes.find((node) => node.id === plannerId).data).not.toHaveProperty('model')
 
-    const ids = store.addProductVisualNodes(plannerId, productId, referenceId, [
+    const ids = store.addProductVisualNodes(productId, productId, referenceId, [
       { id: 'white-bg', label: '白底图', prompt: '纯白背景商品图' },
       { id: 'first-screen', label: '首屏主视觉', prompt: '首屏主视觉商品图' },
     ], { model: 'gpt-image-2', aspectRatio: '1:1', resolution: '1K' })
 
-    expect(ids).toEqual(['image-4', 'image-5'])
+    expect(ids).toEqual(['image-3', 'image-4'])
     expect(store.nodes.find((node) => node.id === ids[0]).data).toEqual(expect.objectContaining({
       title: '白底图', prompt: '纯白背景商品图', model: 'gpt-image-2', aspectRatio: '1:1', resolution: '1K',
     }))
     expect(store.edges).toEqual(expect.arrayContaining([
-      expect.objectContaining({ source: plannerId, target: ids[0] }),
       expect.objectContaining({ source: referenceId, target: ids[0] }),
       expect.objectContaining({ source: productId, target: ids[0] }),
-      expect.objectContaining({ source: plannerId, target: ids[1] }),
       expect.objectContaining({ source: referenceId, target: ids[1] }),
       expect.objectContaining({ source: productId, target: ids[1] }),
     ]))
+    expect(store.edges.filter((edge) => ids.includes(edge.target))).toHaveLength(4)
   })
 })

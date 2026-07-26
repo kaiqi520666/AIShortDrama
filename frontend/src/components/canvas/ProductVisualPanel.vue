@@ -16,6 +16,8 @@ import AppSelect from '../ui/AppSelect.vue'
 const props = defineProps({
   nodeId: { type: String, required: true },
   data: { type: Object, required: true },
+  productNodeId: { type: String, default: '' },
+  embedded: Boolean,
 })
 
 const groupIcons = { basic: Box, marketing: BadgeCheck, detail: ScanSearch, trust: Package }
@@ -24,7 +26,9 @@ const authStore = useAuthStore()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
 const notice = ref('')
-const productNode = computed(() => store.incomingNodes(props.nodeId).find((node) => node.type === 'product'))
+const productNode = computed(() => props.productNodeId
+  ? store.nodes.find((node) => node.id === props.productNodeId)
+  : store.incomingNodes(props.nodeId).find((node) => node.type === 'product'))
 const referenceImage = computed(() => productNode.value && store.incomingNodes(productNode.value.id).find((node) => node.type === 'image' && node.data.asset))
 const productContext = computed(() => productPromptContext(productNode.value?.data.product))
 const selectedImageSettings = computed(() => normalizeImageSettings({
@@ -123,7 +127,7 @@ defineExpose({ submitTask })
 </script>
 
 <template>
-  <section class="generation-panel product-visual-panel nodrag nowheel" @pointerdown.stop>
+  <section class="generation-panel product-visual-panel nodrag nowheel" :class="{ embedded }" @pointerdown.stop>
     <header class="product-visual-panel-header">
       <span><Images :size="16" />商品出图</span>
       <small v-if="productNode"><Package :size="13" />{{ productNode.data.product?.name || productNode.data.title }}</small>

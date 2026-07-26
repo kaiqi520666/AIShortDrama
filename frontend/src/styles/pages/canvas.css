@@ -26,6 +26,9 @@
 .media-node--product {
   --node-accent: var(--color-warning);
 }
+.product-creation-panel {
+  --node-accent: var(--color-warning);
+}
 .media-node--product_visual {
   --node-accent: var(--color-media-image);
 }
@@ -105,6 +108,28 @@
 .product-node-content .ui-input:focus,
 .product-node-content .ui-textarea:focus {
   border-color: var(--node-accent);
+}
+.product-node-steps > .ui-button,
+.product-creation-steps > .ui-button {
+  background: transparent;
+  color: var(--color-text-secondary);
+}
+.product-node-steps > .ui-button.active,
+.product-creation-steps > .ui-button.active {
+  border-color: color-mix(in srgb, var(--node-accent) 40%, var(--color-border-subtle));
+  background: color-mix(in srgb, var(--node-accent) 10%, var(--color-surface-raised));
+  color: var(--color-text-primary);
+}
+.product-node-steps > .ui-button.complete > span,
+.product-creation-steps > .ui-button.complete .product-step-number,
+.product-step-line.complete {
+  border-color: var(--node-accent);
+  background: var(--node-accent);
+  color: var(--color-canvas);
+}
+.product-creation-settings-summary span {
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
 }
 .product-visual-source {
   background: var(--color-surface-raised);
