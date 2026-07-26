@@ -95,9 +95,9 @@ onMounted(loadAssets)
 
 <template>
   <AppModal :title="copy.title" :description="copy.description" @close="emit('close')">
-    <div class="asset-picker-toolbar">
+    <template #header-actions>
       <label class="asset-picker-search"><Search :size="15" /><AppInput v-model="query" placeholder="搜索素材" aria-label="搜索素材" /></label>
-    </div>
+    </template>
 
     <EmptyState v-if="loading" title="正在加载素材" loading />
     <div v-else class="asset-picker-grid">

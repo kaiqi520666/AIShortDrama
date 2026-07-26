@@ -28,7 +28,10 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
         <section class="app-modal" role="dialog" aria-modal="true" aria-labelledby="app-modal-title">
           <header class="app-modal-header">
             <div><h2 id="app-modal-title">{{ title }}</h2><p v-if="description">{{ description }}</p></div>
-            <AppButton ref="closeButton" icon-only size="sm" title="关闭" aria-label="关闭" @click="emit('close')"><X :size="17" /></AppButton>
+            <div class="app-modal-header-actions">
+              <slot name="header-actions" />
+              <AppButton ref="closeButton" icon-only size="sm" title="关闭" aria-label="关闭" @click="emit('close')"><X :size="17" /></AppButton>
+            </div>
           </header>
           <div class="app-modal-body"><slot /></div>
           <footer v-if="$slots.footer" class="app-modal-footer"><slot name="footer" /></footer>
