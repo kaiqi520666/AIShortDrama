@@ -108,13 +108,12 @@ async function handleUpload(event) {
 }
 
 function selectAsset(item) {
-  const sourceWidth = item.width || (item.category === 'model' ? 3 : null)
-  const sourceHeight = item.height || (item.category === 'model' ? 4 : null)
+  const sourceWidth = item.width
+  const sourceHeight = item.height
   updateNodeData(props.id, {
     asset: item.url,
     assetId: item.assetId || null,
-    assetSource: item.source === 'system' ? 'system' : 'library',
-    assetCategory: item.category,
+    assetSource: 'library',
     status: 'ready',
     sourceWidth,
     sourceHeight,
@@ -254,6 +253,7 @@ onBeforeUnmount(() => {
 
     <AppAssetPickerModal
       v-if="assetPickerOpen"
+      resource-type="asset"
       media-type="image"
       :workspace-id="store.workspaceId"
       :node-id="id"

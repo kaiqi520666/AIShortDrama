@@ -1,57 +1,56 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ImagePlus, LoaderCircle, Search } from 'lucide-vue-next'
+import { ImagePlus, LoaderCircle, Music2, Search, Video } from 'lucide-vue-next'
 import { listAssets } from '../../api/assets'
+import { listReferenceItems, uploadReferenceItem } from '../../api/referenceLibrary'
 import { uploadMedia } from '../../api/uploads'
-import { imageAssetCategories, normalizeAssetItem, systemImageAssets } from '../../config/assetLibrary'
+import { normalizeLibraryItem } from '../../config/assetLibrary'
 import { useGlobalToast } from '../../composables/useGlobalUI'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import { mediaUploadRules, readMediaMetadata, validateMediaFile } from '../../utils/mediaFiles'
 import AppButton from '../ui/AppButton.vue'
 import AppInput from '../ui/AppInput.vue'
 import AppModal from '../ui/AppModal.vue'
-import AppTabs from '../ui/AppTabs.vue'
 import EmptyState from '../ui/EmptyState.vue'
 
 const props = defineProps({
+  resourceType: { type: String, default: 'asset', validator: (value) => ['asset', 'model', 'character'].includes(value) },
   mediaType: { type: String, default: 'image' },
-  category: { type: String, default: '' },
-  workspaceId: { type: String, required: true },
-  nodeId: { type: String, required: true },
+  workspaceId: { type: String, default: '' },
+  nodeId: { type: String, default: '' },
   selectedUrl: { type: String, default: '' },
 })
 const emit = defineEmits(['close', 'select'])
 const toast = useGlobalToast()
-const activeCategory = ref(props.category || 'all')
 const query = ref('')
-const userAssets = ref([])
+const items = ref([])
 const loading = ref(true)
 const uploading = ref(false)
 const uploadProgress = ref(0)
 const selected = ref(null)
 const fileInput = ref(null)
-const categoryOptions = computed(() => props.category
-  ? imageAssetCategories.filter((item) => item.value === props.category)
-  : imageAssetCategories)
-const allAssets = computed(() => [
-  ...userAssets.value,
-  ...(props.mediaType === 'image' ? systemImageAssets : []),
-])
-const visibleAssets = computed(() => allAssets.value.filter((item) => {
-  const categoryMatches = activeCategory.value === 'all' || item.category === activeCategory.value
+const effectiveMediaType = computed(() => props.resourceType === 'asset' ? props.mediaType : 'image')
+const uploadIcon = computed(() => ({ image: ImagePlus, video: Video, audio: Music2 }[effectiveMediaType.value]))
+const formatHint = computed(() => ({ image: 'JPG、PNG、WebP', video: 'MP4、MOV、WebM', audio: 'MP3、WAV、M4A' }[effectiveMediaType.value]))
+const copy = computed(() => ({
+  asset: { title: `选择${props.mediaType === 'video' ? '视频' : props.mediaType === 'audio' ? '音频' : '图片'}素材`, description: '从资产库选择，或上传新的素材', upload: `上传${props.mediaType === 'video' ? '视频' : props.mediaType === 'audio' ? '音频' : '图片'}` },
+  model: { title: '选择模特', description: '选择系统模特或已上传的模特', upload: '上传模特' },
+  character: { title: '选择角色', description: '选择系统角色或已上传的角色', upload: '上传角色' },
+}[props.resourceType]))
+const visibleItems = computed(() => items.value.filter((item) => {
   const queryMatches = !query.value.trim() || item.name.toLowerCase().includes(query.value.trim().toLowerCase())
-  return item.mediaType === props.mediaType && categoryMatches && queryMatches
+  return item.mediaType === effectiveMediaType.value && queryMatches
 }))
-const uploadCategory = computed(() => activeCategory.value === 'all' ? 'general' : activeCategory.value)
-const uploadLabel = computed(() => uploadCategory.value === 'model' ? '上传模特' : uploadCategory.value === 'character' ? '上传角色' : '上传图片')
 
 async function loadAssets() {
   loading.value = true
   try {
-    const result = await listAssets(props.mediaType)
+    const result = props.resourceType === 'asset'
+      ? await listAssets(props.mediaType)
+      : await listReferenceItems(props.resourceType)
     if (result.code !== 0) throw new Error(result.message)
-    userAssets.value = result.data.map(normalizeAssetItem)
-    selected.value = allAssets.value.find((item) => item.url === props.selectedUrl) || null
+    items.value = result.data.map((item) => normalizeLibraryItem(item, props.resourceType))
+    selected.value = items.value.find((item) => item.url === props.selectedUrl) || null
   } catch (error) {
     toast.error(error.response?.data?.message || error.message || '素材加载失败')
   } finally {
@@ -63,21 +62,22 @@ async function handleUpload(event) {
   const file = event.target.files?.[0]
   event.target.value = ''
   if (!file) return
-  const error = validateMediaFile(props.mediaType, file)
+  const error = validateMediaFile(effectiveMediaType.value, file)
   if (error) return toast.warning(error)
   uploading.value = true
   uploadProgress.value = 0
   try {
-    const metadata = await readMediaMetadata(props.mediaType, file)
-    const result = await uploadMedia(props.mediaType, file, {
-      workspaceId: props.workspaceId,
-      nodeId: props.nodeId,
-      category: uploadCategory.value,
-      ...metadata,
-    }, (progress) => { uploadProgress.value = progress })
+    const metadata = await readMediaMetadata(effectiveMediaType.value, file)
+    const result = props.resourceType === 'asset'
+      ? await uploadMedia(props.mediaType, file, {
+        workspaceId: props.workspaceId,
+        nodeId: props.nodeId,
+        ...metadata,
+      }, (progress) => { uploadProgress.value = progress })
+      : await uploadReferenceItem(props.resourceType, file, (progress) => { uploadProgress.value = progress })
     if (result.code !== 0) throw new Error(result.message)
-    const item = normalizeAssetItem({ ...result.data, byte_size: result.data.size })
-    userAssets.value = [item, ...userAssets.value]
+    const item = normalizeLibraryItem({ ...result.data, byte_size: result.data.size }, props.resourceType)
+    items.value = [item, ...items.value]
     selected.value = item
   } catch (uploadError) {
     toast.error(uploadError.response?.data?.message || uploadError.message || '素材上传失败')
@@ -94,9 +94,8 @@ onMounted(loadAssets)
 </script>
 
 <template>
-  <AppModal title="选择图片素材" description="从素材库选择，或上传新的图片" @close="emit('close')">
+  <AppModal :title="copy.title" :description="copy.description" @close="emit('close')">
     <div class="asset-picker-toolbar">
-      <AppTabs v-if="!category" v-model="activeCategory" :options="categoryOptions" aria-label="图片素材分类" />
       <label class="asset-picker-search"><Search :size="15" /><AppInput v-model="query" placeholder="搜索素材" aria-label="搜索素材" /></label>
     </div>
 
@@ -104,14 +103,14 @@ onMounted(loadAssets)
     <div v-else class="asset-picker-grid">
       <AppButton class="asset-picker-upload" :disabled="uploading" @click="fileInput?.click()">
         <LoaderCircle v-if="uploading" class="asset-picker-spinner" :size="22" />
-        <ImagePlus v-else :size="22" />
-        <strong>{{ uploading ? `上传中 ${uploadProgress}%` : uploadLabel }}</strong>
-        <small>JPG、PNG、WebP</small>
+        <component :is="uploadIcon" v-else :size="22" />
+        <strong>{{ uploading ? `上传中 ${uploadProgress}%` : copy.upload }}</strong>
+        <small>{{ formatHint }}</small>
       </AppButton>
-      <input ref="fileInput" type="file" :accept="mediaUploadRules[mediaType]?.types.join(',')" hidden @change="handleUpload" />
+      <input ref="fileInput" type="file" :accept="mediaUploadRules[effectiveMediaType]?.types.join(',')" hidden @change="handleUpload" />
 
       <AppButton
-        v-for="item in visibleAssets"
+        v-for="item in visibleItems"
         :key="`${item.source}:${item.id}`"
         class="asset-picker-item"
         :class="{ selected: selected?.source === item.source && selected?.id === item.id }"
@@ -121,7 +120,7 @@ onMounted(loadAssets)
         <img :src="buildOssImageUrl(item.url, { width: 480, quality: 80 })" :alt="item.name" loading="lazy" referrerpolicy="no-referrer" />
         <span>{{ item.name }}</span>
       </AppButton>
-      <EmptyState v-if="!visibleAssets.length" compact title="暂无匹配素材" />
+      <EmptyState v-if="!visibleItems.length" compact title="暂无匹配素材" />
     </div>
 
     <template #footer>

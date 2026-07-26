@@ -37,7 +37,6 @@ async def owned_asset(db: AsyncSession, asset_id: uuid.UUID, user_id: uuid.UUID)
 
 
 def asset_payload(asset: Asset) -> dict[str, Any]:
-    metadata = asset.asset_metadata or {}
     return {
         "id": str(asset.id),
         "workspace_id": str(asset.workspace_id) if asset.workspace_id else None,
@@ -55,8 +54,7 @@ def asset_payload(asset: Asset) -> dict[str, Any]:
         "width": asset.width,
         "height": asset.height,
         "duration": asset.duration,
-        "metadata": metadata,
-        "category": metadata.get("category", "general"),
+        "metadata": asset.asset_metadata or {},
         "created_at": asset.created_at.isoformat(),
     }
 

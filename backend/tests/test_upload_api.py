@@ -36,11 +36,10 @@ def png_bytes():
 )
 async def test_upload_media(monkeypatch, media_type, filename, content_type, content):
     monkeypatch.setattr(uploads_route, "OssStorage", FakeStorage)
-    category = "model" if media_type == "image" else "general"
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             f"/api/uploads/{media_type}",
-            data={"workspace_id": str(DEFAULT_WORKSPACE_ID), "node_id": f"{media_type}-upload", "category": category},
+            data={"workspace_id": str(DEFAULT_WORKSPACE_ID), "node_id": f"{media_type}-upload"},
             files={"file": (filename, content, content_type)},
         )
 
@@ -49,13 +48,12 @@ async def test_upload_media(monkeypatch, media_type, filename, content_type, con
         assert payload["code"] == 0
         assert payload["data"]["url"].startswith(f"https://cdn.example.com/uploads/{media_type}s/")
         assert payload["data"]["size"] == len(content)
-        assert payload["data"]["category"] == category
         assert FakeStorage.uploaded[1:] == (content, content_type)
         async with SessionLocal() as db:
             asset = await db.get(Asset, uuid.UUID(payload["data"]["id"]))
             assert asset.source_type == "upload"
             assert asset.workspace_id == DEFAULT_WORKSPACE_ID
-            assert asset.asset_metadata["category"] == category
+            assert asset.asset_metadata == {}
     finally:
         if payload.get("data", {}).get("id"):
             async with SessionLocal() as db:
