@@ -6,7 +6,7 @@ import { createAudioGeneration, createImageGeneration, createVideoGeneration } f
 import { streamReversePrompt } from '../../api/reversals'
 import { audioFormatOptions, audioModel, audioSampleRateOptions, buildAudioRequest, getAudioReferenceError, maxAudioPromptLength, normalizeAudioSettings } from '../../config/audioModels'
 import { getEffectivePrompt, maxGenerationPromptLength } from '../../config/generationPrompt'
-import { buildImageRequest, imageModels, normalizeImageSettings } from '../../config/imageModels'
+import { buildImageRequest, normalizeImageSettings } from '../../config/imageModels'
 import { mergeProductProfile, parseProductProfile } from '../../config/canvas/ecommerce'
 import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
@@ -19,6 +19,7 @@ import AppMenu from '../ui/AppMenu.vue'
 import AppSelect from '../ui/AppSelect.vue'
 import AppSlider from '../ui/AppSlider.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
+import ImageGenerationControls from './ImageGenerationControls.vue'
 import PromptReferenceEditor from './PromptReferenceEditor.vue'
 
 const props = defineProps({
@@ -68,8 +69,8 @@ const selectedVideoSettings = computed(() => normalizeVideoSettings(props.data))
 const selectedVideoModel = computed(() => selectedVideoSettings.value.model)
 const selectedAudioSettings = computed(() => normalizeAudioSettings(props.data))
 const selectedReverseModel = computed(() => reverseModels.find((model) => model.id === props.data.model) || defaultReverseModel)
-const selectableModels = computed(() => props.type === 'image' ? imageModels : props.type === 'video' ? videoModels : reverseModels)
-const selectedModel = computed(() => props.type === 'image' ? selectedImageModel.value : props.type === 'video' ? selectedVideoModel.value : selectedReverseModel.value)
+const selectableModels = computed(() => props.type === 'video' ? videoModels : reverseModels)
+const selectedModel = computed(() => props.type === 'video' ? selectedVideoModel.value : selectedReverseModel.value)
 const selectedResolution = computed(() => props.type === 'image' ? selectedImageSettings.value.resolution : selectedVideoSettings.value.resolution)
 const selectedAspectRatio = computed(() => props.type === 'image' ? selectedImageSettings.value.aspectRatio : selectedVideoSettings.value.aspectRatio)
 const selectedDuration = computed(() => selectedVideoSettings.value.duration)
@@ -93,7 +94,6 @@ const referenceError = computed(() => {
 })
 const panelMessage = computed(() => notice.value || props.data.generationError || referenceError.value || promptError.value || (insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
 const settingLabel = computed(() => {
-  if (props.type === 'image') return `${selectedAspectRatio.value} · ${selectedResolution.value}`
   if (props.type === 'video') return `${selectedAspectRatio.value === 'adaptive' ? '自适应' : selectedAspectRatio.value} · ${selectedResolution.value} · ${selectedDuration.value}s`
   if (props.type === 'audio') return `${audioFormatOptions.find(({ value }) => value === selectedAudioSettings.value.format)?.label} · ${selectedAudioSettings.value.sampleRate / 1000} kHz`
   return nodeDefinitions[props.type].setting
@@ -210,24 +210,6 @@ function ratioIconStyle(value) {
   return { width: `${Math.round(width * scale)}px`, height: `${Math.round(height * scale)}px` }
 }
 
-function updateImageSetting(key, value) {
-  updateNodeData(props.nodeId, { [key]: value })
-  if (key === 'aspectRatio') nextTick(() => requestAnimationFrame(updateSettingsPosition))
-}
-
-function updateImageModel(model) {
-  const updates = { model: model.id }
-  if (!model.resolutions.includes(selectedResolution.value)) updates.resolution = model.defaultResolution
-  if (!model.aspectRatios.includes(selectedAspectRatio.value)) updates.aspectRatio = model.defaultAspectRatio
-  if (!model.search) Object.assign(updates, { googleSearch: false, googleImageSearch: false })
-  updateNodeData(props.nodeId, updates)
-  modelOpen.value = false
-}
-
-function updateImageSearch(enabled) {
-  updateNodeData(props.nodeId, enabled ? { googleSearch: true } : { googleSearch: false, googleImageSearch: false })
-}
-
 function updateVideoModel(model) {
   const error = getVideoModelError({ ...props.data, model: model.id }, references.value)
   if (error) return
@@ -241,8 +223,7 @@ function updateVideoModel(model) {
 }
 
 function updateModel(model) {
-  if (props.type === 'image') updateImageModel(model)
-  else if (props.type === 'video') updateVideoModel(model)
+  if (props.type === 'video') updateVideoModel(model)
   else {
     updateNodeData(props.nodeId, { model: model.id })
     modelOpen.value = false
@@ -355,43 +336,15 @@ onBeforeUnmount(() => {
       @pointerdown="settingsOpen = false; modelOpen = false"
     />
 
-    <AppMenu v-if="modelOpen && (['image', 'video'].includes(type) || isVisionTextTask)" ref="modelMenu" class="model-menu" :style="modelStyle" @pointerdown.stop>
+    <AppMenu v-if="modelOpen && (type === 'video' || isVisionTextTask)" ref="modelMenu" class="model-menu" :style="modelStyle" @pointerdown.stop>
       <AppButton v-for="model in selectableModels" :key="model.id" :class="{ active: selectedModel.id === model.id }" :disabled="type === 'video' && Boolean(getVideoModelError({ ...data, model: model.id }, references))" :title="type === 'video' ? getVideoModelError({ ...data, model: model.id }, references) : ''" @click="updateModel(model)">
         <component :is="modelIcon" :size="15" />
         <span>{{ model.label }}</span>
       </AppButton>
     </AppMenu>
 
-    <AppMenu v-if="settingsOpen && ['image', 'video', 'audio'].includes(type)" ref="settingsMenu" class="image-settings-menu media-settings-menu" :class="{ 'audio-settings-menu': type === 'audio' }" :style="settingsStyle" @pointerdown.stop>
-      <template v-if="type === 'image'">
-        <h3>清晰度</h3>
-        <div class="image-resolution-options">
-          <AppButton v-for="resolution in selectedImageModel.resolutions" :key="resolution" :class="{ active: selectedResolution === resolution }" @click="updateImageSetting('resolution', resolution)">
-            {{ resolution }}
-          </AppButton>
-        </div>
-        <h3>比例</h3>
-        <div class="image-ratio-grid">
-          <AppButton v-for="ratio in selectedImageModel.aspectRatios" :key="ratio" :class="{ active: selectedAspectRatio === ratio }" @click="updateImageSetting('aspectRatio', ratio)">
-            <span class="image-ratio-icon" :style="ratioIconStyle(ratio)"></span>
-            <strong>{{ ratio }}</strong>
-          </AppButton>
-        </div>
-
-        <template v-if="selectedImageModel.search">
-          <h3>搜索增强</h3>
-          <label class="setting-toggle-row">
-            <span>Google 文字搜索</span>
-            <input type="checkbox" :checked="selectedImageSettings.googleSearch" @change="updateImageSearch($event.target.checked)" />
-          </label>
-          <label class="setting-toggle-row" :class="{ disabled: !selectedImageSettings.googleSearch }">
-            <span>Google 图片搜索</span>
-            <input type="checkbox" :checked="selectedImageSettings.googleImageSearch" :disabled="!selectedImageSettings.googleSearch" @change="updateImageSetting('googleImageSearch', $event.target.checked)" />
-          </label>
-        </template>
-      </template>
-
-      <template v-else-if="type === 'video'">
+    <AppMenu v-if="settingsOpen && ['video', 'audio'].includes(type)" ref="settingsMenu" class="image-settings-menu media-settings-menu" :class="{ 'audio-settings-menu': type === 'audio' }" :style="settingsStyle" @pointerdown.stop>
+      <template v-if="type === 'video'">
         <h3>时长</h3>
         <div v-if="selectedVideoModel.durationOptions" class="video-duration-options">
           <AppButton v-for="duration in selectedVideoModel.durationOptions" :key="duration" :class="{ active: selectedDuration === duration }" @click="updateVideoSetting('duration', duration)">{{ duration }}s</AppButton>
@@ -446,13 +399,22 @@ onBeforeUnmount(() => {
 
     <p v-if="panelMessage" class="panel-notice">{{ panelMessage }}</p>
 
-    <footer>
-      <AppButton v-if="['image', 'video'].includes(type) || isVisionTextTask" ref="modelTrigger" class="model-select model-select-trigger" @click="toggleModelMenu">
+    <ImageGenerationControls
+      v-if="type === 'image'"
+      :settings="data"
+      :estimated-credits="estimatedCredits"
+      :disabled="!canSubmit"
+      :running="running"
+      @update:settings="updateNodeData(nodeId, $event)"
+      @submit="submitTask"
+    />
+    <footer v-else>
+      <AppButton v-if="type === 'video' || isVisionTextTask" ref="modelTrigger" class="model-select model-select-trigger" @click="toggleModelMenu">
         <component :is="modelIcon" :size="16" />{{ selectedModel.label }}<ChevronDown :size="14" :class="{ rotated: modelOpen }" />
       </AppButton>
       <span v-else class="model-select"><component :is="modelIcon" :size="16" />{{ type === 'audio' ? audioModel.label : data.model }}</span>
       <span v-if="!['text', 'product'].includes(type)" class="panel-divider"></span>
-      <AppButton v-if="['image', 'video', 'audio'].includes(type)" ref="settingsTrigger" class="image-settings-trigger media-settings-trigger" @click="toggleSettings">
+      <AppButton v-if="['video', 'audio'].includes(type)" ref="settingsTrigger" class="image-settings-trigger media-settings-trigger" @click="toggleSettings">
         <component :is="type === 'video' ? VideoIcon : type === 'audio' ? Music2 : Image" :size="16" />{{ settingLabel }}<ChevronDown :size="14" :class="{ rotated: settingsOpen }" />
       </AppButton>
       <span v-else-if="!['text', 'product'].includes(type)" class="setting-select"><Image :size="16" />{{ settingLabel }}</span>
