@@ -232,6 +232,10 @@ describe('canvas node packs', () => {
     const referenceId = store.nodes[0].id
     store.nodes[0].data.asset = 'https://example.com/product.png'
     const plannerId = store.addNode('product_visual', { x: 500, y: 0 }, productId)
+    expect(store.nodes.find((node) => node.id === plannerId).data).toEqual(expect.objectContaining({
+      textModel: 'qwen3.7-plus', imageModel: 'gpt-image-2', aspectRatio: '1:1', resolution: '1K',
+    }))
+    expect(store.nodes.find((node) => node.id === plannerId).data).not.toHaveProperty('model')
 
     const ids = store.addProductVisualNodes(plannerId, productId, referenceId, [
       { id: 'white-bg', label: '白底图', prompt: '纯白背景商品图' },

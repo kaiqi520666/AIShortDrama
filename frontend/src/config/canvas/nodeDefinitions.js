@@ -61,13 +61,14 @@ export const nodeDefinitions = {
     }),
   },
   product_visual: {
-    type: 'product_visual', label: '商品出图', model: defaultImageModel.id, hint: '批量规划商品套图与详情图',
+    type: 'product_visual', label: '商品出图', model: defaultReverseModel.id, hint: '批量规划商品套图与详情图',
     setting: '17 类商品图', icon: Images,
     inputs: ['product'], outputs: ['image'],
     createData: ({ number }) => ({
       title: `商品出图 ${number}`,
       status: 'empty',
-      model: defaultImageModel.id,
+      textModel: defaultReverseModel.id,
+      imageModel: defaultImageModel.id,
       aspectRatio: defaultImageModel.defaultAspectRatio,
       resolution: defaultImageModel.defaultResolution,
       items: createProductVisualItems(),
