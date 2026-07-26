@@ -109,20 +109,20 @@
 .product-node-content .ui-textarea:focus {
   border-color: var(--node-accent);
 }
-.product-node-steps > .ui-button,
-.product-creation-steps > .ui-button {
+.product-workflow-steps > .ui-button {
   background: transparent;
   color: var(--color-text-secondary);
 }
-.product-node-steps > .ui-button.active,
-.product-creation-steps > .ui-button.active {
-  border-color: color-mix(in srgb, var(--node-accent) 40%, var(--color-border-subtle));
-  background: color-mix(in srgb, var(--node-accent) 10%, var(--color-surface-raised));
+.product-workflow-steps > .ui-button:hover:not(:disabled) {
+  background: var(--color-surface-hover);
+}
+.product-workflow-steps > .ui-button.active {
   color: var(--color-text-primary);
 }
-.product-node-steps > .ui-button.complete > span,
-.product-creation-steps > .ui-button.complete .product-step-number,
-.product-step-line.complete {
+.product-workflow-steps > .ui-button.active::after {
+  background: var(--node-accent);
+}
+.product-workflow-steps > .ui-button.complete .product-workflow-step-index {
   border-color: var(--node-accent);
   background: var(--node-accent);
   color: var(--color-canvas);

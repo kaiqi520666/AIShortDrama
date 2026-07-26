@@ -9,70 +9,25 @@
 .product-creation-panel {
   display: flex;
   width: min(600px, calc(100vw - 32px));
-  height: min(440px, calc(100vh - 32px));
+  height: auto;
   flex-direction: column;
   padding: 0;
   overflow: hidden;
 }
-.product-creation-steps {
-  display: grid;
-  flex: none;
-  grid-template-columns: 1fr 36px 1fr;
-  align-items: center;
-  padding: 15px 18px;
+.product-creation-panel.step-visual {
+  height: min(440px, calc(100vh - 32px));
+}
+.product-creation-panel > .product-workflow-steps {
+  padding: 7px 18px 0;
   border-bottom: 1px solid var(--color-border-subtle);
 }
-.product-creation-steps > .ui-button {
-  min-width: 0;
-  height: 44px;
-  justify-content: flex-start;
-  gap: 9px;
-  padding: 0 10px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  text-align: left;
-}
-.product-creation-steps > .ui-button > span:last-child {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-.product-creation-steps strong,
-.product-creation-steps small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.product-creation-steps strong {
-  font-size: 12px;
-  font-weight: 650;
-}
-.product-creation-steps small {
-  color: var(--color-text-muted);
-  font-size: 10px;
-}
-.product-step-number {
-  display: grid;
-  width: 22px;
-  height: 22px;
-  flex: none;
-  place-items: center;
-  border: 1px solid var(--color-border-strong);
-  border-radius: 50%;
-  font-size: 10px;
-}
-.product-step-line {
-  height: 1px;
-  background: var(--color-border-strong);
-}
 .product-creation-stage {
-  min-height: 0;
-  flex: 1;
+  flex: none;
 }
 .product-creation-stage > .generation-panel.embedded {
   position: relative;
   width: 100%;
-  height: 100%;
+  height: auto;
   min-height: 0;
   max-height: none;
   padding: 14px 18px;
@@ -82,6 +37,13 @@
 }
 .product-creation-stage > .generation-panel.embedded::before {
   display: none;
+}
+.product-creation-panel.step-visual .product-creation-stage {
+  min-height: 0;
+  flex: 1;
+}
+.product-creation-panel.step-visual .generation-panel.embedded {
+  height: 100%;
 }
 .product-creation-stage > .product-visual-panel.embedded {
   padding-top: 12px;

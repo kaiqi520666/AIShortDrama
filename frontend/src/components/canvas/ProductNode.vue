@@ -1,11 +1,11 @@
 <script setup>
 import { computed } from 'vue'
-import { Check, Images, Package } from 'lucide-vue-next'
+import { Images, Package } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { productPromptContext } from '../../config/canvas/ecommerce'
 import AppInput from '../ui/AppInput.vue'
-import AppButton from '../ui/AppButton.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
+import ProductWorkflowSteps from './ProductWorkflowSteps.vue'
 import StructuredNodeShell from './StructuredNodeShell.vue'
 
 const props = defineProps({
@@ -34,15 +34,7 @@ function setStep(value) {
 <template>
   <StructuredNodeShell :id="id" :type="type" :data="data" :icon="Package" :selected="selected" has-target>
     <div class="product-node-content nowheel" @keydown.stop>
-      <div class="product-node-steps">
-        <AppButton :class="{ active: step === 'recognition', complete: profileReady }" @click.stop="setStep('recognition')">
-          <span><Check v-if="profileReady" :size="12" /><template v-else>1</template></span>商品识别
-        </AppButton>
-        <span></span>
-        <AppButton :class="{ active: step === 'visual' }" :disabled="!profileReady" @click.stop="setStep('visual')">
-          <span>2</span>出图设置
-        </AppButton>
-      </div>
+      <ProductWorkflowSteps :step="step" :recognized="profileReady" @update:step="setStep" />
 
       <template v-if="step === 'recognition'">
         <div class="structured-node-summary product-step-summary">
