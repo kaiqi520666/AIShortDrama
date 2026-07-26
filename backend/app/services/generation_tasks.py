@@ -40,13 +40,38 @@ async def create_image_task(
     request: ImageGenerationRequest,
     user_id: uuid.UUID,
 ) -> GenerationTask:
-    provider_payload = request.model_dump(
-        mode="json",
-        exclude={"node_id", "workspace_id"},
-        exclude_none=True,
-        exclude_unset=True,
-    )
+    provider_payload = build_image_provider_payload(request)
     return await _create_task(db, redis, request, user_id, "image", provider_payload)
+
+
+def build_image_provider_payload(request: ImageGenerationRequest) -> dict[str, Any]:
+    references = [str(url) for url in request.reference_images]
+    provider_payload: dict[str, Any] = {
+        "model": request.model,
+        "prompt": request.prompt,
+        "size": request.size,
+        "n": request.n,
+    }
+    if request.model == "gpt-image-2":
+        if request.resolution:
+            provider_payload["resolution"] = request.resolution.lower()
+        provider_payload["response_format"] = "url"
+        if references:
+            provider_payload["reference_images"] = references
+        return provider_payload
+
+    metadata: dict[str, Any] = {}
+    if request.resolution:
+        metadata["resolution"] = request.resolution
+    if request.google_search:
+        metadata["google_search"] = True
+    if request.google_image_search:
+        metadata["google_image_search"] = True
+    if metadata:
+        provider_payload["metadata"] = metadata
+    if references:
+        provider_payload["image_urls"] = references
+    return provider_payload
 
 
 async def create_audio_task(
@@ -164,11 +189,7 @@ async def _create_task(
     resolution = None
     duration = None
     if task_type == "image":
-        resolution = (
-            request.resolution.upper()
-            if request.resolution
-            else request.metadata.resolution if request.metadata else None
-        )
+        resolution = request.resolution
     elif task_type == "video":
         duration = request.duration
     await freeze_task_credits(

@@ -27,39 +27,40 @@ IMAGE_REQUESTS = [
         "model": "gpt-image-2",
         "prompt": "test image",
         "size": "16:9",
-        "resolution": "1k",
-        "response_format": "url",
+        "resolution": "1K",
     },
     {
         "node_id": "image-seedream-pro-test",
         "model": "doubao-seedream-5-0-pro",
         "prompt": "test image",
         "size": "16:9",
-        "metadata": {"resolution": "2K"},
-        "image_urls": ["https://example.com/reference.png"],
+        "resolution": "2K",
+        "reference_images": ["https://example.com/reference.png"],
     },
     {
         "node_id": "image-seedream-test",
         "model": "doubao-seedream-5-0",
         "prompt": "test image",
         "size": "9:16",
-        "metadata": {"resolution": "3K"},
+        "resolution": "3K",
     },
     {
         "node_id": "image-gemini-pro-test",
         "model": "gemini-3-pro-image-preview",
         "prompt": "test image",
         "size": "4:3",
-        "metadata": {"resolution": "4K", "orientation": "landscape"},
-        "image_urls": [{"url": "https://example.com/reference.png"}],
+        "resolution": "4K",
+        "reference_images": ["https://example.com/reference.png"],
     },
     {
         "node_id": "image-gemini-flash-test",
         "model": "gemini-3.1-flash-image-preview",
         "prompt": "test image",
         "size": "1:4",
-        "metadata": {"resolution": "1K", "google_search": True, "google_image_search": True},
-        "image_urls": [{"url": "https://example.com/reference.png"}],
+        "resolution": "1K",
+        "reference_images": ["https://example.com/reference.png"],
+        "google_search": True,
+        "google_image_search": True,
     },
 ]
 
@@ -153,8 +154,22 @@ async def test_create_image_generation(monkeypatch, payload, generation_user_id)
             task = await db.get(GenerationTask, task_id)
             assert task.model == payload["model"]
             expected_payload = {
-                key: value for key, value in payload.items() if key not in {"node_id", "workspace_id"}
+                "model": payload["model"],
+                "prompt": payload["prompt"],
+                "size": payload["size"],
+                "n": 1,
             }
+            if payload["model"] == "gpt-image-2":
+                expected_payload["resolution"] = payload["resolution"].lower()
+                expected_payload["response_format"] = "url"
+            else:
+                expected_payload["metadata"] = {"resolution": payload["resolution"]}
+                if payload.get("google_search"):
+                    expected_payload["metadata"]["google_search"] = True
+                if payload.get("google_image_search"):
+                    expected_payload["metadata"]["google_image_search"] = True
+                if payload.get("reference_images"):
+                    expected_payload["image_urls"] = payload["reference_images"]
             provider_payload = task.request_snapshot.copy()
             provider_payload.pop("client_business_id")
             assert provider_payload == expected_payload

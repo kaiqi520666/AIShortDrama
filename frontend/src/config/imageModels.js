@@ -11,9 +11,6 @@ export const imageModels = [
     aspectRatios: gptImageRatios,
     defaultResolution: '1K',
     defaultAspectRatio: '1:1',
-    referenceField: 'reference_images',
-    resolutionField: 'resolution',
-    responseFormat: true,
   },
   {
     id: 'doubao-seedream-5-0-pro',
@@ -23,7 +20,6 @@ export const imageModels = [
     defaultResolution: '2K',
     defaultAspectRatio: '16:9',
     maxReferences: 10,
-    referenceField: 'image_urls',
   },
   {
     id: 'doubao-seedream-5-0',
@@ -33,7 +29,6 @@ export const imageModels = [
     defaultResolution: '2K',
     defaultAspectRatio: '16:9',
     maxReferences: 10,
-    referenceField: 'image_urls',
   },
   {
     id: 'gemini-3-pro-image-preview',
@@ -43,9 +38,6 @@ export const imageModels = [
     defaultResolution: '1K',
     defaultAspectRatio: '16:9',
     maxReferences: 14,
-    referenceField: 'image_urls',
-    referenceObjects: true,
-    orientation: true,
   },
   {
     id: 'gemini-3.1-flash-image-preview',
@@ -55,8 +47,6 @@ export const imageModels = [
     defaultResolution: '1K',
     defaultAspectRatio: '16:9',
     maxReferences: 14,
-    referenceField: 'image_urls',
-    referenceObjects: true,
     search: true,
   },
 ]
@@ -87,23 +77,14 @@ export function buildImageRequest(data, references = []) {
   if (settings.model.maxReferences && urls.length > settings.model.maxReferences) throw new Error(`参考图片不能超过 ${settings.model.maxReferences} 张`)
   if (urls.some((url) => !/^https?:\/\//i.test(url))) throw new Error('参考图片必须是公开可访问的 URL')
 
-  const metadata = settings.model.resolutionField ? {} : { resolution: settings.resolution }
-  if (settings.model.orientation) {
-    const [width, height] = settings.aspectRatio.split(':').map(Number)
-    if (width !== height) metadata.orientation = width > height ? 'landscape' : 'portrait'
-  }
-  if (settings.googleSearch) metadata.google_search = true
-  if (settings.googleImageSearch) metadata.google_image_search = true
-
-  const payload = {
+  return {
     model: settings.model.id,
     prompt,
     size: settings.aspectRatio,
     n: 1,
-    ...(settings.model.resolutionField ? { [settings.model.resolutionField]: settings.resolution.toLowerCase() } : {}),
-    ...(settings.model.responseFormat ? { response_format: 'url' } : {}),
-    ...(urls.length ? { [settings.model.referenceField]: settings.model.referenceObjects ? urls.map((url) => ({ url })) : urls } : {}),
+    resolution: settings.resolution,
+    ...(urls.length ? { reference_images: urls } : {}),
+    ...(settings.googleSearch ? { google_search: true } : {}),
+    ...(settings.googleImageSearch ? { google_image_search: true } : {}),
   }
-  if (Object.keys(metadata).length) payload.metadata = metadata
-  return payload
 }
