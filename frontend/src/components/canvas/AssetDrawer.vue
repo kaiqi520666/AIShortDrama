@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { ChevronDown, ChevronRight, FileText, Folder, Image, LayoutGrid, Library, Megaphone, Music2, Package, Pencil, RefreshCw, Trash2, Video, Workflow, X } from 'lucide-vue-next'
 import { deleteAsset, listAssets, renameAsset } from '../../api/assets'
 import { useGlobalConfirm, useGlobalPrompt, useGlobalToast } from '../../composables/useGlobalUI'
+import { buildOssImageUrl } from '../../utils/ossImage'
 import AppButton from '../ui/AppButton.vue'
 import AppInput from '../ui/AppInput.vue'
 import AppTabs from '../ui/AppTabs.vue'
@@ -173,7 +174,7 @@ onMounted(loadAssetItems)
           @click="emit('focus', node.id)"
         >
           <span class="asset-preview">
-            <img v-if="node.type === 'image' && node.data.asset" :src="node.data.asset" :alt="node.data.title" draggable="false" />
+            <img v-if="node.type === 'image' && node.data.asset" :src="buildOssImageUrl(node.data.asset)" :alt="node.data.title" draggable="false" />
             <img v-else-if="node.type === 'video' && node.data.poster" :src="node.data.poster" :alt="node.data.title" draggable="false" />
             <component v-else :is="icons[node.type]" :size="20" />
           </span>
@@ -216,7 +217,7 @@ onMounted(loadAssetItems)
               @click="emit('focus', node.id)"
             >
               <span class="asset-preview">
-                <img v-if="node.type === 'image' && node.data.asset" :src="node.data.asset" :alt="node.data.title" draggable="false" />
+                <img v-if="node.type === 'image' && node.data.asset" :src="buildOssImageUrl(node.data.asset)" :alt="node.data.title" draggable="false" />
                 <img v-else-if="node.type === 'video' && node.data.poster" :src="node.data.poster" :alt="node.data.title" draggable="false" />
                 <component v-else :is="icons[node.type]" :size="20" />
               </span>
@@ -238,7 +239,7 @@ onMounted(loadAssetItems)
         <div v-for="asset in assets" :key="asset.id" class="asset-library-row">
           <AppButton class="asset-item" :class="{ dragging: draggingItem === `asset:${asset.id}` }" :title="`拖动 ${asset.name}`" draggable="true" @dragstart="startAssetDrag($event, asset)" @dragend="draggingItem = ''">
             <span class="asset-preview">
-              <img v-if="asset.media_type === 'image'" :src="asset.url" :alt="asset.name" draggable="false" />
+              <img v-if="asset.media_type === 'image'" :src="buildOssImageUrl(asset.url)" :alt="asset.name" draggable="false" />
               <component v-else :is="icons[asset.media_type]" :size="20" />
             </span>
             <span>{{ asset.name }}</span>

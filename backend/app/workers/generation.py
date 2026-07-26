@@ -124,10 +124,7 @@ async def complete_task(
         if media_type == "image":
             workspace = await db.get(Workspace, task.workspace_id)
             if workspace:
-                separator = "&" if "?" in urls[0] else "?"
-                workspace.thumbnail_url = (
-                    f"{urls[0]}{separator}x-oss-process=image/resize,w_480/quality,q_80/format,webp"
-                )
+                workspace.thumbnail_url = urls[0]
         await settle_task_credits(db, task, original_duration=original_duration)
         await db.commit()
 

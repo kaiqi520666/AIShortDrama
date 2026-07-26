@@ -8,6 +8,7 @@ import AppButton from '../../components/ui/AppButton.vue'
 import AppDataTable from '../../components/ui/AppDataTable.vue'
 import AppSelect from '../../components/ui/AppSelect.vue'
 import { useGlobalToast } from '../../composables/useGlobalUI'
+import { buildOssImageUrl } from '../../utils/ossImage'
 
 const router = useRouter()
 const toast = useGlobalToast()
@@ -143,7 +144,7 @@ onMounted(load)
       <section v-if="detail.result" class="generation-detail-section">
         <h3>生成结果</h3>
         <p v-if="detail.result.type === 'text'" class="generation-result-text">{{ detail.result.content }}</p>
-        <img v-else-if="detail.result.type === 'image'" class="generation-result-image" :src="detail.result.url" alt="生成结果" />
+        <img v-else-if="detail.result.type === 'image'" class="generation-result-image" :src="buildOssImageUrl(detail.result.url)" alt="生成结果" />
         <video v-else-if="detail.result.type === 'video'" class="generation-result-media" :src="detail.result.url" controls preload="metadata" />
         <audio v-else-if="detail.result.type === 'audio'" class="generation-result-audio" :src="detail.result.url" controls preload="metadata" />
       </section>

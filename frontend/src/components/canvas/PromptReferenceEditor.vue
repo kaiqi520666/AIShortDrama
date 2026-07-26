@@ -1,6 +1,7 @@
 <script setup>
 import { nextTick, onMounted, ref, watch } from 'vue'
 import { Image, Music2, Video as VideoIcon } from 'lucide-vue-next'
+import { buildOssImageUrl } from '../../utils/ossImage'
 import AppButton from '../ui/AppButton.vue'
 import AppMenu from '../ui/AppMenu.vue'
 
@@ -46,7 +47,7 @@ function createToken(part) {
   token.title = reference.data.title
   if (type === 'image') {
     const image = document.createElement('img')
-    image.src = reference.data.asset
+    image.src = buildOssImageUrl(reference.data.asset)
     image.alt = ''
     token.append(image)
   }
@@ -204,7 +205,7 @@ onMounted(renderEditor)
         @mouseenter="activeIndex = index"
         @click="insertReference(reference)"
       >
-        <img v-if="getReferenceType(reference) === 'image'" :src="reference.data.asset" alt="" />
+        <img v-if="getReferenceType(reference) === 'image'" :src="buildOssImageUrl(reference.data.asset)" alt="" />
         <VideoIcon v-else-if="getReferenceType(reference) === 'video'" :size="24" />
         <Music2 v-else-if="getReferenceType(reference) === 'audio'" :size="24" />
         <Image v-else :size="24" />

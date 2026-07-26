@@ -6,6 +6,7 @@ import { uploadMedia } from '../../api/uploads'
 import { imageAspectRatios } from '../../config/imageSettings'
 import { startGenerationPolling } from '../../services/generationPolling'
 import { useCanvasStore } from '../../stores/canvas'
+import { buildOssImageUrl } from '../../utils/ossImage'
 import AppButton from '../ui/AppButton.vue'
 import AppInput from '../ui/AppInput.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
@@ -220,7 +221,7 @@ onBeforeUnmount(() => {
       />
 
       <template v-else-if="data.asset && type === 'image'">
-        <img class="node-image" :src="data.asset" :alt="data.title" referrerpolicy="no-referrer" />
+        <img class="node-image" :src="buildOssImageUrl(data.asset)" :alt="data.title" referrerpolicy="no-referrer" />
       </template>
 
       <video v-else-if="data.assetId && type === 'video'" class="node-video nodrag nopan nowheel" :src="`/api/assets/${data.assetId}/content`" :poster="data.poster" controls playsinline preload="metadata"></video>

@@ -93,10 +93,7 @@ async def test_image_generation_flow():
             assert completed.provider_task_id == "provider-task-1"
             assert completed.result["data"][0]["url"].startswith("https://image.nodepass.net/")
             workspace = await db.get(Workspace, DEFAULT_WORKSPACE_ID)
-            assert workspace.thumbnail_url == (
-                f"{completed.result['data'][0]['url']}"
-                "?x-oss-process=image/resize,w_480/quality,q_80/format,webp"
-            )
+            assert workspace.thumbnail_url == completed.result["data"][0]["url"]
             assets = list(completed.id and await db.scalars(
                 select(Asset).where(Asset.generation_task_id == completed.id)
             ))
