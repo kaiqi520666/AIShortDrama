@@ -5,6 +5,8 @@ export const outfitScenes = [
   { id: 'lawn', label: '自然草坪', description: '公园草坪或自然绿地，呈现清新舒展的户外穿搭氛围。' },
   { id: 'beach', label: '度假海滩', description: '海滩或滨海步道，突出轻松通透的度假穿搭效果。' },
   { id: 'home', label: '温馨居家', description: '简洁温暖的居家环境，展示舒适自然的日常穿着状态。' },
+  { id: 'office', label: '商务办公', description: '现代办公空间或商务街区，突出利落、专业的通勤穿搭效果。' },
+  { id: 'party', label: '晚宴派对', description: '晚宴、酒会或精致社交空间，突出正式造型、面料质感和氛围光影。' },
   { id: 'gallery', label: '艺术展馆', description: '现代极简展馆空间，突出时尚感和高级质感。' },
 ]
 

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { buildOutfitPlanPrompt, parseOutfitPlan, resolveOutfitScenes } from './outfit'
+import { buildOutfitPlanPrompt, outfitScenes, parseOutfitPlan, resolveOutfitScenes } from './outfit'
 
 describe('outfit planning', () => {
+  it('provides nine complementary preset scenes', () => {
+    expect(outfitScenes).toHaveLength(9)
+    expect(outfitScenes.slice(-3).map((scene) => scene.id)).toEqual(['office', 'party', 'gallery'])
+  })
+
   it('uses selected presets and treats custom text as a shared supplement', () => {
     const scenes = resolveOutfitScenes(['studio', 'street'], '突出秋季氛围')
     const prompt = buildOutfitPlanPrompt(scenes, '突出秋季氛围', { aspectRatio: '3:4', resolution: '2K' })
