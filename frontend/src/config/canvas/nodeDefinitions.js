@@ -94,12 +94,17 @@ export const nodeDefinitions = {
     }),
   },
   outfit: {
-    type: 'outfit', label: '服饰穿搭', model: '', hint: '组合服饰与模特参考图',
+    type: 'outfit', label: '服饰穿搭', model: defaultImageModel.id, hint: '组合服饰与模特参考图',
     setting: '服饰图 + 模特图', icon: Shirt,
     inputs: ['image'], outputs: ['image'],
     createData: ({ number }) => ({
       title: `服饰穿搭 ${number}`,
       status: 'empty',
+      model: defaultImageModel.id,
+      aspectRatio: defaultImageModel.defaultAspectRatio,
+      resolution: defaultImageModel.defaultResolution,
+      requirements: '',
+      generatedNodeIds: [],
     }),
   },
 }

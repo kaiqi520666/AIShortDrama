@@ -38,6 +38,16 @@
 .product-visual-panel {
   --node-accent: var(--color-media-image);
 }
+.outfit-panel {
+  --node-accent: var(--color-warning);
+}
+.outfit-panel-reference {
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}
+.outfit-panel-reference.empty {
+  color: var(--color-text-muted);
+}
 .media-node--selling_copy {
   --node-accent: var(--color-brand);
 }

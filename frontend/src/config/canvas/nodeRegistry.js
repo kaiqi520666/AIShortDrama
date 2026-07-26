@@ -4,6 +4,7 @@ import ProductCreationPanel from '../../components/canvas/ProductCreationPanel.v
 import ProductVisualNode from '../../components/canvas/ProductVisualNode.vue'
 import ProductVisualPanel from '../../components/canvas/ProductVisualPanel.vue'
 import OutfitNode from '../../components/canvas/OutfitNode.vue'
+import OutfitPanel from '../../components/canvas/OutfitPanel.vue'
 import SellingCopyNode from '../../components/canvas/SellingCopyNode.vue'
 import SellingCopyPanel from '../../components/canvas/SellingCopyPanel.vue'
 import GenerationPanel from '../../components/canvas/GenerationPanel.vue'
@@ -14,6 +15,6 @@ const components = { product: ProductNode, product_visual: ProductVisualNode, ou
 export const nodeRegistry = Object.fromEntries(Object.entries(nodeDefinitions).map(([type, definition]) => [type, {
   ...definition,
   component: components[type] || MediaNode,
-  panelComponent: type === 'product' ? ProductCreationPanel : type === 'product_visual' ? ProductVisualPanel : type === 'selling_copy' ? SellingCopyPanel : definition.generationPanel ? GenerationPanel : null,
-  panelHeight: type === 'product' ? 440 : type === 'product_visual' ? 380 : 260,
+  panelComponent: type === 'product' ? ProductCreationPanel : type === 'product_visual' ? ProductVisualPanel : type === 'outfit' ? OutfitPanel : type === 'selling_copy' ? SellingCopyPanel : definition.generationPanel ? GenerationPanel : null,
+  panelHeight: type === 'product' ? 440 : type === 'product_visual' ? 380 : type === 'outfit' ? 280 : 260,
 }]))

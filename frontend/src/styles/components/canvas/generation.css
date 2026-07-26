@@ -55,6 +55,57 @@
   flex-direction: column;
   padding: 16px 18px 14px;
 }
+.outfit-panel {
+  display: flex;
+  width: min(600px, calc(100vw - 32px));
+  flex-direction: column;
+  padding: 16px 18px 14px;
+}
+.outfit-panel-references {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 12px;
+}
+.outfit-panel-reference {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+  padding: 7px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+}
+.outfit-panel-reference > img {
+  width: 48px;
+  height: 48px;
+  border-radius: 4px;
+  object-fit: contain;
+}
+.outfit-panel-reference > svg {
+  width: 20px;
+  height: 20px;
+  margin: 14px;
+}
+.outfit-panel-reference > span {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+.outfit-panel-reference strong,
+.outfit-panel-reference small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.outfit-panel-reference strong {
+  font-size: 11px;
+}
+.outfit-panel-reference small {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
 .product-visual-panel-header {
   display: flex;
   flex: none;
