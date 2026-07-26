@@ -270,6 +270,30 @@ describe('canvas node packs', () => {
     expect(store.edges[0]).toEqual(expect.objectContaining({ source: imageId, target: productId }))
   })
 
+  it('creates an outfit workflow with garment and model inputs', async () => {
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1',
+      version: 1,
+      workspace_type: 'ecommerce',
+      canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
+    })
+
+    const outfitId = store.addNode('outfit', { x: 500, y: 300 })
+
+    expect(outfitId).toBe('outfit-3')
+    expect(store.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'image-1', data: expect.objectContaining({ title: '服饰参考图', assetSource: 'upload' }) }),
+      expect.objectContaining({ id: 'image-2', data: expect.objectContaining({ title: '模特参考图', assetSource: 'upload', resourceType: 'model' }) }),
+      expect.objectContaining({ id: outfitId, type: 'outfit', data: expect.objectContaining({ title: '服饰穿搭 3' }) }),
+    ]))
+    expect(store.edges).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: 'image-1', target: outfitId, targetHandle: 'garment' }),
+      expect.objectContaining({ source: 'image-2', target: outfitId, targetHandle: 'model' }),
+    ]))
+    expect(store.nodes.filter((node) => node.selected).map((node) => node.id)).toEqual([outfitId])
+  })
+
   it('creates planned image nodes from product creation with shared settings and references', async () => {
     const store = useCanvasStore()
     await store.loadWorkspace({

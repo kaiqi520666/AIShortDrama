@@ -188,7 +188,9 @@
   color: var(--color-media-audio);
 }
 .context-submenu .node-option--product .menu-icon,
-.node-create-menu .node-option--product .menu-icon {
+.node-create-menu .node-option--product .menu-icon,
+.context-submenu .node-option--outfit .menu-icon,
+.node-create-menu .node-option--outfit .menu-icon {
   color: var(--color-warning);
 }
 .context-submenu .node-option--selling_copy .menu-icon,

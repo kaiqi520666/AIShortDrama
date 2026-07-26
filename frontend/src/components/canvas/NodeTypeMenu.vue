@@ -17,6 +17,7 @@ const store = useCanvasStore()
 const source = computed(() => store.nodes.find((node) => node.id === props.sourceId))
 const options = computed(() => getNodeTypes(store.workspaceType)
   .filter((type) => type !== 'product_visual')
+  .filter((type) => !props.contextual || type !== 'outfit')
   .filter((type) => !props.contextual || canConnect(source.value?.type, type, store.workspaceType))
   .map((type) => nodeDefinitions[type]))
 </script>

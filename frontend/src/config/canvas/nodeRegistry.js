@@ -3,12 +3,13 @@ import ProductNode from '../../components/canvas/ProductNode.vue'
 import ProductCreationPanel from '../../components/canvas/ProductCreationPanel.vue'
 import ProductVisualNode from '../../components/canvas/ProductVisualNode.vue'
 import ProductVisualPanel from '../../components/canvas/ProductVisualPanel.vue'
+import OutfitNode from '../../components/canvas/OutfitNode.vue'
 import SellingCopyNode from '../../components/canvas/SellingCopyNode.vue'
 import SellingCopyPanel from '../../components/canvas/SellingCopyPanel.vue'
 import GenerationPanel from '../../components/canvas/GenerationPanel.vue'
 import { nodeDefinitions } from './nodeDefinitions'
 
-const components = { product: ProductNode, product_visual: ProductVisualNode, selling_copy: SellingCopyNode }
+const components = { product: ProductNode, product_visual: ProductVisualNode, outfit: OutfitNode, selling_copy: SellingCopyNode }
 
 export const nodeRegistry = Object.fromEntries(Object.entries(nodeDefinitions).map(([type, definition]) => [type, {
   ...definition,

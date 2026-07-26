@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
-import { AudioWaveform, FileText, GripVertical, Images, Image as ImageIcon, MoveDiagonal2, Music2, Upload, Video } from 'lucide-vue-next'
+import { AudioWaveform, FileText, GripVertical, Images, Image as ImageIcon, MoveDiagonal2, Music2, Upload, UserRound, Video } from 'lucide-vue-next'
 import { uploadMedia } from '../../api/uploads'
 import { imageAspectRatios } from '../../config/imageSettings'
 import { startGenerationPolling } from '../../services/generationPolling'
@@ -65,6 +65,7 @@ const fileInput = ref(null)
 const uploading = ref(false)
 const uploadProgress = ref(0)
 const assetPickerOpen = ref(false)
+const resourceType = computed(() => props.data.resourceType || 'asset')
 const uploadAccept = computed(() => mediaUploadRules[props.type]?.types.join(',') || '')
 const { updateNodeData, viewport } = useVueFlow()
 let resizeState = null
@@ -119,6 +120,7 @@ function selectAsset(item) {
     sourceHeight,
     sourceAspectRatio: sourceWidth && sourceHeight ? sourceWidth / sourceHeight : null,
     sourceByteSize: item.byteSize || null,
+    resourceId: item.id,
   })
   assetPickerOpen.value = false
 }
@@ -214,8 +216,8 @@ onBeforeUnmount(() => {
 
       <div v-else-if="['image', 'video'].includes(type) && data.assetSource === 'upload'" class="media-upload-state">
         <div class="media-upload-actions">
-          <AppButton class="nodrag nopan" :disabled="uploading" @pointerdown.stop @click.stop="fileInput?.click()"><component :is="icon" :size="28" stroke-width="1.35" /><span>{{ uploading ? `上传中 ${uploadProgress}%` : `上传${type === 'video' ? '视频' : '图片'}` }}</span></AppButton>
-          <AppButton v-if="type === 'image'" class="nodrag nopan" @pointerdown.stop @click.stop="assetPickerOpen = true"><Images :size="28" stroke-width="1.35" /><span>选择素材</span></AppButton>
+          <AppButton v-if="resourceType === 'asset'" class="nodrag nopan" :disabled="uploading" @pointerdown.stop @click.stop="fileInput?.click()"><component :is="icon" :size="28" stroke-width="1.35" /><span>{{ uploading ? `上传中 ${uploadProgress}%` : `上传${type === 'video' ? '视频' : '图片'}` }}</span></AppButton>
+          <AppButton v-if="type === 'image'" class="nodrag nopan" @pointerdown.stop @click.stop="assetPickerOpen = true"><UserRound v-if="resourceType === 'model'" :size="28" stroke-width="1.35" /><Images v-else :size="28" stroke-width="1.35" /><span>{{ resourceType === 'model' ? '选择模特' : '选择素材' }}</span></AppButton>
         </div>
         <p v-if="uploadNotice">{{ uploadNotice }}</p>
       </div>
@@ -241,8 +243,9 @@ onBeforeUnmount(() => {
       <AppButton v-if="type === 'image' && data.asset && ['upload', 'clipboard'].includes(data.assetSource)" class="media-reupload-button nodrag nopan" icon-only :disabled="uploading" title="重新上传图片" @pointerdown.stop @click.stop="fileInput?.click()">
         <Upload :size="15" />
       </AppButton>
-      <AppButton v-if="selected && type === 'image' && data.asset" class="media-library-button nodrag nopan" icon-only title="选择其他素材" @pointerdown.stop @click.stop="assetPickerOpen = true">
-        <Images :size="15" />
+      <AppButton v-if="selected && type === 'image' && data.asset" class="media-library-button nodrag nopan" icon-only :title="resourceType === 'model' ? '选择其他模特' : '选择其他素材'" @pointerdown.stop @click.stop="assetPickerOpen = true">
+        <UserRound v-if="resourceType === 'model'" :size="15" />
+        <Images v-else :size="15" />
       </AppButton>
       <AppButton v-if="selected && ['image', 'video', 'audio'].includes(type)" class="media-resize-handle nodrag nopan" icon-only title="调整显示尺寸" @pointerdown.stop.prevent="startResize">
         <MoveDiagonal2 :size="15" />
@@ -253,7 +256,7 @@ onBeforeUnmount(() => {
 
     <AppAssetPickerModal
       v-if="assetPickerOpen"
-      resource-type="asset"
+      :resource-type="resourceType"
       media-type="image"
       :workspace-id="store.workspaceId"
       :node-id="id"

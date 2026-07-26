@@ -10,6 +10,7 @@ const props = defineProps({
   selected: Boolean,
   hasTarget: Boolean,
   hasSource: { type: Boolean, default: true },
+  targetHandles: { type: Array, default: () => [] },
 })
 
 const { updateNodeData } = useVueFlow()
@@ -28,6 +29,14 @@ const { updateNodeData } = useVueFlow()
       />
     </label>
     <Handle v-if="hasTarget" id="target" type="target" :position="Position.Left" />
+    <Handle
+      v-for="handle in targetHandles"
+      :id="handle.id"
+      :key="handle.id"
+      type="target"
+      :position="Position.Left"
+      :style="{ top: handle.top }"
+    />
     <div class="node-body structured-node-body"><slot /></div>
     <Handle v-if="hasSource" id="source" type="source" :position="Position.Right" />
   </div>

@@ -5,7 +5,7 @@ import { isNodeTypeAvailable } from '../config/canvas/nodePacks'
 import { defaultReverseModel } from '../config/reverseModels'
 import { saveWorkspaceCanvas } from '../api/workspaces'
 
-const createEdge = (id, source, target) => ({ id, source, target, type: 'cinematic' })
+const createEdge = (id, source, target, targetHandle) => ({ id, source, target, ...(targetHandle ? { targetHandle } : {}), type: 'cinematic' })
 const defaultWorkspaceId = '00000000-0000-0000-0000-000000000101'
 let activeSave = null
 let saveQueued = false
@@ -132,6 +132,20 @@ export const useCanvasStore = defineStore('canvas', {
     },
     addNode(type, position, sourceId) {
       if (!isNodeTypeAvailable(this.workspaceType, type)) return
+      if (type === 'outfit' && !sourceId) {
+        const garmentId = this.addNode('image', { x: position.x - 460, y: position.y - 215 })
+        const modelId = this.addNode('image', { x: position.x - 460, y: position.y + 215 })
+        const garment = this.nodes.find((node) => node.id === garmentId)
+        const model = this.nodes.find((node) => node.id === modelId)
+        garment.data = { ...garment.data, title: '服饰参考图', assetSource: 'upload' }
+        model.data = { ...model.data, title: '模特参考图', assetSource: 'upload', resourceType: 'model' }
+        const outfitId = this.addNode(type, position, garmentId)
+        const garmentEdge = this.edges.find((edge) => edge.source === garmentId && edge.target === outfitId)
+        garmentEdge.targetHandle = 'garment'
+        this.edges.push(createEdge(`edge-${crypto.randomUUID()}`, modelId, outfitId, 'model'))
+        this.selectNodes([outfitId])
+        return outfitId
+      }
       if (type === 'product' && !sourceId) {
         const imageId = this.addNode('image', { x: position.x - 460, y: position.y + 3 })
         const image = this.nodes.find((node) => node.id === imageId)

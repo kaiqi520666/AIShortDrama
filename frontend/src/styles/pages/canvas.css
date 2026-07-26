@@ -26,6 +26,9 @@
 .media-node--product {
   --node-accent: var(--color-warning);
 }
+.media-node--outfit {
+  --node-accent: var(--color-warning);
+}
 .product-creation-panel {
   --node-accent: var(--color-warning);
 }
@@ -134,6 +137,20 @@
 .product-visual-source {
   background: var(--color-surface-raised);
   color: var(--color-text-primary);
+}
+.outfit-source,
+.outfit-source-preview {
+  background: var(--color-surface-raised);
+}
+.outfit-source {
+  color: var(--color-text-primary);
+}
+.outfit-source.empty,
+.outfit-source small {
+  color: var(--color-text-muted);
+}
+.outfit-source > svg {
+  color: var(--node-accent);
 }
 .product-visual-source svg,
 .product-visual-panel-header > span,

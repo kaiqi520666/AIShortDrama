@@ -1,4 +1,4 @@
-import { FileText, Image, Images, Megaphone, Music2, Package, Video } from 'lucide-vue-next'
+import { FileText, Image, Images, Megaphone, Music2, Package, Shirt, Video } from 'lucide-vue-next'
 import { defaultImageModel } from '../imageModels'
 import { defaultReverseModel } from '../reverseModels'
 import { defaultVideoModel } from '../videoModels'
@@ -33,7 +33,7 @@ export const nodeDefinitions = {
   image: {
     type: 'image', label: '图片', model: 'Moon Image', hint: '商品图与视觉生成',
     placeholder: '描述你想生成的商品画面，@ 引用素材…', setting: '16:9 · 2K', icon: Image,
-    generationPanel: true, inputs: ['text', 'image', 'product', 'product_visual', 'selling_copy'], outputs: ['text', 'image', 'video', 'audio', 'product'],
+    generationPanel: true, inputs: ['text', 'image', 'product', 'product_visual', 'selling_copy', 'outfit'], outputs: ['text', 'image', 'video', 'audio', 'product', 'outfit'],
     createData: ({ number }) => ({ model: defaultImageModel.id, title: `图片节点 ${number}`, status: 'empty', prompt: '' }),
   },
   video: {
@@ -91,6 +91,15 @@ export const nodeDefinitions = {
       outputType: 'selling_points',
       requirements: '',
       content: '',
+    }),
+  },
+  outfit: {
+    type: 'outfit', label: '服饰穿搭', model: '', hint: '组合服饰与模特参考图',
+    setting: '服饰图 + 模特图', icon: Shirt,
+    inputs: ['image'], outputs: ['image'],
+    createData: ({ number }) => ({
+      title: `服饰穿搭 ${number}`,
+      status: 'empty',
     }),
   },
 }

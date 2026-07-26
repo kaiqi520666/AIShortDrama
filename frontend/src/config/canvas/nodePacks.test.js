@@ -9,12 +9,14 @@ describe('canvas node packs', () => {
   })
 
   it('adds product and copy nodes to ecommerce canvas', () => {
-    expect(getNodeTypes('ecommerce')).toEqual(['product', 'product_visual', 'selling_copy', 'text', 'image', 'video', 'audio'])
+    expect(getNodeTypes('ecommerce')).toEqual(['product', 'product_visual', 'outfit', 'selling_copy', 'text', 'image', 'video', 'audio'])
     expect(canConnect('product', 'product_visual', 'ecommerce')).toBe(true)
     expect(canConnect('product_visual', 'image', 'ecommerce')).toBe(true)
     expect(canConnect('image', 'product_visual', 'ecommerce')).toBe(false)
     expect(getConnectionError('product', 'product_visual', ['product'], 'ecommerce')).toContain('只能连接 1 个')
     expect(canConnect('product', 'selling_copy', 'ecommerce')).toBe(true)
+    expect(canConnect('image', 'outfit', 'ecommerce')).toBe(true)
+    expect(canConnect('outfit', 'image', 'ecommerce')).toBe(true)
     expect(canConnect('selling_copy', 'image', 'ecommerce')).toBe(true)
     expect(canConnect('product', 'selling_copy', 'general')).toBe(false)
   })
