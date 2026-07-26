@@ -221,7 +221,7 @@ describe('canvas node packs', () => {
     expect(store.addNode('image', { x: 0, y: 0 })).toBe('image-1')
   })
 
-  it('creates ecommerce business nodes with persistent defaults', async () => {
+  it('creates an ecommerce product node with persistent defaults', async () => {
     const store = useCanvasStore()
     await store.loadWorkspace({
       id: 'workspace-1',
@@ -231,8 +231,6 @@ describe('canvas node packs', () => {
     })
 
     const productId = store.addNode('product', { x: 0, y: 0 })
-    const copyId = store.addNode('selling_copy', { x: 500, y: 0 }, productId)
-
     expect(productId).toBe('product-2')
     expect(store.nodes[0]).toEqual(expect.objectContaining({
       id: 'image-1',
@@ -247,10 +245,8 @@ describe('canvas node packs', () => {
       items: expect.arrayContaining([expect.objectContaining({ id: 'white-bg', enabled: true })]),
       prompt: '',
     }))
-    expect(copyId).toBe('selling_copy-3')
     expect(store.edges).toEqual([
       expect.objectContaining({ source: 'image-1', target: productId }),
-      expect.objectContaining({ source: productId, target: copyId }),
     ])
   })
 

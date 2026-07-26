@@ -1,10 +1,3 @@
-export const copyOutputTypes = [
-  { value: 'title', label: '商品标题' },
-  { value: 'selling_points', label: '核心卖点' },
-  { value: 'detail', label: '详情页文案' },
-  { value: 'voiceover', label: '短视频口播稿' },
-]
-
 const productFields = ['name', 'brand', 'category', 'price', 'specifications', 'sellingPoints', 'audience', 'scenario', 'additionalInfo']
 
 export function parseProductProfile(content) {

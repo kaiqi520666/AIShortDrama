@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
-import { ArrowUp, ChevronDown, Coins, FileText, Image, Images, LoaderCircle, Megaphone, Music2, Package, Shirt, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
+import { ArrowUp, ChevronDown, Coins, FileText, Image, Images, LoaderCircle, Music2, Package, Shirt, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
 import { createAudioGeneration, createImageGeneration, createVideoGeneration } from '../../api/generations'
 import { streamReversePrompt } from '../../api/reversals'
 import { audioFormatOptions, audioModel, audioSampleRateOptions, buildAudioRequest, getAudioReferenceError, maxAudioPromptLength, normalizeAudioSettings } from '../../config/audioModels'
@@ -30,7 +30,7 @@ const props = defineProps({
   embedded: Boolean,
 })
 
-const modelIcons = { text: FileText, image: Image, video: VideoIcon, audio: Music2, product: FileText, selling_copy: Megaphone, outfit: Shirt }
+const modelIcons = { text: FileText, image: Image, video: VideoIcon, audio: Music2, product: FileText, outfit: Shirt }
 const modelIcon = computed(() => modelIcons[props.type] || WandSparkles)
 
 const store = useCanvasStore()
@@ -315,7 +315,7 @@ onBeforeUnmount(() => {
         <Package v-else-if="reference.node.type === 'product'" :size="20" />
         <Images v-else-if="reference.node.type === 'product_visual'" :size="20" />
         <Shirt v-else-if="reference.node.type === 'outfit'" :size="20" />
-        <Megaphone v-else :size="20" />
+        <WandSparkles v-else :size="20" />
         <b>{{ reference.number }}</b>
       </div>
     </div>

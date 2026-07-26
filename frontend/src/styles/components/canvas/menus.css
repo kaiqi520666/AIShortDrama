@@ -193,10 +193,6 @@
 .node-create-menu .node-option--outfit .menu-icon {
   color: var(--color-warning);
 }
-.context-submenu .node-option--selling_copy .menu-icon,
-.node-create-menu .node-option--selling_copy .menu-icon {
-  color: var(--color-brand);
-}
 .context-submenu button > span:last-child {
   min-width: 0;
   text-align: left;

@@ -1,4 +1,4 @@
-import { FileText, Image, Images, Megaphone, Music2, Package, Shirt, Video } from 'lucide-vue-next'
+import { FileText, Image, Images, Music2, Package, Shirt, Video } from 'lucide-vue-next'
 import { defaultImageModel } from '../imageModels'
 import { defaultReverseModel } from '../reverseModels'
 import { defaultVideoModel } from '../videoModels'
@@ -27,31 +27,31 @@ export const nodeDefinitions = {
   text: {
     type: 'text', label: '文本', model: 'Qwen3-VL-Flash', hint: '商品资料与生成要求',
     placeholder: '输入商品信息、卖点或生成要求…', setting: '多模态文本 · 中文', icon: FileText,
-    generationPanel: true, inputs: ['text', 'image', 'video'], outputs: ['text', 'image', 'video', 'audio', 'selling_copy'],
+    generationPanel: true, inputs: ['text', 'image', 'video'], outputs: ['text', 'image', 'video', 'audio'],
     createData: ({ number, source }) => createTextData(number, source),
   },
   image: {
     type: 'image', label: '图片', model: 'Moon Image', hint: '商品图与视觉生成',
     placeholder: '描述你想生成的商品画面，@ 引用素材…', setting: '16:9 · 2K', icon: Image,
-    generationPanel: true, inputs: ['text', 'image', 'product', 'product_visual', 'selling_copy', 'outfit'], outputs: ['text', 'image', 'video', 'audio', 'product', 'outfit'],
+    generationPanel: true, inputs: ['text', 'image', 'product', 'product_visual', 'outfit'], outputs: ['text', 'image', 'video', 'audio', 'product', 'outfit'],
     createData: ({ number }) => ({ model: defaultImageModel.id, title: `图片节点 ${number}`, status: 'empty', prompt: '' }),
   },
   video: {
     type: 'video', label: '视频', model: 'Seedance 2.0', hint: '商品展示与广告视频',
     placeholder: '描述商品动作、运镜和节奏…', setting: '16:9 · 720P · 5s', icon: Video,
-    generationPanel: true, inputs: ['text', 'image', 'video', 'audio', 'product', 'selling_copy'], outputs: ['text', 'video'],
+    generationPanel: true, inputs: ['text', 'image', 'video', 'audio', 'product'], outputs: ['text', 'video'],
     createData: ({ number }) => ({ model: defaultVideoModel.id, title: `视频节点 ${number}`, status: 'empty', prompt: '' }),
   },
   audio: {
     type: 'audio', label: '音频', model: 'seed-audio-1.0-multilingual', hint: '广告旁白与商品讲解',
     placeholder: '描述旁白、音效或声音氛围，@ 引用音频…', setting: 'MP3 · 48 kHz', icon: Music2,
-    generationPanel: true, inputs: ['text', 'image', 'audio', 'selling_copy'], outputs: ['audio', 'video'],
+    generationPanel: true, inputs: ['text', 'image', 'audio'], outputs: ['audio', 'video'],
     createData: ({ number }) => ({ model: 'seed-audio-1.0-multilingual', title: `音频节点 ${number}`, status: 'empty', prompt: '' }),
   },
   product: {
     type: 'product', label: '商品创作', model: '', hint: '识别商品并创建整套商品图',
     placeholder: '可选：补充识别要求，例如重点读取容量、材质或包装文字…', setting: '', icon: Package,
-    generationPanel: true, inputs: ['image'], outputs: ['product_visual', 'selling_copy', 'image', 'video'],
+    generationPanel: true, inputs: ['image'], outputs: ['product_visual', 'image', 'video'],
     createData: ({ number }) => ({
       title: `商品创作 ${number}`,
       status: 'empty',
@@ -78,19 +78,6 @@ export const nodeDefinitions = {
       aspectRatio: defaultImageModel.defaultAspectRatio,
       resolution: defaultImageModel.defaultResolution,
       items: createProductVisualItems(),
-    }),
-  },
-  selling_copy: {
-    type: 'selling_copy', label: '卖点文案', model: defaultReverseModel.id, hint: '标题、卖点与口播稿',
-    placeholder: '补充语气、平台或字数要求…', setting: '核心卖点', icon: Megaphone,
-    generationPanel: true, inputs: ['product', 'text'], outputs: ['image', 'video', 'audio'],
-    createData: ({ number }) => ({
-      title: `卖点文案 ${number}`,
-      status: 'empty',
-      model: defaultReverseModel.id,
-      outputType: 'selling_points',
-      requirements: '',
-      content: '',
     }),
   },
   outfit: {
