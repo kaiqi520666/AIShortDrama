@@ -1,7 +1,8 @@
-import { FileText, Image, Megaphone, Music2, Package, Video } from 'lucide-vue-next'
+import { FileText, Image, Images, Megaphone, Music2, Package, Video } from 'lucide-vue-next'
 import { defaultImageModel } from '../imageModels'
 import { defaultReverseModel } from '../reverseModels'
 import { defaultVideoModel } from '../videoModels'
+import { createProductVisualItems } from './productVisual'
 
 const reversePrompts = {
   image: '根据图片生成结构化中文提示词，包括主体描述、环境、光影、镜头语言、风格关键词。',
@@ -50,13 +51,26 @@ export const nodeDefinitions = {
   product: {
     type: 'product', label: '商品资料', model: '', hint: '商品、规格与核心卖点',
     placeholder: '可选：补充识别要求，例如重点读取容量、材质或包装文字…', setting: '', icon: Package,
-    generationPanel: true, inputs: ['image'], outputs: ['selling_copy', 'image', 'video'],
+    generationPanel: true, inputs: ['image'], outputs: ['product_visual', 'selling_copy', 'image', 'video'],
     createData: ({ number }) => ({
       title: `商品资料 ${number}`,
       status: 'empty',
       model: defaultReverseModel.id,
       prompt: '',
       product: { name: '', brand: '', category: '', price: '', specifications: '', sellingPoints: '', audience: '', scenario: '', additionalInfo: '' },
+    }),
+  },
+  product_visual: {
+    type: 'product_visual', label: '商品出图', model: defaultImageModel.id, hint: '批量规划商品套图与详情图',
+    setting: '17 类商品图', icon: Images,
+    inputs: ['product'], outputs: ['image'],
+    createData: ({ number }) => ({
+      title: `商品出图 ${number}`,
+      status: 'empty',
+      model: defaultImageModel.id,
+      aspectRatio: defaultImageModel.defaultAspectRatio,
+      resolution: defaultImageModel.defaultResolution,
+      items: createProductVisualItems(),
     }),
   },
   selling_copy: {

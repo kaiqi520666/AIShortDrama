@@ -26,6 +26,12 @@
 .media-node--product {
   --node-accent: var(--color-warning);
 }
+.media-node--product_visual {
+  --node-accent: var(--color-media-image);
+}
+.product-visual-panel {
+  --node-accent: var(--color-media-image);
+}
 .media-node--selling_copy {
   --node-accent: var(--color-brand);
 }
@@ -99,6 +105,28 @@
 .product-node-content .ui-input:focus,
 .product-node-content .ui-textarea:focus {
   border-color: var(--node-accent);
+}
+.product-visual-source {
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}
+.product-visual-source svg,
+.product-visual-panel-header > span,
+.product-visual-group h3 svg {
+  color: var(--node-accent);
+}
+.product-visual-source.empty,
+.product-visual-tags small {
+  color: var(--color-text-muted);
+}
+.product-visual-tags > span,
+.product-visual-option.active {
+  border-color: color-mix(in srgb, var(--node-accent) 35%, var(--color-border-subtle));
+  background: color-mix(in srgb, var(--node-accent) 10%, var(--color-surface-raised));
+  color: var(--color-text-primary);
+}
+.node-create-menu .node-option--product_visual .menu-icon {
+  color: var(--color-media-image);
 }
 .selling-copy-result {
   color: var(--color-text-primary);

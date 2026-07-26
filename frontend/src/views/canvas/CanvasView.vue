@@ -121,8 +121,9 @@ const panelStyle = computed(() => {
   const top = viewport.value.y + node.computedPosition.y * zoom
   const bottom = top + node.dimensions.height * zoom
   const below = bottom + panelConfig.gap
-  const maxTop = window.innerHeight - panelConfig.height - panelConfig.margin
-  const above = top - panelConfig.height - panelConfig.gap
+  const panelHeight = selectedNodeRegistry.value?.panelHeight || panelConfig.height
+  const maxTop = window.innerHeight - panelHeight - panelConfig.margin
+  const above = top - panelHeight - panelConfig.gap
   const panelTop = below <= maxTop ? below : above >= panelConfig.header ? above : Math.max(panelConfig.header, maxTop)
   return {
     left: `clamp(${panelConfig.margin}px, ${center - panelConfig.width / 2}px, calc(100vw - ${panelConfig.width + panelConfig.margin}px))`,
@@ -496,7 +497,7 @@ function handleCanvasShortcut(event) {
   if (key === 'g') return event.shiftKey ? ungroupSelected() : (selectedNodes.value.length > 1 && store.groupSelected())
   if (key === 'd') return selectedNodes.value.length && store.duplicateSelected()
   if (key === 'l') return connectSelected()
-  if (key === 'enter') return generationPanel.value?.submitTask()
+  if (key === 'enter') return generationPanel.value?.submitTask?.()
   if (key === '0') return fitView({ padding: 0.24, duration: 350 })
   if (key === '=' || key === '+') return zoomIn({ duration: 180 })
   if (key === '-') zoomOut({ duration: 180 })
