@@ -2,7 +2,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -148,10 +148,20 @@ async def save_canvas(
     db: AsyncSession = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
-    workspace = await owned_workspace(db, workspace_id, user_id)
+    workspace = await db.scalar(
+        select(Workspace)
+        .where(
+            Workspace.id == workspace_id,
+            Workspace.user_id == user_id,
+            Workspace.deleted_at.is_(None),
+        )
+        .with_for_update()
+    )
     if not workspace:
         return fail("工作台不存在")
-    workspace.canvas = payload.model_dump(mode="json")
+    if workspace.version != payload.version:
+        raise HTTPException(status_code=409, detail="画布已在其他页面更新，请刷新后继续")
+    workspace.canvas = payload.model_dump(mode="json", exclude={"version"})
     workspace.version += 1
     await db.commit()
     await db.refresh(workspace)

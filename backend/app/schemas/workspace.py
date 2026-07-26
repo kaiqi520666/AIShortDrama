@@ -46,6 +46,7 @@ class WorkspaceUpdate(BaseModel):
 class CanvasUpdate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    version: int = Field(ge=1)
     schema_version: int = Field(default=1, ge=1)
     nodes: list[dict[str, Any]] = Field(default_factory=list)
     edges: list[dict[str, Any]] = Field(default_factory=list)

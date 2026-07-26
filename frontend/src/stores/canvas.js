@@ -26,6 +26,7 @@ export const useCanvasStore = defineStore('canvas', {
   state: () => ({
     workspaceId: null,
     workspaceType: 'general',
+    workspaceVersion: null,
     nodes: [],
     edges: [],
     sequence: 1,
@@ -33,6 +34,7 @@ export const useCanvasStore = defineStore('canvas', {
     groups: [],
     viewportData: { x: 0, y: 0, zoom: 1 },
     saveStatus: 'saved',
+    saveConflict: false,
     ready: false,
     legacyImportPending: false,
   }),
@@ -48,6 +50,8 @@ export const useCanvasStore = defineStore('canvas', {
       this.ready = false
       this.workspaceId = workspace.id
       this.workspaceType = workspace.workspace_type
+      this.workspaceVersion = workspace.version
+      this.saveConflict = false
       let canvas = workspace.canvas || {}
       const legacy = this.readLegacyCanvas()
       if (workspace.id === defaultWorkspaceId && !canvas.nodes?.length && legacy?.nodes?.length) {
@@ -85,7 +89,7 @@ export const useCanvasStore = defineStore('canvas', {
       }
     },
     async saveCanvas(viewport) {
-      if (!this.workspaceId || !this.ready) return
+      if (!this.workspaceId || !this.ready || this.saveConflict) return
       if (viewport) this.viewportData = { x: viewport.x, y: viewport.y, zoom: viewport.zoom }
       if (activeSave) {
         saveQueued = true
@@ -95,8 +99,12 @@ export const useCanvasStore = defineStore('canvas', {
         do {
           saveQueued = false
           this.saveStatus = 'saving'
-          const result = await saveWorkspaceCanvas(this.workspaceId, this.canvasPayload())
+          const result = await saveWorkspaceCanvas(this.workspaceId, {
+            ...this.canvasPayload(),
+            version: this.workspaceVersion,
+          })
           if (result.code !== 0) throw new Error(result.message)
+          this.workspaceVersion = result.data.version
           this.saveStatus = 'saved'
         } while (saveQueued)
       })()
@@ -107,7 +115,13 @@ export const useCanvasStore = defineStore('canvas', {
           this.legacyImportPending = false
         }
       } catch (error) {
-        this.saveStatus = 'failed'
+        if (error.response?.status === 409) {
+          saveQueued = false
+          this.saveConflict = true
+          this.saveStatus = 'conflict'
+        } else {
+          this.saveStatus = 'failed'
+        }
         throw error
       } finally {
         activeSave = null

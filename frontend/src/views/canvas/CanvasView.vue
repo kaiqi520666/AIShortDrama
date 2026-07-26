@@ -400,7 +400,7 @@ function createPaneNode(type) {
 }
 
 function scheduleSave() {
-  if (!store.ready) return
+  if (!store.ready || store.saveConflict) return
   window.clearTimeout(saveTimer)
   saveTimer = window.setTimeout(() => store.saveCanvas().catch(() => {}), 800)
 }
@@ -716,6 +716,18 @@ async function signOut() {
 }
 
 watch(() => store.canvasPayload(), scheduleSave, { deep: true })
+watch(() => store.saveConflict, async (conflict) => {
+  if (!conflict) return
+  window.clearTimeout(saveTimer)
+  const shouldReload = await confirm({
+    title: '画布内容已更新',
+    message: '该画布已在其他页面保存。当前页面已停止自动保存，刷新后可继续编辑。',
+    confirmText: '刷新画布',
+    cancelText: '暂不刷新',
+    tone: 'danger',
+  })
+  if (shouldReload) window.location.reload()
+})
 watch(historySnapshot, scheduleHistory)
 onMounted(async () => {
   await authStore.refreshCredits().catch(() => {})

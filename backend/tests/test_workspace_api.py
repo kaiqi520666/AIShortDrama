@@ -20,6 +20,7 @@ async def test_workspace_crud_duplicate_and_canvas_isolation(override_business_u
         ).json()["data"]
         workspace_id = uuid.UUID(created["id"])
         canvas = {
+            "version": created["version"],
             "schema_version": 1,
             "nodes": [{"id": "text-1", "type": "text", "position": {"x": 10, "y": 20}, "data": {}}],
             "edges": [],
@@ -28,7 +29,12 @@ async def test_workspace_crud_duplicate_and_canvas_isolation(override_business_u
             "group_sequence": 1,
             "viewport": {"x": 12, "y": 14, "zoom": 0.8},
         }
-        saved = (await client.put(f"/api/workspaces/{workspace_id}/canvas", json=canvas)).json()
+        save_response = await client.put(f"/api/workspaces/{workspace_id}/canvas", json=canvas)
+        saved = save_response.json()
+        stale_canvas = {**canvas, "nodes": []}
+        stale_response = await client.put(
+            f"/api/workspaces/{workspace_id}/canvas", json=stale_canvas
+        )
         async with SessionLocal() as db:
             workspace = await db.get(Workspace, workspace_id)
             workspace.thumbnail_url = "https://example.com/latest.webp"
@@ -61,15 +67,19 @@ async def test_workspace_crud_duplicate_and_canvas_isolation(override_business_u
 
     try:
         assert saved["code"] == 0
+        assert saved["data"]["version"] == created["version"] + 1
+        assert stale_response.status_code == 409
+        assert stale_response.json()["message"] == "画布已在其他页面更新，请刷新后继续"
         assert created["thumbnail_url"] is None
         assert created["workspace_type"] == "ecommerce"
-        assert loaded["canvas"] == canvas
+        assert loaded["canvas"] == {key: value for key, value in canvas.items() if key != "version"}
+        assert loaded["version"] == saved["data"]["version"]
         listed_workspace = next(
             item for item in listed_before_delete if item["id"] == str(workspace_id)
         )
         assert listed_workspace["thumbnail_url"] == "https://example.com/latest.webp"
         assert renamed["data"]["name"] == "新名称"
-        assert duplicate["canvas"] == canvas
+        assert duplicate["canvas"] == {key: value for key, value in canvas.items() if key != "version"}
         assert duplicate["thumbnail_url"] == "https://example.com/latest.webp"
         assert duplicate["workspace_type"] == "ecommerce"
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:

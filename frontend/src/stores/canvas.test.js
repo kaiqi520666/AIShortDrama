@@ -4,7 +4,7 @@ import { saveWorkspaceCanvas } from '../api/workspaces'
 import { useCanvasStore } from './canvas'
 
 vi.mock('../api/workspaces', () => ({
-  saveWorkspaceCanvas: vi.fn(async () => ({ code: 0 })),
+  saveWorkspaceCanvas: vi.fn(async (_id, payload) => ({ code: 0, data: { version: payload.version + 1 } })),
 }))
 
 const readyNode = { id: 'text-1', type: 'text', position: { x: 0, y: 0 }, data: { status: 'ready' } }
@@ -35,11 +35,50 @@ describe('canvas transient uploads', () => {
     const store = useCanvasStore()
     await store.loadWorkspace({
       id: 'workspace-1',
+      version: 1,
       workspace_type: 'general',
       canvas: { nodes: [readyNode, uploadingNode], edges: [], groups: [], sequence: 3 },
     })
 
     expect(store.nodes.map((node) => node.id)).toEqual([readyNode.id])
+    expect(saveWorkspaceCanvas).toHaveBeenCalledOnce()
+    expect(saveWorkspaceCanvas.mock.calls[0][1].version).toBe(1)
+    expect(store.workspaceVersion).toBe(2)
+  })
+})
+
+describe('canvas version conflicts', () => {
+  it('forwards and updates the workspace version after a save', async () => {
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1',
+      version: 7,
+      workspace_type: 'general',
+      canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
+    })
+
+    await store.saveCanvas()
+
+    expect(saveWorkspaceCanvas).toHaveBeenCalledWith('workspace-1', expect.objectContaining({ version: 7 }))
+    expect(store.workspaceVersion).toBe(8)
+  })
+
+  it('blocks later saves after the server reports a stale version', async () => {
+    const conflict = Object.assign(new Error('conflict'), { response: { status: 409 } })
+    saveWorkspaceCanvas.mockRejectedValueOnce(conflict)
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1',
+      version: 3,
+      workspace_type: 'general',
+      canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
+    })
+
+    await expect(store.saveCanvas()).rejects.toBe(conflict)
+    await store.saveCanvas()
+
+    expect(store.saveConflict).toBe(true)
+    expect(store.saveStatus).toBe('conflict')
     expect(saveWorkspaceCanvas).toHaveBeenCalledOnce()
   })
 })
@@ -172,6 +211,7 @@ describe('canvas node packs', () => {
     const store = useCanvasStore()
     await store.loadWorkspace({
       id: 'workspace-1',
+      version: 1,
       workspace_type: 'drama',
       canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
     })
@@ -185,6 +225,7 @@ describe('canvas node packs', () => {
     const store = useCanvasStore()
     await store.loadWorkspace({
       id: 'workspace-1',
+      version: 1,
       workspace_type: 'ecommerce',
       canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
     })
@@ -210,6 +251,7 @@ describe('canvas node packs', () => {
     const store = useCanvasStore()
     await store.loadWorkspace({
       id: 'workspace-1',
+      version: 1,
       workspace_type: 'ecommerce',
       canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
     })
@@ -225,6 +267,7 @@ describe('canvas node packs', () => {
     const store = useCanvasStore()
     await store.loadWorkspace({
       id: 'workspace-1',
+      version: 1,
       workspace_type: 'ecommerce',
       canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
     })
