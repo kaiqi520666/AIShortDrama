@@ -6,7 +6,7 @@
   border: 1px solid var(--color-border-strong);
   border-radius: 8px;
 }
-.product-creation-panel {
+.generation-panel.product-creation-panel {
   display: flex;
   width: min(600px, calc(100vw - 32px));
   height: auto;
@@ -30,7 +30,7 @@
   height: auto;
   min-height: 0;
   max-height: none;
-  padding: 14px 18px;
+  padding: 16px 18px 14px;
   border: 0;
   border-radius: 0;
   box-shadow: none;
@@ -44,9 +44,6 @@
 }
 .product-creation-panel.step-visual .generation-panel.embedded {
   height: 100%;
-}
-.product-creation-stage > .product-visual-panel.embedded {
-  padding-top: 12px;
 }
 .product-creation-stage > .product-visual-panel.embedded .product-visual-panel-header {
   display: none;

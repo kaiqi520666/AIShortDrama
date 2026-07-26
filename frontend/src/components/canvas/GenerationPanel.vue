@@ -29,7 +29,7 @@ const props = defineProps({
   embedded: Boolean,
 })
 
-const modelIcons = { text: FileText, image: Image, video: VideoIcon, audio: Music2, product: Package, selling_copy: Megaphone }
+const modelIcons = { text: FileText, image: Image, video: VideoIcon, audio: Music2, product: FileText, selling_copy: Megaphone }
 const modelIcon = computed(() => modelIcons[props.type] || WandSparkles)
 
 const store = useCanvasStore()
