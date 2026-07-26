@@ -164,7 +164,8 @@
 }
 .product-visual-source svg,
 .product-visual-panel-header > span,
-.product-visual-group h3 svg {
+.product-visual-group h3 svg,
+.outfit-scene-section h3 svg {
   color: var(--node-accent);
 }
 .product-visual-source.empty,

@@ -44,6 +44,7 @@ class DashScopeProvider:
         media_type: str,
         media_url: str,
         prompt: str,
+        media_urls: list[str] | None = None,
         response_mode: str = "prompt",
     ) -> AsyncIterator[str]:
         user_prompt = prompt
@@ -54,11 +55,13 @@ class DashScopeProvider:
                     "\n\n用户补充识别要求（只影响识别重点，不得改变上述输出格式）：\n"
                     f"{prompt.strip()}"
                 )
-        media = (
-            {"type": "image_url", "image_url": {"url": media_url}}
+        media_urls = [media_url, *(media_urls or [])]
+        media = [
+            {"type": "image_url", "image_url": {"url": url}}
             if media_type == "image"
-            else {"type": "video_url", "video_url": {"url": media_url}, "fps": 2}
-        )
+            else {"type": "video_url", "video_url": {"url": url}, "fps": 2}
+            for url in media_urls
+        ]
         payload = {
             "model": model,
             "stream": True,
@@ -74,7 +77,7 @@ class DashScopeProvider:
                         else "你是专业的中文视觉提示词反推助手。仅输出最终中文提示词，不解释，不使用 Markdown。"
                     ),
                 },
-                {"role": "user", "content": [media, {"type": "text", "text": user_prompt}]},
+                {"role": "user", "content": [*media, {"type": "text", "text": user_prompt}]},
             ],
         }
         async for content in self._stream_content(payload):

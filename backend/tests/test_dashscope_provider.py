@@ -162,6 +162,43 @@ async def test_product_visual_plan_uses_json_system_prompt(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_product_visual_plan_accepts_multiple_images(monkeypatch):
+    requests = []
+
+    async def handler(request):
+        requests.append(request)
+        return httpx.Response(
+            200,
+            stream=ChunkStream([frame({"choices": [{"delta": {"content": "[]"}}]}), frame("[DONE]")]),
+        )
+
+    monkeypatch.setattr(
+        dashscope_module,
+        "get_settings",
+        lambda: SimpleNamespace(dashscope_api_key="secret", dashscope_url="https://provider.test"),
+    )
+    async with DashScopeProvider(transport=httpx.MockTransport(handler)) as provider:
+        _ = [
+            item
+            async for item in provider.stream_reverse_prompt(
+                model="qwen3.7-plus",
+                media_type="image",
+                media_url="https://example.com/garment.png",
+                media_urls=["https://example.com/model.png"],
+                prompt="生成穿搭方案",
+                response_mode="product_visual_plan",
+            )
+        ]
+
+    content = json.loads(requests[0].content)["messages"][1]["content"]
+    assert [item["image_url"]["url"] for item in content[:2]] == [
+        "https://example.com/garment.png",
+        "https://example.com/model.png",
+    ]
+    assert content[2]["text"] == "生成穿搭方案"
+
+
+@pytest.mark.asyncio
 async def test_stream_text(monkeypatch):
     requests = []
     chunks = [frame({"choices": [{"delta": {"content": "文案"}}]}), frame("[DONE]")]

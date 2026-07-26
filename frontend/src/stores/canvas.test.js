@@ -285,7 +285,7 @@ describe('canvas node packs', () => {
     expect(store.nodes).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'image-1', data: expect.objectContaining({ title: '服饰参考图', assetSource: 'upload' }) }),
       expect.objectContaining({ id: 'image-2', data: expect.objectContaining({ title: '模特参考图', assetSource: 'upload', resourceType: 'model' }) }),
-      expect.objectContaining({ id: outfitId, type: 'outfit', data: expect.objectContaining({ title: '服饰穿搭 3', model: 'gpt-image-2', aspectRatio: '1:1', resolution: '1K', requirements: '', generatedNodeIds: [] }) }),
+      expect.objectContaining({ id: outfitId, type: 'outfit', data: expect.objectContaining({ title: '服饰穿搭 3', textModel: 'qwen3.7-plus', imageModel: 'gpt-image-2', aspectRatio: '1:1', resolution: '1K', sceneIds: ['studio'], customScene: '', generatedNodeIds: [] }) }),
     ]))
     expect(store.edges).toEqual(expect.arrayContaining([
       expect.objectContaining({ source: 'image-1', target: outfitId, targetHandle: 'garment' }),
@@ -294,7 +294,7 @@ describe('canvas node packs', () => {
     expect(store.nodes.filter((node) => node.selected).map((node) => node.id)).toEqual([outfitId])
   })
 
-  it('creates an outfit result node with shared references and settings', async () => {
+  it('creates planned outfit image nodes with shared references and settings', async () => {
     const store = useCanvasStore()
     await store.loadWorkspace({
       id: 'workspace-1',
@@ -303,28 +303,24 @@ describe('canvas node packs', () => {
       canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
     })
     const outfitId = store.addNode('outfit', { x: 500, y: 300 })
-    const resultId = store.addOutfitResultNode(outfitId, 'image-1', 'image-2', '生成穿搭效果', {
+    const resultIds = store.addOutfitVisualNodes(outfitId, 'image-1', 'image-2', [
+      { id: 'studio', label: '纯色棚拍', prompt: '棚拍穿搭效果' },
+      { id: 'street', label: '都市街头', prompt: '街头穿搭效果' },
+    ], {
       model: 'gpt-image-2', aspectRatio: '3:4', resolution: '2K',
     })
 
-    expect(resultId).toBe('image-4')
-    expect(store.nodes.find((node) => node.id === resultId).data).toEqual(expect.objectContaining({
-      title: '穿搭效果图 1', outfitSourceId: outfitId, status: 'generating', prompt: '生成穿搭效果', model: 'gpt-image-2', aspectRatio: '3:4', resolution: '2K',
+    expect(resultIds).toEqual(['image-4', 'image-5'])
+    expect(store.nodes.find((node) => node.id === resultIds[0]).data).toEqual(expect.objectContaining({
+      title: '纯色棚拍', outfitSourceId: outfitId, status: 'empty', prompt: '棚拍穿搭效果', model: 'gpt-image-2', aspectRatio: '3:4', resolution: '2K',
     }))
-    expect(store.edges.filter((edge) => edge.target === resultId)).toEqual(expect.arrayContaining([
+    expect(store.edges.filter((edge) => edge.target === resultIds[0])).toEqual(expect.arrayContaining([
       expect.objectContaining({ source: outfitId }),
       expect.objectContaining({ source: 'image-1' }),
       expect.objectContaining({ source: 'image-2' }),
     ]))
-    expect(store.nodes.filter((node) => node.selected).map((node) => node.id)).toEqual([outfitId])
-
-    const secondResultId = store.addOutfitResultNode(outfitId, 'image-1', 'image-2', '再次生成', {
-      model: 'gpt-image-2', aspectRatio: '1:1', resolution: '1K',
-    })
-    expect(store.nodes.find((node) => node.id === secondResultId)).toEqual(expect.objectContaining({
-      position: { x: 1440, y: 300 },
-      data: expect.objectContaining({ title: '穿搭效果图 2' }),
-    }))
+    expect(store.edges.filter((edge) => resultIds.includes(edge.target))).toHaveLength(6)
+    expect(store.nodes.filter((node) => node.selected).map((node) => node.id)).toEqual([resultIds[0]])
   })
 
   it('creates planned image nodes from product creation with shared settings and references', async () => {

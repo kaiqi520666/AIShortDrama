@@ -12,6 +12,7 @@ class ReversePromptRequest(BaseModel):
     model: Literal["qwen3.7-plus", "qwen3.6-flash"]
     media_type: Literal["image", "video"]
     media_url: AnyHttpUrl
+    media_urls: list[AnyHttpUrl] = Field(default_factory=list, max_length=9)
     prompt: str = Field(default="", max_length=3000)
     response_mode: Literal["prompt", "product_profile", "product_visual_plan"] = "prompt"
 

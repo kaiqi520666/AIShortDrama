@@ -16,5 +16,5 @@ export const nodeRegistry = Object.fromEntries(Object.entries(nodeDefinitions).m
   ...definition,
   component: components[type] || MediaNode,
   panelComponent: type === 'product' ? ProductCreationPanel : type === 'product_visual' ? ProductVisualPanel : type === 'outfit' ? OutfitPanel : type === 'selling_copy' ? SellingCopyPanel : definition.generationPanel ? GenerationPanel : null,
-  panelHeight: type === 'product' ? 440 : type === 'product_visual' ? 380 : type === 'outfit' ? 280 : 260,
+  panelHeight: type === 'product' ? 440 : type === 'product_visual' ? 380 : type === 'outfit' ? 470 : 260,
 }]))

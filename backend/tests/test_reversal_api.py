@@ -42,6 +42,20 @@ def test_product_visual_plan_requires_prompt():
     assert ReversePromptRequest(**{**payload, "prompt": "生成出图方案"}).response_mode == "product_visual_plan"
 
 
+def test_reverse_prompt_accepts_additional_media_urls():
+    payload = ReversePromptRequest(
+        workspace_id=DEFAULT_WORKSPACE_ID,
+        node_id="outfit-1",
+        model="qwen3.7-plus",
+        media_type="image",
+        media_url="https://example.com/garment.png",
+        media_urls=["https://example.com/model.png"],
+        prompt="生成穿搭方案",
+        response_mode="product_visual_plan",
+    )
+    assert [str(url) for url in payload.media_urls] == ["https://example.com/model.png"]
+
+
 @pytest.mark.asyncio
 async def test_stream_reverse_prompt(monkeypatch):
     monkeypatch.setattr(reversals_route, "DashScopeProvider", FakeProvider)
@@ -69,6 +83,7 @@ async def test_stream_reverse_prompt(monkeypatch):
     ]
     assert FakeProvider.last_kwargs["response_mode"] == "product_profile"
     assert FakeProvider.last_kwargs["prompt"] == ""
+    assert FakeProvider.last_kwargs["media_urls"] == []
     async with SessionLocal() as db:
         task = await db.get(GenerationTask, task_id)
         assert task.status == "succeeded"

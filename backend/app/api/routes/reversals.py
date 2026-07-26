@@ -68,6 +68,7 @@ async def stream_reverse_prompt(
                     model=payload.model,
                     media_type=payload.media_type,
                     media_url=str(payload.media_url),
+                    media_urls=[str(url) for url in payload.media_urls],
                     prompt=payload.prompt,
                     response_mode=payload.response_mode,
                 ):

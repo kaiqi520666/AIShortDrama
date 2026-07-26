@@ -1,15 +1,18 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { Shirt, UserRound } from 'lucide-vue-next'
+import { ArrowUp, Coins, FileText, LoaderCircle, MapPin, Shirt, UserRound } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
-import { createImageGeneration } from '../../api/generations'
-import { buildImageRequest, normalizeImageSettings } from '../../config/imageModels'
+import { streamReversePrompt } from '../../api/reversals'
+import { buildOutfitPlanPrompt, outfitScenes, parseOutfitPlan, resolveOutfitScenes } from '../../config/canvas/outfit'
+import { imageModels, normalizeImageSettings } from '../../config/imageModels'
+import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 import { buildOssImageUrl } from '../../utils/ossImage'
+import AppButton from '../ui/AppButton.vue'
+import AppSelect from '../ui/AppSelect.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
-import ImageGenerationControls from './ImageGenerationControls.vue'
 
 const props = defineProps({
   nodeId: { type: String, required: true },
@@ -20,7 +23,6 @@ const store = useCanvasStore()
 const authStore = useAuthStore()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
-const submitting = ref(false)
 const notice = ref('')
 
 function inputNode(handle) {
@@ -30,76 +32,99 @@ function inputNode(handle) {
 
 const garmentNode = computed(() => inputNode('garment'))
 const modelNode = computed(() => inputNode('model'))
-const references = computed(() => [garmentNode.value, modelNode.value].filter(Boolean))
-const settings = computed(() => normalizeImageSettings(props.data))
-const estimatedCredits = computed(() => authStore.estimateCredits('image', settings.value.model.id, { resolution: settings.value.resolution }))
+const selectedImageSettings = computed(() => normalizeImageSettings({
+  model: props.data.imageModel,
+  aspectRatio: props.data.aspectRatio,
+  resolution: props.data.resolution,
+}))
+const selectedTextModel = computed(() => reverseModels.find((model) => model.id === props.data.textModel) || defaultReverseModel)
+const selectedScenes = computed(() => resolveOutfitScenes(props.data.sceneIds, props.data.customScene))
+const prompt = computed(() => buildOutfitPlanPrompt(selectedScenes.value, props.data.customScene, props.data))
+const running = computed(() => props.data.status === 'generating')
+const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedTextModel.value.id))
 const insufficientCredits = computed(() => (authStore.user?.credit_balance || 0) < estimatedCredits.value)
 const existingGeneratedNodes = computed(() => (props.data.generatedNodeIds || []).filter((id) => store.nodes.some((node) => node.id === id)))
-const prompt = computed(() => [
-  '执行服饰穿搭图像编辑。参考图 1 是服饰，参考图 2 是模特。',
-  '将参考图 1 的服饰自然穿到参考图 2 的模特身上，保持模特的身份、面部、体型、姿态和背景不变。',
-  '准确保留服饰的版型、颜色、纹理、图案及细节，使穿着关系、遮挡、褶皱和光影真实自然。',
-  props.data.requirements?.trim() ? `补充要求：${props.data.requirements.trim()}` : '',
-].filter(Boolean).join('\n'))
+const imageModelOptions = imageModels.map(({ id, label }) => ({ value: id, label }))
+const textModelOptions = reverseModels.map(({ id, label }) => ({ value: id, label }))
+const ratioOptions = computed(() => selectedImageSettings.value.model.aspectRatios.map((value) => ({ value, label: value })))
+const resolutionOptions = computed(() => selectedImageSettings.value.model.resolutions.map((value) => ({ value, label: value })))
 const message = computed(() => notice.value || props.data.generationError || (!garmentNode.value?.data.asset
   ? '请先选择服饰参考图'
   : !modelNode.value?.data.asset
     ? '请先选择模特参考图'
-    : insufficientCredits.value
-      ? `积分不足，本次需要 ${estimatedCredits.value} 积分`
-      : ''))
-const canSubmit = computed(() => !submitting.value && garmentNode.value?.data.asset && modelNode.value?.data.asset && !insufficientCredits.value)
+    : !selectedScenes.value.length
+      ? '请选择拍摄场景或填写自定义场景'
+      : insufficientCredits.value
+        ? `积分不足，本次需要 ${estimatedCredits.value} 积分`
+        : ''))
+const canSubmit = computed(() => !running.value && garmentNode.value?.data.asset && modelNode.value?.data.asset && selectedScenes.value.length && !insufficientCredits.value)
 const sourceItems = computed(() => [
   { label: '服饰参考图', icon: Shirt, node: garmentNode.value },
   { label: '模特参考图', icon: UserRound, node: modelNode.value },
 ])
 
-function updateSettings(value) {
+function updateData(value) {
   notice.value = ''
   updateNodeData(props.nodeId, { ...value, generationError: '' })
 }
 
-function updateRequirements(event) {
-  notice.value = ''
-  updateNodeData(props.nodeId, { requirements: event.target.value, generationError: '' })
+function toggleScene(id) {
+  const sceneIds = props.data.sceneIds || []
+  updateData({ sceneIds: sceneIds.includes(id) ? sceneIds.filter((value) => value !== id) : [...sceneIds, id] })
+}
+
+function updateImageModel(imageModel) {
+  const model = imageModels.find(({ id }) => id === imageModel)
+  updateData({
+    imageModel: model.id,
+    aspectRatio: model.aspectRatios.includes(props.data.aspectRatio) ? props.data.aspectRatio : model.defaultAspectRatio,
+    resolution: model.resolutions.includes(props.data.resolution) ? props.data.resolution : model.defaultResolution,
+  })
 }
 
 async function submitTask() {
   if (!canSubmit.value) return
   if (existingGeneratedNodes.value.length && !await confirm({
-    title: '重新生成穿搭效果',
-    message: '将新增一张穿搭效果图，已有结果不会删除。',
+    title: '重新生成穿搭方案',
+    message: `将新增 ${selectedScenes.value.length} 个图片节点，已有节点不会删除。`,
     confirmText: '继续生成',
   })) return
 
-  submitting.value = true
+  let content = ''
   notice.value = ''
-  const imageSettings = {
-    model: settings.value.model.id,
-    aspectRatio: settings.value.aspectRatio,
-    resolution: settings.value.resolution,
-    googleSearch: settings.value.googleSearch,
-    googleImageSearch: settings.value.googleImageSearch,
-  }
-  const outputId = store.addOutfitResultNode(props.nodeId, garmentNode.value.id, modelNode.value.id, prompt.value, imageSettings)
   updateNodeData(props.nodeId, { status: 'generating', generationError: '' })
   try {
-    const result = await createImageGeneration({
+    await streamReversePrompt({
       workspace_id: store.workspaceId,
-      node_id: outputId,
-      ...buildImageRequest({ ...imageSettings, prompt: prompt.value }, references.value),
+      node_id: props.nodeId,
+      model: selectedTextModel.value.id,
+      media_type: 'image',
+      media_url: garmentNode.value.data.asset,
+      media_urls: [modelNode.value.data.asset],
+      prompt: prompt.value,
+      response_mode: 'product_visual_plan',
+    }, (delta) => { content += delta }, (taskId) => {
+      updateNodeData(props.nodeId, { generationTaskId: taskId, generationStatus: 'running' })
     })
-    if (result.code !== 0) throw new Error(result.message)
-    updateNodeData(outputId, { generationTaskId: result.data.id, generationStatus: result.data.status, status: 'generating' })
-    updateNodeData(props.nodeId, { status: 'ready', generatedNodeIds: [...existingGeneratedNodes.value, outputId] })
+    const settings = selectedImageSettings.value
+    const plans = parseOutfitPlan(content, selectedScenes.value)
+    const generatedNodeIds = store.addOutfitVisualNodes(
+      props.nodeId,
+      garmentNode.value.id,
+      modelNode.value.id,
+      plans,
+      { model: settings.model.id, aspectRatio: settings.aspectRatio, resolution: settings.resolution },
+    )
+    updateNodeData(props.nodeId, {
+      status: 'ready',
+      generationStatus: 'succeeded',
+      generatedNodeIds: [...existingGeneratedNodes.value, ...generatedNodeIds],
+    })
   } catch (error) {
-    const messageText = error.response?.data?.message || error.message || '穿搭任务提交失败'
+    const messageText = error.response?.data?.message || error.message || '穿搭方案生成失败'
     notice.value = messageText
-    updateNodeData(outputId, { status: 'failed', generationError: messageText })
     updateNodeData(props.nodeId, { status: 'failed', generationError: messageText })
   } finally {
-    store.selectNodes([outputId])
-    submitting.value = false
     await authStore.refreshCredits().catch(() => {})
   }
 }
@@ -111,7 +136,7 @@ defineExpose({ submitTask })
   <section class="generation-panel outfit-panel nodrag nowheel" @pointerdown.stop>
     <header class="product-visual-panel-header">
       <span><Shirt :size="16" />服饰穿搭</span>
-      <small>使用服饰图和模特图生成穿搭效果</small>
+      <small>{{ selectedScenes.length }} 个场景</small>
     </header>
 
     <div class="outfit-panel-references">
@@ -122,21 +147,39 @@ defineExpose({ submitTask })
       </div>
     </div>
 
-    <AppTextarea
-      :model-value="data.requirements"
-      maxlength="1200"
-      placeholder="补充穿搭要求，例如保持站姿、使用纯色背景或突出服装版型…"
-      @input="updateRequirements"
-    />
+    <section class="outfit-scene-section">
+      <h3><MapPin :size="14" />拍摄场景</h3>
+      <div class="outfit-scene-options">
+        <label v-for="scene in outfitScenes" :key="scene.id" class="product-visual-option" :class="{ active: (data.sceneIds || []).includes(scene.id) }">
+          <input type="checkbox" :checked="(data.sceneIds || []).includes(scene.id)" @change="toggleScene(scene.id)" />
+          <span>{{ scene.label }}</span>
+        </label>
+      </div>
+      <AppTextarea
+        :model-value="data.customScene"
+        rows="2"
+        maxlength="600"
+        placeholder="自定义场景；已选预设时作为所有场景的补充要求"
+        @input="updateData({ customScene: $event.target.value })"
+      />
+    </section>
+
+    <div class="product-visual-settings">
+      <label><span>图片模型</span><AppSelect :model-value="selectedImageSettings.model.id" :options="imageModelOptions" aria-label="图片模型" @update:model-value="updateImageModel" /></label>
+      <label><span>画面比例</span><AppSelect :model-value="selectedImageSettings.aspectRatio" :options="ratioOptions" aria-label="画面比例" @update:model-value="updateData({ aspectRatio: $event })" /></label>
+      <label><span>清晰度</span><AppSelect :model-value="selectedImageSettings.resolution" :options="resolutionOptions" aria-label="清晰度" @update:model-value="updateData({ resolution: $event })" /></label>
+    </div>
+
     <p v-if="message" class="panel-notice">{{ message }}</p>
-    <ImageGenerationControls
-      :settings="data"
-      :estimated-credits="estimatedCredits"
-      :disabled="!canSubmit"
-      :running="submitting"
-      submit-label="生成穿搭效果"
-      @update:settings="updateSettings"
-      @submit="submitTask"
-    />
+    <footer class="product-visual-panel-footer">
+      <FileText :size="16" />
+      <AppSelect :model-value="selectedTextModel.id" :options="textModelOptions" aria-label="文本模型" @update:model-value="updateData({ textModel: $event })" />
+      <span class="panel-divider"></span>
+      <span class="task-credit-cost"><Coins :size="14" />本次 {{ estimatedCredits }} 积分</span>
+      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '生成中' : '生成穿搭方案'" @click="submitTask">
+        <LoaderCircle v-if="running" class="run-task-spinner" :size="18" />
+        <ArrowUp v-else :size="18" />
+      </AppButton>
+    </footer>
   </section>
 </template>

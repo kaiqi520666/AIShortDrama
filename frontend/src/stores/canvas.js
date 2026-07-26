@@ -208,31 +208,32 @@ export const useCanvasStore = defineStore('canvas', {
       this.selectNodes(ids.slice(0, 1))
       return ids
     },
-    addOutfitResultNode(outfitId, garmentId, modelId, prompt, settings) {
+    addOutfitVisualNodes(outfitId, garmentId, modelId, plans, settings) {
       const outfit = this.nodes.find((node) => node.id === outfitId)
-      if (!outfit) return
-      const resultNumber = this.nodes.filter((node) => node.data.outfitSourceId === outfitId).length + 1
-      const resultIndex = resultNumber - 1
-      const id = this.addNode('image', {
-        x: outfit.position.x + 500 + (resultIndex % 3) * 440,
-        y: outfit.position.y + Math.floor(resultIndex / 3) * 340,
+      if (!outfit || !plans.length) return []
+
+      const columns = Math.min(3, plans.length)
+      const ids = plans.map((plan, index) => {
+        const id = this.addNode('image', {
+          x: outfit.position.x + 500 + (index % columns) * 440,
+          y: outfit.position.y + Math.floor(index / columns) * 340,
+        })
+        const node = this.nodes.find((item) => item.id === id)
+        node.data = {
+          ...node.data,
+          title: plan.label,
+          outfitSourceId: outfitId,
+          prompt: plan.prompt,
+          promptParts: [{ type: 'text', value: plan.prompt }],
+          ...settings,
+        }
+        this.addEdge({ source: outfitId, target: id })
+        this.addEdge({ source: garmentId, target: id })
+        this.addEdge({ source: modelId, target: id })
+        return id
       })
-      const node = this.nodes.find((item) => item.id === id)
-      node.data = {
-        ...node.data,
-        title: `穿搭效果图 ${resultNumber}`,
-        outfitSourceId: outfitId,
-        status: 'generating',
-        generationProgress: 0,
-        prompt,
-        promptParts: [{ type: 'text', value: prompt }],
-        ...settings,
-      }
-      this.addEdge({ source: outfitId, target: id })
-      this.addEdge({ source: garmentId, target: id })
-      this.addEdge({ source: modelId, target: id })
-      this.selectNodes([outfitId])
-      return id
+      this.selectNodes(ids.slice(0, 1))
+      return ids
     },
     addAssetNode(asset, position) {
       const id = this.addNode(asset.media_type, position)
