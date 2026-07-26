@@ -19,7 +19,7 @@ const totalCount = computed(() => selectedItems.value.reduce((sum, item) => sum 
 
 <template>
   <StructuredNodeShell :id="id" :type="type" :data="data" :icon="Images" :selected="selected" has-target>
-    <div class="product-visual-node-content nodrag nopan nowheel">
+    <div class="product-visual-node-content nowheel">
       <div class="structured-node-summary">
         <span><Images :size="15" />商品出图</span>
         <small>{{ selectedItems.length }} 类 · {{ totalCount }} 张</small>
