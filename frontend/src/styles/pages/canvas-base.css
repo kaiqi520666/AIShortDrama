@@ -450,9 +450,10 @@
 }
 .media-node--image .node-image {
   height: 100%;
-  cursor: zoom-in;
+  cursor: grab;
   object-fit: contain;
 }
+.media-node--image .node-image:active { cursor: grabbing; }
 .node-video {
   display: block;
   width: 100%;
