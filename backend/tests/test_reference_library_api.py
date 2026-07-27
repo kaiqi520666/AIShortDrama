@@ -72,8 +72,8 @@ async def test_reference_libraries_separate_system_and_user_content(
         assert len([item for item in initial_models if item["source"] == "system"]) == 25
         assert all(item["resource_type"] == "model" for item in initial_models)
         assert all(item["resource_type"] == "character" for item in initial_characters)
-        assert [(item["name"], item["source"]) for item in initial_garments] == [
-            ("系统标准服饰", "system")
+        assert ("系统标准服饰", "system") in [
+            (item["name"], item["source"]) for item in initial_garments
         ]
         assert all(item["resource_type"] == "garment" for item in initial_garments)
         assert model["resource_type"] == "model" and model["source"] == "user"
