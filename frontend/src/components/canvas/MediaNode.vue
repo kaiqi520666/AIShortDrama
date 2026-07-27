@@ -197,7 +197,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="media-node" :class="[`media-node--${type}`, { selected }]" :style="nodeStyle">
     <div v-if="selected && type === 'image' && data.asset" class="media-node-toolbar nodrag nopan" :style="toolbarStyle" @pointerdown.stop>
-      <AppTooltip :text="libraryToolbarLabel">
+      <AppTooltip v-if="data.assetSource" :text="libraryToolbarLabel">
         <AppButton class="media-node-toolbar-button" icon-only :aria-label="libraryToolbarLabel" @click.stop="assetPickerOpen = true"><component :is="libraryCopy.icon" :size="16" /></AppButton>
       </AppTooltip>
       <AppTooltip text="预览原图">
