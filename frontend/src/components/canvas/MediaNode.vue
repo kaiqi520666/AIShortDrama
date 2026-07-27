@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
-import { AudioWaveform, Download, Eye, FileText, GripVertical, Images, Image as ImageIcon, LoaderCircle, MoveDiagonal2, Music2, Shirt, Upload, UserRound, Video } from 'lucide-vue-next'
+import { AudioWaveform, Download, Eye, FileText, GripVertical, Images, Image as ImageIcon, LoaderCircle, MoveDiagonal2, Music2, Shirt, UserRound, Video } from 'lucide-vue-next'
 import { uploadMedia } from '../../api/uploads'
 import { useGlobalToast } from '../../composables/useGlobalUI'
 import { imageAspectRatios } from '../../config/imageSettings'
@@ -15,6 +15,7 @@ import AppButton from '../ui/AppButton.vue'
 import AppInput from '../ui/AppInput.vue'
 import AppMediaPreview from '../ui/AppMediaPreview.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
+import AppTooltip from '../ui/AppTooltip.vue'
 
 const props = defineProps({
   id: { type: String, required: true },
@@ -76,6 +77,7 @@ const libraryCopy = computed(() => ({
   model: { label: '模特', icon: UserRound },
   garment: { label: '服饰', icon: Shirt },
 }[resourceType.value] || { label: '素材', icon: Images }))
+const libraryToolbarLabel = computed(() => resourceType.value === 'asset' ? '资产库' : `${libraryCopy.value.label}库`)
 const uploadAccept = computed(() => mediaUploadRules[props.type]?.types.join(',') || '')
 const { updateNodeData, viewport } = useVueFlow()
 let resizeState = null
@@ -193,6 +195,19 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="media-node" :class="[`media-node--${type}`, { selected }]" :style="nodeStyle">
+    <div v-if="selected && type === 'image' && data.asset" class="media-node-toolbar nodrag nopan" @pointerdown.stop>
+      <AppTooltip :text="libraryToolbarLabel">
+        <AppButton class="media-node-toolbar-button" icon-only :aria-label="libraryToolbarLabel" @click.stop="assetPickerOpen = true"><component :is="libraryCopy.icon" :size="16" /></AppButton>
+      </AppTooltip>
+      <AppTooltip text="预览原图">
+        <AppButton class="media-node-toolbar-button" icon-only aria-label="预览原图" @click.stop="openImagePreview"><Eye :size="16" /></AppButton>
+      </AppTooltip>
+      <AppTooltip text="下载原图">
+        <AppButton class="media-node-toolbar-button" icon-only :disabled="downloading" aria-label="下载原图" @click.stop="downloadImage">
+          <LoaderCircle v-if="downloading" class="media-action-spinner" :size="16" /><Download v-else :size="16" />
+        </AppButton>
+      </AppTooltip>
+    </div>
     <label class="node-title">
       <component :is="icon" :size="14" />
       <AppInput
@@ -266,16 +281,6 @@ onBeforeUnmount(() => {
       <span v-if="type === 'video' || (type === 'text' && textMode)" class="node-drag-handle" title="拖动节点"><GripVertical :size="16" /></span>
       <AppButton v-if="type === 'text' && textMode" class="text-resize-handle nodrag nopan" icon-only title="调整尺寸" @pointerdown.stop.prevent="startResize">
         <MoveDiagonal2 :size="15" />
-      </AppButton>
-      <div v-if="selected && type === 'image' && data.asset" class="media-node-actions nodrag nopan" @pointerdown.stop>
-        <AppButton class="media-node-action" icon-only title="预览原图" aria-label="预览原图" @click.stop="openImagePreview"><Eye :size="15" /></AppButton>
-        <AppButton class="media-node-action" icon-only :disabled="downloading" title="下载原图" aria-label="下载原图" @click.stop="downloadImage">
-          <LoaderCircle v-if="downloading" class="media-action-spinner" :size="15" /><Download v-else :size="15" />
-        </AppButton>
-        <AppButton v-if="['upload', 'clipboard'].includes(data.assetSource)" class="media-node-action" icon-only :disabled="uploading" title="重新上传图片" aria-label="重新上传图片" @click.stop="fileInput?.click()"><Upload :size="15" /></AppButton>
-      </div>
-      <AppButton v-if="selected && type === 'image' && data.asset" class="media-library-button nodrag nopan" icon-only :title="`选择其他${libraryCopy.label}`" @pointerdown.stop @click.stop="assetPickerOpen = true">
-        <component :is="libraryCopy.icon" :size="15" />
       </AppButton>
       <AppButton v-if="selected && ['image', 'video', 'audio'].includes(type)" class="media-resize-handle nodrag nopan" icon-only title="调整显示尺寸" @pointerdown.stop.prevent="startResize">
         <MoveDiagonal2 :size="15" />

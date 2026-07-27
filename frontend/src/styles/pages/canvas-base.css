@@ -565,47 +565,38 @@
   border-radius: 4px;
   background: var(--color-backdrop);
 }
-.media-node-actions {
+.media-node-toolbar {
   position: absolute;
-  z-index: 5;
-  top: 7px;
-  right: 7px;
+  z-index: 20;
+  bottom: calc(100% + 34px);
+  left: 50%;
   display: flex;
-  gap: 4px;
+  align-items: center;
+  padding: 4px;
+  border: 1px solid var(--color-border-strong);
+  border-radius: 7px;
+  background: var(--color-surface-base);
+  box-shadow: 0 12px 30px var(--color-shadow-strong);
+  transform: translateX(-50%);
 }
-.media-node-action.ui-button {
-  width: 28px;
-  height: 28px;
-  min-height: 28px;
+.media-node-toolbar .ui-tooltip + .ui-tooltip {
+  border-left: 1px solid var(--color-border-subtle);
+}
+.media-node-toolbar-button.ui-button {
+  width: 32px;
+  height: 32px;
+  min-height: 32px;
   padding: 0;
-  border: 1px solid var(--color-highlight);
+  border: 0;
   border-radius: 5px;
-  background: var(--color-brand-soft);
-  color: var(--color-text-primary);
-  backdrop-filter: blur(8px);
+  background: transparent;
+  color: var(--color-text-secondary);
 }
-.media-node-action.ui-button:hover {
-  border-color: var(--color-brand-strong);
+.media-node-toolbar-button.ui-button:hover {
   background: var(--color-surface-raised);
-  color: var(--color-brand);
+  color: var(--color-text-primary);
 }
 .media-action-spinner { animation: ui-spin 0.9s linear infinite; }
-.media-library-button.ui-button {
-  position: absolute;
-  z-index: 5;
-  top: 7px;
-  left: 7px;
-  width: 28px;
-  height: 28px;
-  min-height: 28px;
-  padding: 0;
-  border: 1px solid var(--color-highlight);
-  border-radius: 5px;
-  background: var(--color-brand-soft);
-  color: var(--color-text-primary);
-  backdrop-filter: blur(8px);
-}
-.media-library-button.ui-button:hover { border-color: var(--color-brand-strong); background: var(--color-surface-raised); color: var(--color-brand); }
 .media-upload-state {
   display: grid;
   width: 100%;
