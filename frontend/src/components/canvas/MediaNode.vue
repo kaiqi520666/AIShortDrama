@@ -80,6 +80,7 @@ const libraryCopy = computed(() => ({
 const libraryToolbarLabel = computed(() => resourceType.value === 'asset' ? '资产库' : `${libraryCopy.value.label}库`)
 const uploadAccept = computed(() => mediaUploadRules[props.type]?.types.join(',') || '')
 const { updateNodeData, viewport } = useVueFlow()
+const toolbarStyle = computed(() => ({ '--toolbar-scale': 1 / viewport.value.zoom }))
 let resizeState = null
 
 async function handleUpload(event) {
@@ -195,7 +196,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="media-node" :class="[`media-node--${type}`, { selected }]" :style="nodeStyle">
-    <div v-if="selected && type === 'image' && data.asset" class="media-node-toolbar nodrag nopan" @pointerdown.stop>
+    <div v-if="selected && type === 'image' && data.asset" class="media-node-toolbar nodrag nopan" :style="toolbarStyle" @pointerdown.stop>
       <AppTooltip :text="libraryToolbarLabel">
         <AppButton class="media-node-toolbar-button" icon-only :aria-label="libraryToolbarLabel" @click.stop="assetPickerOpen = true"><component :is="libraryCopy.icon" :size="16" /></AppButton>
       </AppTooltip>

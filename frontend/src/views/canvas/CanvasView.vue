@@ -78,7 +78,7 @@ const selectedPartialGroup = computed(() => groups.value.find((group) => selecte
 const contextNodeIds = computed(() => contextMenu.value?.nodeIds || [])
 const contextCompleteGroup = computed(() => groups.value.find((group) => contextNodeIds.value.length > 1 && group.nodeIds.length === contextNodeIds.value.length && group.nodeIds.every((id) => contextNodeIds.value.includes(id))))
 const contextPartialGroup = computed(() => groups.value.find((group) => contextNodeIds.value.length > 1 && group.nodeIds.length > contextNodeIds.value.length && contextNodeIds.value.every((id) => group.nodeIds.includes(id))))
-const panelConfig = { width: 600, height: 260, gap: 16, margin: 16, header: 72 }
+const panelConfig = { width: 600, gap: 16, margin: 16 }
 function frameStyle(nodeIds) {
   const flowNodes = nodeIds.map((id) => findNode(id)).filter(Boolean)
   if (flowNodes.length < 2) return {}
@@ -118,16 +118,10 @@ const panelStyle = computed(() => {
 
   const zoom = viewport.value.zoom
   const center = (assetsVisible.value ? 292 : 0) + viewport.value.x + (node.computedPosition.x + node.dimensions.width / 2) * zoom
-  const top = viewport.value.y + node.computedPosition.y * zoom
-  const bottom = top + node.dimensions.height * zoom
-  const below = bottom + panelConfig.gap
-  const panelHeight = selectedNodeRegistry.value?.panelHeight || panelConfig.height
-  const maxTop = window.innerHeight - panelHeight - panelConfig.margin
-  const above = top - panelHeight - panelConfig.gap
-  const panelTop = below <= maxTop ? below : above >= panelConfig.header ? above : Math.max(panelConfig.header, maxTop)
+  const top = viewport.value.y + (node.computedPosition.y + node.dimensions.height) * zoom + panelConfig.gap
   return {
     left: `clamp(${panelConfig.margin}px, ${center - panelConfig.width / 2}px, calc(100vw - ${panelConfig.width + panelConfig.margin}px))`,
-    top: `${panelTop}px`,
+    top: `${top}px`,
   }
 })
 function openGlobalMenu(event) {

@@ -577,7 +577,8 @@
   border-radius: 7px;
   background: var(--color-surface-base);
   box-shadow: 0 12px 30px var(--color-shadow-strong);
-  transform: translateX(-50%);
+  transform: translateX(-50%) scale(var(--toolbar-scale));
+  transform-origin: bottom center;
 }
 .media-node-toolbar .ui-tooltip + .ui-tooltip {
   border-left: 1px solid var(--color-border-subtle);
