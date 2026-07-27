@@ -279,7 +279,7 @@ describe('canvas node packs', () => {
 
     expect(outfitId).toBe('outfit-3')
     expect(store.nodes).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: 'image-1', data: expect.objectContaining({ title: '服饰参考图', assetSource: 'upload' }) }),
+      expect.objectContaining({ id: 'image-1', data: expect.objectContaining({ title: '服饰参考图', assetSource: 'upload', resourceType: 'garment' }) }),
       expect.objectContaining({ id: 'image-2', data: expect.objectContaining({ title: '模特参考图', assetSource: 'upload', resourceType: 'model' }) }),
       expect.objectContaining({ id: outfitId, type: 'outfit', data: expect.objectContaining({ title: '服饰穿搭 3', textModel: 'qwen3.7-plus', imageModel: 'gpt-image-2', aspectRatio: '1:1', resolution: '1K', sceneIds: ['studio'], customScene: '', generatedNodeIds: [] }) }),
     ]))

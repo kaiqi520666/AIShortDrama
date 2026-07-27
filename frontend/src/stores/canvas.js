@@ -137,7 +137,7 @@ export const useCanvasStore = defineStore('canvas', {
         const modelId = this.addNode('image', { x: position.x - 460, y: position.y + 215 })
         const garment = this.nodes.find((node) => node.id === garmentId)
         const model = this.nodes.find((node) => node.id === modelId)
-        garment.data = { ...garment.data, title: '服饰参考图', assetSource: 'upload' }
+        garment.data = { ...garment.data, title: '服饰参考图', assetSource: 'upload', resourceType: 'garment' }
         model.data = { ...model.data, title: '模特参考图', assetSource: 'upload', resourceType: 'model' }
         const outfitId = this.addNode(type, position, garmentId)
         const garmentEdge = this.edges.find((edge) => edge.source === garmentId && edge.target === outfitId)

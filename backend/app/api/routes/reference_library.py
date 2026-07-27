@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.identity import get_current_user_id
-from app.models import Character, OutfitModel
+from app.models import Character, Garment, OutfitModel
 from app.schemas.response import fail, success
 from app.services.image_processing import normalize_image
 from app.services.storage import OssStorage
@@ -20,8 +20,12 @@ IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 MAX_IMAGE_SIZE = 20 * 1024 * 1024
 
 
-def reference_payload(item: OutfitModel | Character, resource_type: str) -> dict[str, Any]:
-    metadata = item.model_metadata if resource_type == "model" else item.character_metadata
+def reference_payload(item: OutfitModel | Character | Garment, resource_type: str) -> dict[str, Any]:
+    metadata = {
+        "model": getattr(item, "model_metadata", {}),
+        "character": getattr(item, "character_metadata", {}),
+        "garment": getattr(item, "garment_metadata", {}),
+    }[resource_type]
     return {
         "id": str(item.id),
         "resource_type": resource_type,
@@ -143,3 +147,46 @@ async def upload_character(
     await db.commit()
     await db.refresh(item)
     return success(reference_payload(item, "character"))
+
+
+@router.get("/garments")
+async def list_garments(
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    items = await db.scalars(
+        select(Garment)
+        .where(
+            Garment.active.is_(True),
+            or_(Garment.user_id.is_(None), Garment.user_id == user_id),
+        )
+        .order_by(Garment.user_id.is_not(None), Garment.sort_order, Garment.created_at)
+    )
+    return success([reference_payload(item, "garment") for item in items])
+
+
+@router.post("/garments")
+async def upload_garment(
+    file: UploadFile = File(...),
+    name: str | None = Form(default=None),
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    try:
+        stored = await store_reference_image(file, "garments")
+    except ValueError as exc:
+        return fail(str(exc))
+    except Exception as exc:
+        return fail(f"服饰上传失败：{exc}")
+    item = Garment(
+        user_id=user_id,
+        name=((name or file.filename or "我的服饰").rsplit(".", 1)[0].strip() or "我的服饰")[:100],
+        image_url=stored["url"],
+        object_key=stored["object_key"],
+        width=stored["width"],
+        height=stored["height"],
+    )
+    db.add(item)
+    await db.commit()
+    await db.refresh(item)
+    return success(reference_payload(item, "garment"))

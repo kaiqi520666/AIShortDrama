@@ -1,6 +1,6 @@
 import { apiClient } from './client'
 
-const endpoints = { model: '/outfit-models', character: '/characters' }
+const endpoints = { model: '/outfit-models', character: '/characters', garment: '/garments' }
 
 export async function listReferenceItems(resourceType) {
   return (await apiClient.get(endpoints[resourceType])).data

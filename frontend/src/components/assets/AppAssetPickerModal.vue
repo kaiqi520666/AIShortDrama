@@ -14,7 +14,7 @@ import AppModal from '../ui/AppModal.vue'
 import EmptyState from '../ui/EmptyState.vue'
 
 const props = defineProps({
-  resourceType: { type: String, default: 'asset', validator: (value) => ['asset', 'model', 'character'].includes(value) },
+  resourceType: { type: String, default: 'asset', validator: (value) => ['asset', 'model', 'character', 'garment'].includes(value) },
   mediaType: { type: String, default: 'image' },
   workspaceId: { type: String, default: '' },
   nodeId: { type: String, default: '' },
@@ -36,6 +36,7 @@ const copy = computed(() => ({
   asset: { title: `选择${props.mediaType === 'video' ? '视频' : props.mediaType === 'audio' ? '音频' : '图片'}素材`, description: '从资产库选择，或上传新的素材', upload: `上传${props.mediaType === 'video' ? '视频' : props.mediaType === 'audio' ? '音频' : '图片'}` },
   model: { title: '选择模特', description: '选择系统模特或已上传的模特', upload: '上传模特' },
   character: { title: '选择角色', description: '选择系统角色或已上传的角色', upload: '上传角色' },
+  garment: { title: '选择服饰', description: '选择系统服饰或已上传的服饰', upload: '上传服饰' },
 }[props.resourceType]))
 const visibleItems = computed(() => items.value.filter((item) => {
   const queryMatches = !query.value.trim() || item.name.toLowerCase().includes(query.value.trim().toLowerCase())

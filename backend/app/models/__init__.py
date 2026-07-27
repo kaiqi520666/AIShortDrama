@@ -8,7 +8,7 @@ from app.models.billing import (
     RechargeTier,
 )
 from app.models.generation_task import GenerationTask
-from app.models.reference_library import Character, OutfitModel
+from app.models.reference_library import Character, Garment, OutfitModel
 from app.models.user import User
 from app.models.workspace import Workspace
 
@@ -19,6 +19,7 @@ __all__ = [
     "Character",
     "CreditLedger",
     "GenerationTask",
+    "Garment",
     "ModelPriceRule",
     "OutfitModel",
     "RechargeOrder",
