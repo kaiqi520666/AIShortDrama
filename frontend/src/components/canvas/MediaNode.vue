@@ -1,16 +1,19 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
-import { AudioWaveform, FileText, GripVertical, Images, Image as ImageIcon, MoveDiagonal2, Music2, Shirt, Upload, UserRound, Video } from 'lucide-vue-next'
+import { AudioWaveform, Download, Eye, FileText, GripVertical, Images, Image as ImageIcon, LoaderCircle, MoveDiagonal2, Music2, Shirt, Upload, UserRound, Video } from 'lucide-vue-next'
 import { uploadMedia } from '../../api/uploads'
+import { useGlobalToast } from '../../composables/useGlobalUI'
 import { imageAspectRatios } from '../../config/imageSettings'
 import { startGenerationPolling } from '../../services/generationPolling'
 import { useCanvasStore } from '../../stores/canvas'
+import { downloadUrl } from '../../utils/download'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import { mediaUploadRules, readMediaMetadata, validateMediaFile } from '../../utils/mediaFiles'
 import AppAssetPickerModal from '../assets/AppAssetPickerModal.vue'
 import AppButton from '../ui/AppButton.vue'
 import AppInput from '../ui/AppInput.vue'
+import AppMediaPreview from '../ui/AppMediaPreview.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
 
 const props = defineProps({
@@ -60,11 +63,14 @@ const bodyStyle = computed(() => {
   return {}
 })
 const store = useCanvasStore()
+const toast = useGlobalToast()
 const uploadNotice = ref('')
 const fileInput = ref(null)
 const uploading = ref(false)
 const uploadProgress = ref(0)
 const assetPickerOpen = ref(false)
+const previewOpen = ref(false)
+const downloading = ref(false)
 const resourceType = computed(() => props.data.resourceType || 'asset')
 const libraryCopy = computed(() => ({
   model: { label: '模特', icon: UserRound },
@@ -127,6 +133,23 @@ function selectAsset(item) {
     resourceId: item.id,
   })
   assetPickerOpen.value = false
+}
+
+async function downloadImage() {
+  if (!props.data.asset || downloading.value) return
+  downloading.value = true
+  try {
+    await downloadUrl(props.data.asset, props.data.title)
+  } catch (error) {
+    toast.error(error.message || '图片下载失败')
+  } finally {
+    downloading.value = false
+  }
+}
+
+function openImagePreview() {
+  store.selectNodes([props.id])
+  previewOpen.value = true
 }
 
 function resizeNode(event) {
@@ -213,7 +236,7 @@ onBeforeUnmount(() => {
       />
 
       <template v-else-if="data.asset && type === 'image'">
-        <img class="node-image" :src="buildOssImageUrl(data.asset)" :alt="data.title" referrerpolicy="no-referrer" />
+        <img class="node-image" :src="buildOssImageUrl(data.asset)" :alt="data.title" title="预览原图" referrerpolicy="no-referrer" @click.stop="openImagePreview" />
       </template>
 
       <video v-else-if="data.assetId && type === 'video'" class="node-video nodrag nopan nowheel" :src="`/api/assets/${data.assetId}/content`" :poster="data.poster" controls playsinline preload="metadata"></video>
@@ -244,9 +267,13 @@ onBeforeUnmount(() => {
       <AppButton v-if="type === 'text' && textMode" class="text-resize-handle nodrag nopan" icon-only title="调整尺寸" @pointerdown.stop.prevent="startResize">
         <MoveDiagonal2 :size="15" />
       </AppButton>
-      <AppButton v-if="type === 'image' && data.asset && ['upload', 'clipboard'].includes(data.assetSource)" class="media-reupload-button nodrag nopan" icon-only :disabled="uploading" title="重新上传图片" @pointerdown.stop @click.stop="fileInput?.click()">
-        <Upload :size="15" />
-      </AppButton>
+      <div v-if="selected && type === 'image' && data.asset" class="media-node-actions nodrag nopan" @pointerdown.stop>
+        <AppButton class="media-node-action" icon-only title="预览原图" aria-label="预览原图" @click.stop="openImagePreview"><Eye :size="15" /></AppButton>
+        <AppButton class="media-node-action" icon-only :disabled="downloading" title="下载原图" aria-label="下载原图" @click.stop="downloadImage">
+          <LoaderCircle v-if="downloading" class="media-action-spinner" :size="15" /><Download v-else :size="15" />
+        </AppButton>
+        <AppButton v-if="['upload', 'clipboard'].includes(data.assetSource)" class="media-node-action" icon-only :disabled="uploading" title="重新上传图片" aria-label="重新上传图片" @click.stop="fileInput?.click()"><Upload :size="15" /></AppButton>
+      </div>
       <AppButton v-if="selected && type === 'image' && data.asset" class="media-library-button nodrag nopan" icon-only :title="`选择其他${libraryCopy.label}`" @pointerdown.stop @click.stop="assetPickerOpen = true">
         <component :is="libraryCopy.icon" :size="15" />
       </AppButton>
@@ -267,5 +294,6 @@ onBeforeUnmount(() => {
       @close="assetPickerOpen = false"
       @select="selectAsset"
     />
+    <AppMediaPreview v-if="previewOpen" :src="data.asset" :title="data.title" :downloading="downloading" @close="previewOpen = false" @download="downloadImage" />
   </div>
 </template>

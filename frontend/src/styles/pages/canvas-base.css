@@ -450,6 +450,7 @@
 }
 .media-node--image .node-image {
   height: 100%;
+  cursor: zoom-in;
   object-fit: contain;
 }
 .node-video {
@@ -563,11 +564,15 @@
   border-radius: 4px;
   background: var(--color-backdrop);
 }
-.media-reupload-button.ui-button {
+.media-node-actions {
   position: absolute;
   z-index: 5;
   top: 7px;
   right: 7px;
+  display: flex;
+  gap: 4px;
+}
+.media-node-action.ui-button {
   width: 28px;
   height: 28px;
   min-height: 28px;
@@ -578,11 +583,12 @@
   color: var(--color-text-primary);
   backdrop-filter: blur(8px);
 }
-.media-reupload-button.ui-button:hover {
+.media-node-action.ui-button:hover {
   border-color: var(--color-brand-strong);
   background: var(--color-surface-raised);
   color: var(--color-brand);
 }
+.media-action-spinner { animation: ui-spin 0.9s linear infinite; }
 .media-library-button.ui-button {
   position: absolute;
   z-index: 5;

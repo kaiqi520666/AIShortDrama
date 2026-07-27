@@ -6,6 +6,7 @@ import AppButton from './AppButton.vue'
 defineProps({
   title: { type: String, required: true },
   description: { type: String, default: '' },
+  contentClass: { type: String, default: '' },
 })
 const emit = defineEmits(['close'])
 const closeButton = ref(null)
@@ -25,7 +26,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
   <Teleport to="body">
     <Transition name="app-modal">
       <div class="app-modal-backdrop" @pointerdown.self="emit('close')">
-        <section class="app-modal" role="dialog" aria-modal="true" aria-labelledby="app-modal-title">
+        <section :class="['app-modal', contentClass]" role="dialog" aria-modal="true" aria-labelledby="app-modal-title">
           <header class="app-modal-header">
             <div><h2 id="app-modal-title">{{ title }}</h2><p v-if="description">{{ description }}</p></div>
             <div class="app-modal-header-actions">
