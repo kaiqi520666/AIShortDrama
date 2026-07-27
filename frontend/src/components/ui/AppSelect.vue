@@ -69,8 +69,8 @@ function handleOutside(event) {
   if (!root.value?.contains(event.target)) closeMenu()
 }
 
-onMounted(() => window.addEventListener('pointerdown', handleOutside))
-onBeforeUnmount(() => window.removeEventListener('pointerdown', handleOutside))
+onMounted(() => window.addEventListener('pointerdown', handleOutside, true))
+onBeforeUnmount(() => window.removeEventListener('pointerdown', handleOutside, true))
 </script>
 
 <template>
