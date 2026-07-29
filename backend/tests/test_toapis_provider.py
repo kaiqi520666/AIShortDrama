@@ -117,7 +117,8 @@ async def test_http_error_preserves_top_level_provider_message():
         )
     )
     try:
-        with pytest.raises(ToApisError, match="参考图片不符合要求（invalid_parameter）"):
+        with pytest.raises(ToApisError, match="参考图片不符合要求（invalid_parameter）") as exc_info:
             await provider.submit_video({"model": "seedance-2-mini"})
+        assert exc_info.value.public_message == "ToAPIs 请求失败（400）"
     finally:
         await provider.client.aclose()

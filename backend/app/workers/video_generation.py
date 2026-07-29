@@ -59,7 +59,11 @@ async def run_video_generation(
     except GenerationPollTimeout as exc:
         await fail_task(task_uuid, "timeout", str(exc))
     except Exception as exc:
-        await fail_task(task_uuid, "failed", str(exc))
+        await fail_task(
+            task_uuid,
+            "failed",
+            exc.public_message if isinstance(exc, ToApisError) else str(exc),
+        )
         raise
     finally:
         if owns_provider and provider:

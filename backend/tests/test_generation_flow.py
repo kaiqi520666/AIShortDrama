@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.core.database import SessionLocal
 from app.core.identity import DEFAULT_WORKSPACE_ID
 from app.models import Asset, GenerationTask, Workspace
+from app.providers.toapis import ToApisError
 from app.schemas.generation import ImageGenerationRequest, VideoGenerationRequest
 from app.services.generation_tasks import create_image_task, create_video_task
 from app.workers.image_generation import run_image_generation
@@ -51,6 +52,11 @@ class FakeVideoProvider:
             "progress": 100,
             "result": {"type": "video", "data": [{"url": "https://example.com/temp.mp4"}]},
         }
+
+
+class FailingVideoProvider:
+    async def submit_video(self, _payload):
+        raise ToApisError("完整上游错误", status_code=400)
 
 
 async def default_workspace_owner():
@@ -159,6 +165,41 @@ async def test_video_generation_flow():
                 await db.scalars(select(Asset).where(Asset.generation_task_id == task_id))
             ).all():
                 await db.delete(asset)
+            task = await db.get(GenerationTask, task_id)
+            if task:
+                await db.delete(task)
+                await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_video_generation_hides_provider_detail_from_node():
+    user_id = await default_workspace_owner()
+    async with SessionLocal() as db:
+        task = await create_video_task(
+            db,
+            FakeRedis(),
+            VideoGenerationRequest(
+                workspace_id=DEFAULT_WORKSPACE_ID,
+                node_id="video-error-test",
+                model="seedance-2-mini",
+                prompt="test video",
+                duration=15,
+                resolution="480p",
+                aspect_ratio="9:16",
+            ),
+            user_id,
+        )
+        task_id = task.id
+
+    try:
+        with pytest.raises(ToApisError, match="完整上游错误"):
+            await run_video_generation(str(task_id), provider=FailingVideoProvider())
+        async with SessionLocal() as db:
+            failed = await db.get(GenerationTask, task_id)
+            assert failed.status == "failed"
+            assert failed.error_message == "ToAPIs 请求失败（400）"
+    finally:
+        async with SessionLocal() as db:
             task = await db.get(GenerationTask, task_id)
             if task:
                 await db.delete(task)

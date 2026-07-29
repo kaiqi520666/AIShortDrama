@@ -6,9 +6,14 @@ from app.core.config import get_settings
 
 
 class ToApisError(RuntimeError):
-    def __init__(self, message: str, retryable: bool = False):
+    def __init__(self, message: str, retryable: bool = False, status_code: int | None = None):
         super().__init__(message)
         self.retryable = retryable
+        self.status_code = status_code
+
+    @property
+    def public_message(self) -> str:
+        return f"ToAPIs 请求失败（{self.status_code}）" if self.status_code else str(self)
 
 
 class ToApisProvider:
@@ -77,6 +82,7 @@ class ToApisProvider:
             raise ToApisError(
                 self._error_message(response),
                 retryable=response.status_code == 429 or response.status_code >= 500,
+                status_code=response.status_code,
             ) from exc
         data = response.json()
         if not isinstance(data, dict):
