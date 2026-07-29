@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
-import { AudioWaveform, Download, Eye, FileText, GripVertical, Images, Image as ImageIcon, LoaderCircle, MoveDiagonal2, Music2, Shirt, UserRound, Video } from 'lucide-vue-next'
+import { AudioWaveform, Clapperboard, Download, Eye, FileText, GripVertical, Images, Image as ImageIcon, LoaderCircle, MoveDiagonal2, Music2, Shirt, UserRound, Video } from 'lucide-vue-next'
 import { uploadMedia } from '../../api/uploads'
 import { useGlobalToast } from '../../composables/useGlobalUI'
 import { imageAspectRatios } from '../../config/imageSettings'
@@ -25,7 +25,7 @@ const props = defineProps({
 })
 
 const icons = { text: FileText, image: ImageIcon, video: Video, audio: Music2 }
-const icon = computed(() => icons[props.type])
+const icon = computed(() => props.type === 'image' && props.data.storyboardSourceId ? Clapperboard : icons[props.type])
 const textMode = computed(() => props.type === 'text' ? (props.data.textMode ?? (props.data.content ? 'manual' : null)) : null)
 const acceptsInput = computed(() => props.type === 'text' ? textMode.value === 'task' : !props.data.assetSource)
 const sourceAspectRatio = computed(() => props.data.assetSource && props.data.sourceAspectRatio > 0 ? props.data.sourceAspectRatio : null)
@@ -155,6 +155,10 @@ function openImagePreview() {
   previewOpen.value = true
 }
 
+function createStoryboardVideo() {
+  if (!store.addStoryboardVideoNode(props.id)) toast.error('请先生成分镜图片和视频脚本')
+}
+
 function resizeNode(event) {
   const zoom = viewport.value.zoom
   if (resizeState.kind === 'media') {
@@ -199,6 +203,9 @@ onBeforeUnmount(() => {
     <div v-if="selected && type === 'image' && data.asset" class="media-node-toolbar nodrag nopan" :style="toolbarStyle" @pointerdown.stop>
       <AppTooltip v-if="data.assetSource" :text="libraryToolbarLabel">
         <AppButton class="media-node-toolbar-button" icon-only :aria-label="libraryToolbarLabel" @click.stop="assetPickerOpen = true"><component :is="libraryCopy.icon" :size="16" /></AppButton>
+      </AppTooltip>
+      <AppTooltip v-if="data.storyboardSourceId" text="创建视频节点">
+        <AppButton class="media-node-toolbar-button" icon-only aria-label="创建视频节点" @click.stop="createStoryboardVideo"><Video :size="16" /></AppButton>
       </AppTooltip>
       <AppTooltip text="预览原图">
         <AppButton class="media-node-toolbar-button" icon-only aria-label="预览原图" @click.stop="openImagePreview"><Eye :size="16" /></AppButton>

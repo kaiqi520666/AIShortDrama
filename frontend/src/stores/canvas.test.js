@@ -310,19 +310,39 @@ describe('canvas node packs', () => {
     reference.data = { ...reference.data, asset: 'https://example.com/product.png', status: 'ready' }
     const storyboardId = store.addNode('product_storyboard', { x: 500, y: 0 }, productId)
     const ids = store.addProductStoryboardNodes(storyboardId, productId, reference.id, [
-      { id: 'ugc-seeding', label: 'UGC 种草', prompt: '四格种草分镜板' },
-      { id: 'unboxing', label: '开箱种草', prompt: '四格开箱分镜板' },
+      { id: 'ugc-seeding', label: 'UGC 种草', prompt: '四格种草分镜板', videoPrompt: '参考图片1生成种草视频' },
+      { id: 'unboxing', label: '开箱种草', prompt: '四格开箱分镜板', videoPrompt: '参考图片1生成开箱视频' },
     ], { model: 'gpt-image-2', aspectRatio: '9:16', resolution: '2K' })
 
     expect(ids).toEqual(['image-4', 'image-5'])
     expect(store.nodes.find((node) => node.id === ids[0]).data).toEqual(expect.objectContaining({
       title: 'UGC 种草分镜板',
       storyboardSourceId: storyboardId,
+      storyboardTemplateId: 'ugc-seeding',
+      storyboardDuration: 8,
+      storyboardVideoAspectRatio: '9:16',
+      storyboardShotCount: 3,
+      videoPrompt: '参考图片1生成种草视频',
       prompt: '四格种草分镜板',
       aspectRatio: '9:16',
       resolution: '2K',
     }))
     expect(store.edges.filter((edge) => ids.includes(edge.target))).toHaveLength(6)
+
+    const storyboardImage = store.nodes.find((node) => node.id === ids[0])
+    storyboardImage.data = { ...storyboardImage.data, asset: 'https://example.com/storyboard.png', status: 'ready' }
+    const videoId = store.addStoryboardVideoNode(ids[0])
+    expect(videoId).toBe('video-6')
+    expect(store.nodes.find((node) => node.id === videoId).data).toEqual(expect.objectContaining({
+      title: 'UGC 种草视频',
+      storyboardImageId: ids[0],
+      prompt: '参考图片1生成种草视频',
+      duration: 8,
+      aspectRatio: '9:16',
+      resolution: '720p',
+    }))
+    expect(store.edges).toContainEqual(expect.objectContaining({ source: ids[0], target: videoId }))
+    expect(store.addStoryboardVideoNode(ids[0])).toBe(videoId)
   })
 
   it('uses an existing image when product creation is contextual', async () => {

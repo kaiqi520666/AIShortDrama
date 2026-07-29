@@ -2,13 +2,30 @@ import { defineStore } from 'pinia'
 import { canConnect, getConnectionError } from '../config/canvas/connectionRules'
 import { createNodeData, getNodeDefinition, getReversePrompt } from '../config/canvas/nodeDefinitions'
 import { isNodeTypeAvailable } from '../config/canvas/nodePacks'
+import { storyboardShotCount } from '../config/canvas/productStoryboard'
 import { defaultReverseModel } from '../config/reverseModels'
+import { defaultVideoModel } from '../config/videoModels'
 import { saveWorkspaceCanvas } from '../api/workspaces'
 
 const createEdge = (id, source, target, targetHandle) => ({ id, source, target, ...(targetHandle ? { targetHandle } : {}), type: 'cinematic' })
 const defaultWorkspaceId = '00000000-0000-0000-0000-000000000101'
 let activeSave = null
 let saveQueued = false
+
+function storyboardVideoData(source) {
+  const prompt = source?.type === 'image' ? source.data.videoPrompt?.trim() : ''
+  if (!prompt) return null
+  return {
+    storyboardImageId: source.id,
+    prompt,
+    promptParts: [{ type: 'text', value: prompt }],
+    model: defaultVideoModel.id,
+    duration: source.data.storyboardDuration || defaultVideoModel.defaultDuration,
+    aspectRatio: source.data.storyboardVideoAspectRatio || defaultVideoModel.defaultAspectRatio,
+    resolution: defaultVideoModel.defaultResolution,
+    generateAudio: true,
+  }
+}
 
 function stripTransientNodes(nodes = [], edges = [], groups = []) {
   const transientIds = new Set(nodes.filter((node) => node.data?.status === 'uploading').map((node) => node.id))
@@ -166,12 +183,14 @@ export const useCanvasStore = defineStore('canvas', {
       const number = this.sequence++
       const id = `${type}-${number}`
       this.nodes.forEach((node) => { node.selected = false })
+      const data = createNodeData(type, number, source)
+      if (type === 'video') Object.assign(data, storyboardVideoData(source) || {})
       this.nodes.push({
         id,
         type,
         position,
         selected: true,
-        data: createNodeData(type, number, source),
+        data,
       })
       if (sourceId) this.edges.push(createEdge(`edge-${crypto.randomUUID()}`, sourceId, id, type === 'character' && source.type === 'image' ? 'reference' : undefined))
       return id
@@ -187,6 +206,7 @@ export const useCanvasStore = defineStore('canvas', {
         .filter(Boolean)
       if (getConnectionError(source.type, target.type, incomingTypes, this.workspaceType)) return false
       this.edges.push({ id: `edge-${crypto.randomUUID()}`, ...connection, type: 'cinematic' })
+      if (target.type === 'video' && !target.data.prompt?.trim()) Object.assign(target.data, storyboardVideoData(source) || {})
       return true
     },
     addProductVisualNodes(plannerId, productId, referenceId, plans, settings) {
@@ -232,6 +252,12 @@ export const useCanvasStore = defineStore('canvas', {
           ...node.data,
           title: `${plan.label}分镜板`,
           storyboardSourceId: plannerId,
+          storyboardTemplateId: plan.id,
+          storyboardTemplateLabel: plan.label,
+          storyboardDuration: planner.data.duration,
+          storyboardVideoAspectRatio: planner.data.videoAspectRatio,
+          storyboardShotCount: storyboardShotCount(planner.data.duration),
+          videoPrompt: plan.videoPrompt,
           prompt: plan.prompt,
           promptParts: [{ type: 'text', value: plan.prompt }],
           ...settings,
@@ -243,6 +269,22 @@ export const useCanvasStore = defineStore('canvas', {
       })
       this.selectNodes(ids.slice(0, 1))
       return ids
+    },
+    addStoryboardVideoNode(imageId) {
+      const image = this.nodes.find((node) => node.id === imageId && node.type === 'image')
+      if (!image?.data.asset || !image.data.videoPrompt?.trim()) return
+      const existing = this.nodes.find((node) => node.type === 'video' && node.data.storyboardImageId === imageId)
+      if (existing) {
+        Object.assign(existing.data, storyboardVideoData(image))
+        this.selectNodes([existing.id])
+        return existing.id
+      }
+      const id = this.addNode('video', { x: image.position.x + 500, y: image.position.y }, imageId)
+      const node = this.nodes.find((item) => item.id === id)
+      if (!node) return
+      node.data.title = `${image.data.storyboardTemplateLabel || '商品分镜'}视频`
+      this.selectNodes([id])
+      return id
     },
     addOutfitVisualNodes(outfitId, garmentId, modelId, plans, settings) {
       const outfit = this.nodes.find((node) => node.id === outfitId)

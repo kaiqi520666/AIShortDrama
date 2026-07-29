@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
-import { ArrowUp, ChevronDown, Coins, FileText, Image, Images, LoaderCircle, Music2, Package, Shirt, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
+import { ArrowUp, ChevronDown, Clapperboard, Coins, FileText, Image, Images, LoaderCircle, Music2, Package, Shirt, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
 import { createAudioGeneration, createImageGeneration, createVideoGeneration } from '../../api/generations'
 import { streamReversePrompt } from '../../api/reversals'
 import { audioFormatOptions, audioModel, audioSampleRateOptions, buildAudioRequest, getAudioReferenceError, maxAudioPromptLength, normalizeAudioSettings } from '../../config/audioModels'
@@ -46,7 +46,9 @@ const modelMenu = ref(null)
 const modelOpen = ref(false)
 const modelStyle = ref({})
 const notice = ref('')
+const storyboardPromptView = ref('image')
 const running = computed(() => props.data.status === 'generating')
+const isStoryboardImage = computed(() => props.type === 'image' && Boolean(props.data.storyboardSourceId && props.data.videoPrompt))
 const references = computed(() => store.incomingNodes(props.nodeId))
 const imageReferences = computed(() => references.value.filter((node) => node.type === 'image' && node.data.asset))
 const audioReferences = computed(() => references.value.filter((node) => node.type === 'audio' && node.data.asset))
@@ -204,6 +206,10 @@ async function submitTask() {
   }
 }
 
+function updateVideoPrompt(event) {
+  updateNodeData(props.nodeId, { videoPrompt: event.target.value })
+}
+
 defineExpose({ submitTask })
 
 function ratioIconStyle(value) {
@@ -292,6 +298,7 @@ function closeSettings(event) {
 
 watch(() => props.nodeId, () => {
   notice.value = ''
+  storyboardPromptView.value = 'image'
   if (legacyProductPrompt.value) updateNodeData(props.nodeId, { prompt: '' })
   if (isVisionTextTask.value && selectedReverseModel.value.id !== props.data.model) {
     updateNodeData(props.nodeId, { model: selectedReverseModel.value.id })
@@ -320,14 +327,30 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
+    <div v-if="isStoryboardImage" class="storyboard-prompt-tabs" role="tablist" aria-label="分镜提示词类型">
+      <AppButton :class="{ active: storyboardPromptView === 'image' }" role="tab" :aria-selected="storyboardPromptView === 'image'" @click="storyboardPromptView = 'image'"><Clapperboard :size="14" />分镜图</AppButton>
+      <AppButton :class="{ active: storyboardPromptView === 'video' }" role="tab" :aria-selected="storyboardPromptView === 'video'" @click="storyboardPromptView = 'video'"><VideoIcon :size="14" />视频脚本</AppButton>
+      <span>{{ data.storyboardShotCount }} 镜头 · {{ data.storyboardDuration }}s</span>
+    </div>
+
     <PromptReferenceEditor
-      v-if="['image', 'video', 'audio'].includes(type)"
+      v-if="['image', 'video', 'audio'].includes(type) && (!isStoryboardImage || storyboardPromptView === 'image')"
       :model-value="promptParts"
       :references="mentionReferences"
       :reference-type="type"
       :reference-label="type === 'video' ? '素材' : type === 'audio' ? '音频' : '图片'"
       :placeholder="nodeDefinitions[type].placeholder"
       @update:model-value="updatePrompt"
+      @pointerdown="settingsOpen = false; modelOpen = false"
+    />
+    <AppTextarea
+      v-else-if="isStoryboardImage"
+      class="storyboard-video-prompt nodrag nopan"
+      :model-value="data.videoPrompt"
+      :maxlength="maxGenerationPromptLength"
+      placeholder="输入 Seedance 视频提示词…"
+      aria-label="视频脚本"
+      @input="updateVideoPrompt"
       @pointerdown="settingsOpen = false; modelOpen = false"
     />
     <AppTextarea

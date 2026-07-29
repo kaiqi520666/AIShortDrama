@@ -534,6 +534,43 @@
 .generation-panel textarea::placeholder {
   color: var(--color-text-muted);
 }
+.storyboard-prompt-tabs {
+  display: flex;
+  height: 28px;
+  align-items: center;
+  gap: 3px;
+  margin-top: 8px;
+}
+.storyboard-prompt-tabs .ui-button {
+  height: 28px;
+  min-height: 28px;
+  gap: 5px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
+.storyboard-prompt-tabs .ui-button:hover,
+.storyboard-prompt-tabs .ui-button.active {
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+}
+.storyboard-prompt-tabs > span {
+  margin-left: auto;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+.storyboard-prompt-tabs + .prompt-reference-editor,
+.generation-panel .storyboard-video-prompt {
+  margin-top: 7px;
+}
+.storyboard-prompt-tabs + .prompt-reference-editor .prompt-editor-content,
+.generation-panel .storyboard-video-prompt {
+  min-height: 64px;
+  height: 64px;
+}
 .panel-notice {
   margin: 0 2px 7px;
   color: var(--color-danger);

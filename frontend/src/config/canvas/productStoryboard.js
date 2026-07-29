@@ -54,8 +54,8 @@ export function buildProductStoryboardPrompt(productContext, templates, data = {
   const grid = storyboardGrid(duration, ratio)
   const types = templates.map((item) => `${item.id}=${item.label}：${item.description}`).join('\n')
   const extra = data.prompt?.trim() ? `\n用户补充要求：${data.prompt.trim()}` : ''
-  const prefix = `参考图 1 是商品。请为以下每种商品短视频模板分别生成一条“多格分镜板”中文图片生成提示词：\n${types}\n总时长：${duration} 秒；每个模板 ${grid.shots} 个镜头；分镜板采用 ${grid.columns} 列 × ${grid.rows} 行；每个小格保持 ${ratio} 视频画幅。\n商品资料：\n`
-  const suffix = `${extra}\n严格输出 JSON 数组，格式为 [{"type":"模板ID","prompt":"分镜板图片提示词"}]。每个模板必须且只能出现一次，顺序与请求一致。每条提示词必须描述 ${grid.shots} 个按时间顺序推进且内容不同的镜头，并明确每格的主体动作、景别、场景、构图和光线；同一商品的外观、颜色、材质、包装、品牌标识必须与参考图一致。整张图是边界清楚、间距统一的专业分镜板，不在画面内生成标题、编号、字幕、价格、水印或无关人物，不虚构商品功能，不解释，不使用 Markdown。`
+  const prefix = `参考图 1 是商品。请为以下每种商品短视频模板同时生成“多格分镜板图片提示词”和“Seedance 2 视频提示词”：\n${types}\n总时长：${duration} 秒；每个模板 ${grid.shots} 个镜头；分镜板采用 ${grid.columns} 列 × ${grid.rows} 行；每个小格保持 ${ratio} 视频画幅。\n商品资料：\n`
+  const suffix = `${extra}\n严格输出 JSON 数组，格式为 [{"type":"模板ID","prompt":"分镜板图片提示词","videoPrompt":"Seedance 2 视频提示词"}]。每个模板必须且只能出现一次，顺序与请求一致。prompt 必须描述 ${grid.shots} 个按时间顺序推进且内容不同的镜头，明确每格的主体动作、景别、场景、构图和光线，整张图是边界清楚、间距统一的专业分镜板。videoPrompt 不超过 500 个中文字符，必须以“参考图片1中的分镜图”开头，明确按从左到右、从上到下依次生成 ${ratio}、${duration} 秒视频，并按镜头顺序描述主体动作、场景、景别、单一运镜、光影和自然衔接。同一商品的外观、颜色、材质、包装和品牌标识必须与参考图一致；不生成标题、编号、字幕、价格、二维码、水印、乱码或额外 Logo，不虚构商品功能，不解释，不使用 Markdown。`
   return `${prefix}${productContext.slice(0, Math.max(0, 3000 - prefix.length - suffix.length))}${suffix}`
 }
 
@@ -71,9 +71,16 @@ export function parseProductStoryboardPlan(content, templates) {
     throw new Error('商品分镜方案格式异常')
   }
   if (!Array.isArray(parsed)) throw new Error('商品分镜方案格式异常')
-  const prompts = new Map(parsed.map((item) => [item?.type, typeof item?.prompt === 'string' ? item.prompt.trim() : '']))
-  const plans = templates.map((item) => ({ ...item, prompt: prompts.get(item.id) || '' }))
-  const missing = plans.filter((item) => !item.prompt).map((item) => item.label)
+  const results = new Map(parsed.map((item) => [item?.type, item]))
+  const plans = templates.map((item) => {
+    const result = results.get(item.id)
+    return {
+      ...item,
+      prompt: typeof result?.prompt === 'string' ? result.prompt.trim() : '',
+      videoPrompt: typeof result?.videoPrompt === 'string' ? result.videoPrompt.trim() : '',
+    }
+  })
+  const missing = plans.filter((item) => !item.prompt || !item.videoPrompt).map((item) => item.label)
   if (missing.length) throw new Error(`商品分镜方案缺少：${missing.join('、')}`)
   return plans
 }

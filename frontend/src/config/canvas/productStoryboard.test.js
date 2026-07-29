@@ -31,11 +31,14 @@ describe('product storyboard planning', () => {
     expect(prompt).toContain('reaction=反应展示')
     expect(prompt).toContain('3 个镜头')
     expect(prompt).toContain('3 列 × 1 行')
+    expect(prompt).toContain('videoPrompt')
+    expect(prompt).toContain('不超过 500 个中文字符')
   })
 
   it('orders parsed prompts by selected template order', () => {
-    const plans = parseProductStoryboardPlan('[{"type":"sales-drama","prompt":"短剧分镜"},{"type":"ugc-seeding","prompt":"种草分镜"}]', storyboardTemplates.slice(0, 2))
+    const plans = parseProductStoryboardPlan('[{"type":"sales-drama","prompt":"短剧分镜","videoPrompt":"短剧视频"},{"type":"ugc-seeding","prompt":"种草分镜","videoPrompt":"种草视频"}]', storyboardTemplates.slice(0, 2))
     expect(plans.map((item) => item.prompt)).toEqual(['种草分镜', '短剧分镜'])
+    expect(plans.map((item) => item.videoPrompt)).toEqual(['种草视频', '短剧视频'])
   })
 
   it('rejects incomplete template plans', () => {
