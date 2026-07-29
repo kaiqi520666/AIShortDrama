@@ -49,7 +49,11 @@ const notice = ref('')
 const storyboardPromptView = ref('image')
 const running = computed(() => props.data.status === 'generating')
 const isStoryboardImage = computed(() => props.type === 'image' && Boolean(props.data.storyboardSourceId && props.data.videoPrompt))
-const connectedReferences = computed(() => store.incomingNodes(props.nodeId))
+const connectedReferences = computed(() => store.incomingNodes(props.nodeId).map((node) => (
+  props.type === 'video' && node.type === 'image' && node.data.storyboardSourceId
+    ? { ...node, data: { ...node.data, providerAsset: node.data.storyboardAsset?.asset_url } }
+    : node
+)))
 const references = computed(() => {
   const character = props.data.storyboardCharacter
   if (!character?.url) return connectedReferences.value
@@ -191,6 +195,7 @@ async function submitTask() {
     status: 'generating',
     generationProgress: 0,
     generationError: '',
+    ...(isStoryboardImage.value ? { storyboardAsset: null } : {}),
   })
   try {
     const createGeneration = { image: createImageGeneration, video: createVideoGeneration, audio: createAudioGeneration }[props.type]

@@ -1,7 +1,8 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
-import { AudioWaveform, Clapperboard, Download, Eye, FileText, GripVertical, Images, Image as ImageIcon, LoaderCircle, MoveDiagonal2, Music2, Shirt, UserRound, Video } from 'lucide-vue-next'
+import { AudioWaveform, BadgeCheck, Clapperboard, Download, Eye, FileText, GripVertical, Images, Image as ImageIcon, LoaderCircle, MoveDiagonal2, Music2, RefreshCw, Shirt, UserRound, Video } from 'lucide-vue-next'
+import { registerAssetPrivateAvatar } from '../../api/assets'
 import { uploadMedia } from '../../api/uploads'
 import { useGlobalToast } from '../../composables/useGlobalUI'
 import { imageAspectRatios } from '../../config/imageSettings'
@@ -72,12 +73,19 @@ const uploadProgress = ref(0)
 const assetPickerOpen = ref(false)
 const previewOpen = ref(false)
 const downloading = ref(false)
+const registeringStoryboard = ref(false)
 const resourceType = computed(() => props.data.resourceType || 'asset')
 const libraryCopy = computed(() => ({
   model: { label: '模特', icon: UserRound },
   garment: { label: '服饰', icon: Shirt },
 }[resourceType.value] || { label: '素材', icon: Images }))
 const libraryToolbarLabel = computed(() => resourceType.value === 'asset' ? '资产库' : `${libraryCopy.value.label}库`)
+const storyboardAsset = computed(() => props.data.storyboardAsset || {})
+const storyboardRegistrationLabel = computed(() => ({
+  active: 'Seedance 虚拟人像素材已可用',
+  processing: '刷新虚拟人像素材审核状态',
+  failed: '重新注册虚拟人像素材',
+}[storyboardAsset.value.status] || '注册虚拟人像素材'))
 const uploadAccept = computed(() => mediaUploadRules[props.type]?.types.join(',') || '')
 const { updateNodeData, viewport } = useVueFlow()
 const toolbarStyle = computed(() => ({ '--toolbar-scale': 1 / viewport.value.zoom }))
@@ -113,6 +121,7 @@ async function handleUpload(event) {
       ...(replacementWidth ? { displayWidth: replacementWidth } : {}),
       ...(metadata.duration ? { sourceDuration: metadata.duration } : {}),
       sourceByteSize: result.data.size,
+      ...(props.data.storyboardSourceId ? { storyboardAsset: null } : {}),
     })
   } catch (error) {
     uploadNotice.value = error.response?.data?.message || error.message || '上传失败'
@@ -134,6 +143,7 @@ function selectAsset(item) {
     sourceAspectRatio: sourceWidth && sourceHeight ? sourceWidth / sourceHeight : null,
     sourceByteSize: item.byteSize || null,
     resourceId: item.id,
+    ...(props.data.storyboardSourceId ? { storyboardAsset: null } : {}),
   })
   assetPickerOpen.value = false
 }
@@ -157,6 +167,23 @@ function openImagePreview() {
 
 function createStoryboardVideo() {
   if (!store.addStoryboardVideoNode(props.id)) toast.error('请先生成分镜图片和视频脚本')
+}
+
+async function registerStoryboardAsset() {
+  if (!props.data.assetId || registeringStoryboard.value) return
+  registeringStoryboard.value = true
+  try {
+    const result = await registerAssetPrivateAvatar(props.data.assetId, props.data.storyboardCharacter?.groupId || null)
+    const seedance = result.data?.metadata?.seedance
+    if (seedance) updateNodeData(props.id, { storyboardAsset: seedance })
+    if (result.code !== 0) throw new Error(result.message)
+    if (seedance?.status === 'active') toast.success('分镜虚拟人像素材已可用于 Seedance')
+    else toast.info('分镜素材审核中，请稍后点击刷新')
+  } catch (error) {
+    toast.error(error.response?.data?.message || error.message || '分镜素材注册失败')
+  } finally {
+    registeringStoryboard.value = false
+  }
 }
 
 function resizeNode(event) {
@@ -206,6 +233,14 @@ onBeforeUnmount(() => {
       </AppTooltip>
       <AppTooltip v-if="data.storyboardSourceId" text="创建视频节点">
         <AppButton class="media-node-toolbar-button" icon-only aria-label="创建视频节点" @click.stop="createStoryboardVideo"><Video :size="16" /></AppButton>
+      </AppTooltip>
+      <AppTooltip v-if="data.storyboardSourceId" :text="storyboardRegistrationLabel">
+        <AppButton class="media-node-toolbar-button" icon-only :disabled="registeringStoryboard || !data.assetId" :aria-label="storyboardRegistrationLabel" @click.stop="registerStoryboardAsset">
+          <LoaderCircle v-if="registeringStoryboard" class="media-action-spinner" :size="16" />
+          <BadgeCheck v-else-if="storyboardAsset.status === 'active'" :size="16" />
+          <RefreshCw v-else-if="storyboardAsset.status === 'processing'" :size="16" />
+          <UserRound v-else :size="16" />
+        </AppButton>
       </AppTooltip>
       <AppTooltip text="预览原图">
         <AppButton class="media-node-toolbar-button" icon-only aria-label="预览原图" @click.stop="openImagePreview"><Eye :size="16" /></AppButton>

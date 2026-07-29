@@ -74,6 +74,7 @@ function selectCharacter(item) {
       name: item.name,
       url: item.url,
       assetUrl: item.seedanceAssetUrl,
+      groupId: item.seedanceGroupId,
     },
   })
   characterPickerOpen.value = false

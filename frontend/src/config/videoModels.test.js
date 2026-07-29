@@ -37,6 +37,35 @@ describe('buildVideoRequest', () => {
     expect(buildVideoRequest({ model: 'seedance-2', prompt: 'test', duration: 5, resolution: '720p', aspectRatio: '16:9' }, [avatar]).reference_images).toEqual(['asset://pa_test'])
   })
 
+  it('uses the original storyboard URL for HappyHorse and the registered asset for Seedance', () => {
+    const storyboard = {
+      id: 'storyboard',
+      type: 'image',
+      data: {
+        asset: 'https://example.com/storyboard.png',
+        providerAsset: 'asset://pa_storyboard',
+        storyboardSourceId: 'planner',
+      },
+    }
+    const settings = { prompt: 'test', duration: 5, aspectRatio: '16:9' }
+    expect(buildVideoRequest({ ...settings, model: 'seedance-2', resolution: '720p' }, [storyboard]).reference_images).toEqual(['asset://pa_storyboard'])
+    expect(buildVideoRequest({ ...settings, model: 'happyhorse-1.1', resolution: '1080P' }, [storyboard]).reference_images).toEqual(['https://example.com/storyboard.png'])
+  })
+
+  it('requires registration for a Seedance storyboard with a selected character', () => {
+    const storyboard = {
+      id: 'storyboard',
+      type: 'image',
+      data: {
+        asset: 'https://example.com/storyboard.png',
+        storyboardSourceId: 'planner',
+        storyboardCharacter: { assetUrl: 'asset://pa_character' },
+      },
+    }
+    expect(getVideoReferenceError({ model: 'seedance-2' }, [storyboard])).toContain('注册虚拟人像素材')
+    expect(getVideoReferenceError({ model: 'happyhorse-1.1' }, [storyboard])).toBe('')
+  })
+
   it('omits unsupported HappyHorse parameters', () => {
     const request = buildVideoRequest({
       model: 'happyhorse-1.1',

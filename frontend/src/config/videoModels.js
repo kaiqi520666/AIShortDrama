@@ -13,6 +13,7 @@ export const videoModels = [
     durationMin: 4,
     durationMax: 15,
     generateAudio: true,
+    requiresPrivateAsset: true,
     referenceLimits: { image: 9, video: 3, audio: 3 },
   },
   {
@@ -26,6 +27,7 @@ export const videoModels = [
     durationMin: 4,
     durationMax: 15,
     generateAudio: true,
+    requiresPrivateAsset: true,
     referenceLimits: { image: 9, video: 3, audio: 3 },
   },
   {
@@ -38,6 +40,7 @@ export const videoModels = [
     defaultDuration: 10,
     durationOptions: [4, 8, 10, 12, 15],
     generateAudio: true,
+    requiresPrivateAsset: true,
     referenceLimits: { image: 9, video: 3, audio: 3 },
   },
   {
@@ -79,10 +82,13 @@ export function normalizeVideoSettings(data = {}) {
   }
 }
 
-function normalizeReferences(references) {
+function normalizeReferences(references, usePrivateAssets = false) {
   return references.map((reference) => ({
     type: reference?.type,
-    url: typeof reference === 'string' ? reference : reference?.url || reference?.data?.providerAsset || reference?.data?.asset,
+    url: typeof reference === 'string' ? reference : reference?.url || (usePrivateAssets ? reference?.data?.providerAsset : null) || reference?.data?.asset,
+    providerAsset: typeof reference === 'string' ? '' : reference?.data?.providerAsset || '',
+    storyboardCharacter: typeof reference === 'string' ? null : reference?.data?.storyboardCharacter,
+    storyboard: typeof reference === 'string' ? false : Boolean(reference?.data?.storyboardSourceId),
   }))
 }
 
@@ -102,9 +108,13 @@ export function getVideoModelError(data, references = []) {
 }
 
 export function getVideoReferenceError(data, references = []) {
-  const normalized = normalizeReferences(references)
+  const model = getVideoModel(data.model)
+  const normalized = normalizeReferences(references, model.requiresPrivateAsset)
   const modelError = getVideoModelError(data, references)
   if (modelError) return modelError
+  if (model.requiresPrivateAsset && normalized.some((reference) => reference.storyboard && reference.storyboardCharacter?.assetUrl && !reference.providerAsset)) {
+    return '请先在分镜图工具栏注册虚拟人像素材'
+  }
   const types = normalized.map((reference) => reference.type)
   if (types.includes('audio') && !types.some((type) => ['image', 'video'].includes(type))) return '参考音频需同时连接图片或视频'
   if (normalized.some((reference) => reference.type in referenceLabels && !reference.url)) return '请先上传已连接的参考素材'
@@ -119,7 +129,7 @@ export function buildVideoRequest(data, references = []) {
 
   const referenceError = getVideoReferenceError(data, references)
   if (referenceError) throw new Error(referenceError)
-  const normalized = normalizeReferences(references)
+  const normalized = normalizeReferences(references, settings.model.requiresPrivateAsset)
   const referenceUrls = (type) => normalized.filter((reference) => reference.type === type && reference.url).map(({ url }) => url)
   return {
     model: settings.model.id,

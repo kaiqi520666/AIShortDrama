@@ -9,6 +9,25 @@ from app.main import app
 from app.models import Asset
 
 
+class FakePrivateAvatarProvider:
+    status = "processing"
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_):
+        pass
+
+    async def create_private_avatar_group(self, _name):
+        return {"group_id": "pg_created"}
+
+    async def upload_private_avatar(self, group_id, _source_url, _name):
+        return {"asset_id": "pa_storyboard", "group_id": group_id, "status": "processing"}
+
+    async def get_private_avatar(self, _asset_id):
+        return {"asset_id": "pa_storyboard", "status": self.status}
+
+
 @pytest.mark.asyncio
 async def test_filter_rename_and_delete_asset(override_business_user):
     asset_ids = []
@@ -111,6 +130,58 @@ async def test_stream_asset_forwards_range(monkeypatch, override_business_user):
         assert response.headers["content-range"] == "bytes 0-4/10"
         assert response.headers["content-type"].startswith("audio/mpeg")
     finally:
+        async with SessionLocal() as db:
+            asset = await db.get(Asset, asset_id)
+            if asset:
+                await db.delete(asset)
+                await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_register_and_refresh_storyboard_private_avatar(monkeypatch, override_business_user):
+    monkeypatch.setattr(assets_module, "ToApisProvider", FakePrivateAvatarProvider)
+    asset_id = None
+    async with SessionLocal() as db:
+        asset = Asset(
+            user_id=override_business_user,
+            workspace_id=DEFAULT_WORKSPACE_ID,
+            media_type="image",
+            source_type="generation",
+            name="UGC 分镜板",
+            url="https://example.com/storyboard.png",
+        )
+        db.add(asset)
+        await db.commit()
+        await db.refresh(asset)
+        asset_id = asset.id
+
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            registered = (
+                await client.post(
+                    f"/api/assets/{asset_id}/private-avatar",
+                    json={"group_id": "pg_character"},
+                )
+            ).json()
+            FakePrivateAvatarProvider.status = "active"
+            refreshed = (
+                await client.post(
+                    f"/api/assets/{asset_id}/private-avatar",
+                    json={"group_id": "pg_character"},
+                )
+            ).json()
+
+        assert registered["data"]["metadata"]["seedance"]["status"] == "processing"
+        assert refreshed["data"]["metadata"]["seedance"] == {
+            "provider": "toapis",
+            "type": "private-avatar",
+            "group_id": "pg_character",
+            "asset_id": "pa_storyboard",
+            "asset_url": "asset://pa_storyboard",
+            "status": "active",
+        }
+    finally:
+        FakePrivateAvatarProvider.status = "processing"
         async with SessionLocal() as db:
             asset = await db.get(Asset, asset_id)
             if asset:

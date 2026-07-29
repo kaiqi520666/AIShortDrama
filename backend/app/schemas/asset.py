@@ -12,3 +12,9 @@ class AssetUpdate(BaseModel):
         if not value.strip():
             raise ValueError("资产名称不能为空")
         return value.strip()
+
+
+class AssetPrivateAvatarRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    group_id: str | None = Field(default=None, min_length=1, max_length=128)

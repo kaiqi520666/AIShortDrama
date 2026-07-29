@@ -15,5 +15,6 @@ export function normalizeLibraryItem(item, resourceType = 'asset') {
     metadata: item.metadata || {},
     seedanceStatus: type === 'character' ? seedance.status || 'unregistered' : null,
     seedanceAssetUrl: type === 'character' ? seedance.asset_url || '' : '',
+    seedanceGroupId: type === 'character' ? seedance.group_id || '' : '',
   }
 }

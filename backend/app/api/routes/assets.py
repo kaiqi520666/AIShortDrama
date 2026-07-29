@@ -11,7 +11,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.identity import get_current_user_id
 from app.models import Asset
-from app.schemas.asset import AssetUpdate
+from app.providers.toapis import ToApisProvider
+from app.schemas.asset import AssetPrivateAvatarRequest, AssetUpdate
 from app.schemas.response import fail, success
 
 router = APIRouter()
@@ -59,6 +60,18 @@ def asset_payload(asset: Asset) -> dict[str, Any]:
     }
 
 
+def private_avatar_metadata(data: dict[str, Any]) -> dict[str, Any]:
+    asset_id = data.get("asset_id") or data.get("id")
+    return {
+        "provider": "toapis",
+        "type": "private-avatar",
+        "group_id": data.get("group_id"),
+        "asset_id": asset_id,
+        "asset_url": data.get("asset_url") or (f"asset://{asset_id}" if asset_id else None),
+        "status": str(data.get("status") or "processing").lower(),
+    }
+
+
 @router.get("")
 async def list_assets(
     media_type: Literal["image", "video", "audio"] | None = Query(default=None, alias="type"),
@@ -89,6 +102,49 @@ async def update_asset(
     await db.commit()
     await db.refresh(asset)
     return success(asset_payload(asset))
+
+
+@router.post("/{asset_id}/private-avatar")
+async def register_private_avatar(
+    asset_id: uuid.UUID,
+    payload: AssetPrivateAvatarRequest,
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    asset = await owned_asset(db, asset_id, user_id)
+    if not asset:
+        return fail("资产不存在")
+    if asset.media_type != "image":
+        return fail("仅图片资产可注册为虚拟人像素材")
+
+    seedance = (asset.asset_metadata or {}).get("seedance") or {}
+    try:
+        async with ToApisProvider() as provider:
+            if seedance.get("status") == "processing" and seedance.get("asset_id"):
+                state = await provider.get_private_avatar(seedance["asset_id"])
+                seedance = private_avatar_metadata(
+                    {**seedance, **state, "group_id": seedance.get("group_id")}
+                )
+            elif seedance.get("status") != "active":
+                group_id = payload.group_id or seedance.get("group_id")
+                if not group_id:
+                    group = await provider.create_private_avatar_group(asset.name)
+                    group_id = group.get("group_id")
+                if not group_id:
+                    raise RuntimeError("ToAPIs 未返回虚拟人像组 ID")
+                uploaded = await provider.upload_private_avatar(group_id, asset.url, asset.name)
+                seedance = private_avatar_metadata({**uploaded, "group_id": group_id})
+        asset.asset_metadata = {**(asset.asset_metadata or {}), "seedance": seedance}
+        await db.commit()
+        await db.refresh(asset)
+        return success(asset_payload(asset))
+    except Exception as exc:
+        asset.asset_metadata = {
+            **(asset.asset_metadata or {}),
+            "seedance": {**seedance, "status": "failed", "error": str(exc)[:500]},
+        }
+        await db.commit()
+        return fail(str(exc), asset_payload(asset))
 
 
 @router.get("/{asset_id}/content")
