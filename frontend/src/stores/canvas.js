@@ -24,6 +24,7 @@ function storyboardVideoData(source) {
     aspectRatio: source.data.storyboardVideoAspectRatio || defaultVideoModel.defaultAspectRatio,
     resolution: defaultVideoModel.defaultResolution,
     generateAudio: true,
+    storyboardCharacter: source.data.storyboardCharacter || null,
   }
 }
 
@@ -257,6 +258,7 @@ export const useCanvasStore = defineStore('canvas', {
           storyboardDuration: planner.data.duration,
           storyboardVideoAspectRatio: planner.data.videoAspectRatio,
           storyboardShotCount: storyboardShotCount(planner.data.duration),
+          storyboardCharacter: planner.data.characterReference || null,
           videoPrompt: plan.videoPrompt,
           prompt: plan.prompt,
           promptParts: [{ type: 'text', value: plan.prompt }],

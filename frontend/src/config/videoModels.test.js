@@ -32,6 +32,11 @@ describe('buildVideoRequest', () => {
     })
   })
 
+  it('uses a registered avatar asset while retaining its preview image', () => {
+    const avatar = { id: 'avatar', type: 'image', data: { asset: 'https://example.com/avatar.png', providerAsset: 'asset://pa_test' } }
+    expect(buildVideoRequest({ model: 'seedance-2', prompt: 'test', duration: 5, resolution: '720p', aspectRatio: '16:9' }, [avatar]).reference_images).toEqual(['asset://pa_test'])
+  })
+
   it('omits unsupported HappyHorse parameters', () => {
     const request = buildVideoRequest({
       model: 'happyhorse-1.1',

@@ -309,6 +309,9 @@ describe('canvas node packs', () => {
     const reference = store.nodes.find((node) => node.type === 'image')
     reference.data = { ...reference.data, asset: 'https://example.com/product.png', status: 'ready' }
     const storyboardId = store.addNode('product_storyboard', { x: 500, y: 0 }, productId)
+    store.nodes.find((node) => node.id === storyboardId).data.characterReference = {
+      id: 'character-1', name: '虚拟角色', url: 'https://example.com/character.png', assetUrl: 'asset://pa_test',
+    }
     const ids = store.addProductStoryboardNodes(storyboardId, productId, reference.id, [
       { id: 'ugc-seeding', label: 'UGC 种草', prompt: '四格种草分镜板', videoPrompt: '参考图片1生成种草视频' },
       { id: 'unboxing', label: '开箱种草', prompt: '四格开箱分镜板', videoPrompt: '参考图片1生成开箱视频' },
@@ -322,6 +325,7 @@ describe('canvas node packs', () => {
       storyboardDuration: 8,
       storyboardVideoAspectRatio: '9:16',
       storyboardShotCount: 3,
+      storyboardCharacter: expect.objectContaining({ id: 'character-1', assetUrl: 'asset://pa_test' }),
       videoPrompt: '参考图片1生成种草视频',
       prompt: '四格种草分镜板',
       aspectRatio: '9:16',
@@ -340,6 +344,7 @@ describe('canvas node packs', () => {
       duration: 8,
       aspectRatio: '9:16',
       resolution: '720p',
+      storyboardCharacter: expect.objectContaining({ id: 'character-1', assetUrl: 'asset://pa_test' }),
     }))
     expect(store.edges).toContainEqual(expect.objectContaining({ source: ids[0], target: videoId }))
     expect(store.addStoryboardVideoNode(ids[0])).toBe(videoId)

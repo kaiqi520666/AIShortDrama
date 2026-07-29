@@ -170,7 +170,7 @@ class VideoGenerationRequest(BaseModel):
     resolution: str
     aspect_ratio: str
     generate_audio: bool | None = None
-    reference_images: list[AnyHttpUrl] = Field(default_factory=list, max_length=9)
+    reference_images: list[str] = Field(default_factory=list, max_length=9)
     reference_videos: list[AnyHttpUrl] = Field(default_factory=list, max_length=3)
     reference_audios: list[AnyHttpUrl] = Field(default_factory=list, max_length=3)
 
@@ -180,6 +180,18 @@ class VideoGenerationRequest(BaseModel):
         if not value.strip():
             raise ValueError("视频提示词不能为空")
         return value.strip()
+
+    @field_validator("reference_images")
+    @classmethod
+    def validate_reference_images(cls, values: list[str]) -> list[str]:
+        for value in values:
+            if value.startswith("asset://") and len(value) > len("asset://"):
+                continue
+            try:
+                AnyHttpUrl(value)
+            except ValueError as exc:
+                raise ValueError("参考图片必须是公开 URL 或 Seedance 素材地址") from exc
+        return values
 
     @model_validator(mode="after")
     def validate_model_options(self):

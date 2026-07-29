@@ -117,6 +117,10 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.asset-picker-item.ui-button span strong,
+.asset-picker-item.ui-button span small { display: block; overflow: hidden; text-overflow: ellipsis; }
+.asset-picker-item.ui-button span small { margin-top: 2px; color: rgb(255 255 255 / 72%); font-size: 9px; }
+.asset-picker-item.ui-button.unavailable img { opacity: 0.55; }
 .asset-picker-item.ui-button:hover { border-color: var(--color-border-strong); }
 .asset-picker-item.ui-button.selected { border-color: var(--color-brand); box-shadow: 0 0 0 2px var(--color-brand-soft); }
 .asset-picker-grid > .ui-empty-state { grid-column: 1 / -1; min-height: 220px; }

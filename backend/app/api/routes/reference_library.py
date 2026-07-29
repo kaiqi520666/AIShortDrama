@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.identity import get_current_user_id
 from app.models import Character, Garment, OutfitModel
+from app.providers.toapis import ToApisError, ToApisProvider
 from app.schemas.response import fail, success
 from app.services.image_processing import normalize_image
 from app.services.storage import OssStorage
@@ -18,6 +19,43 @@ router = APIRouter()
 
 IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 MAX_IMAGE_SIZE = 20 * 1024 * 1024
+
+
+def avatar_metadata(data: dict[str, Any]) -> dict[str, Any]:
+    asset_id = data.get("asset_id")
+    return {
+        "provider": "toapis",
+        "type": "private-avatar",
+        "group_id": data.get("group_id"),
+        "asset_id": asset_id,
+        "asset_url": data.get("asset_url") or (f"asset://{asset_id}" if asset_id else None),
+        "status": data.get("status") or "processing",
+    }
+
+
+async def register_virtual_character(name: str, source_url: str) -> dict[str, Any]:
+    async with ToApisProvider() as provider:
+        group = await provider.create_private_avatar_group(name)
+        group_id = group.get("group_id")
+        if not group_id:
+            raise ToApisError("ToAPIs 未返回虚拟角色组 ID")
+        asset = await provider.upload_private_avatar(group_id, source_url, name)
+        asset["group_id"] = group_id
+        if not asset.get("asset_id"):
+            raise ToApisError("ToAPIs 未返回虚拟角色素材 ID")
+        return avatar_metadata(asset)
+
+
+async def refresh_virtual_character(item: Character) -> None:
+    seedance = (item.character_metadata or {}).get("seedance") or {}
+    if seedance.get("status") != "processing" or not seedance.get("asset_id"):
+        return
+    async with ToApisProvider() as provider:
+        state = await provider.get_private_avatar(seedance["asset_id"])
+    item.character_metadata = {
+        **(item.character_metadata or {}),
+        "seedance": {**seedance, **avatar_metadata({**state, "group_id": seedance.get("group_id")})},
+    }
 
 
 def reference_payload(item: OutfitModel | Character | Garment, resource_type: str) -> dict[str, Any]:
@@ -111,14 +149,20 @@ async def list_characters(
     db: AsyncSession = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
-    items = await db.scalars(
+    items = list(await db.scalars(
         select(Character)
         .where(
             Character.active.is_(True),
             or_(Character.user_id.is_(None), Character.user_id == user_id),
         )
         .order_by(Character.user_id.is_not(None), Character.sort_order, Character.created_at)
-    )
+    ))
+    try:
+        for item in items:
+            await refresh_virtual_character(item)
+        await db.commit()
+    except ToApisError:
+        pass
     return success([reference_payload(item, "character") for item in items])
 
 
@@ -135,18 +179,59 @@ async def upload_character(
         return fail(str(exc))
     except Exception as exc:
         return fail(f"角色上传失败：{exc}")
+    character_name = ((name or file.filename or "我的角色").rsplit(".", 1)[0].strip() or "我的角色")[:100]
+    try:
+        seedance = await register_virtual_character(character_name, stored["url"])
+    except Exception as exc:
+        seedance = {"provider": "toapis", "type": "private-avatar", "status": "failed", "error": str(exc)[:500]}
     item = Character(
         user_id=user_id,
-        name=((name or file.filename or "我的角色").rsplit(".", 1)[0].strip() or "我的角色")[:100],
+        name=character_name,
         image_url=stored["url"],
         object_key=stored["object_key"],
         width=stored["width"],
         height=stored["height"],
+        character_metadata={"seedance": seedance},
     )
     db.add(item)
     await db.commit()
     await db.refresh(item)
     return success(reference_payload(item, "character"))
+
+
+@router.post("/characters/{character_id}/register")
+async def register_character(
+    character_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    item = await db.scalar(
+        select(Character).where(
+            Character.id == character_id,
+            or_(Character.user_id.is_(None), Character.user_id == user_id),
+        )
+    )
+    if not item:
+        return fail("角色不存在")
+    try:
+        seedance = (item.character_metadata or {}).get("seedance") or {}
+        if seedance.get("status") == "processing" and seedance.get("asset_id"):
+            await refresh_virtual_character(item)
+        elif seedance.get("status") != "active":
+            item.character_metadata = {
+                **(item.character_metadata or {}),
+                "seedance": await register_virtual_character(item.name, item.image_url),
+            }
+        await db.commit()
+        await db.refresh(item)
+        return success(reference_payload(item, "character"))
+    except Exception as exc:
+        item.character_metadata = {
+            **(item.character_metadata or {}),
+            "seedance": {**((item.character_metadata or {}).get("seedance") or {}), "status": "failed", "error": str(exc)[:500]},
+        }
+        await db.commit()
+        return fail(str(exc), reference_payload(item, "character"))
 
 
 @router.get("/garments")

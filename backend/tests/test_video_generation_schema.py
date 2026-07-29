@@ -28,6 +28,7 @@ def video_request(**updates):
         {"resolution": "1080P"},
         {"aspect_ratio": "2:1"},
         {"reference_images": [f"https://example.com/{index}.png" for index in range(10)]},
+        {"reference_images": ["file:///tmp/reference.png"]},
         {
             "model": "happyhorse-1.1",
             "duration": 5,
@@ -100,3 +101,8 @@ def test_provider_payloads_use_reference_mode():
     assert "generate_audio" not in happyhorse
     assert happyhorse_text["action"] == "text-to-video"
     assert "reference_images" not in happyhorse_text
+
+
+def test_seedance_accepts_registered_avatar_asset_reference():
+    payload = build_video_provider_payload(video_request(reference_images=["asset://pa_test"]))
+    assert payload["image_with_roles"] == [{"url": "asset://pa_test", "role": "reference_image"}]

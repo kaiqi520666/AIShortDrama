@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { ArrowUp, Clapperboard, Coins, FileText, LoaderCircle, Package } from 'lucide-vue-next'
+import { ArrowUp, Clapperboard, Coins, FileText, LoaderCircle, Package, UserRound, X } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
 import { productPromptContext } from '../../config/canvas/ecommerce'
@@ -16,6 +16,8 @@ import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
+import { buildOssImageUrl } from '../../utils/ossImage'
+import AppAssetPickerModal from '../assets/AppAssetPickerModal.vue'
 import AppButton from '../ui/AppButton.vue'
 import AppSelect from '../ui/AppSelect.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
@@ -30,6 +32,7 @@ const authStore = useAuthStore()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
 const notice = ref('')
+const characterPickerOpen = ref(false)
 const productNode = computed(() => store.incomingNodes(props.nodeId).find((node) => node.type === 'product'))
 const referenceImage = computed(() => productNode.value && store.incomingNodes(productNode.value.id).find((node) => node.type === 'image' && node.data.asset))
 const productContext = computed(() => productPromptContext(productNode.value?.data.product))
@@ -43,6 +46,7 @@ const insufficientCredits = computed(() => estimatedCredits.value !== null && (a
 const existingGeneratedNodes = computed(() => (props.data.generatedNodeIds || []).filter((id) => store.nodes.some((node) => node.id === id)))
 const textModelOptions = reverseModels.map(({ id, label }) => ({ value: id, label }))
 const ratioOptions = videoAspectRatios.map((value) => ({ value, label: value }))
+const character = computed(() => props.data.characterReference || null)
 const message = computed(() => notice.value || props.data.generationError || (!productNode.value
   ? '请先连接商品创作节点'
   : !referenceImage.value
@@ -63,6 +67,18 @@ function updateTemplate(id, enabled) {
   updateData({ templates: props.data.templates.map((item) => item.id === id ? { ...item, enabled } : item) })
 }
 
+function selectCharacter(item) {
+  updateData({
+    characterReference: {
+      id: item.id,
+      name: item.name,
+      url: item.url,
+      assetUrl: item.seedanceAssetUrl,
+    },
+  })
+  characterPickerOpen.value = false
+}
+
 async function submitTask() {
   if (!canSubmit.value) return
   if (existingGeneratedNodes.value.length && !await confirm({
@@ -81,6 +97,7 @@ async function submitTask() {
       model: selectedTextModel.value.id,
       media_type: 'image',
       media_url: referenceImage.value.data.asset,
+      ...(character.value?.url ? { media_urls: [character.value.url] } : {}),
       prompt: buildProductStoryboardPrompt(productContext.value, selectedTemplates.value, props.data),
       response_mode: 'product_storyboard_plan',
     }, (delta) => { content += delta }, (taskId) => {
@@ -90,7 +107,7 @@ async function submitTask() {
       props.nodeId,
       productNode.value.id,
       referenceImage.value.id,
-      parseProductStoryboardPlan(content, selectedTemplates.value),
+      parseProductStoryboardPlan(content, selectedTemplates.value, character.value),
       { model: defaultImageModel.id, aspectRatio: recommended.value.aspectRatio, resolution: recommended.value.resolution },
     )
     updateNodeData(props.nodeId, {
@@ -114,6 +131,17 @@ async function submitTask() {
       <span><Clapperboard :size="16" />商品分镜</span>
       <small v-if="productNode"><Package :size="13" />{{ productNode.data.product?.name || productNode.data.title }}</small>
     </header>
+
+    <div class="storyboard-character">
+      <span><UserRound :size="14" />出镜角色</span>
+      <div v-if="character" class="storyboard-character-selected">
+        <img :src="buildOssImageUrl(character.url, { width: 120, quality: 80 })" :alt="character.name" referrerpolicy="no-referrer" />
+        <strong>{{ character.name }}</strong>
+        <AppButton size="sm" variant="soft" @click="characterPickerOpen = true">更换</AppButton>
+        <AppButton icon-only size="sm" variant="soft" title="移除出镜角色" @click="updateData({ characterReference: null })"><X :size="14" /></AppButton>
+      </div>
+      <AppButton v-else size="sm" variant="soft" @click="characterPickerOpen = true"><UserRound :size="14" />无人脸模式 · 选择角色</AppButton>
+    </div>
 
     <div class="storyboard-template-grid">
       <label v-for="item in data.templates" :key="item.id" class="storyboard-template-option" :class="{ active: item.enabled }">
@@ -150,5 +178,14 @@ async function submitTask() {
         <ArrowUp v-else :size="18" />
       </AppButton>
     </footer>
+    <AppAssetPickerModal
+      v-if="characterPickerOpen"
+      resource-type="character"
+      :workspace-id="store.workspaceId"
+      :node-id="nodeId"
+      :selected-url="character?.url || ''"
+      @close="characterPickerOpen = false"
+      @select="selectCharacter"
+    />
   </section>
 </template>

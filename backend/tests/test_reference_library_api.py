@@ -28,6 +28,18 @@ async def test_reference_libraries_separate_system_and_user_content(
     override_business_user,
 ):
     monkeypatch.setattr(reference_library_route, "OssStorage", FakeStorage)
+    monkeypatch.setattr(
+        reference_library_route,
+        "register_virtual_character",
+        lambda *_: async_value({
+            "provider": "toapis",
+            "type": "private-avatar",
+            "group_id": "pg_test",
+            "asset_id": "pa_test",
+            "asset_url": "asset://pa_test",
+            "status": "active",
+        }),
+    )
     created_ids = []
     system_garment = Garment(
         name="系统标准服饰",
@@ -35,10 +47,17 @@ async def test_reference_libraries_separate_system_and_user_content(
         width=6,
         height=8,
     )
+    system_character = Character(
+        name="系统虚拟角色",
+        image_url="https://cdn.example.com/system/character.png",
+        width=6,
+        height=8,
+    )
     async with SessionLocal() as db:
-        db.add(system_garment)
+        db.add_all([system_garment, system_character])
         await db.commit()
         await db.refresh(system_garment)
+        await db.refresh(system_character)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         initial_models = (await client.get("/api/outfit-models")).json()["data"]
         initial_characters = (await client.get("/api/characters")).json()["data"]
@@ -61,12 +80,16 @@ async def test_reference_libraries_separate_system_and_user_content(
                 files={"file": ("我的服饰.png", png_bytes(), "image/png")},
             )
         ).json()["data"]
+        registered_system_character = (
+            await client.post(f"/api/characters/{system_character.id}/register")
+        ).json()["data"]
 
     created_ids = [
         uuid.UUID(model["id"]),
         uuid.UUID(character["id"]),
         uuid.UUID(garment["id"]),
         system_garment.id,
+        system_character.id,
     ]
     try:
         assert len([item for item in initial_models if item["source"] == "system"]) == 25
@@ -78,6 +101,8 @@ async def test_reference_libraries_separate_system_and_user_content(
         assert all(item["resource_type"] == "garment" for item in initial_garments)
         assert model["resource_type"] == "model" and model["source"] == "user"
         assert character["resource_type"] == "character" and character["source"] == "user"
+        assert character["metadata"]["seedance"]["asset_url"] == "asset://pa_test"
+        assert registered_system_character["metadata"]["seedance"]["status"] == "active"
         assert garment["resource_type"] == "garment" and garment["source"] == "user"
         assert (model["width"], model["height"]) == (6, 8)
         async with SessionLocal() as db:
@@ -90,6 +115,7 @@ async def test_reference_libraries_separate_system_and_user_content(
             character_row = await db.get(Character, created_ids[1])
             garment_row = await db.get(Garment, created_ids[2])
             system_garment_row = await db.get(Garment, created_ids[3])
+            system_character_row = await db.get(Character, created_ids[4])
             if model_row:
                 await db.delete(model_row)
             if character_row:
@@ -98,4 +124,10 @@ async def test_reference_libraries_separate_system_and_user_content(
                 await db.delete(garment_row)
             if system_garment_row:
                 await db.delete(system_garment_row)
+            if system_character_row:
+                await db.delete(system_character_row)
             await db.commit()
+
+
+async def async_value(value):
+    return value

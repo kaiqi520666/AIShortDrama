@@ -41,6 +41,31 @@ class ToApisProvider:
     async def get_video_task(self, task_id: str) -> dict[str, Any]:
         return await self._request("GET", f"/v1/videos/generations/{task_id}")
 
+    async def create_private_avatar_group(self, name: str) -> dict[str, Any]:
+        return self._unwrap_data(await self._request(
+            "POST",
+            "/v1/videos/doubao-seedance-2-0/private-avatar/groups",
+            json={"name": name, "description": "AIShortDrama 虚拟角色"},
+        ))
+
+    async def upload_private_avatar(self, group_id: str, source_url: str, name: str) -> dict[str, Any]:
+        return self._unwrap_data(await self._request(
+            "POST",
+            "/v1/videos/doubao-seedance-2-0/private-avatar/assets",
+            json={
+                "group_id": group_id,
+                "asset_type": "image",
+                "source_url": source_url,
+                "name": name,
+            },
+        ))
+
+    async def get_private_avatar(self, asset_id: str) -> dict[str, Any]:
+        return self._unwrap_data(await self._request(
+            "GET",
+            f"/v1/videos/doubao-seedance-2-0/private-avatar/assets/{asset_id}",
+        ))
+
     async def _request(self, method: str, path: str, **kwargs) -> dict[str, Any]:
         try:
             response = await self.client.request(method, path, **kwargs)
@@ -54,6 +79,15 @@ class ToApisProvider:
                 retryable=response.status_code == 429 or response.status_code >= 500,
             ) from exc
         data = response.json()
+        if not isinstance(data, dict):
+            raise ToApisError("ToAPIs 返回格式异常")
+        return data
+
+    @staticmethod
+    def _unwrap_data(payload: dict[str, Any]) -> dict[str, Any]:
+        if payload.get("success") is False:
+            raise ToApisError(payload.get("message") or "ToAPIs 请求失败")
+        data = payload.get("data", payload)
         if not isinstance(data, dict):
             raise ToApisError("ToAPIs 返回格式异常")
         return data

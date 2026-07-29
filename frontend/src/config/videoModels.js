@@ -82,7 +82,7 @@ export function normalizeVideoSettings(data = {}) {
 function normalizeReferences(references) {
   return references.map((reference) => ({
     type: reference?.type,
-    url: typeof reference === 'string' ? reference : reference?.url || reference?.data?.asset,
+    url: typeof reference === 'string' ? reference : reference?.url || reference?.data?.providerAsset || reference?.data?.asset,
   }))
 }
 

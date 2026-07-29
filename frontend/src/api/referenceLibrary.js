@@ -13,3 +13,7 @@ export async function uploadReferenceItem(resourceType, file, onProgress) {
     onUploadProgress: ({ loaded, total }) => onProgress?.(total ? Math.round(loaded * 100 / total) : 0),
   })).data
 }
+
+export async function registerCharacter(id) {
+  return (await apiClient.post(`/characters/${id}/register`)).data
+}

@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ImagePlus, LoaderCircle, Music2, Search, Video } from 'lucide-vue-next'
 import { listAssets } from '../../api/assets'
-import { listReferenceItems, uploadReferenceItem } from '../../api/referenceLibrary'
+import { listReferenceItems, registerCharacter, uploadReferenceItem } from '../../api/referenceLibrary'
 import { uploadMedia } from '../../api/uploads'
 import { normalizeLibraryItem } from '../../config/assetLibrary'
 import { useGlobalToast } from '../../composables/useGlobalUI'
@@ -26,6 +26,7 @@ const query = ref('')
 const items = ref([])
 const loading = ref(true)
 const uploading = ref(false)
+const registeringId = ref('')
 const uploadProgress = ref(0)
 const selected = ref(null)
 const fileInput = ref(null)
@@ -35,7 +36,7 @@ const formatHint = computed(() => ({ image: 'JPG、PNG、WebP', video: 'MP4、MO
 const copy = computed(() => ({
   asset: { title: `选择${props.mediaType === 'video' ? '视频' : props.mediaType === 'audio' ? '音频' : '图片'}素材`, description: '从资产库选择，或上传新的素材', upload: `上传${props.mediaType === 'video' ? '视频' : props.mediaType === 'audio' ? '音频' : '图片'}` },
   model: { title: '选择模特', description: '选择系统模特或已上传的模特', upload: '上传模特' },
-  character: { title: '选择角色', description: '选择系统角色或已上传的角色', upload: '上传角色' },
+  character: { title: '选择虚拟角色', description: '选择已注册的虚拟角色', upload: '上传虚拟角色' },
   garment: { title: '选择服饰', description: '选择系统服饰或已上传的服饰', upload: '上传服饰' },
 }[props.resourceType]))
 const visibleItems = computed(() => items.value.filter((item) => {
@@ -79,11 +80,31 @@ async function handleUpload(event) {
     if (result.code !== 0) throw new Error(result.message)
     const item = normalizeLibraryItem({ ...result.data, byte_size: result.data.size }, props.resourceType)
     items.value = [item, ...items.value]
-    selected.value = item
+    selected.value = props.resourceType === 'character' && item.seedanceStatus !== 'active' ? null : item
   } catch (uploadError) {
     toast.error(uploadError.response?.data?.message || uploadError.message || '素材上传失败')
   } finally {
     uploading.value = false
+  }
+}
+
+async function selectItem(item) {
+  if (props.resourceType !== 'character' || item.seedanceStatus === 'active') {
+    selected.value = item
+    return
+  }
+  registeringId.value = item.id
+  try {
+    const result = await registerCharacter(item.id)
+    const refreshed = normalizeLibraryItem(result.data || item, props.resourceType)
+    items.value = items.value.map((value) => value.id === item.id ? refreshed : value)
+    if (result.code !== 0) throw new Error(result.message)
+    if (refreshed.seedanceStatus === 'active') selected.value = refreshed
+    else toast.info('角色正在处理中，请稍后点击刷新')
+  } catch (error) {
+    toast.error(error.response?.data?.message || error.message || '角色注册失败')
+  } finally {
+    registeringId.value = ''
   }
 }
 
@@ -114,19 +135,19 @@ onMounted(loadAssets)
         v-for="item in visibleItems"
         :key="`${item.source}:${item.id}`"
         class="asset-picker-item"
-        :class="{ selected: selected?.source === item.source && selected?.id === item.id }"
+        :class="{ selected: selected?.source === item.source && selected?.id === item.id, unavailable: resourceType === 'character' && item.seedanceStatus !== 'active' }"
         :aria-pressed="selected?.source === item.source && selected?.id === item.id"
-        @click="selected = item"
+        @click="selectItem(item)"
       >
         <img :src="buildOssImageUrl(item.url, { width: 480, quality: 80 })" :alt="item.name" loading="lazy" referrerpolicy="no-referrer" />
-        <span>{{ item.name }}</span>
+        <span><strong>{{ item.name }}</strong><small v-if="resourceType === 'character'">{{ registeringId === item.id ? '注册中' : ({ active: 'Seedance 可用', processing: '处理中，点击刷新', failed: '失败，点击重试', unregistered: '点击注册' })[item.seedanceStatus] }}</small></span>
       </AppButton>
       <EmptyState v-if="!visibleItems.length" compact title="暂无匹配素材" />
     </div>
 
     <template #footer>
       <AppButton variant="soft" @click="emit('close')">取消</AppButton>
-      <AppButton variant="primary" :disabled="!selected" @click="confirmSelection">使用所选素材</AppButton>
+      <AppButton variant="primary" :disabled="!selected || (resourceType === 'character' && selected.seedanceStatus !== 'active')" @click="confirmSelection">使用所选素材</AppButton>
     </template>
   </AppModal>
 </template>

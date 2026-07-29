@@ -49,7 +49,20 @@ const notice = ref('')
 const storyboardPromptView = ref('image')
 const running = computed(() => props.data.status === 'generating')
 const isStoryboardImage = computed(() => props.type === 'image' && Boolean(props.data.storyboardSourceId && props.data.videoPrompt))
-const references = computed(() => store.incomingNodes(props.nodeId))
+const connectedReferences = computed(() => store.incomingNodes(props.nodeId))
+const references = computed(() => {
+  const character = props.data.storyboardCharacter
+  if (!character?.url) return connectedReferences.value
+  return [...connectedReferences.value, {
+    id: `storyboard-character-${character.id}`,
+    type: 'image',
+    data: {
+      title: character.name,
+      asset: character.url,
+      ...(props.type === 'video' ? { providerAsset: character.assetUrl } : {}),
+    },
+  }]
+})
 const imageReferences = computed(() => references.value.filter((node) => node.type === 'image' && node.data.asset))
 const audioReferences = computed(() => references.value.filter((node) => node.type === 'audio' && node.data.asset))
 const mentionReferences = computed(() => {

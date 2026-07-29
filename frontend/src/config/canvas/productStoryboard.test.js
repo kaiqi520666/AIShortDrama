@@ -33,12 +33,25 @@ describe('product storyboard planning', () => {
     expect(prompt).toContain('3 列 × 1 行')
     expect(prompt).toContain('videoPrompt')
     expect(prompt).toContain('不超过 500 个中文字符')
+    expect(prompt).toContain('所有镜头禁止出现人脸')
   })
 
   it('orders parsed prompts by selected template order', () => {
     const plans = parseProductStoryboardPlan('[{"type":"sales-drama","prompt":"短剧分镜","videoPrompt":"短剧视频"},{"type":"ugc-seeding","prompt":"种草分镜","videoPrompt":"种草视频"}]', storyboardTemplates.slice(0, 2))
-    expect(plans.map((item) => item.prompt)).toEqual(['种草分镜\n无文字水印。', '短剧分镜\n无文字水印。'])
-    expect(plans.map((item) => item.videoPrompt)).toEqual(['种草视频', '短剧视频'])
+    expect(plans.map((item) => item.prompt)).toEqual([
+      '种草分镜\n禁止出现人脸、正脸、侧脸及面部局部，人物仅可出现手部、背影或肩部以下。\n无文字水印。',
+      '短剧分镜\n禁止出现人脸、正脸、侧脸及面部局部，人物仅可出现手部、背影或肩部以下。\n无文字水印。',
+    ])
+    expect(plans.map((item) => item.videoPrompt)).toEqual(['种草视频\n全程禁止出现人脸及面部局部。', '短剧视频\n全程禁止出现人脸及面部局部。'])
+  })
+
+  it('locks a selected character in image and video prompts', () => {
+    const character = { name: '测试角色', url: 'https://example.com/character.png', assetUrl: 'asset://pa_test' }
+    const prompt = buildProductStoryboardPrompt('测试商品', storyboardTemplates.slice(0, 1), { characterReference: character })
+    const plans = parseProductStoryboardPlan('[{"type":"ugc-seeding","prompt":"人物分镜","videoPrompt":"人物视频"}]', storyboardTemplates.slice(0, 1), character)
+    expect(prompt).toContain('参考图 2 是指定出镜角色')
+    expect(plans[0].prompt).toContain('参考图2为指定出镜角色')
+    expect(plans[0].videoPrompt).toContain('参考图片2为指定出镜角色')
   })
 
   it('rejects incomplete template plans', () => {
