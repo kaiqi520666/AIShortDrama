@@ -3,7 +3,7 @@ import json
 import httpx
 import pytest
 
-from app.providers.toapis import ToApisProvider
+from app.providers.toapis import ToApisError, ToApisProvider
 
 
 @pytest.mark.asyncio
@@ -104,3 +104,20 @@ async def test_private_avatar_registration_flow():
         "name": "角色 A",
     }
     assert requests[2].url.path.endswith("/private-avatar/assets/pa-1")
+
+
+@pytest.mark.asyncio
+async def test_http_error_preserves_top_level_provider_message():
+    provider = ToApisProvider(
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(
+                400,
+                json={"code": "invalid_parameter", "message": "参考图片不符合要求"},
+            )
+        )
+    )
+    try:
+        with pytest.raises(ToApisError, match="参考图片不符合要求（invalid_parameter）"):
+            await provider.submit_video({"model": "seedance-2-mini"})
+    finally:
+        await provider.client.aclose()

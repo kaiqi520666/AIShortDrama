@@ -98,9 +98,16 @@ class ToApisProvider:
             payload = response.json()
             error = payload.get("error") if isinstance(payload, dict) else None
             if isinstance(error, dict):
-                return error.get("message") or f"ToAPIs 请求失败（{response.status_code}）"
+                return error.get("message") or error.get("detail") or f"ToAPIs 请求失败（{response.status_code}）"
             if isinstance(error, str):
                 return error
+            if isinstance(payload, dict):
+                message = payload.get("message") or payload.get("detail")
+                code = payload.get("code")
+                if isinstance(message, str) and message:
+                    return f"{message}（{code}）" if code and code != message else message
+                if isinstance(code, str) and code:
+                    return code
         except ValueError:
             pass
         return f"ToAPIs 请求失败（{response.status_code}）"
