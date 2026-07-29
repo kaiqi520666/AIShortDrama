@@ -76,7 +76,7 @@ export function parseProductStoryboardPlan(content, templates) {
     const result = results.get(item.id)
     return {
       ...item,
-      prompt: typeof result?.prompt === 'string' ? result.prompt.trim() : '',
+      prompt: typeof result?.prompt === 'string' ? `${result.prompt.trim()}\n无文字水印。` : '',
       videoPrompt: typeof result?.videoPrompt === 'string' ? result.videoPrompt.trim() : '',
     }
   })

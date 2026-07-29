@@ -37,7 +37,7 @@ describe('product storyboard planning', () => {
 
   it('orders parsed prompts by selected template order', () => {
     const plans = parseProductStoryboardPlan('[{"type":"sales-drama","prompt":"短剧分镜","videoPrompt":"短剧视频"},{"type":"ugc-seeding","prompt":"种草分镜","videoPrompt":"种草视频"}]', storyboardTemplates.slice(0, 2))
-    expect(plans.map((item) => item.prompt)).toEqual(['种草分镜', '短剧分镜'])
+    expect(plans.map((item) => item.prompt)).toEqual(['种草分镜\n无文字水印。', '短剧分镜\n无文字水印。'])
     expect(plans.map((item) => item.videoPrompt)).toEqual(['种草视频', '短剧视频'])
   })
 
