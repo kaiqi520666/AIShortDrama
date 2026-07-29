@@ -3,9 +3,13 @@ import { canConnect, getConnectionError } from './connectionRules'
 import { getNodeTypes, getWorkspaceType } from './nodePacks'
 
 describe('canvas node packs', () => {
-  it.each(['general', 'drama'])('provides core nodes for %s', (workspaceType) => {
-    expect(getNodeTypes(workspaceType)).toEqual(['text', 'image', 'video', 'audio'])
-    expect(getWorkspaceType(workspaceType).id).toBe(workspaceType)
+  it('provides core nodes for general canvas', () => {
+    expect(getNodeTypes('general')).toEqual(['text', 'image', 'video', 'audio'])
+  })
+
+  it('adds world creation to drama canvas', () => {
+    expect(getNodeTypes('drama')).toEqual(['world', 'text', 'image', 'video', 'audio'])
+    expect(getWorkspaceType('drama').id).toBe('drama')
   })
 
   it('adds ecommerce business nodes to ecommerce canvas', () => {

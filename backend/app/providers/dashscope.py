@@ -91,7 +91,7 @@ class DashScopeProvider:
             "messages": [
                 {
                     "role": "system",
-                    "content": "你是专业的中文电商文案助手。严格按用户要求输出可直接使用的最终文案。",
+                    "content": "你是专业的中文内容创作助手。严格按用户要求输出可直接使用的最终内容。",
                 },
                 {"role": "user", "content": prompt},
             ],

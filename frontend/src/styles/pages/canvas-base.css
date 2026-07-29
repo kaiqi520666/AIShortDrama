@@ -222,12 +222,16 @@
 .media-node--outfit {
   width: 390px;
 }
+.media-node--world {
+  width: 420px;
+}
 .structured-node .node-body {
   min-height: 0;
 }
 .product-node-content,
 .product-visual-node-content,
-.outfit-node-content {
+.outfit-node-content,
+.world-node-content {
   padding: 15px;
 }
 .product-workflow-steps {
@@ -425,13 +429,39 @@
   margin-top: 10px;
 }
 .product-node-content .ui-input,
-.product-node-content .ui-textarea {
+.product-node-content .ui-textarea,
+.product-node-content .ui-select,
+.product-node-content .ui-select-trigger {
   width: 100%;
   font-size: 12px;
 }
 .product-node-content .ui-textarea {
   height: 72px;
   resize: none;
+}
+.world-result-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.world-result-fields label {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+.world-result-fields .ui-textarea {
+  height: 78px;
+}
+.world-node-content .ui-select-menu {
+  max-height: 190px;
+  overflow-y: auto;
+}
+.world-node-content .product-fields > label:nth-child(n + 5) .ui-select-menu {
+  top: auto;
+  bottom: calc(100% + 6px);
+  transform-origin: bottom right;
 }
 .structured-node-foot {
   justify-content: flex-start;

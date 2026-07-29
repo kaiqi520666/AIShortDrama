@@ -29,6 +29,10 @@
 .media-node--outfit {
   --node-accent: var(--color-warning);
 }
+.media-node--world,
+.world-creation-panel {
+  --node-accent: var(--color-brand);
+}
 .product-creation-panel {
   --node-accent: var(--color-warning);
 }
@@ -107,7 +111,8 @@
   color: var(--color-text-muted);
 }
 .product-node-content .ui-input,
-.product-node-content .ui-textarea {
+.product-node-content .ui-textarea,
+.product-node-content .ui-select-trigger {
   border-color: var(--color-border-subtle);
   background: var(--color-surface-raised);
   color: var(--color-text-primary);
@@ -115,6 +120,9 @@
 .product-node-content .ui-input:focus,
 .product-node-content .ui-textarea:focus {
   border-color: var(--node-accent);
+}
+.node-create-menu .node-option--world .menu-icon {
+  color: var(--color-brand);
 }
 .product-workflow-steps > .ui-button {
   background: transparent;

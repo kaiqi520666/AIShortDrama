@@ -1,8 +1,9 @@
-import { FileText, Image, Images, Music2, Package, Shirt, Video } from 'lucide-vue-next'
+import { FileText, Globe2, Image, Images, Music2, Package, Shirt, Video } from 'lucide-vue-next'
 import { defaultImageModel } from '../imageModels'
 import { defaultReverseModel } from '../reverseModels'
 import { defaultVideoModel } from '../videoModels'
 import { createProductVisualItems } from './productVisual'
+import { emptyWorld } from './drama'
 
 const reversePrompts = {
   image: '根据图片生成结构化中文提示词，包括主体描述、环境、光影、镜头语言、风格关键词。',
@@ -94,6 +95,28 @@ export const nodeDefinitions = {
       sceneIds: ['studio'],
       customScene: '',
       generatedNodeIds: [],
+    }),
+  },
+  world: {
+    type: 'world', label: '世界观创作', model: defaultReverseModel.id, hint: '生成统一的短剧世界设定',
+    setting: '设定输入 + 世界观结果', icon: Globe2,
+    inputs: [], outputs: [],
+    createData: ({ number }) => ({
+      title: `世界观创作 ${number}`,
+      status: 'empty',
+      workflowStep: 'setting',
+      model: defaultReverseModel.id,
+      prompt: '',
+      setting: {
+        genre: '都市',
+        era: '当代',
+        location: '',
+        civilization: '现实社会',
+        ruleSeed: '',
+        visualStyle: '电影写实',
+        tone: '写实',
+      },
+      world: emptyWorld(),
     }),
   },
 }
