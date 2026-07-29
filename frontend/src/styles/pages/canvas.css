@@ -33,6 +33,12 @@
 .world-creation-panel {
   --node-accent: var(--color-brand);
 }
+.media-node--character,
+.character-creation-panel,
+.character-profile-panel,
+.character-visual-panel {
+  --node-accent: var(--color-media-video);
+}
 .product-creation-panel {
   --node-accent: var(--color-warning);
 }
@@ -123,6 +129,9 @@
 }
 .node-create-menu .node-option--world .menu-icon {
   color: var(--color-brand);
+}
+.node-create-menu .node-option--character .menu-icon {
+  color: var(--color-media-video);
 }
 .product-workflow-steps > .ui-button {
   background: transparent;

@@ -14,7 +14,13 @@ class ReversePromptRequest(BaseModel):
     media_url: AnyHttpUrl
     media_urls: list[AnyHttpUrl] = Field(default_factory=list, max_length=9)
     prompt: str = Field(default="", max_length=3000)
-    response_mode: Literal["prompt", "product_profile", "product_visual_plan"] = "prompt"
+    response_mode: Literal[
+        "prompt",
+        "product_profile",
+        "product_visual_plan",
+        "character_profile",
+        "character_visual_plan",
+    ] = "prompt"
 
     @model_validator(mode="after")
     def validate_prompt(self):

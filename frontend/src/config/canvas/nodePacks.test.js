@@ -7,9 +7,14 @@ describe('canvas node packs', () => {
     expect(getNodeTypes('general')).toEqual(['text', 'image', 'video', 'audio'])
   })
 
-  it('adds world creation to drama canvas', () => {
-    expect(getNodeTypes('drama')).toEqual(['world', 'text', 'image', 'video', 'audio'])
+  it('adds world and character creation to drama canvas', () => {
+    expect(getNodeTypes('drama')).toEqual(['world', 'character', 'text', 'image', 'video', 'audio'])
     expect(getWorkspaceType('drama').id).toBe('drama')
+    expect(canConnect('world', 'character', 'drama')).toBe(true)
+    expect(canConnect('image', 'character', 'drama')).toBe(true)
+    expect(canConnect('character', 'image', 'drama')).toBe(true)
+    expect(getConnectionError('world', 'character', ['world'], 'drama')).toContain('只能连接 1 个')
+    expect(getConnectionError('image', 'character', ['image'], 'drama')).toContain('只能连接 1 张')
   })
 
   it('adds ecommerce business nodes to ecommerce canvas', () => {

@@ -45,3 +45,16 @@ export function parseWorldProfile(content) {
 export function worldReady(world = {}) {
   return worldFields.every((key) => world[key]?.trim())
 }
+
+export function worldPromptContext(data = {}) {
+  const setting = data.setting || {}
+  const labels = {
+    overview: '世界概述', timeSpace: '时空环境', society: '社会结构与阵营',
+    rules: '运行规则与边界', conflict: '核心矛盾', visualGuide: '视觉基准',
+  }
+  const fields = worldFields.filter((key) => data.world?.[key]?.trim()).map((key) => `${labels[key]}：${data.world[key].trim()}`)
+  return [
+    `题材：${setting.genre || ''}；时代：${setting.era || ''}；地域：${setting.location || ''}；视觉风格：${setting.visualStyle || ''}`,
+    ...fields,
+  ].join('\n')
+}

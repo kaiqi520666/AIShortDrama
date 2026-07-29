@@ -41,7 +41,7 @@ function updateWorld(key, value) {
 </script>
 
 <template>
-  <StructuredNodeShell :id="id" :type="type" :data="data" :icon="Globe2" :selected="selected" :has-source="false">
+  <StructuredNodeShell :id="id" :type="type" :data="data" :icon="Globe2" :selected="selected">
     <div class="product-node-content world-node-content nowheel" @keydown.stop>
       <ProductWorkflowSteps
         :step="step"

@@ -56,6 +56,19 @@ def test_reverse_prompt_accepts_additional_media_urls():
     assert [str(url) for url in payload.media_urls] == ["https://example.com/model.png"]
 
 
+def test_reverse_prompt_accepts_character_response_modes():
+    payload = {
+        "workspace_id": DEFAULT_WORKSPACE_ID,
+        "node_id": "character-1",
+        "model": "qwen3.7-plus",
+        "media_type": "image",
+        "media_url": "https://example.com/character.png",
+        "prompt": "生成角色档案",
+    }
+    assert ReversePromptRequest(**payload, response_mode="character_profile").response_mode == "character_profile"
+    assert ReversePromptRequest(**payload, response_mode="character_visual_plan").response_mode == "character_visual_plan"
+
+
 @pytest.mark.asyncio
 async def test_stream_reverse_prompt(monkeypatch):
     monkeypatch.setattr(reversals_route, "DashScopeProvider", FakeProvider)

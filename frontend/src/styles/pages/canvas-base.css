@@ -225,6 +225,9 @@
 .media-node--world {
   width: 420px;
 }
+.media-node--character {
+  width: 440px;
+}
 .structured-node .node-body {
   min-height: 0;
 }
@@ -459,6 +462,64 @@
   overflow-y: auto;
 }
 .world-node-content .product-fields > label:nth-child(n + 5) .ui-select-menu {
+  top: auto;
+  bottom: calc(100% + 6px);
+  transform-origin: bottom right;
+}
+.character-inputs {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.character-node-content {
+  max-height: 560px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border-strong) transparent;
+}
+.character-inputs .outfit-source {
+  grid-template-columns: 34px minmax(0, 1fr) 16px;
+  padding: 6px 8px;
+}
+.character-inputs .outfit-source-preview {
+  width: 34px;
+  height: 34px;
+}
+.character-setting-fields {
+  margin-bottom: 10px;
+}
+.character-profile-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.character-profile-fields label,
+.character-main-reference {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+.character-profile-fields .ui-textarea {
+  height: 68px;
+}
+.character-node-content .ui-select-menu {
+  max-height: 190px;
+  overflow-y: auto;
+}
+.character-visual-tags {
+  min-height: 88px;
+}
+.character-main-reference {
+  margin-top: 10px;
+}
+.character-main-reference .ui-select,
+.character-main-reference .ui-select-trigger {
+  width: 100%;
+}
+.character-main-reference .ui-select-menu {
   top: auto;
   bottom: calc(100% + 6px);
   transform-origin: bottom right;

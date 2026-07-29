@@ -132,6 +132,7 @@ export const useCanvasStore = defineStore('canvas', {
     },
     addNode(type, position, sourceId) {
       if (!isNodeTypeAvailable(this.workspaceType, type)) return
+      const source = this.nodes.find((node) => node.id === sourceId)
       if (type === 'outfit' && !sourceId) {
         const garmentId = this.addNode('image', { x: position.x - 460, y: position.y - 215 })
         const modelId = this.addNode('image', { x: position.x - 460, y: position.y + 215 })
@@ -152,7 +153,15 @@ export const useCanvasStore = defineStore('canvas', {
         image.data = { ...image.data, title: '商品参考图', assetSource: 'upload' }
         return this.addNode(type, position, imageId)
       }
-      const source = this.nodes.find((node) => node.id === sourceId)
+      if (type === 'character' && (!sourceId || source?.type === 'world')) {
+        const imageId = this.addNode('image', { x: position.x - 460, y: position.y + 210 })
+        const image = this.nodes.find((node) => node.id === imageId)
+        image.data = { ...image.data, title: '角色参考图', assetSource: 'upload', resourceType: 'character' }
+        const characterId = this.addNode(type, position, imageId)
+        if (source?.type === 'world') this.edges.push(createEdge(`edge-${crypto.randomUUID()}`, source.id, characterId, 'world'))
+        this.selectNodes([characterId])
+        return characterId
+      }
       if (sourceId && (!source || !canConnect(source.type, type, this.workspaceType))) return
       const number = this.sequence++
       const id = `${type}-${number}`
@@ -164,7 +173,7 @@ export const useCanvasStore = defineStore('canvas', {
         selected: true,
         data: createNodeData(type, number, source),
       })
-      if (sourceId) this.edges.push(createEdge(`edge-${crypto.randomUUID()}`, sourceId, id))
+      if (sourceId) this.edges.push(createEdge(`edge-${crypto.randomUUID()}`, sourceId, id, type === 'character' && source.type === 'image' ? 'reference' : undefined))
       return id
     },
     addEdge(connection) {
@@ -230,6 +239,28 @@ export const useCanvasStore = defineStore('canvas', {
         this.addEdge({ source: outfitId, target: id })
         this.addEdge({ source: garmentId, target: id })
         this.addEdge({ source: modelId, target: id })
+        return id
+      })
+      this.selectNodes(ids.slice(0, 1))
+      return ids
+    },
+    addCharacterVisualNodes(characterId, referenceId, plans, settings) {
+      const character = this.nodes.find((node) => node.id === characterId)
+      if (!character || !plans.length) return []
+
+      const ids = plans.map((plan, index) => {
+        const id = this.addNode('image', { x: character.position.x + 500 + index * 440, y: character.position.y })
+        const node = this.nodes.find((item) => item.id === id)
+        node.data = {
+          ...node.data,
+          title: plan.label,
+          characterSourceId: characterId,
+          prompt: plan.prompt,
+          promptParts: [{ type: 'text', value: plan.prompt }],
+          ...settings,
+        }
+        this.addEdge({ source: characterId, target: id })
+        if (referenceId) this.addEdge({ source: referenceId, target: id })
         return id
       })
       this.selectNodes(ids.slice(0, 1))

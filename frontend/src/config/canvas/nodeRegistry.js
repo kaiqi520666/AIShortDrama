@@ -8,13 +8,17 @@ import OutfitPanel from '../../components/canvas/OutfitPanel.vue'
 import GenerationPanel from '../../components/canvas/GenerationPanel.vue'
 import WorldNode from '../../components/canvas/WorldNode.vue'
 import WorldCreationPanel from '../../components/canvas/WorldCreationPanel.vue'
+import CharacterNode from '../../components/canvas/CharacterNode.vue'
+import CharacterCreationPanel from '../../components/canvas/CharacterCreationPanel.vue'
 import { nodeDefinitions } from './nodeDefinitions'
 
-const components = { product: ProductNode, product_visual: ProductVisualNode, outfit: OutfitNode, world: WorldNode }
+const components = { product: ProductNode, product_visual: ProductVisualNode, outfit: OutfitNode, world: WorldNode, character: CharacterNode }
+const panels = { product: ProductCreationPanel, product_visual: ProductVisualPanel, outfit: OutfitPanel, world: WorldCreationPanel, character: CharacterCreationPanel }
+const panelHeights = { product: 440, product_visual: 380, outfit: 470, world: 250, character: 440 }
 
 export const nodeRegistry = Object.fromEntries(Object.entries(nodeDefinitions).map(([type, definition]) => [type, {
   ...definition,
   component: components[type] || MediaNode,
-  panelComponent: type === 'product' ? ProductCreationPanel : type === 'product_visual' ? ProductVisualPanel : type === 'outfit' ? OutfitPanel : type === 'world' ? WorldCreationPanel : definition.generationPanel ? GenerationPanel : null,
-  panelHeight: type === 'product' ? 440 : type === 'product_visual' ? 380 : type === 'outfit' ? 470 : type === 'world' ? 250 : 260,
+  panelComponent: panels[type] || (definition.generationPanel ? GenerationPanel : null),
+  panelHeight: panelHeights[type] || 260,
 }]))

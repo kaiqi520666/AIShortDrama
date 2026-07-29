@@ -64,6 +64,33 @@
 .product-creation-stage > .product-visual-panel.embedded .product-visual-panel-header {
   display: none;
 }
+.character-profile-panel .reference-strip {
+  margin-bottom: 8px;
+}
+.character-profile-panel > .ui-textarea {
+  width: 100%;
+  height: 84px;
+  margin: 0 0 8px;
+}
+.reference-item.optional {
+  border-style: dashed;
+}
+.character-panel-references {
+  margin-top: 2px;
+}
+.character-visual-types {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 12px 0;
+}
+.character-visual-types .product-visual-option {
+  display: grid;
+  min-height: 38px;
+  place-items: center;
+  padding: 0 8px;
+  text-align: center;
+}
 .product-visual-panel {
   display: flex;
   width: min(600px, calc(100vw - 32px));

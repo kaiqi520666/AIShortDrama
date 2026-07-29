@@ -1,9 +1,10 @@
-import { FileText, Globe2, Image, Images, Music2, Package, Shirt, Video } from 'lucide-vue-next'
+import { FileText, Globe2, Image, Images, Music2, Package, Shirt, UserRound, Video } from 'lucide-vue-next'
 import { defaultImageModel } from '../imageModels'
 import { defaultReverseModel } from '../reverseModels'
 import { defaultVideoModel } from '../videoModels'
 import { createProductVisualItems } from './productVisual'
 import { emptyWorld } from './drama'
+import { emptyCharacterProfile } from './character'
 
 const reversePrompts = {
   image: '根据图片生成结构化中文提示词，包括主体描述、环境、光影、镜头语言、风格关键词。',
@@ -34,7 +35,7 @@ export const nodeDefinitions = {
   image: {
     type: 'image', label: '图片', model: 'Moon Image', hint: '商品图与视觉生成',
     placeholder: '描述你想生成的商品画面，@ 引用素材…', setting: '16:9 · 2K', icon: Image,
-    generationPanel: true, inputs: ['text', 'image', 'product', 'product_visual', 'outfit'], outputs: ['text', 'image', 'video', 'audio', 'product', 'outfit'],
+    generationPanel: true, inputs: ['text', 'image', 'product', 'product_visual', 'outfit', 'character'], outputs: ['text', 'image', 'video', 'audio', 'product', 'outfit', 'character'],
     createData: ({ number }) => ({ model: defaultImageModel.id, title: `图片节点 ${number}`, status: 'empty', prompt: '' }),
   },
   video: {
@@ -100,7 +101,7 @@ export const nodeDefinitions = {
   world: {
     type: 'world', label: '世界观创作', model: defaultReverseModel.id, hint: '生成统一的短剧世界设定',
     setting: '设定输入 + 世界观结果', icon: Globe2,
-    inputs: [], outputs: [],
+    inputs: [], outputs: ['character'],
     createData: ({ number }) => ({
       title: `世界观创作 ${number}`,
       status: 'empty',
@@ -117,6 +118,26 @@ export const nodeDefinitions = {
         tone: '写实',
       },
       world: emptyWorld(),
+    }),
+  },
+  character: {
+    type: 'character', label: '角色创作', model: defaultReverseModel.id, hint: '生成角色档案与统一设定图',
+    setting: '角色设定 + 3 张设定图', icon: UserRound,
+    inputs: ['world', 'image'], outputs: ['image'],
+    createData: ({ number }) => ({
+      title: `角色创作 ${number}`,
+      status: 'empty',
+      workflowStep: 'profile',
+      model: defaultReverseModel.id,
+      textModel: defaultReverseModel.id,
+      imageModel: defaultImageModel.id,
+      aspectRatio: '3:4',
+      resolution: defaultImageModel.defaultResolution,
+      prompt: '',
+      setting: { roleType: '主角', gender: '女', ageStage: '青年', visualStyle: '电影写实' },
+      profile: emptyCharacterProfile(),
+      generatedNodeIds: [],
+      mainReferenceNodeId: '',
     }),
   },
 }

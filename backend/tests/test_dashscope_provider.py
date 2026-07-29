@@ -199,6 +199,39 @@ async def test_product_visual_plan_accepts_multiple_images(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_character_profile_uses_character_system_prompt(monkeypatch):
+    requests = []
+
+    async def handler(request):
+        requests.append(request)
+        return httpx.Response(
+            200,
+            stream=ChunkStream([frame({"choices": [{"delta": {"content": "{}"}}]}), frame("[DONE]")]),
+        )
+
+    monkeypatch.setattr(
+        dashscope_module,
+        "get_settings",
+        lambda: SimpleNamespace(dashscope_api_key="secret", dashscope_url="https://provider.test"),
+    )
+    async with DashScopeProvider(transport=httpx.MockTransport(handler)) as provider:
+        _ = [
+            item
+            async for item in provider.stream_reverse_prompt(
+                model="qwen3.7-plus",
+                media_type="image",
+                media_url="https://example.com/character.png",
+                prompt="生成角色档案",
+                response_mode="character_profile",
+            )
+        ]
+
+    system_prompt = json.loads(requests[0].content)["messages"][0]["content"]
+    assert "短剧角色设定师" in system_prompt
+    assert "JSON 结构" in system_prompt
+
+
+@pytest.mark.asyncio
 async def test_stream_text(monkeypatch):
     requests = []
     chunks = [frame({"choices": [{"delta": {"content": "文案"}}]}), frame("[DONE]")]

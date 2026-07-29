@@ -9,7 +9,7 @@ export const workspaceTypes = [
 export const nodePacks = {
   general: generalNodes,
   ecommerce: ['product', 'product_visual', 'outfit', ...generalNodes],
-  drama: ['world', ...generalNodes],
+  drama: ['world', 'character', ...generalNodes],
 }
 
 export function getWorkspaceType(type) {

@@ -62,6 +62,13 @@ class DashScopeProvider:
             else {"type": "video_url", "video_url": {"url": url}, "fps": 2}
             for url in media_urls
         ]
+        system_prompts = {
+            "product_profile": "你是专业的中文商品视觉识别助手。严格按用户指定的 JSON 结构输出，不解释，不使用 Markdown。",
+            "product_visual_plan": "你是专业的中文电商视觉策划师。严格按用户指定的 JSON 数组输出，不解释，不使用 Markdown。",
+            "character_profile": "你是专业的中文短剧角色设定师。严格按用户指定的 JSON 结构输出，不解释，不使用 Markdown。",
+            "character_visual_plan": "你是专业的中文短剧角色视觉策划师。严格按用户指定的 JSON 数组输出，不解释，不使用 Markdown。",
+            "prompt": "你是专业的中文视觉提示词反推助手。仅输出最终中文提示词，不解释，不使用 Markdown。",
+        }
         payload = {
             "model": model,
             "stream": True,
@@ -69,13 +76,7 @@ class DashScopeProvider:
             "messages": [
                 {
                     "role": "system",
-                    "content": (
-                        "你是专业的中文商品视觉识别助手。严格按用户指定的 JSON 结构输出，不解释，不使用 Markdown。"
-                        if response_mode == "product_profile"
-                        else "你是专业的中文电商视觉策划师。严格按用户指定的 JSON 数组输出，不解释，不使用 Markdown。"
-                        if response_mode == "product_visual_plan"
-                        else "你是专业的中文视觉提示词反推助手。仅输出最终中文提示词，不解释，不使用 Markdown。"
-                    ),
+                    "content": system_prompts[response_mode],
                 },
                 {"role": "user", "content": [*media, {"type": "text", "text": user_prompt}]},
             ],

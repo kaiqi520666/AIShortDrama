@@ -11,6 +11,8 @@ export function canConnect(sourceType, targetType, workspaceType = 'general') {
 export function getConnectionError(sourceType, targetType, incomingTypes = [], workspaceType = 'general') {
   if (!canConnect(sourceType, targetType, workspaceType)) return '节点类型不能连接'
   if (targetType === 'product_visual' && incomingTypes.includes('product')) return '商品出图节点只能连接 1 个商品资料'
+  if (targetType === 'character' && sourceType === 'world' && incomingTypes.includes('world')) return '角色创作节点只能连接 1 个世界观'
+  if (targetType === 'character' && sourceType === 'image' && incomingTypes.includes('image')) return '角色创作节点只能连接 1 张参考图'
   if (targetType !== 'audio' || !['image', 'audio'].includes(sourceType)) return ''
   if (sourceType === 'image' && incomingTypes.includes('audio')) return '参考图片和参考音频不能混用'
   if (sourceType === 'audio' && incomingTypes.includes('image')) return '参考图片和参考音频不能混用'
