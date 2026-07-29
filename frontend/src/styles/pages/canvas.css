@@ -45,6 +45,10 @@
 .media-node--product_visual {
   --node-accent: var(--color-media-image);
 }
+.media-node--product_storyboard,
+.storyboard-panel {
+  --node-accent: var(--color-media-video);
+}
 .product-visual-panel {
   --node-accent: var(--color-media-image);
 }
@@ -191,6 +195,9 @@
 }
 .node-create-menu .node-option--product_visual .menu-icon {
   color: var(--color-media-image);
+}
+.node-create-menu .node-option--product_storyboard .menu-icon {
+  color: var(--color-media-video);
 }
 .structured-node-error {
   border: 1px solid var(--color-danger-soft);

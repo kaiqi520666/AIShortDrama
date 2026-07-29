@@ -297,6 +297,34 @@ describe('canvas node packs', () => {
     ])
   })
 
+  it('creates one editable storyboard image node for every selected template', async () => {
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1',
+      version: 1,
+      workspace_type: 'ecommerce',
+      canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
+    })
+    const productId = store.addNode('product', { x: 0, y: 0 })
+    const reference = store.nodes.find((node) => node.type === 'image')
+    reference.data = { ...reference.data, asset: 'https://example.com/product.png', status: 'ready' }
+    const storyboardId = store.addNode('product_storyboard', { x: 500, y: 0 }, productId)
+    const ids = store.addProductStoryboardNodes(storyboardId, productId, reference.id, [
+      { id: 'ugc-seeding', label: 'UGC 种草', prompt: '四格种草分镜板' },
+      { id: 'unboxing', label: '开箱种草', prompt: '四格开箱分镜板' },
+    ], { model: 'gpt-image-2', aspectRatio: '9:16', resolution: '2K' })
+
+    expect(ids).toEqual(['image-4', 'image-5'])
+    expect(store.nodes.find((node) => node.id === ids[0]).data).toEqual(expect.objectContaining({
+      title: 'UGC 种草分镜板',
+      storyboardSourceId: storyboardId,
+      prompt: '四格种草分镜板',
+      aspectRatio: '9:16',
+      resolution: '2K',
+    }))
+    expect(store.edges.filter((edge) => ids.includes(edge.target))).toHaveLength(6)
+  })
+
   it('uses an existing image when product creation is contextual', async () => {
     const store = useCanvasStore()
     await store.loadWorkspace({

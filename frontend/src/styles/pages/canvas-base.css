@@ -219,6 +219,12 @@
 .media-node--product_visual {
   width: 400px;
 }
+.media-node--product_storyboard {
+  width: 400px;
+}
+.media-node--product_storyboard .vue-flow__handle-left {
+  top: 62px;
+}
 .media-node--outfit {
   width: 390px;
 }
@@ -233,6 +239,7 @@
 }
 .product-node-content,
 .product-visual-node-content,
+.storyboard-node-content,
 .outfit-node-content,
 .world-node-content {
   padding: 15px;
@@ -304,6 +311,15 @@
 }
 .product-visual-node-content {
   min-height: 154px;
+}
+.storyboard-node-content {
+  min-height: 192px;
+}
+.storyboard-node-tags {
+  min-height: 48px;
+}
+.storyboard-node-summary {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .product-visual-source {
   display: flex;

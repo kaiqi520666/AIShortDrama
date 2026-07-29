@@ -69,6 +69,19 @@ def test_reverse_prompt_accepts_character_response_modes():
     assert ReversePromptRequest(**payload, response_mode="character_visual_plan").response_mode == "character_visual_plan"
 
 
+def test_reverse_prompt_accepts_product_storyboard_mode():
+    payload = ReversePromptRequest(
+        workspace_id=DEFAULT_WORKSPACE_ID,
+        node_id="product-storyboard-1",
+        model="qwen3.7-plus",
+        media_type="image",
+        media_url="https://example.com/product.png",
+        prompt="生成商品分镜",
+        response_mode="product_storyboard_plan",
+    )
+    assert payload.response_mode == "product_storyboard_plan"
+
+
 @pytest.mark.asyncio
 async def test_stream_reverse_prompt(monkeypatch):
     monkeypatch.setattr(reversals_route, "DashScopeProvider", FakeProvider)

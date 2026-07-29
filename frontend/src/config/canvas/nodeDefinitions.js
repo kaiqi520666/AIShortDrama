@@ -1,8 +1,9 @@
-import { FileText, Globe2, Image, Images, Music2, Package, Shirt, UserRound, Video } from 'lucide-vue-next'
+import { Clapperboard, FileText, Globe2, Image, Images, Music2, Package, Shirt, UserRound, Video } from 'lucide-vue-next'
 import { defaultImageModel } from '../imageModels'
 import { defaultReverseModel } from '../reverseModels'
 import { defaultVideoModel } from '../videoModels'
 import { createProductVisualItems } from './productVisual'
+import { createStoryboardTemplates } from './productStoryboard'
 import { emptyWorld } from './drama'
 import { emptyCharacterProfile } from './character'
 
@@ -35,7 +36,7 @@ export const nodeDefinitions = {
   image: {
     type: 'image', label: '图片', model: 'Moon Image', hint: '商品图与视觉生成',
     placeholder: '描述你想生成的商品画面，@ 引用素材…', setting: '16:9 · 2K', icon: Image,
-    generationPanel: true, inputs: ['text', 'image', 'product', 'product_visual', 'outfit', 'character'], outputs: ['text', 'image', 'video', 'audio', 'product', 'outfit', 'character'],
+    generationPanel: true, inputs: ['text', 'image', 'product', 'product_visual', 'product_storyboard', 'outfit', 'character'], outputs: ['text', 'image', 'video', 'audio', 'product', 'outfit', 'character'],
     createData: ({ number }) => ({ model: defaultImageModel.id, title: `图片节点 ${number}`, status: 'empty', prompt: '' }),
   },
   video: {
@@ -53,7 +54,7 @@ export const nodeDefinitions = {
   product: {
     type: 'product', label: '商品创作', model: '', hint: '识别商品并创建整套商品图',
     placeholder: '可选：补充识别要求，例如重点读取容量、材质或包装文字…', setting: '', icon: Package,
-    generationPanel: true, inputs: ['image'], outputs: ['product_visual', 'image', 'video'],
+    generationPanel: true, inputs: ['image'], outputs: ['product_visual', 'product_storyboard', 'image', 'video'],
     createData: ({ number }) => ({
       title: `商品创作 ${number}`,
       status: 'empty',
@@ -80,6 +81,21 @@ export const nodeDefinitions = {
       aspectRatio: defaultImageModel.defaultAspectRatio,
       resolution: defaultImageModel.defaultResolution,
       items: createProductVisualItems(),
+    }),
+  },
+  product_storyboard: {
+    type: 'product_storyboard', label: '商品分镜', model: defaultReverseModel.id, hint: '按脚本模板生成多格商品分镜板',
+    setting: '多模板 · 4–15 秒', icon: Clapperboard,
+    inputs: ['product'], outputs: ['image'],
+    createData: ({ number }) => ({
+      title: `商品分镜 ${number}`,
+      status: 'empty',
+      textModel: defaultReverseModel.id,
+      duration: 8,
+      videoAspectRatio: '9:16',
+      templates: createStoryboardTemplates(),
+      prompt: '',
+      generatedNodeIds: [],
     }),
   },
   outfit: {

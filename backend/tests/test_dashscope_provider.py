@@ -199,6 +199,39 @@ async def test_product_visual_plan_accepts_multiple_images(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_product_storyboard_uses_storyboard_system_prompt(monkeypatch):
+    requests = []
+
+    async def handler(request):
+        requests.append(request)
+        return httpx.Response(
+            200,
+            stream=ChunkStream([frame({"choices": [{"delta": {"content": "[]"}}]}), frame("[DONE]")]),
+        )
+
+    monkeypatch.setattr(
+        dashscope_module,
+        "get_settings",
+        lambda: SimpleNamespace(dashscope_api_key="secret", dashscope_url="https://provider.test"),
+    )
+    async with DashScopeProvider(transport=httpx.MockTransport(handler)) as provider:
+        _ = [
+            item
+            async for item in provider.stream_reverse_prompt(
+                model="qwen3.7-plus",
+                media_type="image",
+                media_url="https://example.com/product.png",
+                prompt="生成商品分镜",
+                response_mode="product_storyboard_plan",
+            )
+        ]
+
+    system_prompt = json.loads(requests[0].content)["messages"][0]["content"]
+    assert "电商短视频分镜策划师" in system_prompt
+    assert "JSON 数组" in system_prompt
+
+
+@pytest.mark.asyncio
 async def test_character_profile_uses_character_system_prompt(monkeypatch):
     requests = []
 

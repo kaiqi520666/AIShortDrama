@@ -1,0 +1,84 @@
+import { defaultImageModel } from '../imageModels'
+
+export const storyboardTemplates = [
+  { id: 'ugc-seeding', label: 'UGC 种草', description: '用户视角真实分享体验' },
+  { id: 'sales-drama', label: '带货短剧', description: '短剧情节植入产品' },
+  { id: 'product-demo', label: '产品演示', description: '多角度展示与使用演示' },
+  { id: 'product-pitch', label: '产品口播', description: '面对镜头讲解产品卖点' },
+  { id: 'tvc', label: 'TVC 广告', description: '品牌广告片质感' },
+  { id: 'pain-solution', label: '痛点解决', description: '痛点场景到产品解决' },
+  { id: 'unboxing', label: '开箱种草', description: '第一视角拆包惊喜体验' },
+  { id: 'reaction', label: '反应展示', description: '首次使用的惊喜反应' },
+]
+
+export const videoAspectRatios = ['9:16', '16:9', '1:1']
+
+export function createStoryboardTemplates() {
+  return storyboardTemplates.map((item, index) => ({ ...item, enabled: index === 0 }))
+}
+
+export function storyboardShotCount(duration) {
+  const seconds = Math.min(15, Math.max(4, Number(duration) || 4))
+  if (seconds <= 5) return 2
+  if (seconds <= 8) return 3
+  if (seconds <= 11) return 4
+  return 6
+}
+
+export function storyboardGrid(duration, videoAspectRatio = '9:16') {
+  const shots = storyboardShotCount(duration)
+  const portrait = ratioValue(videoAspectRatio) <= 1
+  const layouts = portrait
+    ? { 2: [2, 1], 3: [3, 1], 4: [2, 2], 6: [3, 2] }
+    : { 2: [1, 2], 3: [1, 3], 4: [2, 2], 6: [2, 3] }
+  const [columns, rows] = layouts[shots]
+  return { shots, columns, rows }
+}
+
+export function recommendStoryboardSettings(duration, videoAspectRatio = '9:16', model = defaultImageModel) {
+  const grid = storyboardGrid(duration, videoAspectRatio)
+  const targetRatio = grid.columns * ratioValue(videoAspectRatio) / grid.rows
+  const aspectRatio = model.aspectRatios.reduce((best, value) => (
+    Math.abs(ratioValue(value) - targetRatio) < Math.abs(ratioValue(best) - targetRatio) ? value : best
+  ))
+  const preferredResolution = grid.shots === 6 ? '4K' : '2K'
+  const resolution = model.resolutions.includes(preferredResolution)
+    ? preferredResolution
+    : model.resolutions.at(-1) || model.defaultResolution
+  return { ...grid, aspectRatio, resolution }
+}
+
+export function buildProductStoryboardPrompt(productContext, templates, data = {}) {
+  const duration = Math.min(15, Math.max(4, Number(data.duration) || 4))
+  const ratio = videoAspectRatios.includes(data.videoAspectRatio) ? data.videoAspectRatio : '9:16'
+  const grid = storyboardGrid(duration, ratio)
+  const types = templates.map((item) => `${item.id}=${item.label}：${item.description}`).join('\n')
+  const extra = data.prompt?.trim() ? `\n用户补充要求：${data.prompt.trim()}` : ''
+  const prefix = `参考图 1 是商品。请为以下每种商品短视频模板分别生成一条“多格分镜板”中文图片生成提示词：\n${types}\n总时长：${duration} 秒；每个模板 ${grid.shots} 个镜头；分镜板采用 ${grid.columns} 列 × ${grid.rows} 行；每个小格保持 ${ratio} 视频画幅。\n商品资料：\n`
+  const suffix = `${extra}\n严格输出 JSON 数组，格式为 [{"type":"模板ID","prompt":"分镜板图片提示词"}]。每个模板必须且只能出现一次，顺序与请求一致。每条提示词必须描述 ${grid.shots} 个按时间顺序推进且内容不同的镜头，并明确每格的主体动作、景别、场景、构图和光线；同一商品的外观、颜色、材质、包装、品牌标识必须与参考图一致。整张图是边界清楚、间距统一的专业分镜板，不在画面内生成标题、编号、字幕、价格、水印或无关人物，不虚构商品功能，不解释，不使用 Markdown。`
+  return `${prefix}${productContext.slice(0, Math.max(0, 3000 - prefix.length - suffix.length))}${suffix}`
+}
+
+export function parseProductStoryboardPlan(content, templates) {
+  const source = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
+  const start = source.indexOf('[')
+  const end = source.lastIndexOf(']')
+  if (start < 0 || end <= start) throw new Error('未生成有效的商品分镜方案')
+  let parsed
+  try {
+    parsed = JSON.parse(source.slice(start, end + 1))
+  } catch {
+    throw new Error('商品分镜方案格式异常')
+  }
+  if (!Array.isArray(parsed)) throw new Error('商品分镜方案格式异常')
+  const prompts = new Map(parsed.map((item) => [item?.type, typeof item?.prompt === 'string' ? item.prompt.trim() : '']))
+  const plans = templates.map((item) => ({ ...item, prompt: prompts.get(item.id) || '' }))
+  const missing = plans.filter((item) => !item.prompt).map((item) => item.label)
+  if (missing.length) throw new Error(`商品分镜方案缺少：${missing.join('、')}`)
+  return plans
+}
+
+function ratioValue(value) {
+  const [width, height] = String(value).split(':').map(Number)
+  return width > 0 && height > 0 ? width / height : 1
+}

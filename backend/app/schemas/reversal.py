@@ -18,6 +18,7 @@ class ReversePromptRequest(BaseModel):
         "prompt",
         "product_profile",
         "product_visual_plan",
+        "product_storyboard_plan",
         "character_profile",
         "character_visual_plan",
     ] = "prompt"
