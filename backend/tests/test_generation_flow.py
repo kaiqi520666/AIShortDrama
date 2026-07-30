@@ -53,8 +53,10 @@ class FakeVideoProvider:
             "progress": 100,
             "result": {
                 "type": "video",
-                "last_frame_url": "https://example.com/last-frame.png",
-                "data": [{"url": "https://example.com/temp.mp4"}],
+                "data": [{
+                    "url": "https://example.com/temp.mp4",
+                    "last_frame_url": "https://example.com/last-frame.png",
+                }],
             },
         }
 

@@ -294,7 +294,9 @@ function updateVideoSetting(key, value) {
 }
 
 function confirmStoryboardSegment() {
-  if (!store.confirmStoryboardSegment(props.nodeId)) toast.warning('请先完成当前视频生成')
+  const result = store.confirmStoryboardSegment(props.nodeId)
+  if (result === 'missing_last_frame') toast.warning('上游未返回当前视频尾帧，请重新生成当前视频后再确认')
+  else if (result !== true) toast.warning('请先完成当前视频生成')
 }
 
 function updateAudioSetting(key, value) {

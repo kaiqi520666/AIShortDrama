@@ -483,13 +483,14 @@ export const useCanvasStore = defineStore('canvas', {
     },
     confirmStoryboardSegment(videoId) {
       const video = this.nodes.find((node) => node.id === videoId && node.type === 'video')
-      if (!video || video.data.status !== 'ready' || !video.data.storyboardSegmentIndex) return false
+      if (!video) return 'not_found'
+      if (video.data.status !== 'ready' || !video.data.storyboardSegmentIndex) return 'not_ready'
       const nextImage = this.nodes.find((node) => node.type === 'image'
         && node.data.storyboardSourceId === video.data.storyboardSourceId
         && node.data.storyboardSegmentIndex === video.data.storyboardSegmentIndex + 1)
       if (!nextImage) return true
       const nextMode = nextImage.data.storyboardContinuityMode
-      if (nextMode === 'extend' && !video.data.lastFrameUrl) return false
+      if (nextMode === 'extend' && !video.data.lastFrameUrl) return 'missing_last_frame'
       nextImage.data.continuityLastFrameUrl = nextMode === 'extend' ? video.data.lastFrameUrl : null
       nextImage.data.segmentLocked = false
       video.data.segmentConfirmed = true
