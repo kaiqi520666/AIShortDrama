@@ -5,6 +5,7 @@ import {
   recommendStoryboardSettings,
   storyboardGrid,
   storyboardShotCount,
+  storyboardTemplateRules,
   storyboardTemplates,
   videoAspectRatios,
 } from './productStoryboard'
@@ -31,11 +32,16 @@ describe('product storyboard planning', () => {
     expect(prompt.length).toBeLessThanOrEqual(3000)
     expect(prompt).toContain('ugc-seeding=UGC 种草')
     expect(prompt).toContain('reaction=反应展示')
+    expect(prompt).toContain('生活化自拍视频')
+    expect(prompt).toContain('首次反应')
     expect(prompt).toContain('3 个镜头')
     expect(prompt).toContain('3 列 × 1 行')
     expect(prompt).toContain('videoPrompt')
     expect(prompt).toContain('不超过 500 个中文字符')
     expect(prompt).toContain('所有镜头禁止出现人脸')
+    expect(prompt).toContain('画外音说道')
+    expect(prompt).toContain('禁止生成背景音乐')
+    expect(Object.keys(storyboardTemplateRules)).toEqual(storyboardTemplates.map((item) => item.id))
   })
 
   it('orders parsed prompts by selected template order', () => {
@@ -53,8 +59,13 @@ describe('product storyboard planning', () => {
   it('locks a selected character in image and video prompts', () => {
     const character = { name: '测试角色', url: 'https://example.com/character.png', assetUrl: 'asset://pa_test' }
     const prompt = buildProductStoryboardPrompt('测试商品', storyboardTemplates.slice(0, 1), { characterReference: character })
+    const fullPrompt = buildProductStoryboardPrompt('商品资料'.repeat(1000), storyboardTemplates, { productReferences: [{}, {}, {}], characterReference: character })
     const plans = parseProductStoryboardPlan('[{"type":"ugc-seeding","prompt":"人物分镜","videoPrompt":"人物视频"}]', storyboardTemplates.slice(0, 1), character)
+    expect(fullPrompt.length).toBeLessThanOrEqual(3000)
     expect(prompt).toContain('参考图 2 是指定出镜角色')
+    expect(prompt).toContain('她说道')
+    expect(prompt).toContain('口型与声音同步')
+    expect(prompt).toContain('禁止写成“台词：”')
     expect(plans[0].prompt).toContain('参考图2为指定出镜角色')
     expect(plans[0].videoPrompt).toContain('参考图片2为指定出镜角色')
   })
@@ -75,6 +86,11 @@ describe('product storyboard planning', () => {
   })
 
   it('rejects incomplete template plans', () => {
-    expect(() => parseProductStoryboardPlan('[{"type":"ugc-seeding","prompt":"种草分镜"}]', storyboardTemplates.slice(0, 2))).toThrow('缺少')
+    expect(() => parseProductStoryboardPlan('[{"type":"ugc-seeding","prompt":"种草分镜"}]', storyboardTemplates.slice(0, 1))).toThrow('缺少')
+  })
+
+  it('rejects duplicate and unknown template types', () => {
+    expect(() => parseProductStoryboardPlan('[{"type":"ugc-seeding"},{"type":"ugc-seeding"}]', storyboardTemplates.slice(0, 2))).toThrow('类型重复')
+    expect(() => parseProductStoryboardPlan('[{"type":"ugc-seeding"},{"type":"unknown"}]', storyboardTemplates.slice(0, 2))).toThrow('未知类型')
   })
 })
