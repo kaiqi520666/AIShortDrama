@@ -74,6 +74,19 @@ describe('buildVideoRequest', () => {
     expect(getVideoReferenceError({ model: 'seedance-2' }, [storyboard])).toContain('注册虚拟人像素材')
   })
 
+  it('does not recheck avatar registration on a prior storyboard video reference', () => {
+    const previousVideo = {
+      id: 'previous-video',
+      type: 'video',
+      data: {
+        asset: 'https://example.com/previous.mp4',
+        storyboardSourceId: 'planner',
+        storyboardCharacter: { assetUrl: 'asset://pa_character' },
+      },
+    }
+    expect(getVideoReferenceError({ model: 'seedance-2' }, [previousVideo])).toBe('')
+  })
+
   it('validates model-specific reference capabilities', () => {
     expect(getVideoReferenceError({}, [mediaNode('audio', 'one')])).toContain('需同时连接图片或视频')
     expect(getVideoReferenceError({}, Array.from({ length: 10 }, (_, index) => imageNode(index)))).toContain('最多支持 9 张')

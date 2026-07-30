@@ -99,7 +99,7 @@ export function getVideoReferenceError(data, references = []) {
   const normalized = normalizeReferences(references, model.requiresPrivateAsset)
   const modelError = getVideoModelError(data, references)
   if (modelError) return modelError
-  if (model.requiresPrivateAsset && normalized.some((reference) => reference.storyboard && reference.storyboardCharacter?.assetUrl && !reference.providerAsset)) {
+  if (model.requiresPrivateAsset && normalized.some((reference) => reference.type === 'image' && reference.storyboard && reference.storyboardCharacter?.assetUrl && !reference.providerAsset)) {
     return '请先在分镜图工具栏注册虚拟人像素材'
   }
   const types = normalized.map((reference) => reference.type)
