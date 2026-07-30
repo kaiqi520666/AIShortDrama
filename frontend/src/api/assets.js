@@ -15,3 +15,7 @@ export async function registerAssetPrivateAvatar(id, groupId = null) {
 export async function deleteAsset(id) {
   return (await apiClient.delete(`/assets/${id}`)).data
 }
+
+export async function composeImageBoard(payload) {
+  return (await apiClient.post('/assets/compose-board', payload)).data
+}

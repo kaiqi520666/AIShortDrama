@@ -1,9 +1,11 @@
 import uuid
 from datetime import UTC, datetime
+from io import BytesIO
 from typing import Any, Literal
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from PIL import Image
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -12,7 +14,9 @@ from app.core.database import get_db
 from app.core.identity import get_current_user_id
 from app.models import Asset
 from app.providers.toapis import ToApisProvider
-from app.schemas.asset import AssetPrivateAvatarRequest, AssetUpdate
+from app.schemas.asset import AssetPrivateAvatarRequest, AssetUpdate, ComposeImageBoardRequest
+from app.services.image_processing import compose_outfit_board
+from app.services.storage import OssStorage
 from app.schemas.response import fail, success
 
 router = APIRouter()
@@ -86,6 +90,73 @@ async def list_assets(
         query = query.where(Asset.workspace_id == workspace_id)
     assets = (await db.scalars(query.order_by(Asset.created_at.desc()))).all()
     return success([asset_payload(item) for item in assets])
+
+
+@router.post("/compose-board")
+async def compose_board(
+    payload: ComposeImageBoardRequest,
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    try:
+        workspace_id = uuid.UUID(payload.workspace_id)
+        asset_uuid_list = [uuid.UUID(asset_id) for asset_id in payload.asset_ids]
+    except ValueError:
+        return fail("工作台或图片资产 ID 无效")
+
+    assets = (
+        await db.scalars(
+            select(Asset).where(
+                Asset.id.in_(asset_uuid_list),
+                Asset.user_id == user_id,
+                Asset.workspace_id == workspace_id,
+                Asset.media_type == "image",
+                Asset.deleted_at.is_(None),
+            )
+        )
+    ).all()
+    by_id = {str(asset.id): asset for asset in assets}
+    if len(by_id) != 6 or any(asset_id not in by_id for asset_id in payload.asset_ids):
+        return fail("只能合成当前工作台中属于自己的 6 张图片")
+
+    try:
+        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
+            images = []
+            for asset_id in payload.asset_ids:
+                response = await client.get(by_id[asset_id].url)
+                response.raise_for_status()
+                with Image.open(BytesIO(response.content)) as image:
+                    image.load()
+                    images.append(image.copy())
+        stream, width, height = compose_outfit_board(images)
+        object_key = f"generations/images/outfit-board-{uuid.uuid4()}.jpg"
+        url = await OssStorage().store_upload(object_key, stream, "image/jpeg")
+        board = Asset(
+            user_id=user_id,
+            workspace_id=workspace_id,
+            node_id=payload.node_id,
+            media_type="image",
+            source_type="composition",
+            name="服饰穿搭参考总览",
+            object_key=object_key,
+            url=url,
+            mime_type="image/jpeg",
+            byte_size=stream.getbuffer().nbytes,
+            width=width,
+            height=height,
+            asset_metadata={
+                "type": "outfit-board",
+                "source_asset_ids": payload.asset_ids,
+                "layout": "2x3",
+                "aspect_ratio": "9:16",
+            },
+        )
+        db.add(board)
+        await db.commit()
+        await db.refresh(board)
+        return success(asset_payload(board))
+    except Exception as exc:
+        return fail(f"服饰总览图合成失败：{str(exc)[:300]}")
 
 
 @router.patch("/{asset_id}")

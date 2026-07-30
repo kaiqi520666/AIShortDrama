@@ -81,6 +81,12 @@ async function submitTask() {
     aspectRatio: '9:16',
     resolution: '1K',
     moduleIds: selectedMaterials.value.map((item) => item.id),
+    generatedNodeIds: [],
+    outfitBoardAsset: '',
+    outfitBoardAssetId: null,
+    outfitBoardSourceKey: '',
+    outfitBoardStatus: '',
+    outfitBoardError: '',
   })
   try {
     await streamReversePrompt({
