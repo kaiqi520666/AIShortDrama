@@ -267,6 +267,31 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.apparel-storyboard-template-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+.apparel-storyboard-template-option {
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 62px;
+}
+.apparel-storyboard-template-option > span {
+  gap: 5px;
+}
+.apparel-storyboard-context-note {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  margin-top: 8px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+}
+.apparel-storyboard-context-note span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .storyboard-settings {
   display: grid;
   flex: none;

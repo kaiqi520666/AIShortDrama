@@ -19,7 +19,7 @@ const segmentCount = computed(() => Math.max(1, Number(props.data.duration || 15
 
 <template>
   <StructuredNodeShell :id="id" :type="type" :data="data" :icon="Clapperboard" :selected="selected" :target-handles="[{ id: 'outfit', top: '50%' }]">
-    <div class="product-visual-node-content storyboard-node-content nowheel">
+    <div class="product-visual-node-content storyboard-node-content apparel-storyboard-node-content nowheel">
       <div class="structured-node-summary">
         <span><Clapperboard :size="15" />服饰分镜</span>
         <small>{{ segmentCount }} 段 · {{ generatedCount }} 个节点</small>
@@ -28,7 +28,7 @@ const segmentCount = computed(() => Math.max(1, Number(props.data.duration || 15
         <Images :size="15" />
         <span>{{ outfitNode?.data.outfitBoardAsset ? '2K · 9:16 服饰总览图' : '等待服饰总览图' }}</span>
       </div>
-      <div class="product-creation-settings-summary storyboard-node-summary">
+      <div class="product-creation-settings-summary storyboard-node-summary apparel-storyboard-node-summary">
         <span>单模板</span><span>{{ data.duration }} 秒</span><span>每段 6 格</span><span>{{ data.videoAspectRatio }}</span>
       </div>
     </div>

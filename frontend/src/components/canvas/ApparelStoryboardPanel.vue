@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { ArrowUp, Clapperboard, Coins, FileText, Images, LoaderCircle } from 'lucide-vue-next'
+import { ArrowUp, Clapperboard, Coins, FileText, Images, LoaderCircle, Shirt } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
 import { apparelPromptContext } from '../../config/canvas/apparel'
@@ -28,6 +28,7 @@ const notice = ref('')
 const outfitNode = computed(() => store.incomingNodes(props.nodeId).find((node) => node.type === 'outfit'))
 const boardUrl = computed(() => outfitNode.value?.data.outfitBoardAsset || '')
 const apparelNode = computed(() => outfitNode.value && store.incomingNodes(outfitNode.value.id).find((node) => node.type === 'apparel'))
+const apparelItems = computed(() => (apparelNode.value?.data.items || []).filter((item) => item.enabled !== false))
 const apparelContext = computed(() => apparelPromptContext(apparelNode.value?.data))
 const selectedTextModel = computed(() => reverseModels.find((model) => model.id === props.data.textModel) || defaultReverseModel)
 const textModelOptions = reverseModels.map(({ id, label }) => ({ value: id, label }))
@@ -115,12 +116,16 @@ defineExpose({ submitTask })
           <span v-else class="panel-notice">等待服饰穿搭节点完成总览图</span>
         </div>
       </div>
+      <div class="apparel-storyboard-context-note">
+        <Shirt :size="14" />
+        <span>服饰资料已读取 {{ apparelItems.length }} 件，颜色、面料、版型与细节会写入提示词</span>
+      </div>
     </section>
 
     <section class="storyboard-template-section">
       <header class="storyboard-section-header"><span><Clapperboard :size="14" />脚本模板</span><small>固定</small></header>
-      <div class="storyboard-template-grid">
-        <div class="storyboard-template-option active"><span><strong>{{ outfitStoryboardTemplate.label }}</strong><small>{{ outfitStoryboardTemplate.description }}</small></span></div>
+      <div class="storyboard-template-grid apparel-storyboard-template-grid">
+        <div class="storyboard-template-option apparel-storyboard-template-option active"><span><strong>{{ outfitStoryboardTemplate.label }}</strong><small>{{ outfitStoryboardTemplate.description }}</small></span></div>
       </div>
     </section>
 
