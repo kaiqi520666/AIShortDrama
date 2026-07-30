@@ -85,14 +85,15 @@ export const nodeDefinitions = {
   },
   product_storyboard: {
     type: 'product_storyboard', label: '商品分镜', model: defaultReverseModel.id, hint: '按脚本模板生成多格商品分镜板',
-    setting: '多模板 · 4–15 秒', icon: Clapperboard,
+    setting: '单模板 · 15/30/45/60 秒', icon: Clapperboard,
     inputs: ['product'], outputs: ['image'],
     createData: ({ number }) => ({
       title: `商品分镜 ${number}`,
       status: 'empty',
       textModel: defaultReverseModel.id,
-      duration: 8,
+      duration: 15,
       videoAspectRatio: '9:16',
+      templateId: 'ugc-seeding',
       templates: createStoryboardTemplates(),
       productReferences: [],
       characterReference: null,

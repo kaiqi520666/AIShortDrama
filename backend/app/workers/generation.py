@@ -26,6 +26,17 @@ def result_urls(state: dict[str, Any], media_label: str) -> list[str]:
     return urls
 
 
+def result_last_frame_url(state: dict[str, Any]) -> str | None:
+    result = state.get("result") or {}
+    candidates = [result.get("last_frame_url"), result.get("last_frame")]
+    candidates.extend(
+        item.get("last_frame_url") or item.get("last_frame")
+        for item in result.get("data") or []
+        if isinstance(item, dict)
+    )
+    return next((url for url in candidates if isinstance(url, str) and url), None)
+
+
 async def poll_generation(
     fetch_task: Callable[[str], Awaitable[dict[str, Any]]],
     provider_task_id: str,
@@ -70,6 +81,7 @@ async def complete_task(
     duration: float | None = None,
     original_duration: float | None = None,
     mime_type: str | None = None,
+    result_extra: dict[str, Any] | None = None,
 ):
     async with SessionLocal() as db:
         task = await db.scalar(
@@ -121,6 +133,8 @@ async def complete_task(
                 for url, asset in zip(urls, assets, strict=True)
             ],
         }
+        if result_extra:
+            task.result.update(result_extra)
         if media_type == "image":
             workspace = await db.get(Workspace, task.workspace_id)
             if workspace:

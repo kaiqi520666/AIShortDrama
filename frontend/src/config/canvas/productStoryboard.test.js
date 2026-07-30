@@ -5,6 +5,7 @@ import {
   recommendStoryboardSettings,
   storyboardGrid,
   storyboardShotCount,
+  storyboardSegmentCount,
   storyboardTemplateRules,
   storyboardTemplates,
   videoAspectRatios,
@@ -16,6 +17,23 @@ describe('product storyboard planning', () => {
     expect(storyboardGrid(15, '9:16')).toEqual({ shots: 6, columns: 3, rows: 2 })
     expect(storyboardGrid(15, '16:9')).toEqual({ shots: 6, columns: 2, rows: 3 })
     expect(videoAspectRatios).toEqual(['21:9', '16:9', '4:3', '1:1', '3:4', '9:16'])
+  })
+
+  it('parses one template into ordered fifteen-second segments', () => {
+    const plan = parseProductStoryboardPlan(JSON.stringify({
+      templateId: 'ugc-seeding',
+      title: 'UGC 种草',
+      globalScript: '全局脚本',
+      totalDuration: 30,
+      segments: [
+        { segmentIndex: 1, duration: 15, plotGoal: '开场', openingState: '未使用', endingState: '拿起商品', continuityMode: 'cut', prompt: '第一段分镜', videoPrompt: '第一段视频' },
+        { segmentIndex: 2, duration: 15, plotGoal: '结果', openingState: '拿起商品', endingState: '展示商品', continuityMode: 'extend', prompt: '第二段分镜', videoPrompt: '第二段视频' },
+      ],
+    }), [storyboardTemplates[0]])
+
+    expect(storyboardSegmentCount(30)).toBe(2)
+    expect(plan.segments.map((segment) => segment.continuityMode)).toEqual(['cut', 'extend'])
+    expect(plan.segments[1].videoPrompt).toContain('向后延长视频1')
   })
 
   it('recommends editable image settings from duration and video ratio', () => {

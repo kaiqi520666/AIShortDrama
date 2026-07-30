@@ -790,6 +790,15 @@
   color: var(--color-text-muted);
   cursor: not-allowed;
 }
+.storyboard-confirm-button {
+  max-width: 210px;
+  overflow: hidden;
+  gap: 6px;
+  color: var(--color-text-primary) !important;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .run-task-spinner {
   animation: spin 0.8s linear infinite;
 }

@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { Clapperboard, Package } from 'lucide-vue-next'
-import { storyboardShotCount } from '../../config/canvas/productStoryboard'
+import { storyboardSegmentCount, storyboardShotCount } from '../../config/canvas/productStoryboard'
 import { useCanvasStore } from '../../stores/canvas'
 import StructuredNodeShell from './StructuredNodeShell.vue'
 
@@ -15,7 +15,7 @@ const props = defineProps({
 const store = useCanvasStore()
 const productNode = computed(() => store.incomingNodes(props.id).find((node) => node.type === 'product'))
 const selectedTemplates = computed(() => (props.data.templates || []).filter((item) => item.enabled))
-const shots = computed(() => storyboardShotCount(props.data.duration))
+const segmentCount = computed(() => storyboardSegmentCount(props.data.duration))
 </script>
 
 <template>
@@ -34,7 +34,7 @@ const shots = computed(() => storyboardShotCount(props.data.duration))
         <small v-if="!selectedTemplates.length">尚未选择脚本模板</small>
       </div>
       <div class="product-creation-settings-summary storyboard-node-summary">
-        <span>{{ data.duration }} 秒</span><span>{{ shots }} 格</span><span>{{ data.productReferences?.length || 0 }} 张商品图</span><span>{{ data.videoAspectRatio }}</span>
+        <span>{{ data.duration }} 秒 · {{ segmentCount }} 段</span><span>每段 {{ storyboardShotCount(15) }} 格</span><span>{{ data.productReferences?.length || 0 }} 张商品图</span><span>{{ data.videoAspectRatio }}</span>
       </div>
     </div>
   </StructuredNodeShell>

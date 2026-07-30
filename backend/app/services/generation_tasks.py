@@ -116,6 +116,8 @@ def build_video_provider_payload(request: VideoGenerationRequest) -> dict[str, A
         "aspect_ratio": request.aspect_ratio,
     }
     provider_payload["generate_audio"] = request.generate_audio is not False
+    if request.return_last_frame:
+        provider_payload["return_last_frame"] = True
     if reference_images:
         provider_payload["image_with_roles"] = [
             {"url": url, "role": "reference_image"} for url in reference_images

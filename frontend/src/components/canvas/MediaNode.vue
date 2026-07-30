@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
-import { AudioWaveform, BadgeCheck, Clapperboard, Download, Eye, FileText, GripVertical, Images, Image as ImageIcon, LoaderCircle, MoveDiagonal2, Music2, RefreshCw, Shirt, UserRound, Video } from 'lucide-vue-next'
+import { AudioWaveform, BadgeCheck, Clapperboard, Download, Eye, FileText, GripVertical, Images, Image as ImageIcon, LoaderCircle, LockKeyhole, MoveDiagonal2, Music2, RefreshCw, Shirt, UserRound, Video } from 'lucide-vue-next'
 import { registerAssetPrivateAvatar } from '../../api/assets'
 import { uploadMedia } from '../../api/uploads'
 import { useGlobalToast } from '../../composables/useGlobalUI'
@@ -266,7 +266,12 @@ onBeforeUnmount(() => {
     <div class="node-body" :style="bodyStyle">
       <input v-if="['upload', 'clipboard'].includes(data.assetSource)" ref="fileInput" type="file" :accept="uploadAccept" hidden @change="handleUpload" />
 
-      <div v-if="['generating', 'uploading'].includes(data.status) && type !== 'text'" class="generating-state">
+      <div v-if="data.segmentLocked" class="generation-locked-state">
+        <LockKeyhole :size="28" />
+        <p>等待上一段确认</p>
+      </div>
+
+      <div v-else-if="['generating', 'uploading'].includes(data.status) && type !== 'text'" class="generating-state">
         <span></span>
         <p>{{ data.status === 'uploading' ? '上传中' : `生成中 ${data.generationProgress || 0}%` }}</p>
       </div>

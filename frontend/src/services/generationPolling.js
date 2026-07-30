@@ -1,5 +1,6 @@
 import { getGenerationTask } from '../api/generations'
 import { useAuthStore } from '../stores/auth'
+import { useCanvasStore } from '../stores/canvas'
 
 const pollTimers = new Map()
 
@@ -43,7 +44,9 @@ async function pollTask(taskId, nodeId, updateNodeData) {
         generationProgress: 100,
         generationError: '',
         ...(generated.duration ? { sourceDuration: generated.duration } : {}),
+        ...(task.task_type === 'video' && task.result?.last_frame_url ? { lastFrameUrl: task.result.last_frame_url } : {}),
       })
+      if (task.task_type === 'image') useCanvasStore().unlockStoryboardVideo(nodeId)
       return
     }
     if (['failed', 'cancelled', 'timeout'].includes(task.status)) {

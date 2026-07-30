@@ -10,6 +10,7 @@ from app.workers.generation import (
     complete_task,
     fail_task,
     poll_generation,
+    result_last_frame_url,
     result_urls,
     update_task,
 )
@@ -55,7 +56,15 @@ async def run_video_generation(
             max_polls,
         )
         urls = result_urls(state, "视频")
-        await complete_task(task_uuid, "video", await storage.store_remote_videos(task_id, urls))
+        stored_videos = await storage.store_remote_videos(task_id, urls)
+        last_frame_url = result_last_frame_url(state)
+        stored_last_frame = await storage.store_remote_images(task_id, [last_frame_url]) if last_frame_url else None
+        await complete_task(
+            task_uuid,
+            "video",
+            stored_videos,
+            result_extra={"last_frame_url": stored_last_frame[0]} if stored_last_frame else None,
+        )
     except GenerationPollTimeout as exc:
         await fail_task(task_uuid, "timeout", str(exc))
     except Exception as exc:

@@ -14,6 +14,8 @@ export const storyboardTemplates = [
   { id: 'reaction', label: '反应展示', description: '首次使用的惊喜反应' },
 ]
 
+export const storyboardDurations = [15, 30, 45, 60]
+
 export const storyboardTemplateRules = {
   'ugc-seeding': '生活化自拍视频：真实困扰或使用契机开场，角色边体验边分享，商品细节与使用结果交替，最后真诚推荐。对白像用户亲身体验，不使用广告腔。',
   'sales-drama': '微剧情带货：先建立具体冲突或需求，角色自然说道问题，再让商品介入解决，展示结果变化并用一句回应收尾。剧情服务商品，不增加无关人物。',
@@ -27,6 +29,11 @@ export const storyboardTemplateRules = {
 
 export function createStoryboardTemplates() {
   return storyboardTemplates.map((item, index) => ({ ...item, enabled: index === 0 }))
+}
+
+export function storyboardSegmentCount(duration) {
+  const seconds = Number(duration)
+  return storyboardDurations.includes(seconds) ? seconds / 15 : 1
 }
 
 export function storyboardShotCount(duration) {
@@ -61,6 +68,30 @@ export function recommendStoryboardSettings(duration, videoAspectRatio = '9:16',
 }
 
 export function buildProductStoryboardPrompt(productContext, templates, data = {}) {
+  const selectedTemplate = templates.length === 1 ? templates[0] : null
+  const totalDuration = Number(data.duration)
+  if (selectedTemplate && storyboardDurations.includes(totalDuration)) {
+    const segments = storyboardSegmentCount(totalDuration)
+    const extra = data.prompt?.trim() ? `\n用户补充要求：${data.prompt.trim()}` : ''
+    const character = data.characterReference
+    const productCount = Math.max(1, data.productReferences?.length || 1)
+    const characterLabel = character?.url ? `参考图${productCount + 1}` : ''
+    const productLabels = Array.from({ length: productCount }, (_, index) => `图片${index + 1}`).join('、')
+    const characterRule = character?.url
+      ? `出镜角色使用${characterLabel}，保持身份、人脸、发型、体型、服装一致。`
+      : '禁止出现人脸、正脸、侧脸及面部局部；人物只允许出现手部、背影或肩部以下。'
+    const segmentRule = Array.from({ length: segments }, (_, index) => {
+      const number = index + 1
+      const defaultMode = number === 1 ? 'cut' : 'extend'
+      return `第${number}段（15秒）：输出 segmentIndex=${number}、continuityMode="${defaultMode}"、plotGoal、openingState、endingState、prompt、videoPrompt。${number === 1 ? '第一段独立开场。' : '默认向后延长上一段；如果剧情明确换场则使用 cut。'}`
+    }).join('\n')
+    const prefix = `${productLabels}是商品参考图。${character?.url ? `${characterLabel}是指定出镜角色。` : ''}请为“${selectedTemplate.label}”生成总时长 ${totalDuration} 秒的连续商品短视频方案，拆成 ${segments} 个连续的15秒段落。\n模板要求：${storyboardTemplateRules[selectedTemplate.id]}\n${segmentRule}\n商品资料：\n`
+    const speechRule = character?.url
+      ? '有人物出镜时必须自然说一句话，使用“她说道："……"”“他说道："……"”或“他回答："……"”，说明口型与声音同步，禁止写“台词：”。'
+      : '没有注册角色时不得出现人脸，使用画外音或现场音。'
+    const suffix = `${extra}\n严格输出一个 JSON 对象，不要 Markdown：{"templateId":"${selectedTemplate.id}","title":"${selectedTemplate.label}","globalScript":"全局脚本","segments":[{"segmentIndex":1,"duration":15,"plotGoal":"剧情目标","openingState":"开场状态","endingState":"结束状态","continuityMode":"cut","prompt":"分镜板图片提示词","videoPrompt":"Seedance 2 视频提示词"}]}。segments 必须恰好 ${segments} 条且按顺序。每条 prompt 描述一张6格分镜板，videoPrompt 按镜头顺序写主体动作、场景、景别、单一运镜、光影、角色说话和音效。${speechRule}每条必须包含现场音或商品操作音，禁止背景音乐、字幕、价格、二维码、水印、乱码和额外 Logo。${characterRule}${productLabels}中的商品外观、颜色、材质和包装保持一致。`
+    return `${prefix}${productContext.slice(0, Math.max(0, 3000 - prefix.length - suffix.length))}${suffix}`
+  }
   const duration = Math.min(15, Math.max(4, Number(data.duration) || 4))
   const ratio = videoAspectRatios.includes(data.videoAspectRatio) ? data.videoAspectRatio : '9:16'
   const grid = storyboardGrid(duration, ratio)
@@ -86,8 +117,8 @@ export function buildProductStoryboardPrompt(productContext, templates, data = {
 
 export function parseProductStoryboardPlan(content, templates, characterReference = null, productReferenceCount = 1) {
   const source = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
-  const start = source.indexOf('[')
-  const end = source.lastIndexOf(']')
+  const start = source.indexOf(source.trimStart().startsWith('{') ? '{' : '[')
+  const end = source.lastIndexOf(source.trimEnd().endsWith('}') ? '}' : ']')
   if (start < 0 || end <= start) throw new Error('未生成有效的商品分镜方案')
   let parsed
   try {
@@ -95,7 +126,36 @@ export function parseProductStoryboardPlan(content, templates, characterReferenc
   } catch {
     throw new Error('商品分镜方案格式异常')
   }
-  if (!Array.isArray(parsed)) throw new Error('商品分镜方案格式异常')
+  if (!Array.isArray(parsed)) {
+    const segments = Array.isArray(parsed.segments) ? parsed.segments : []
+    const template = templates[0]
+    const totalDuration = Number(parsed.duration || parsed.totalDuration || segments.length * 15)
+    const segmentTotal = storyboardSegmentCount(totalDuration)
+    if (!template || parsed.templateId !== template.id || segments.length !== segmentTotal) throw new Error(`商品分镜段落数量应为 ${segmentTotal} 条`)
+    const normalizedSegments = segments.map((segment, index) => {
+      const segmentIndex = Number(segment?.segmentIndex) || index + 1
+      if (segmentIndex !== index + 1 || Number(segment?.duration) !== 15) throw new Error('商品分镜段落顺序或时长异常')
+      if (!['extend', 'cut'].includes(segment?.continuityMode)) throw new Error('商品分镜衔接方式异常')
+      if (![segment.plotGoal, segment.openingState, segment.endingState, segment.prompt, segment.videoPrompt].every((value) => typeof value === 'string' && value.trim())) throw new Error('商品分镜段落内容不完整')
+      return {
+        segmentIndex,
+        duration: 15,
+        plotGoal: segment.plotGoal.trim(),
+        openingState: segment.openingState.trim(),
+        endingState: segment.endingState.trim(),
+        continuityMode: index === 0 ? 'cut' : segment.continuityMode,
+        prompt: `${segment.prompt.trim()}\n${characterReference?.url ? '保持指定角色身份与外观一致。' : '禁止出现人脸、正脸、侧脸及面部局部。'}\n无文字水印。`,
+        videoPrompt: `${segment.videoPrompt.trim()}\n${index > 0 && segment.continuityMode === 'extend' ? `向后延长视频${index}，延续上一段的主体、场景、光影和运镜。` : ''}\n不生成背景音乐。`,
+      }
+    })
+    return {
+      templateId: parsed.templateId,
+      title: typeof parsed.title === 'string' && parsed.title.trim() ? parsed.title.trim() : template.label,
+      globalScript: typeof parsed.globalScript === 'string' ? parsed.globalScript.trim() : '',
+      totalDuration,
+      segments: normalizedSegments,
+    }
+  }
   if (parsed.some((item) => !item || typeof item !== 'object' || typeof item.type !== 'string')) throw new Error('商品分镜方案格式异常')
   const expectedTypes = new Set(templates.map((item) => item.id))
   const typeCounts = parsed.reduce((counts, item) => counts.set(item?.type, (counts.get(item?.type) || 0) + 1), new Map())

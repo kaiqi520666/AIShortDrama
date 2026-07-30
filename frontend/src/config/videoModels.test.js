@@ -57,6 +57,10 @@ describe('buildVideoRequest', () => {
     expect(buildVideoRequest({ ...settings, model: 'seedance-2', resolution: '720p' }, [storyboard]).reference_images).toEqual(['asset://pa_storyboard'])
   })
 
+  it('requests the last frame for storyboard segments', () => {
+    expect(buildVideoRequest({ model: 'seedance-2', prompt: 'test', duration: 15, resolution: '720p', aspectRatio: '9:16', returnLastFrame: true }, [])).toEqual(expect.objectContaining({ return_last_frame: true }))
+  })
+
   it('requires registration for a Seedance storyboard with a selected character', () => {
     const storyboard = {
       id: 'storyboard',

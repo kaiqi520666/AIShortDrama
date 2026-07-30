@@ -805,7 +805,8 @@
   height: 34px;
 }
 .generating-state,
-.generation-failed-state {
+.generation-failed-state,
+.generation-locked-state {
   position: absolute;
   inset: 0;
   display: grid;
@@ -814,6 +815,12 @@
   text-align: center;
   color: var(--color-text-secondary);
   font-size: 13px;
+}
+.generation-locked-state {
+  color: var(--color-text-muted);
+}
+.generation-locked-state svg {
+  margin: 0 auto 12px;
 }
 .generating-state p,
 .generation-failed-state p {

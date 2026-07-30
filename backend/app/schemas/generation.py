@@ -162,6 +162,7 @@ class VideoGenerationRequest(BaseModel):
     resolution: str
     aspect_ratio: str
     generate_audio: bool | None = None
+    return_last_frame: bool = False
     reference_images: list[str] = Field(default_factory=list, max_length=9)
     reference_videos: list[AnyHttpUrl] = Field(default_factory=list, max_length=3)
     reference_audios: list[AnyHttpUrl] = Field(default_factory=list, max_length=3)

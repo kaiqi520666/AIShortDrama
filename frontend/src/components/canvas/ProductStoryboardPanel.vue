@@ -8,6 +8,8 @@ import {
   buildProductStoryboardPrompt,
   parseProductStoryboardPlan,
   recommendStoryboardSettings,
+  storyboardDurations,
+  storyboardSegmentCount,
   storyboardShotCount,
   videoAspectRatios,
 } from '../../config/canvas/productStoryboard'
@@ -39,9 +41,11 @@ const productNode = computed(() => store.incomingNodes(props.nodeId).find((node)
 const productReferences = computed(() => Array.isArray(props.data.productReferences) ? props.data.productReferences : [])
 const productContext = computed(() => productPromptContext(productNode.value?.data.product))
 const selectedTemplates = computed(() => (props.data.templates || []).filter((item) => item.enabled))
+const selectedTemplate = computed(() => selectedTemplates.value[0] || null)
 const selectedTextModel = computed(() => reverseModels.find((model) => model.id === props.data.textModel) || defaultReverseModel)
-const shots = computed(() => storyboardShotCount(props.data.duration))
-const recommended = computed(() => recommendStoryboardSettings(props.data.duration, props.data.videoAspectRatio, defaultImageModel))
+const segmentCount = computed(() => storyboardSegmentCount(props.data.duration))
+const shots = computed(() => storyboardShotCount(15))
+const recommended = computed(() => recommendStoryboardSettings(15, props.data.videoAspectRatio, defaultImageModel))
 const running = computed(() => props.data.status === 'generating')
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedTextModel.value.id))
 const insufficientCredits = computed(() => estimatedCredits.value !== null && (authStore.user?.credit_balance || 0) < estimatedCredits.value)
@@ -55,18 +59,21 @@ const message = computed(() => notice.value || props.data.generationError || (!p
     ? '请先选择商品参考图'
     : !productContext.value
       ? '请先完成商品识别'
-      : !selectedTemplates.value.length
-        ? '至少选择一个脚本模板'
+      : !selectedTemplate.value
+        ? '请选择一个脚本模板'
         : insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
-const canSubmit = computed(() => !running.value && productNode.value && productReferences.value.length && productContext.value && selectedTemplates.value.length && !insufficientCredits.value)
+const canSubmit = computed(() => !running.value && productNode.value && productReferences.value.length && productContext.value && selectedTemplate.value && !insufficientCredits.value)
 
 function updateData(value) {
   notice.value = ''
   updateNodeData(props.nodeId, { ...value, generationError: '' })
 }
 
-function updateTemplate(id, enabled) {
-  updateData({ templates: props.data.templates.map((item) => item.id === id ? { ...item, enabled } : item) })
+function updateTemplate(id) {
+  updateData({
+    templateId: id,
+    templates: props.data.templates.map((item) => ({ ...item, enabled: item.id === id })),
+  })
 }
 
 function selectCharacter(item) {
@@ -112,9 +119,10 @@ async function submitTask() {
   if (!canSubmit.value) return
   if (existingGeneratedNodes.value.length && !await confirm({
     title: '重新生成商品分镜方案',
-    message: `将新增 ${selectedTemplates.value.length} 个分镜板图片节点，已有节点不会删除。`,
+    message: '将替换当前分镜链，已有节点会被移除。',
     confirmText: '继续生成',
   })) return
+  if (existingGeneratedNodes.value.length) store.deleteNodes(existingGeneratedNodes.value)
 
   let content = ''
   notice.value = ''
@@ -130,15 +138,16 @@ async function submitTask() {
         ...productReferences.value.slice(1).map((reference) => reference.url),
         ...(character.value?.url ? [character.value.url] : []),
       ],
-      prompt: buildProductStoryboardPrompt(productContext.value, selectedTemplates.value, props.data),
+      prompt: buildProductStoryboardPrompt(productContext.value, [selectedTemplate.value], props.data),
       response_mode: 'product_storyboard_plan',
     }, (delta) => { content += delta }, (taskId) => {
       updateNodeData(props.nodeId, { generationTaskId: taskId, generationStatus: 'running' })
     })
+    const plan = parseProductStoryboardPlan(content, [selectedTemplate.value], character.value, productReferences.value.length)
     const generatedNodeIds = store.addProductStoryboardNodes(
       props.nodeId,
       productNode.value.id,
-      parseProductStoryboardPlan(content, selectedTemplates.value, character.value, productReferences.value.length),
+      plan,
       { model: defaultImageModel.id, aspectRatio: recommended.value.aspectRatio, resolution: recommended.value.resolution },
     )
     updateNodeData(props.nodeId, {
@@ -194,22 +203,19 @@ async function submitTask() {
     </section>
 
     <section class="storyboard-template-section">
-      <header class="storyboard-section-header"><span><Clapperboard :size="14" />脚本模板</span><small>{{ selectedTemplates.length }}/{{ data.templates.length }}</small></header>
+      <header class="storyboard-section-header"><span><Clapperboard :size="14" />脚本模板</span><small>单选</small></header>
       <div class="storyboard-template-grid">
         <label v-for="item in data.templates" :key="item.id" class="storyboard-template-option" :class="{ active: item.enabled }">
-          <input type="checkbox" :checked="item.enabled" @change="updateTemplate(item.id, $event.target.checked)" />
+          <input type="radio" name="storyboard-template" :checked="item.enabled" @change="updateTemplate(item.id)" />
           <span><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span>
         </label>
       </div>
     </section>
 
     <div class="storyboard-settings">
-      <label class="storyboard-duration">
-        <span>视频时长 <strong>{{ data.duration }} 秒</strong></span>
-        <input type="range" min="4" max="15" step="1" :value="data.duration" @input="updateData({ duration: Number($event.target.value) })" />
-      </label>
+      <label><span>视频总时长</span><AppSelect :model-value="data.duration" :options="storyboardDurations.map((value) => ({ value, label: `${value} 秒` }))" aria-label="视频总时长" @update:model-value="updateData({ duration: $event })" /></label>
       <label><span>视频比例</span><AppSelect :model-value="data.videoAspectRatio" :options="ratioOptions" aria-label="视频比例" @update:model-value="updateData({ videoAspectRatio: $event })" /></label>
-      <div class="storyboard-recommendation"><Clapperboard :size="14" />预计 {{ shots }} 格 · 分镜板 {{ recommended.aspectRatio }} · {{ recommended.resolution }}</div>
+      <div class="storyboard-recommendation"><Clapperboard :size="14" />{{ segmentCount }} 段 · 每段 {{ shots }} 格 · {{ recommended.aspectRatio }} · {{ recommended.resolution }}</div>
     </div>
 
     <AppTextarea

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
-import { ArrowUp, ChevronDown, Clapperboard, Coins, FileText, Image, Images, LoaderCircle, Music2, Package, Shirt, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
+import { ArrowUp, Check, ChevronDown, Clapperboard, Coins, FileText, Image, Images, LoaderCircle, Music2, Package, Shirt, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
 import { createAudioGeneration, createImageGeneration, createVideoGeneration } from '../../api/generations'
 import { streamReversePrompt } from '../../api/reversals'
 import { audioFormatOptions, audioModel, audioSampleRateOptions, buildAudioRequest, getAudioReferenceError, maxAudioPromptLength, normalizeAudioSettings } from '../../config/audioModels'
@@ -11,7 +11,7 @@ import { mergeProductProfile, parseProductProfile } from '../../config/canvas/ec
 import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { buildVideoRequest, getVideoModelError, getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
-import { useGlobalToast } from '../../composables/useGlobalUI'
+import { useGlobalConfirm, useGlobalToast } from '../../composables/useGlobalUI'
 import { useCanvasStore } from '../../stores/canvas'
 import { useAuthStore } from '../../stores/auth'
 import { buildOssImageUrl } from '../../utils/ossImage'
@@ -36,6 +36,7 @@ const modelIcon = computed(() => modelIcons[props.type] || WandSparkles)
 const store = useCanvasStore()
 const authStore = useAuthStore()
 const toast = useGlobalToast()
+const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
 const settingsTrigger = ref(null)
 const settingsMenu = ref(null)
@@ -49,12 +50,21 @@ const notice = ref('')
 const storyboardPromptView = ref('image')
 const running = computed(() => props.data.status === 'generating')
 const isStoryboardImage = computed(() => props.type === 'image' && Boolean(props.data.storyboardSourceId && props.data.videoPrompt))
+const isStoryboardSegment = computed(() => Boolean(props.data.storyboardSegmentIndex && props.data.storyboardSourceId))
+const isStoryboardVideo = computed(() => props.type === 'video' && isStoryboardSegment.value)
+const storyboardLocked = computed(() => isStoryboardSegment.value && props.data.segmentLocked)
+const hasNextStoryboardSegment = computed(() => isStoryboardVideo.value && props.data.storyboardSegmentIndex < props.data.storyboardSegmentCount)
 const connectedReferences = computed(() => store.incomingNodes(props.nodeId).map((node) => (
   props.type === 'video' && node.type === 'image' && node.data.storyboardSourceId
     ? { ...node, data: { ...node.data, providerAsset: node.data.storyboardAsset?.asset_url } }
     : node
 )))
 const references = computed(() => {
+  const continuityReference = props.type === 'image' && props.data.continuityLastFrameUrl ? [{
+    id: 'storyboard-last-frame',
+    type: 'image',
+    data: { title: '上一段尾帧', asset: props.data.continuityLastFrameUrl },
+  }] : []
   const character = props.data.storyboardCharacter
   const productReferences = (props.data.storyboardProductReferences || []).map((reference) => ({
     id: `storyboard-product-${reference.id}`,
@@ -70,7 +80,7 @@ const references = computed(() => {
       ...(props.type === 'video' ? { providerAsset: character.assetUrl } : {}),
     },
   }] : []
-  if (isStoryboardImage.value) return [...connectedReferences.value, ...productReferences, ...characterReference]
+  if (isStoryboardImage.value) return [...continuityReference, ...connectedReferences.value, ...productReferences, ...characterReference]
   return [...connectedReferences.value, ...characterReference, ...productReferences]
 })
 const imageReferences = computed(() => references.value.filter((node) => node.type === 'image' && node.data.asset))
@@ -87,6 +97,10 @@ const legacyProductPrompt = computed(() => isProductRecognition.value && props.d
 const effectivePrompt = computed(() => ['image', 'video', 'audio'].includes(props.type)
   ? getEffectivePrompt(props.data, references.value)
   : legacyProductPrompt.value ? '' : props.data.prompt?.trim() || '')
+const videoGenerationPrompt = computed(() => {
+  if (!isStoryboardVideo.value || props.data.storyboardSegmentIndex <= 1) return effectivePrompt.value
+  return `${props.data.storyboardContinuityMode === 'extend' ? `向后延长视频${props.data.storyboardSegmentIndex - 1}，延续上一段视频的主体、场景、光影和运镜。` : '本段为独立换场，不继承上一段视频。'}\n${effectivePrompt.value}`
+})
 const promptLimit = computed(() => isVisionTextTask.value ? 3000 : props.type === 'audio' ? maxAudioPromptLength : maxGenerationPromptLength)
 const promptError = computed(() => effectivePrompt.value.length > promptLimit.value ? `提示词不能超过 ${promptLimit.value} 个字符` : '')
 const promptParts = computed(() => props.data.promptParts ?? (props.data.prompt ? [{ type: 'text', value: props.data.prompt }] : []))
@@ -119,7 +133,9 @@ const referenceError = computed(() => {
     ? `当前模型最多支持 ${selectedImageModel.value.maxReferences} 张参考图片`
     : ''
 })
-const panelMessage = computed(() => notice.value || props.data.generationError || referenceError.value || promptError.value || (insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
+const panelMessage = computed(() => storyboardLocked.value
+  ? `等待第 ${props.data.storyboardSegmentIndex - 1} 段确认后解锁`
+  : notice.value || props.data.generationError || referenceError.value || promptError.value || (insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
 const settingLabel = computed(() => {
   if (props.type === 'video') return `${selectedAspectRatio.value} · ${selectedResolution.value} · ${selectedDuration.value}s`
   if (props.type === 'audio') return `${audioFormatOptions.find(({ value }) => value === selectedAudioSettings.value.format)?.label} · ${selectedAudioSettings.value.sampleRate / 1000} kHz`
@@ -133,7 +149,7 @@ const displayReferences = computed(() => {
   })
 })
 const canSubmit = computed(() => {
-  if (running.value || (!effectivePrompt.value && !isProductRecognition.value) || referenceError.value || promptError.value || insufficientCredits.value) return false
+  if (storyboardLocked.value || running.value || (!effectivePrompt.value && !isProductRecognition.value) || referenceError.value || promptError.value || insufficientCredits.value) return false
   if (isVisionTextTask.value) return Boolean(reverseReference.value)
   if (props.type !== 'text') return true
   return references.value.some((node) => node.type === 'text' ? node.data.content?.trim() : node.data.asset)
@@ -160,6 +176,12 @@ function updateTextPrompt(event) {
 
 async function submitTask() {
   if (!canSubmit.value) return
+  if (isStoryboardSegment.value && props.data.status === 'ready' && !await confirm({
+    title: `重新生成第 ${props.data.storyboardSegmentIndex} 段${props.type === 'video' ? '视频' : '分镜'}`,
+    message: '当前结果会保留到历史记录，并锁定后续段落。',
+    confirmText: '继续重做',
+  })) return
+  if (isStoryboardSegment.value && props.data.status === 'ready') store.invalidateStoryboardFrom(props.nodeId)
   if (isVisionTextTask.value) {
     const nodeId = props.nodeId
     let content = ''
@@ -207,7 +229,7 @@ async function submitTask() {
     const createGeneration = { image: createImageGeneration, video: createVideoGeneration, audio: createAudioGeneration }[props.type]
     const requestBuilders = { image: buildImageRequest, video: buildVideoRequest, audio: buildAudioRequest }
     const generationRequest = requestBuilders[props.type](
-      { ...props.data, prompt: effectivePrompt.value },
+      { ...props.data, prompt: props.type === 'video' ? videoGenerationPrompt.value : effectivePrompt.value },
       props.type === 'image' ? imageReferences.value : references.value,
     )
     const result = await createGeneration({
@@ -263,8 +285,16 @@ function updateModel(model) {
 }
 
 function updateVideoSetting(key, value) {
+  if (key === 'continuityMode' && isStoryboardVideo.value) {
+    store.setStoryboardContinuityMode(props.nodeId, value)
+    return
+  }
   updateNodeData(props.nodeId, { [key]: value })
   if (key === 'aspectRatio') nextTick(() => requestAnimationFrame(updateSettingsPosition))
+}
+
+function confirmStoryboardSegment() {
+  if (!store.confirmStoryboardSegment(props.nodeId)) toast.warning('请先完成当前视频生成')
 }
 
 function updateAudioSetting(key, value) {
@@ -388,6 +418,13 @@ onBeforeUnmount(() => {
 
     <AppMenu v-if="settingsOpen && ['video', 'audio'].includes(type)" ref="settingsMenu" class="image-settings-menu media-settings-menu" :class="{ 'audio-settings-menu': type === 'audio' }" :style="settingsStyle" @pointerdown.stop>
       <template v-if="type === 'video'">
+        <template v-if="isStoryboardVideo && data.storyboardSegmentIndex > 1">
+          <h3>衔接方式</h3>
+          <div class="video-duration-options">
+            <AppButton :class="{ active: data.storyboardContinuityMode === 'extend' }" @click="updateVideoSetting('continuityMode', 'extend')">向后延长</AppButton>
+            <AppButton :class="{ active: data.storyboardContinuityMode === 'cut' }" @click="updateVideoSetting('continuityMode', 'cut')">独立换场</AppButton>
+          </div>
+        </template>
         <h3>时长</h3>
         <div v-if="selectedVideoModel.durationOptions" class="video-duration-options">
           <AppButton v-for="duration in selectedVideoModel.durationOptions" :key="duration" :class="{ active: selectedDuration === duration }" @click="updateVideoSetting('duration', duration)">{{ duration }}s</AppButton>
@@ -451,6 +488,9 @@ onBeforeUnmount(() => {
       @submit="submitTask"
     />
     <footer v-else>
+      <AppButton v-if="isStoryboardVideo && data.status === 'ready'" class="storyboard-confirm-button" variant="soft" @click="confirmStoryboardSegment">
+        <Check :size="15" />{{ hasNextStoryboardSegment ? `确认并解锁第 ${data.storyboardSegmentIndex + 1} 段` : '确认完成' }}
+      </AppButton>
       <AppButton v-if="type === 'video' || isVisionTextTask" ref="modelTrigger" class="model-select model-select-trigger" @click="toggleModelMenu">
         <component :is="modelIcon" :size="16" />{{ selectedModel.label }}<ChevronDown :size="14" :class="{ rotated: modelOpen }" />
       </AppButton>

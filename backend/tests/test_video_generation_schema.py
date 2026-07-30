@@ -72,3 +72,8 @@ def test_provider_payloads_use_reference_mode():
 def test_seedance_accepts_registered_avatar_asset_reference():
     payload = build_video_provider_payload(video_request(reference_images=["asset://pa_test"]))
     assert payload["image_with_roles"] == [{"url": "asset://pa_test", "role": "reference_image"}]
+
+
+def test_seedance_can_request_last_frame_for_segment_continuity():
+    payload = build_video_provider_payload(video_request(return_last_frame=True))
+    assert payload["return_last_frame"] is True

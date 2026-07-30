@@ -241,7 +241,91 @@ export const useCanvasStore = defineStore('canvas', {
     },
     addProductStoryboardNodes(plannerId, productId, plans, settings) {
       const planner = this.nodes.find((node) => node.id === plannerId)
-      if (!planner || !plans.length) return []
+      if (!planner) return []
+
+      if (plans?.segments?.length) {
+        const segmentNodeIds = []
+        let previousVideoId = null
+        plans.segments.forEach((segment, index) => {
+          const segmentIndex = index + 1
+          const imageId = this.addNode('image', {
+            x: planner.position.x + 560 + index * 900,
+            y: planner.position.y,
+          })
+          const image = this.nodes.find((node) => node.id === imageId)
+          image.data = {
+            ...image.data,
+            title: `${plans.title || '商品分镜'} ${segmentIndex} · 分镜`,
+            storyboardSourceId: plannerId,
+            storyboardTemplateId: plans.templateId,
+            storyboardTemplateLabel: plans.title,
+            storyboardGlobalScript: plans.globalScript,
+            storyboardSegmentIndex: segmentIndex,
+            storyboardSegmentCount: plans.segments.length,
+            storyboardDuration: 15,
+            storyboardVideoAspectRatio: planner.data.videoAspectRatio,
+            storyboardShotCount: 6,
+            storyboardProductReferences: planner.data.productReferences || [],
+            storyboardCharacter: planner.data.characterReference || null,
+            storyboardContinuityMode: segment.continuityMode,
+            storyboardPlotGoal: segment.plotGoal,
+            storyboardOpeningState: segment.openingState,
+            storyboardEndingState: segment.endingState,
+            continuityLastFrameUrl: null,
+            videoPrompt: segment.videoPrompt,
+            prompt: segment.prompt,
+            promptParts: [{ type: 'text', value: segment.prompt }],
+            segmentLocked: segmentIndex > 1,
+            ...settings,
+          }
+          this.addEdge({ source: plannerId, target: imageId })
+          this.addEdge({ source: productId, target: imageId })
+
+          const videoId = this.addNode('video', {
+            x: planner.position.x + 1010 + index * 900,
+            y: planner.position.y,
+          }, imageId)
+          const video = this.nodes.find((node) => node.id === videoId)
+          video.data = {
+            ...video.data,
+            title: `${plans.title || '商品分镜'} ${segmentIndex} · 视频`,
+            storyboardSourceId: plannerId,
+            storyboardImageId: imageId,
+            storyboardTemplateId: plans.templateId,
+            storyboardTemplateLabel: plans.title,
+            storyboardGlobalScript: plans.globalScript,
+            storyboardSegmentIndex: segmentIndex,
+            storyboardSegmentCount: plans.segments.length,
+            storyboardContinuityMode: segment.continuityMode,
+            storyboardPlotGoal: segment.plotGoal,
+            storyboardOpeningState: segment.openingState,
+            storyboardEndingState: segment.endingState,
+            storyboardCharacter: planner.data.characterReference || null,
+            storyboardProductReferences: planner.data.productReferences || [],
+            storyboardDuration: 15,
+            videoPrompt: segment.videoPrompt,
+            prompt: segment.videoPrompt,
+            promptParts: [{ type: 'text', value: segment.videoPrompt }],
+            segmentLocked: true,
+            returnLastFrame: true,
+          }
+          if (segment.continuityMode === 'extend' && previousVideoId) {
+            this.addEdge({ source: previousVideoId, target: videoId })
+          }
+          segmentNodeIds.push({ segmentIndex, imageId, videoId })
+          previousVideoId = videoId
+        })
+        planner.data = {
+          ...planner.data,
+          globalScript: plans.globalScript,
+          segmentNodeIds,
+          generatedNodeIds: segmentNodeIds.flatMap(({ imageId, videoId }) => [imageId, videoId]),
+        }
+        this.selectNodes([segmentNodeIds[0].imageId])
+        return planner.data.generatedNodeIds
+      }
+
+      if (!plans?.length) return []
 
       const columns = Math.min(3, plans.length)
       const ids = plans.map((plan, index) => {
@@ -378,6 +462,72 @@ export const useCanvasStore = defineStore('canvas', {
     },
     selectNodes(nodeIds) {
       this.nodes.forEach((node) => { node.selected = nodeIds.includes(node.id) })
+    },
+    unlockStoryboardVideo(imageId) {
+      const video = this.nodes.find((node) => node.type === 'video' && node.data.storyboardImageId === imageId)
+      if (video) video.data.segmentLocked = false
+    },
+    setStoryboardContinuityMode(videoId, mode) {
+      const video = this.nodes.find((node) => node.id === videoId && node.type === 'video')
+      if (!video?.data.storyboardSegmentIndex) return false
+      const segmentIndex = video.data.storyboardSegmentIndex
+      const sourceId = video.data.storyboardSourceId
+      const previous = this.nodes.find((node) => node.type === 'video' && node.data.storyboardSourceId === sourceId && node.data.storyboardSegmentIndex === segmentIndex - 1)
+      const nextMode = segmentIndex === 1 ? 'cut' : mode === 'extend' ? 'extend' : 'cut'
+      video.data.storyboardContinuityMode = nextMode
+      const image = this.nodes.find((node) => node.id === video.data.storyboardImageId)
+      if (image) image.data.storyboardContinuityMode = nextMode
+      this.edges = this.edges.filter((edge) => !(edge.target === videoId && this.nodes.find((node) => node.id === edge.source)?.type === 'video'))
+      if (nextMode === 'extend' && previous) this.addEdge({ source: previous.id, target: videoId })
+      return true
+    },
+    confirmStoryboardSegment(videoId) {
+      const video = this.nodes.find((node) => node.id === videoId && node.type === 'video')
+      if (!video || video.data.status !== 'ready' || !video.data.storyboardSegmentIndex) return false
+      const nextImage = this.nodes.find((node) => node.type === 'image'
+        && node.data.storyboardSourceId === video.data.storyboardSourceId
+        && node.data.storyboardSegmentIndex === video.data.storyboardSegmentIndex + 1)
+      if (!nextImage) return true
+      const nextMode = nextImage.data.storyboardContinuityMode
+      if (nextMode === 'extend' && !video.data.lastFrameUrl) return false
+      nextImage.data.continuityLastFrameUrl = nextMode === 'extend' ? video.data.lastFrameUrl : null
+      nextImage.data.segmentLocked = false
+      video.data.segmentConfirmed = true
+      return true
+    },
+    invalidateStoryboardFrom(nodeId) {
+      const target = this.nodes.find((node) => node.id === nodeId)
+      const segmentIndex = target?.data.storyboardSegmentIndex
+      const sourceId = target?.data.storyboardSourceId
+      if (!segmentIndex || !sourceId) return
+      this.nodes
+        .filter((node) => node.data.storyboardSourceId === sourceId && node.data.storyboardSegmentIndex >= segmentIndex)
+        .forEach((node) => {
+          const history = node.data.storyboardHistory || []
+          if (node.data.asset) history.push({ asset: node.data.asset, assetId: node.data.assetId || null, status: node.data.status, savedAt: new Date().toISOString() })
+          node.data.storyboardHistory = history.slice(-5)
+          const isTargetVideo = node.id === nodeId && node.type === 'video'
+          const keepCurrentImage = node.data.storyboardSegmentIndex === segmentIndex && node.type === 'image' && target.type === 'video'
+          if (!keepCurrentImage) {
+            node.data.asset = ''
+            node.data.assetId = null
+            node.data.lastFrameUrl = null
+            node.data.status = 'empty'
+          }
+          node.data.generationTaskId = null
+          node.data.generationStatus = ''
+          node.data.generationProgress = 0
+          node.data.generationError = ''
+          node.data.segmentConfirmed = false
+          node.data.continuityLastFrameUrl = null
+          node.data.segmentLocked = node.type === 'image'
+            ? node.data.storyboardSegmentIndex > segmentIndex
+            : !(isTargetVideo || (node.data.storyboardSegmentIndex === segmentIndex && keepCurrentImage))
+        })
+      this.nodes
+        .filter((node) => node.data.storyboardSourceId === sourceId && node.data.storyboardSegmentIndex === segmentIndex)
+        .filter((node) => node.type === 'video' && target.type === 'image')
+        .forEach((node) => { node.data.segmentLocked = true })
     },
     groupSelected() {
       const selectedIds = this.nodes.filter((node) => node.selected).map((node) => node.id)

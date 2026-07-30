@@ -33,13 +33,14 @@ class FakeProvider:
 
 class FakeStorage:
     async def store_remote_images(self, _task_id, urls):
-        assert urls == ["https://example.com/temp.png"]
-        return ["https://image.nodepass.net/generations/images/result.png"]
+        if urls == ["https://example.com/temp.png"]:
+            return ["https://image.nodepass.net/generations/images/result.png"]
+        assert urls == ["https://example.com/last-frame.png"]
+        return ["https://image.nodepass.net/generations/images/last-frame.png"]
 
     async def store_remote_videos(self, _task_id, urls):
         assert urls == ["https://example.com/temp.mp4"]
         return ["https://image.nodepass.net/generations/videos/result.mp4"]
-
 
 class FakeVideoProvider:
     async def submit_video(self, payload):
@@ -50,7 +51,11 @@ class FakeVideoProvider:
         return {
             "status": "completed",
             "progress": 100,
-            "result": {"type": "video", "data": [{"url": "https://example.com/temp.mp4"}]},
+            "result": {
+                "type": "video",
+                "last_frame_url": "https://example.com/last-frame.png",
+                "data": [{"url": "https://example.com/temp.mp4"}],
+            },
         }
 
 
@@ -154,6 +159,7 @@ async def test_video_generation_flow():
             assert completed.provider_task_id == "provider-video-task-1"
             assert completed.result["type"] == "video"
             assert completed.result["data"][0]["url"].endswith("result.mp4")
+            assert completed.result["last_frame_url"].endswith("last-frame.png")
             assets = list(
                 await db.scalars(select(Asset).where(Asset.generation_task_id == completed.id))
             )

@@ -307,6 +307,7 @@ describe('canvas node packs', () => {
     })
     const productId = store.addNode('product', { x: 0, y: 0 })
     const storyboardId = store.addNode('product_storyboard', { x: 500, y: 0 }, productId)
+    store.nodes.find((node) => node.id === storyboardId).data.duration = 8
     store.nodes.find((node) => node.id === storyboardId).data.characterReference = {
       id: 'character-1', name: '虚拟角色', url: 'https://example.com/character.png', assetUrl: 'asset://pa_test',
     }
@@ -353,6 +354,48 @@ describe('canvas node packs', () => {
     }))
     expect(store.edges).toContainEqual(expect.objectContaining({ source: ids[0], target: videoId }))
     expect(store.addStoryboardVideoNode(ids[0])).toBe(videoId)
+  })
+
+  it('creates locked storyboard and video segments that unlock in sequence', async () => {
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1', version: 1, workspace_type: 'ecommerce', canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
+    })
+    const productId = store.addNode('product', { x: 0, y: 0 })
+    const storyboardId = store.addNode('product_storyboard', { x: 500, y: 0 }, productId)
+    const plan = {
+      templateId: 'ugc-seeding', title: 'UGC 种草', globalScript: '全局脚本', totalDuration: 30,
+      segments: [
+        { segmentIndex: 1, duration: 15, plotGoal: '开场', openingState: '开始', endingState: '拿起', continuityMode: 'cut', prompt: '分镜1', videoPrompt: '视频1' },
+        { segmentIndex: 2, duration: 15, plotGoal: '结果', openingState: '拿起', endingState: '展示', continuityMode: 'extend', prompt: '分镜2', videoPrompt: '视频2' },
+      ],
+    }
+    const ids = store.addProductStoryboardNodes(storyboardId, productId, plan, { model: 'gpt-image-2', aspectRatio: '9:16', resolution: '2K' })
+    const [image1, video1, image2, video2] = ids.map((id) => store.nodes.find((node) => node.id === id))
+
+    expect(ids).toHaveLength(4)
+    expect(image1.data.segmentLocked).toBe(false)
+    expect(video1.data.segmentLocked).toBe(true)
+    expect(image2.data.segmentLocked).toBe(true)
+    expect(video2.data.segmentLocked).toBe(true)
+    expect(store.edges).toContainEqual(expect.objectContaining({ source: video1.id, target: video2.id }))
+
+    image1.data.status = 'ready'
+    image1.data.asset = 'https://example.com/storyboard-1.png'
+    store.unlockStoryboardVideo(image1.id)
+    expect(video1.data.segmentLocked).toBe(false)
+    video1.data.status = 'ready'
+    video1.data.lastFrameUrl = 'https://image.nodepass.net/last-frame.png'
+    expect(store.confirmStoryboardSegment(video1.id)).toBe(true)
+    expect(image2.data.segmentLocked).toBe(false)
+    expect(image2.data.continuityLastFrameUrl).toContain('last-frame')
+
+    image2.data.asset = 'https://example.com/storyboard-2.png'
+    store.invalidateStoryboardFrom(image2.id)
+    expect(image2.data.asset).toBe('')
+    expect(image2.data.segmentLocked).toBe(false)
+    expect(video2.data.segmentLocked).toBe(true)
+    expect(image2.data.storyboardHistory).toHaveLength(1)
   })
 
   it('uses an existing image when product creation is contextual', async () => {
