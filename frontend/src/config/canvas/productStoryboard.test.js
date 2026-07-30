@@ -55,6 +55,25 @@ describe('product storyboard planning', () => {
     }), [storyboardTemplates[0]])).toThrow('必须包含镜头1至镜头6')
   })
 
+  it('rejects dialogue or audio in an image prompt', () => {
+    const shots = '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6'
+    expect(() => parseProductStoryboardPlan(JSON.stringify({
+      templateId: 'ugc-seeding',
+      totalDuration: 15,
+      segments: [{
+        segmentIndex: 1,
+        duration: 15,
+        shotCount: 6,
+        plotGoal: '开场',
+        openingState: '未使用',
+        endingState: '拿起商品',
+        continuityMode: 'cut',
+        prompt: `${shots}，她说道："测试"`,
+        videoPrompt: shots,
+      }],
+    }), [storyboardTemplates[0]])).toThrow('图片提示词不得包含对白或音效')
+  })
+
   it('recommends editable image settings from duration and video ratio', () => {
     expect(recommendStoryboardSettings(9, '9:16')).toEqual(expect.objectContaining({ shots: 4, aspectRatio: '9:16', resolution: '2K' }))
     expect(recommendStoryboardSettings(15, '9:16')).toEqual(expect.objectContaining({ shots: 6, aspectRatio: '4:5', resolution: '4K' }))
