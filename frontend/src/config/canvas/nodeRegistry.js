@@ -16,7 +16,7 @@ import { nodeDefinitions } from './nodeDefinitions'
 
 const components = { product: ProductNode, product_visual: ProductVisualNode, product_storyboard: ProductStoryboardNode, outfit: OutfitNode, world: WorldNode, character: CharacterNode }
 const panels = { product: ProductCreationPanel, product_visual: ProductVisualPanel, product_storyboard: ProductStoryboardPanel, outfit: OutfitPanel, world: WorldCreationPanel, character: CharacterCreationPanel }
-const panelHeights = { product: 440, product_visual: 380, product_storyboard: 540, outfit: 470, world: 250, character: 440 }
+const panelHeights = { product: 440, product_visual: 380, product_storyboard: 590, outfit: 470, world: 250, character: 440 }
 
 export const nodeRegistry = Object.fromEntries(Object.entries(nodeDefinitions).map(([type, definition]) => [type, {
   ...definition,

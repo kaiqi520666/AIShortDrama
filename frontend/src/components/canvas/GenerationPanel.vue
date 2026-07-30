@@ -121,7 +121,7 @@ const referenceError = computed(() => {
 })
 const panelMessage = computed(() => notice.value || props.data.generationError || referenceError.value || promptError.value || (insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
 const settingLabel = computed(() => {
-  if (props.type === 'video') return `${selectedAspectRatio.value === 'adaptive' ? '自适应' : selectedAspectRatio.value} · ${selectedResolution.value} · ${selectedDuration.value}s`
+  if (props.type === 'video') return `${selectedAspectRatio.value} · ${selectedResolution.value} · ${selectedDuration.value}s`
   if (props.type === 'audio') return `${audioFormatOptions.find(({ value }) => value === selectedAudioSettings.value.format)?.label} · ${selectedAudioSettings.value.sampleRate / 1000} kHz`
   return nodeDefinitions[props.type].setting
 })
@@ -412,9 +412,8 @@ onBeforeUnmount(() => {
         <h3>比例</h3>
         <div class="image-ratio-grid video-ratio-grid">
           <AppButton v-for="ratio in selectedVideoModel.aspectRatios" :key="ratio" :class="{ active: selectedAspectRatio === ratio }" @click="updateVideoSetting('aspectRatio', ratio)">
-            <span v-if="ratio !== 'adaptive'" class="image-ratio-icon" :style="ratioIconStyle(ratio)"></span>
-            <span v-else class="adaptive-ratio-icon">A</span>
-            <strong>{{ ratio === 'adaptive' ? '自适应' : ratio }}</strong>
+            <span class="image-ratio-icon" :style="ratioIconStyle(ratio)"></span>
+            <strong>{{ ratio }}</strong>
           </AppButton>
         </div>
 

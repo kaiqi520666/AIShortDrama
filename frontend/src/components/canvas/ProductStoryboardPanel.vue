@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { ArrowUp, Clapperboard, Coins, FileText, ImagePlus, LoaderCircle, Package, UserRound, X } from 'lucide-vue-next'
+import { ArrowUp, Clapperboard, Coins, FileText, ImagePlus, Images, LoaderCircle, Package, UserRound, X } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
 import { productPromptContext } from '../../config/canvas/ecommerce'
@@ -34,6 +34,7 @@ const { updateNodeData } = useVueFlow()
 const notice = ref('')
 const characterPickerOpen = ref(false)
 const productPickerOpen = ref(false)
+const editingProductReferenceId = ref('')
 const productNode = computed(() => store.incomingNodes(props.nodeId).find((node) => node.type === 'product'))
 const productReferences = computed(() => Array.isArray(props.data.productReferences) ? props.data.productReferences : [])
 const productContext = computed(() => productPromptContext(productNode.value?.data.product))
@@ -82,18 +83,29 @@ function selectCharacter(item) {
 }
 
 function selectProductReference(item) {
-  if (productReferences.value.some((reference) => reference.id === item.id)) {
-    productPickerOpen.value = false
-    return
-  }
+  const remaining = productReferences.value.filter((reference) => reference.id !== editingProductReferenceId.value)
+  if (remaining.some((reference) => reference.id === item.id)) return closeProductPicker()
+  const selected = { id: item.id, name: item.name, url: item.url }
   updateData({
-    productReferences: [...productReferences.value, { id: item.id, name: item.name, url: item.url }].slice(0, 3),
+    productReferences: editingProductReferenceId.value
+      ? productReferences.value.map((reference) => reference.id === editingProductReferenceId.value ? selected : reference)
+      : [...productReferences.value, selected].slice(0, 3),
   })
-  productPickerOpen.value = false
+  closeProductPicker()
 }
 
 function removeProductReference(id) {
   updateData({ productReferences: productReferences.value.filter((reference) => reference.id !== id) })
+}
+
+function openProductPicker(id = '') {
+  editingProductReferenceId.value = id
+  productPickerOpen.value = true
+}
+
+function closeProductPicker() {
+  editingProductReferenceId.value = ''
+  productPickerOpen.value = false
 }
 
 async function submitTask() {
@@ -151,35 +163,45 @@ async function submitTask() {
       <small v-if="productNode"><Package :size="13" />{{ productNode.data.product?.name || productNode.data.title }}</small>
     </header>
 
-    <div class="storyboard-character">
-      <span><UserRound :size="14" />出镜角色</span>
-      <div v-if="character" class="storyboard-character-selected">
-        <img :src="buildOssImageUrl(character.url, { width: 120, quality: 80 })" :alt="character.name" referrerpolicy="no-referrer" />
-        <strong>{{ character.name }}</strong>
-        <AppButton size="sm" variant="soft" @click="characterPickerOpen = true">更换</AppButton>
-        <AppButton icon-only size="sm" variant="soft" title="移除出镜角色" @click="updateData({ characterReference: null })"><X :size="14" /></AppButton>
-      </div>
-      <AppButton v-else size="sm" variant="soft" @click="characterPickerOpen = true"><UserRound :size="14" />无人脸模式 · 选择角色</AppButton>
-    </div>
-
-    <section class="storyboard-product-references">
-      <header><span><Package :size="14" />商品参考图</span><small>{{ productReferences.length }}/3</small></header>
-      <div class="storyboard-product-reference-list">
-        <div v-for="reference in productReferences" :key="reference.id" class="storyboard-product-reference">
-          <img :src="buildOssImageUrl(reference.url, { width: 120, quality: 80 })" :alt="reference.name" referrerpolicy="no-referrer" />
-          <strong>{{ reference.name }}</strong>
-          <AppButton icon-only size="sm" variant="soft" :title="`移除${reference.name}`" @click="removeProductReference(reference.id)"><X :size="13" /></AppButton>
+    <section class="storyboard-reference-section">
+      <header class="storyboard-section-header"><span><Images :size="14" />参考素材</span></header>
+      <div class="storyboard-reference-row">
+        <div class="storyboard-reference-label"><UserRound :size="14" /><span><strong>出镜角色</strong><small>可选 · {{ character ? 1 : 0 }}/1</small></span></div>
+        <div class="storyboard-reference-list">
+          <div v-if="character" class="storyboard-reference-item">
+            <AppButton class="storyboard-reference-main" :title="`更换${character.name}`" @click="characterPickerOpen = true">
+              <img :src="buildOssImageUrl(character.url, { width: 120, quality: 80 })" :alt="character.name" referrerpolicy="no-referrer" />
+              <strong>{{ character.name }}</strong>
+            </AppButton>
+            <AppButton class="storyboard-reference-remove" icon-only size="sm" title="移除出镜角色" @click="updateData({ characterReference: null })"><X :size="13" /></AppButton>
+          </div>
+          <AppButton v-else class="storyboard-reference-add" variant="soft" @click="characterPickerOpen = true"><UserRound :size="14" />选择角色</AppButton>
         </div>
-        <AppButton v-if="productReferences.length < 3" size="sm" variant="soft" @click="productPickerOpen = true"><ImagePlus :size="14" />添加商品图</AppButton>
+      </div>
+      <div class="storyboard-reference-row">
+        <div class="storyboard-reference-label"><Package :size="14" /><span><strong>商品参考图</strong><small>必选 · {{ productReferences.length }}/3</small></span></div>
+        <div class="storyboard-reference-list">
+          <div v-for="reference in productReferences" :key="reference.id" class="storyboard-reference-item">
+            <AppButton class="storyboard-reference-main" :title="`更换${reference.name}`" @click="openProductPicker(reference.id)">
+              <img :src="buildOssImageUrl(reference.url, { width: 120, quality: 80 })" :alt="reference.name" referrerpolicy="no-referrer" />
+              <strong>{{ reference.name }}</strong>
+            </AppButton>
+            <AppButton class="storyboard-reference-remove" icon-only size="sm" :title="`移除${reference.name}`" @click="removeProductReference(reference.id)"><X :size="13" /></AppButton>
+          </div>
+          <AppButton v-if="productReferences.length < 3" class="storyboard-reference-add" variant="soft" @click="openProductPicker()"><ImagePlus :size="14" />添加商品图</AppButton>
+        </div>
       </div>
     </section>
 
-    <div class="storyboard-template-grid">
-      <label v-for="item in data.templates" :key="item.id" class="storyboard-template-option" :class="{ active: item.enabled }">
-        <input type="checkbox" :checked="item.enabled" @change="updateTemplate(item.id, $event.target.checked)" />
-        <span><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span>
-      </label>
-    </div>
+    <section class="storyboard-template-section">
+      <header class="storyboard-section-header"><span><Clapperboard :size="14" />脚本模板</span><small>{{ selectedTemplates.length }}/{{ data.templates.length }}</small></header>
+      <div class="storyboard-template-grid">
+        <label v-for="item in data.templates" :key="item.id" class="storyboard-template-option" :class="{ active: item.enabled }">
+          <input type="checkbox" :checked="item.enabled" @change="updateTemplate(item.id, $event.target.checked)" />
+          <span><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span>
+        </label>
+      </div>
+    </section>
 
     <div class="storyboard-settings">
       <label class="storyboard-duration">
@@ -215,7 +237,8 @@ async function submitTask() {
       media-type="image"
       :workspace-id="store.workspaceId"
       :node-id="nodeId"
-      @close="productPickerOpen = false"
+      :selected-url="productReferences.find((reference) => reference.id === editingProductReferenceId)?.url || ''"
+      @close="closeProductPicker"
       @select="selectProductReference"
     />
     <AppAssetPickerModal

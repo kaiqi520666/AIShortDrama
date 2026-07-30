@@ -1,4 +1,7 @@
 import { defaultImageModel } from '../imageModels'
+import { videoAspectRatios } from '../videoModels'
+
+export { videoAspectRatios }
 
 export const storyboardTemplates = [
   { id: 'ugc-seeding', label: 'UGC 种草', description: '用户视角真实分享体验' },
@@ -10,8 +13,6 @@ export const storyboardTemplates = [
   { id: 'unboxing', label: '开箱种草', description: '第一视角拆包惊喜体验' },
   { id: 'reaction', label: '反应展示', description: '首次使用的惊喜反应' },
 ]
-
-export const videoAspectRatios = ['9:16', '16:9', '1:1']
 
 export function createStoryboardTemplates() {
   return storyboardTemplates.map((item, index) => ({ ...item, enabled: index === 0 }))

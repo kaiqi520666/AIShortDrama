@@ -6,6 +6,7 @@ import {
   storyboardGrid,
   storyboardShotCount,
   storyboardTemplates,
+  videoAspectRatios,
 } from './productStoryboard'
 
 describe('product storyboard planning', () => {
@@ -13,6 +14,7 @@ describe('product storyboard planning', () => {
     expect([4, 6, 9, 12, 15].map(storyboardShotCount)).toEqual([2, 3, 4, 6, 6])
     expect(storyboardGrid(15, '9:16')).toEqual({ shots: 6, columns: 3, rows: 2 })
     expect(storyboardGrid(15, '16:9')).toEqual({ shots: 6, columns: 2, rows: 3 })
+    expect(videoAspectRatios).toEqual(['21:9', '16:9', '4:3', '1:1', '3:4', '9:16'])
   })
 
   it('recommends editable image settings from duration and video ratio', () => {

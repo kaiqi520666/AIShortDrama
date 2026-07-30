@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildVideoRequest, getVideoModelError, getVideoReferenceError, normalizeVideoSettings } from './videoModels'
+import { buildVideoRequest, getVideoModelError, getVideoReferenceError, normalizeVideoSettings, videoAspectRatios, videoModels } from './videoModels'
 
 const imageNode = (id) => ({ id, type: 'image', data: { asset: `https://example.com/${id}.png` } })
 const mediaNode = (type, id) => ({ id, type, data: { asset: `https://example.com/${id}.${type === 'audio' ? 'mp3' : 'mp4'}` } })
@@ -9,6 +9,12 @@ describe('buildVideoRequest', () => {
   it('replaces legacy automatic duration with the fixed default', () => {
     expect(normalizeVideoSettings({ model: 'seedance-2', duration: 0 }).duration).toBe(5)
     expect(normalizeVideoSettings({ model: 'seedance-2-fast', duration: 0 }).duration).toBe(5)
+  })
+
+  it('uses six fixed video ratios without adaptive billing', () => {
+    expect(videoAspectRatios).toEqual(['21:9', '16:9', '4:3', '1:1', '3:4', '9:16'])
+    expect(videoModels.filter((model) => model.id.startsWith('seedance')).every((model) => !model.aspectRatios.includes('adaptive'))).toBe(true)
+    expect(normalizeVideoSettings({ model: 'seedance-2', aspectRatio: 'adaptive' }).aspectRatio).toBe('16:9')
   })
 
   it('builds a standard Seedance reference request', () => {

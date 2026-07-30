@@ -317,6 +317,7 @@
 }
 .storyboard-node-tags {
   min-height: 48px;
+  margin-bottom: 10px;
 }
 .storyboard-node-summary {
   grid-template-columns: repeat(3, minmax(0, 1fr));

@@ -1,4 +1,5 @@
-const seedanceRatios = ['21:9', '16:9', '4:3', '1:1', '3:4', '9:16', 'adaptive']
+export const videoAspectRatios = ['21:9', '16:9', '4:3', '1:1', '3:4', '9:16']
+const seedanceRatios = videoAspectRatios
 const happyHorseRatios = ['16:9', '9:16', '1:1', '4:3', '3:4']
 
 export const videoModels = [
