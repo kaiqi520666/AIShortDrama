@@ -15,6 +15,7 @@ export const storyboardTemplates = [
 ]
 
 export const storyboardDurations = [15, 30, 45, 60]
+export const storyboardSegmentShotCount = 6
 
 export const storyboardTemplateRules = {
   'ugc-seeding': '生活化自拍视频：真实困扰或使用契机开场，角色边体验边分享，商品细节与使用结果交替，最后真诚推荐。对白像用户亲身体验，不使用广告腔。',
@@ -83,13 +84,13 @@ export function buildProductStoryboardPrompt(productContext, templates, data = {
     const segmentRule = Array.from({ length: segments }, (_, index) => {
       const number = index + 1
       const defaultMode = number === 1 ? 'cut' : 'extend'
-      return `第${number}段（15秒）：输出 segmentIndex=${number}、continuityMode="${defaultMode}"、plotGoal、openingState、endingState、prompt、videoPrompt。${number === 1 ? '第一段独立开场。' : '默认向后延长上一段；如果剧情明确换场则使用 cut。'}`
+      return `第${number}段（15秒）：输出 segmentIndex=${number}、duration=15、shotCount=${storyboardSegmentShotCount}、continuityMode="${defaultMode}"、plotGoal、openingState、endingState、prompt、videoPrompt。prompt 和 videoPrompt 都必须严格写出镜头1、镜头2、镜头3、镜头4、镜头5、镜头6，六个镜头不能合并或省略。${number === 1 ? '第一段独立开场。' : '默认向后延长上一段；如果剧情明确换场则使用 cut。'}`
     }).join('\n')
     const prefix = `${productLabels}是商品参考图。${character?.url ? `${characterLabel}是指定出镜角色。` : ''}请为“${selectedTemplate.label}”生成总时长 ${totalDuration} 秒的连续商品短视频方案，拆成 ${segments} 个连续的15秒段落。\n模板要求：${storyboardTemplateRules[selectedTemplate.id]}\n${segmentRule}\n商品资料：\n`
     const speechRule = character?.url
       ? '有人物出镜时必须自然说一句话，使用“她说道："……"”“他说道："……"”或“他回答："……"”，说明口型与声音同步，禁止写“台词：”。'
       : '没有注册角色时不得出现人脸，使用画外音或现场音。'
-    const suffix = `${extra}\n严格输出一个 JSON 对象，不要 Markdown：{"templateId":"${selectedTemplate.id}","title":"${selectedTemplate.label}","globalScript":"全局脚本","segments":[{"segmentIndex":1,"duration":15,"plotGoal":"剧情目标","openingState":"开场状态","endingState":"结束状态","continuityMode":"cut","prompt":"分镜板图片提示词","videoPrompt":"Seedance 2 视频提示词"}]}。segments 必须恰好 ${segments} 条且按顺序。每条 prompt 描述一张6格分镜板，videoPrompt 按镜头顺序写主体动作、场景、景别、单一运镜、光影、角色说话和音效。${speechRule}每条必须包含现场音或商品操作音，禁止背景音乐、字幕、价格、二维码、水印、乱码和额外 Logo。${characterRule}${productLabels}中的商品外观、颜色、材质和包装保持一致。`
+    const suffix = `${extra}\n严格输出一个 JSON 对象，不要 Markdown：{"templateId":"${selectedTemplate.id}","title":"${selectedTemplate.label}","globalScript":"全局脚本","segments":[{"segmentIndex":1,"duration":15,"shotCount":6,"plotGoal":"剧情目标","openingState":"开场状态","endingState":"结束状态","continuityMode":"cut","prompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……","videoPrompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……"}]}。segments 必须恰好 ${segments} 条且按顺序。每条 prompt 和 videoPrompt 必须严格包含且只按时间顺序描述镜头1至镜头6，六个镜头分别对应分镜板的六个格子，不能用“ montage ”或一句话概括多个镜头。每个镜头写主体动作、场景、景别、单一运镜、光影、角色说话和音效。${speechRule}每条必须包含现场音或商品操作音，禁止背景音乐、字幕、价格、二维码、水印、乱码和额外 Logo。${characterRule}${productLabels}中的商品外观、颜色、材质和包装保持一致。`
     return `${prefix}${productContext.slice(0, Math.max(0, 3000 - prefix.length - suffix.length))}${suffix}`
   }
   const duration = Math.min(15, Math.max(4, Number(data.duration) || 4))
@@ -134,12 +135,14 @@ export function parseProductStoryboardPlan(content, templates, characterReferenc
     if (!template || parsed.templateId !== template.id || segments.length !== segmentTotal) throw new Error(`商品分镜段落数量应为 ${segmentTotal} 条`)
     const normalizedSegments = segments.map((segment, index) => {
       const segmentIndex = Number(segment?.segmentIndex) || index + 1
-      if (segmentIndex !== index + 1 || Number(segment?.duration) !== 15) throw new Error('商品分镜段落顺序或时长异常')
+      if (segmentIndex !== index + 1 || Number(segment?.duration) !== 15 || Number(segment?.shotCount || storyboardSegmentShotCount) !== storyboardSegmentShotCount) throw new Error('商品分镜段落顺序、时长或镜头数量异常')
       if (!['extend', 'cut'].includes(segment?.continuityMode)) throw new Error('商品分镜衔接方式异常')
       if (![segment.plotGoal, segment.openingState, segment.endingState, segment.prompt, segment.videoPrompt].every((value) => typeof value === 'string' && value.trim())) throw new Error('商品分镜段落内容不完整')
+      if (!hasStoryboardShotLabels(segment.prompt) || !hasStoryboardShotLabels(segment.videoPrompt)) throw new Error(`第${index + 1}段必须包含镜头1至镜头${storyboardSegmentShotCount}`)
       return {
         segmentIndex,
         duration: 15,
+        shotCount: storyboardSegmentShotCount,
         plotGoal: segment.plotGoal.trim(),
         openingState: segment.openingState.trim(),
         endingState: segment.endingState.trim(),
@@ -192,4 +195,9 @@ export function parseProductStoryboardPlan(content, templates, characterReferenc
 function ratioValue(value) {
   const [width, height] = String(value).split(':').map(Number)
   return width > 0 && height > 0 ? width / height : 1
+}
+
+function hasStoryboardShotLabels(value) {
+  return Array.from({ length: storyboardSegmentShotCount }, (_, index) => index + 1)
+    .every((number) => new RegExp(`(?:镜头|第)\\s*${number}(?:格)?`).test(value))
 }

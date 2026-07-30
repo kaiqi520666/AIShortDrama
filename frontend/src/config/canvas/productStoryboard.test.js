@@ -26,14 +26,33 @@ describe('product storyboard planning', () => {
       globalScript: '全局脚本',
       totalDuration: 30,
       segments: [
-        { segmentIndex: 1, duration: 15, plotGoal: '开场', openingState: '未使用', endingState: '拿起商品', continuityMode: 'cut', prompt: '第一段分镜', videoPrompt: '第一段视频' },
-        { segmentIndex: 2, duration: 15, plotGoal: '结果', openingState: '拿起商品', endingState: '展示商品', continuityMode: 'extend', prompt: '第二段分镜', videoPrompt: '第二段视频' },
+        { segmentIndex: 1, duration: 15, shotCount: 6, plotGoal: '开场', openingState: '未使用', endingState: '拿起商品', continuityMode: 'cut', prompt: '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6', videoPrompt: '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6' },
+        { segmentIndex: 2, duration: 15, shotCount: 6, plotGoal: '结果', openingState: '拿起商品', endingState: '展示商品', continuityMode: 'extend', prompt: '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6', videoPrompt: '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6' },
       ],
     }), [storyboardTemplates[0]])
 
     expect(storyboardSegmentCount(30)).toBe(2)
     expect(plan.segments.map((segment) => segment.continuityMode)).toEqual(['cut', 'extend'])
+    expect(plan.segments.map((segment) => segment.shotCount)).toEqual([6, 6])
     expect(plan.segments[1].videoPrompt).toContain('向后延长视频1')
+  })
+
+  it('rejects a segment with fewer than six storyboard shots', () => {
+    expect(() => parseProductStoryboardPlan(JSON.stringify({
+      templateId: 'ugc-seeding',
+      totalDuration: 15,
+      segments: [{
+        segmentIndex: 1,
+        duration: 15,
+        shotCount: 6,
+        plotGoal: '开场',
+        openingState: '未使用',
+        endingState: '拿起商品',
+        continuityMode: 'cut',
+        prompt: '镜头1 镜头2 镜头3',
+        videoPrompt: '镜头1 镜头2 镜头3',
+      }],
+    }), [storyboardTemplates[0]])).toThrow('必须包含镜头1至镜头6')
   })
 
   it('recommends editable image settings from duration and video ratio', () => {
@@ -60,6 +79,13 @@ describe('product storyboard planning', () => {
     expect(prompt).toContain('画外音说道')
     expect(prompt).toContain('禁止生成背景音乐')
     expect(Object.keys(storyboardTemplateRules)).toEqual(storyboardTemplates.map((item) => item.id))
+  })
+
+  it('requires six shots for each fifteen-second segment', () => {
+    const prompt = buildProductStoryboardPrompt('商品资料', [storyboardTemplates[0]], { duration: 15 })
+    expect(prompt).toContain('shotCount=6')
+    expect(prompt).toContain('镜头1、镜头2、镜头3、镜头4、镜头5、镜头6')
+    expect(prompt).toContain('六个镜头分别对应分镜板的六个格子')
   })
 
   it('orders parsed prompts by selected template order', () => {
