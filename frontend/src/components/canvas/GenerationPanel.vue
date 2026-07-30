@@ -80,7 +80,12 @@ const references = computed(() => {
       ...(props.type === 'video' ? { providerAsset: character.assetUrl } : {}),
     },
   }] : []
-  if (isStoryboardImage.value) return [...continuityReference, ...connectedReferences.value, ...productReferences, ...characterReference]
+  const outfitBoard = props.data.storyboardOutfitBoard?.url ? [{
+    id: 'storyboard-outfit-board',
+    type: 'image',
+    data: { title: '服饰穿搭参考总览', asset: props.data.storyboardOutfitBoard.url },
+  }] : []
+  if (isStoryboardImage.value) return [...continuityReference, ...connectedReferences.value, ...outfitBoard, ...productReferences, ...characterReference]
   return [...connectedReferences.value, ...characterReference, ...productReferences]
 })
 const imageReferences = computed(() => references.value.filter((node) => node.type === 'image' && node.data.asset))

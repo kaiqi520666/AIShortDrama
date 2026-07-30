@@ -488,6 +488,38 @@ describe('canvas node packs', () => {
     expect(store.nodes.filter((node) => node.selected).map((node) => node.id)).toEqual([resultIds[0]])
   })
 
+  it('creates outfit storyboard image and video nodes from the reference board', async () => {
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1',
+      version: 1,
+      workspace_type: 'ecommerce',
+      canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
+    })
+    const outfitId = store.addNode('outfit', { x: 500, y: 300 })
+    const storyboardId = store.addNode('apparel_storyboard', { x: 1000, y: 300 }, outfitId)
+    const outfit = store.nodes.find((node) => node.id === outfitId)
+    outfit.data.outfitBoardAsset = 'https://example.com/outfit-board.jpg'
+    outfit.data.outfitBoardAssetId = 'board-1'
+
+    const resultIds = store.addOutfitStoryboardNodes(storyboardId, outfitId, {
+      templateId: 'outfit-showcase', title: '服饰展示', globalScript: '连续展示', segments: [{
+        segmentIndex: 1, duration: 15, shotCount: 6, continuityMode: 'cut', plotGoal: '展示版型', openingState: '正面站立', endingState: '场景定格',
+        prompt: '镜头1 正面；镜头2 侧面；镜头3 背面；镜头4 转身；镜头5 面料；镜头6 场景。',
+        videoPrompt: '镜头1 正面；镜头2 侧面；镜头3 背面；镜头4 转身；镜头5 面料；镜头6 场景。',
+      }],
+    }, { model: 'gpt-image-2', aspectRatio: '9:16', resolution: '2K' })
+
+    expect(resultIds).toHaveLength(2)
+    const image = store.nodes.find((node) => node.id === resultIds[0])
+    expect(image.data).toEqual(expect.objectContaining({ storyboardOutfitBoard: { url: 'https://example.com/outfit-board.jpg', assetId: 'board-1' }, storyboardSegmentIndex: 1 }))
+    expect(store.edges.filter((edge) => edge.target === resultIds[0])).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: storyboardId }),
+      expect.objectContaining({ source: outfitId }),
+    ]))
+    expect(store.edges).toEqual(expect.arrayContaining([expect.objectContaining({ source: resultIds[0], target: resultIds[1] })]))
+  })
+
   it('creates planned image nodes from product creation with shared settings and references', async () => {
     const store = useCanvasStore()
     await store.loadWorkspace({

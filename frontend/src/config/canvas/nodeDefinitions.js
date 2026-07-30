@@ -36,7 +36,7 @@ export const nodeDefinitions = {
   image: {
     type: 'image', label: '图片', model: 'Moon Image', hint: '商品图与视觉生成',
     placeholder: '描述你想生成的商品画面，@ 引用素材…', setting: '16:9 · 2K', icon: Image,
-    generationPanel: true, inputs: ['text', 'image', 'product', 'product_visual', 'product_storyboard', 'outfit', 'character'], outputs: ['text', 'image', 'video', 'audio', 'product', 'apparel', 'outfit', 'character'],
+    generationPanel: true, inputs: ['text', 'image', 'product', 'product_visual', 'product_storyboard', 'outfit', 'apparel_storyboard', 'character'], outputs: ['text', 'image', 'video', 'audio', 'product', 'apparel', 'outfit', 'character'],
     createData: ({ number }) => ({ model: defaultImageModel.id, title: `图片节点 ${number}`, status: 'empty', prompt: '' }),
   },
   video: {
@@ -118,7 +118,7 @@ export const nodeDefinitions = {
   outfit: {
     type: 'outfit', label: '服饰穿搭', model: defaultReverseModel.id, hint: '生成固定六格 9:16 / 1K 穿搭参考图板',
     setting: '服饰资料 + 模特图 · 6 格 9:16 / 1K', icon: Shirt,
-    inputs: ['apparel', 'image'], outputs: ['image'],
+    inputs: ['apparel', 'image'], outputs: ['image', 'apparel_storyboard'],
     createData: ({ number }) => ({
       title: `服饰穿搭 ${number}`,
       status: 'empty',
@@ -128,6 +128,20 @@ export const nodeDefinitions = {
       resolution: '1K',
       moduleIds: ['front', 'three-quarter', 'back', 'turn', 'fabric', 'lifestyle'],
       customRequirement: '',
+      generatedNodeIds: [],
+    }),
+  },
+  apparel_storyboard: {
+    type: 'apparel_storyboard', label: '服饰分镜', model: defaultReverseModel.id, hint: '使用服饰穿搭总览图生成连续分镜',
+    setting: '总览图 · 单模板 · 15/30/45/60 秒', icon: Clapperboard,
+    inputs: ['outfit'], outputs: ['image'],
+    createData: ({ number }) => ({
+      title: `服饰分镜 ${number}`,
+      status: 'empty',
+      textModel: defaultReverseModel.id,
+      duration: 15,
+      videoAspectRatio: '9:16',
+      prompt: '',
       generatedNodeIds: [],
     }),
   },

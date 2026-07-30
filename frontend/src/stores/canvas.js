@@ -361,6 +361,89 @@ export const useCanvasStore = defineStore('canvas', {
       this.selectNodes(ids.slice(0, 1))
       return ids
     },
+    addOutfitStoryboardNodes(plannerId, outfitId, plans, settings) {
+      const planner = this.nodes.find((node) => node.id === plannerId)
+      if (!planner || !plans?.segments?.length) return []
+      const outfit = this.nodes.find((node) => node.id === outfitId)
+      const board = outfit?.data.outfitBoardAsset ? { url: outfit.data.outfitBoardAsset, assetId: outfit.data.outfitBoardAssetId || null } : null
+
+      const segmentNodeIds = []
+      let previousVideoId = null
+      plans.segments.forEach((segment, index) => {
+        const segmentIndex = index + 1
+        const imageId = this.addNode('image', {
+          x: planner.position.x + 560 + index * 900,
+          y: planner.position.y,
+        })
+        const image = this.nodes.find((node) => node.id === imageId)
+        image.data = {
+          ...image.data,
+          title: `${plans.title || '服饰分镜'} ${segmentIndex} · 分镜`,
+          storyboardSourceId: plannerId,
+          storyboardTemplateId: plans.templateId,
+          storyboardTemplateLabel: plans.title,
+          storyboardGlobalScript: plans.globalScript,
+          storyboardSegmentIndex: segmentIndex,
+          storyboardSegmentCount: plans.segments.length,
+          storyboardDuration: 15,
+          storyboardVideoAspectRatio: planner.data.videoAspectRatio,
+          storyboardShotCount: 6,
+          storyboardOutfitBoard: board,
+          storyboardContinuityMode: segment.continuityMode,
+          storyboardPlotGoal: segment.plotGoal,
+          storyboardOpeningState: segment.openingState,
+          storyboardEndingState: segment.endingState,
+          continuityLastFrameUrl: null,
+          videoPrompt: segment.videoPrompt,
+          prompt: segment.prompt,
+          promptParts: [{ type: 'text', value: segment.prompt }],
+          segmentLocked: segmentIndex > 1,
+          ...settings,
+        }
+        this.addEdge({ source: plannerId, target: imageId })
+        this.addEdge({ source: outfitId, target: imageId })
+
+        const videoId = this.addNode('video', {
+          x: planner.position.x + 1010 + index * 900,
+          y: planner.position.y,
+        }, imageId)
+        const video = this.nodes.find((node) => node.id === videoId)
+        video.data = {
+          ...video.data,
+          title: `${plans.title || '服饰分镜'} ${segmentIndex} · 视频`,
+          storyboardSourceId: plannerId,
+          storyboardImageId: imageId,
+          storyboardTemplateId: plans.templateId,
+          storyboardTemplateLabel: plans.title,
+          storyboardGlobalScript: plans.globalScript,
+          storyboardSegmentIndex: segmentIndex,
+          storyboardSegmentCount: plans.segments.length,
+          storyboardContinuityMode: segment.continuityMode,
+          storyboardPlotGoal: segment.plotGoal,
+          storyboardOpeningState: segment.openingState,
+          storyboardEndingState: segment.endingState,
+          storyboardOutfitBoard: board,
+          storyboardDuration: 15,
+          videoPrompt: segment.videoPrompt,
+          prompt: segment.videoPrompt,
+          promptParts: [{ type: 'text', value: segment.videoPrompt }],
+          segmentLocked: true,
+          returnLastFrame: true,
+        }
+        if (segment.continuityMode === 'extend' && previousVideoId) this.addEdge({ source: previousVideoId, target: videoId })
+        segmentNodeIds.push({ segmentIndex, imageId, videoId })
+        previousVideoId = videoId
+      })
+      planner.data = {
+        ...planner.data,
+        storyboardOutfitBoard: board,
+        globalScript: plans.globalScript,
+        segmentNodeIds,
+        generatedNodeIds: segmentNodeIds.flatMap(({ imageId, videoId }) => [imageId, videoId]),
+      }
+      this.selectNodes([segmentNodeIds[0].imageId])
+      return planner.data.generatedNodeIds
+    },
     addStoryboardVideoNode(imageId) {
       const image = this.nodes.find((node) => node.id === imageId && node.type === 'image')
       if (!image?.data.asset || !image.data.videoPrompt?.trim()) return

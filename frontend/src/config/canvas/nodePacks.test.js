@@ -18,7 +18,7 @@ describe('canvas node packs', () => {
   })
 
   it('adds ecommerce business nodes to ecommerce canvas', () => {
-    expect(getNodeTypes('ecommerce')).toEqual(['product', 'product_visual', 'product_storyboard', 'apparel', 'outfit', 'text', 'image', 'video', 'audio'])
+    expect(getNodeTypes('ecommerce')).toEqual(['product', 'product_visual', 'product_storyboard', 'apparel', 'outfit', 'apparel_storyboard', 'text', 'image', 'video', 'audio'])
     expect(canConnect('product', 'product_visual', 'ecommerce')).toBe(true)
     expect(canConnect('product', 'product_storyboard', 'ecommerce')).toBe(true)
     expect(canConnect('product_visual', 'image', 'ecommerce')).toBe(true)
@@ -30,8 +30,11 @@ describe('canvas node packs', () => {
     expect(canConnect('apparel', 'outfit', 'ecommerce')).toBe(true)
     expect(canConnect('image', 'outfit', 'ecommerce')).toBe(true)
     expect(canConnect('outfit', 'image', 'ecommerce')).toBe(true)
+    expect(canConnect('outfit', 'apparel_storyboard', 'ecommerce')).toBe(true)
+    expect(canConnect('apparel_storyboard', 'image', 'ecommerce')).toBe(true)
     expect(getConnectionError('apparel', 'outfit', ['apparel'], 'ecommerce')).toContain('只能连接 1 个')
     expect(getConnectionError('image', 'outfit', ['image'], 'ecommerce')).toContain('只能连接 1 张')
+    expect(getConnectionError('outfit', 'apparel_storyboard', ['outfit'], 'ecommerce')).toContain('只能连接 1 个')
   })
 
   it('keeps existing media connection rules', () => {
