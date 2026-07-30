@@ -58,7 +58,9 @@ async def test_submit_and_query_video_task():
 
     assert completed["result"]["data"][0]["url"] == "https://example.com/a.mp4"
     assert requests[0].url.path == "/v1/videos/generations"
+    assert requests[0].extensions["timeout"]["read"] == 180
     assert requests[1].url.path == "/v1/videos/generations/task-2"
+    assert requests[1].extensions["timeout"]["read"] == 30
 
 
 @pytest.mark.asyncio

@@ -41,7 +41,12 @@ class ToApisProvider:
         return await self._request("GET", f"/v1/images/generations/{task_id}")
 
     async def submit_video(self, payload: dict[str, Any]) -> dict[str, Any]:
-        return await self._request("POST", "/v1/videos/generations", json=payload)
+        return await self._request(
+            "POST",
+            "/v1/videos/generations",
+            json=payload,
+            timeout=httpx.Timeout(180, connect=30),
+        )
 
     async def get_video_task(self, task_id: str) -> dict[str, Any]:
         return await self._request("GET", f"/v1/videos/generations/{task_id}")
