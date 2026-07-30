@@ -116,8 +116,8 @@ export const nodeDefinitions = {
     }),
   },
   outfit: {
-    type: 'outfit', label: '服饰穿搭', model: defaultReverseModel.id, hint: '生成固定六格 9:16 / 4K 穿搭参考图板',
-    setting: '服饰资料 + 模特图 · 6 格 9:16 / 4K', icon: Shirt,
+    type: 'outfit', label: '服饰穿搭', model: defaultReverseModel.id, hint: '生成固定六格 9:16 / 1K 穿搭参考图板',
+    setting: '服饰资料 + 模特图 · 6 格 9:16 / 1K', icon: Shirt,
     inputs: ['apparel', 'image'], outputs: ['image'],
     createData: ({ number }) => ({
       title: `服饰穿搭 ${number}`,
@@ -125,7 +125,7 @@ export const nodeDefinitions = {
       textModel: defaultReverseModel.id,
       imageModel: defaultImageModel.id,
       aspectRatio: '9:16',
-      resolution: '4K',
+      resolution: '1K',
       moduleIds: ['front', 'three-quarter', 'back', 'turn', 'fabric', 'lifestyle'],
       customRequirement: '',
       generatedNodeIds: [],

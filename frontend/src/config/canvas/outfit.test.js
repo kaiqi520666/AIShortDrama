@@ -15,7 +15,7 @@ describe('outfit planning', () => {
     expect(materials).toHaveLength(6)
     expect(materials.map((item) => item.id)).toEqual(['front', 'three-quarter', 'back', 'turn', 'fabric', 'lifestyle'])
     expect(prompt).toContain('统一补充要求：突出秋季氛围')
-    expect(prompt).toContain('统一画面规格：9:16，4K')
+    expect(prompt).toContain('统一画面规格：9:16，1K')
     expect(prompt).toContain('单品1：白色衬衫')
     expect(prompt).toContain('不描述说话、台词、音效、运镜或连续动作')
   })

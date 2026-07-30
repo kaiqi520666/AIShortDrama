@@ -34,7 +34,7 @@ const apparelNode = computed(() => inputNode('apparel'))
 const garmentNode = computed(() => apparelNode.value && store.incomingNodes(apparelNode.value.id).find((node) => node.type === 'image' && node.data.asset))
 const modelNode = computed(() => inputNode('model'))
 const apparelContext = computed(() => apparelPromptContext(apparelNode.value?.data))
-const selectedImageSettings = computed(() => ({ model: { id: 'gpt-image-2' }, aspectRatio: '9:16', resolution: '4K' }))
+const selectedImageSettings = computed(() => ({ model: { id: 'gpt-image-2' }, aspectRatio: '9:16', resolution: '1K' }))
 const selectedTextModel = computed(() => reverseModels.find((model) => model.id === props.data.textModel) || defaultReverseModel)
 const customRequirement = computed(() => props.data.customRequirement || '')
 const selectedMaterials = computed(() => resolveOutfitMaterials())
@@ -79,7 +79,7 @@ async function submitTask() {
     generationError: '',
     imageModel: 'gpt-image-2',
     aspectRatio: '9:16',
-    resolution: '4K',
+    resolution: '1K',
     moduleIds: selectedMaterials.value.map((item) => item.id),
   })
   try {
@@ -151,7 +151,7 @@ defineExpose({ submitTask })
       />
     </section>
 
-    <div class="outfit-fixed-settings"><span>GPT Image 2</span><span>9:16</span><span>4K</span></div>
+    <div class="outfit-fixed-settings"><span>GPT Image 2</span><span>9:16</span><span>1K</span></div>
 
     <p v-if="message" class="panel-notice">{{ message }}</p>
     <footer class="product-visual-panel-footer">
