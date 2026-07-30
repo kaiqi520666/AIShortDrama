@@ -56,8 +56,12 @@ const connectedReferences = computed(() => store.incomingNodes(props.nodeId).map
 )))
 const references = computed(() => {
   const character = props.data.storyboardCharacter
-  if (!character?.url) return connectedReferences.value
-  return [...connectedReferences.value, {
+  const productReferences = (props.data.storyboardProductReferences || []).map((reference) => ({
+    id: `storyboard-product-${reference.id}`,
+    type: 'image',
+    data: { title: reference.name, asset: reference.url },
+  }))
+  const characterReference = character?.url ? [{
     id: `storyboard-character-${character.id}`,
     type: 'image',
     data: {
@@ -65,7 +69,9 @@ const references = computed(() => {
       asset: character.url,
       ...(props.type === 'video' ? { providerAsset: character.assetUrl } : {}),
     },
-  }]
+  }] : []
+  if (isStoryboardImage.value) return [...connectedReferences.value, ...productReferences, ...characterReference]
+  return [...connectedReferences.value, ...characterReference, ...productReferences]
 })
 const imageReferences = computed(() => references.value.filter((node) => node.type === 'image' && node.data.asset))
 const audioReferences = computed(() => references.value.filter((node) => node.type === 'audio' && node.data.asset))

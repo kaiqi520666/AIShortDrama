@@ -42,7 +42,10 @@ describe('product storyboard planning', () => {
       '种草分镜\n禁止出现人脸、正脸、侧脸及面部局部，人物仅可出现手部、背影或肩部以下。\n无文字水印。',
       '短剧分镜\n禁止出现人脸、正脸、侧脸及面部局部，人物仅可出现手部、背影或肩部以下。\n无文字水印。',
     ])
-    expect(plans.map((item) => item.videoPrompt)).toEqual(['种草视频\n全程禁止出现人脸及面部局部。', '短剧视频\n全程禁止出现人脸及面部局部。'])
+    expect(plans.map((item) => item.videoPrompt)).toEqual([
+      '种草视频\n全程禁止出现人脸及面部局部；参考图片2为商品参考图。\n不生成背景音乐。',
+      '短剧视频\n全程禁止出现人脸及面部局部；参考图片2为商品参考图。\n不生成背景音乐。',
+    ])
   })
 
   it('locks a selected character in image and video prompts', () => {
@@ -52,6 +55,21 @@ describe('product storyboard planning', () => {
     expect(prompt).toContain('参考图 2 是指定出镜角色')
     expect(plans[0].prompt).toContain('参考图2为指定出镜角色')
     expect(plans[0].videoPrompt).toContain('参考图片2为指定出镜角色')
+  })
+
+  it('labels independent product references before the character reference', () => {
+    const prompt = buildProductStoryboardPrompt('测试商品', storyboardTemplates.slice(0, 1), {
+      productReferences: [
+        { id: 'product-1', name: '正面图', url: 'https://example.com/product-1.png' },
+        { id: 'product-2', name: '细节图', url: 'https://example.com/product-2.png' },
+      ],
+      characterReference: { name: '测试角色', url: 'https://example.com/character.png' },
+    })
+    expect(prompt).toContain('图片1、图片2是商品参考图')
+    expect(prompt).toContain('参考图 3 是指定出镜角色')
+    const plans = parseProductStoryboardPlan('[{"type":"ugc-seeding","prompt":"分镜","videoPrompt":"视频"}]', storyboardTemplates.slice(0, 1), { url: 'https://example.com/character.png', assetUrl: 'asset://character' }, 2)
+    expect(plans[0].videoPrompt).toContain('参考图片2为指定出镜角色')
+    expect(plans[0].videoPrompt).toContain('参考图片3、参考图片4为商品参考图')
   })
 
   it('rejects incomplete template plans', () => {

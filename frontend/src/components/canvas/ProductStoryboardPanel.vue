@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { ArrowUp, Clapperboard, Coins, FileText, LoaderCircle, Package, UserRound, X } from 'lucide-vue-next'
+import { ArrowUp, Clapperboard, Coins, FileText, ImagePlus, LoaderCircle, Package, UserRound, X } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
 import { productPromptContext } from '../../config/canvas/ecommerce'
@@ -33,8 +33,9 @@ const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
 const notice = ref('')
 const characterPickerOpen = ref(false)
+const productPickerOpen = ref(false)
 const productNode = computed(() => store.incomingNodes(props.nodeId).find((node) => node.type === 'product'))
-const referenceImage = computed(() => productNode.value && store.incomingNodes(productNode.value.id).find((node) => node.type === 'image' && node.data.asset))
+const productReferences = computed(() => Array.isArray(props.data.productReferences) ? props.data.productReferences : [])
 const productContext = computed(() => productPromptContext(productNode.value?.data.product))
 const selectedTemplates = computed(() => (props.data.templates || []).filter((item) => item.enabled))
 const selectedTextModel = computed(() => reverseModels.find((model) => model.id === props.data.textModel) || defaultReverseModel)
@@ -49,14 +50,14 @@ const ratioOptions = videoAspectRatios.map((value) => ({ value, label: value }))
 const character = computed(() => props.data.characterReference || null)
 const message = computed(() => notice.value || props.data.generationError || (!productNode.value
   ? '请先连接商品创作节点'
-  : !referenceImage.value
-    ? '请先上传商品参考图'
+  : !productReferences.value.length
+    ? '请先选择商品参考图'
     : !productContext.value
       ? '请先完成商品识别'
       : !selectedTemplates.value.length
         ? '至少选择一个脚本模板'
         : insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
-const canSubmit = computed(() => !running.value && productNode.value && referenceImage.value && productContext.value && selectedTemplates.value.length && !insufficientCredits.value)
+const canSubmit = computed(() => !running.value && productNode.value && productReferences.value.length && productContext.value && selectedTemplates.value.length && !insufficientCredits.value)
 
 function updateData(value) {
   notice.value = ''
@@ -80,6 +81,21 @@ function selectCharacter(item) {
   characterPickerOpen.value = false
 }
 
+function selectProductReference(item) {
+  if (productReferences.value.some((reference) => reference.id === item.id)) {
+    productPickerOpen.value = false
+    return
+  }
+  updateData({
+    productReferences: [...productReferences.value, { id: item.id, name: item.name, url: item.url }].slice(0, 3),
+  })
+  productPickerOpen.value = false
+}
+
+function removeProductReference(id) {
+  updateData({ productReferences: productReferences.value.filter((reference) => reference.id !== id) })
+}
+
 async function submitTask() {
   if (!canSubmit.value) return
   if (existingGeneratedNodes.value.length && !await confirm({
@@ -97,8 +113,11 @@ async function submitTask() {
       node_id: props.nodeId,
       model: selectedTextModel.value.id,
       media_type: 'image',
-      media_url: referenceImage.value.data.asset,
-      ...(character.value?.url ? { media_urls: [character.value.url] } : {}),
+      media_url: productReferences.value[0].url,
+      media_urls: [
+        ...productReferences.value.slice(1).map((reference) => reference.url),
+        ...(character.value?.url ? [character.value.url] : []),
+      ],
       prompt: buildProductStoryboardPrompt(productContext.value, selectedTemplates.value, props.data),
       response_mode: 'product_storyboard_plan',
     }, (delta) => { content += delta }, (taskId) => {
@@ -107,8 +126,7 @@ async function submitTask() {
     const generatedNodeIds = store.addProductStoryboardNodes(
       props.nodeId,
       productNode.value.id,
-      referenceImage.value.id,
-      parseProductStoryboardPlan(content, selectedTemplates.value, character.value),
+      parseProductStoryboardPlan(content, selectedTemplates.value, character.value, productReferences.value.length),
       { model: defaultImageModel.id, aspectRatio: recommended.value.aspectRatio, resolution: recommended.value.resolution },
     )
     updateNodeData(props.nodeId, {
@@ -143,6 +161,18 @@ async function submitTask() {
       </div>
       <AppButton v-else size="sm" variant="soft" @click="characterPickerOpen = true"><UserRound :size="14" />无人脸模式 · 选择角色</AppButton>
     </div>
+
+    <section class="storyboard-product-references">
+      <header><span><Package :size="14" />商品参考图</span><small>{{ productReferences.length }}/3</small></header>
+      <div class="storyboard-product-reference-list">
+        <div v-for="reference in productReferences" :key="reference.id" class="storyboard-product-reference">
+          <img :src="buildOssImageUrl(reference.url, { width: 120, quality: 80 })" :alt="reference.name" referrerpolicy="no-referrer" />
+          <strong>{{ reference.name }}</strong>
+          <AppButton icon-only size="sm" variant="soft" :title="`移除${reference.name}`" @click="removeProductReference(reference.id)"><X :size="13" /></AppButton>
+        </div>
+        <AppButton v-if="productReferences.length < 3" size="sm" variant="soft" @click="productPickerOpen = true"><ImagePlus :size="14" />添加商品图</AppButton>
+      </div>
+    </section>
 
     <div class="storyboard-template-grid">
       <label v-for="item in data.templates" :key="item.id" class="storyboard-template-option" :class="{ active: item.enabled }">
@@ -179,6 +209,15 @@ async function submitTask() {
         <ArrowUp v-else :size="18" />
       </AppButton>
     </footer>
+    <AppAssetPickerModal
+      v-if="productPickerOpen"
+      resource-type="asset"
+      media-type="image"
+      :workspace-id="store.workspaceId"
+      :node-id="nodeId"
+      @close="productPickerOpen = false"
+      @select="selectProductReference"
+    />
     <AppAssetPickerModal
       v-if="characterPickerOpen"
       resource-type="character"

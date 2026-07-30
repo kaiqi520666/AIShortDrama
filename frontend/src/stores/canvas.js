@@ -25,6 +25,7 @@ function storyboardVideoData(source) {
     resolution: defaultVideoModel.defaultResolution,
     generateAudio: true,
     storyboardCharacter: source.data.storyboardCharacter || null,
+    storyboardProductReferences: source.data.storyboardProductReferences || [],
   }
 }
 
@@ -238,7 +239,7 @@ export const useCanvasStore = defineStore('canvas', {
       this.selectNodes(ids.slice(0, 1))
       return ids
     },
-    addProductStoryboardNodes(plannerId, productId, referenceId, plans, settings) {
+    addProductStoryboardNodes(plannerId, productId, plans, settings) {
       const planner = this.nodes.find((node) => node.id === plannerId)
       if (!planner || !plans.length) return []
 
@@ -258,6 +259,7 @@ export const useCanvasStore = defineStore('canvas', {
           storyboardDuration: planner.data.duration,
           storyboardVideoAspectRatio: planner.data.videoAspectRatio,
           storyboardShotCount: storyboardShotCount(planner.data.duration),
+          storyboardProductReferences: planner.data.productReferences || [],
           storyboardCharacter: planner.data.characterReference || null,
           videoPrompt: plan.videoPrompt,
           prompt: plan.prompt,
@@ -265,7 +267,6 @@ export const useCanvasStore = defineStore('canvas', {
           ...settings,
         }
         this.addEdge({ source: plannerId, target: id })
-        this.addEdge({ source: referenceId, target: id })
         this.addEdge({ source: productId, target: id })
         return id
       })

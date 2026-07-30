@@ -94,6 +94,7 @@ export const nodeDefinitions = {
       duration: 8,
       videoAspectRatio: '9:16',
       templates: createStoryboardTemplates(),
+      productReferences: [],
       characterReference: null,
       prompt: '',
       generatedNodeIds: [],

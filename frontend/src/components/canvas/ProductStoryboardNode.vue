@@ -34,7 +34,7 @@ const shots = computed(() => storyboardShotCount(props.data.duration))
         <small v-if="!selectedTemplates.length">尚未选择脚本模板</small>
       </div>
       <div class="product-creation-settings-summary storyboard-node-summary">
-        <span>{{ data.duration }} 秒</span><span>{{ shots }} 格</span><span>{{ data.videoAspectRatio }}</span>
+        <span>{{ data.duration }} 秒</span><span>{{ shots }} 格</span><span>{{ data.productReferences?.length || 0 }} 张商品图</span><span>{{ data.videoAspectRatio }}</span>
       </div>
     </div>
   </StructuredNodeShell>

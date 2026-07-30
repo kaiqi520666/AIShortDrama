@@ -306,13 +306,14 @@ describe('canvas node packs', () => {
       canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
     })
     const productId = store.addNode('product', { x: 0, y: 0 })
-    const reference = store.nodes.find((node) => node.type === 'image')
-    reference.data = { ...reference.data, asset: 'https://example.com/product.png', status: 'ready' }
     const storyboardId = store.addNode('product_storyboard', { x: 500, y: 0 }, productId)
     store.nodes.find((node) => node.id === storyboardId).data.characterReference = {
       id: 'character-1', name: '虚拟角色', url: 'https://example.com/character.png', assetUrl: 'asset://pa_test',
     }
-    const ids = store.addProductStoryboardNodes(storyboardId, productId, reference.id, [
+    store.nodes.find((node) => node.id === storyboardId).data.productReferences = [
+      { id: 'asset-1', name: '商品正面', url: 'https://example.com/product.png' },
+    ]
+    const ids = store.addProductStoryboardNodes(storyboardId, productId, [
       { id: 'ugc-seeding', label: 'UGC 种草', prompt: '四格种草分镜板', videoPrompt: '参考图片1生成种草视频' },
       { id: 'unboxing', label: '开箱种草', prompt: '四格开箱分镜板', videoPrompt: '参考图片1生成开箱视频' },
     ], { model: 'gpt-image-2', aspectRatio: '9:16', resolution: '2K' })
@@ -331,7 +332,10 @@ describe('canvas node packs', () => {
       aspectRatio: '9:16',
       resolution: '2K',
     }))
-    expect(store.edges.filter((edge) => ids.includes(edge.target))).toHaveLength(6)
+    expect(store.edges.filter((edge) => ids.includes(edge.target))).toHaveLength(4)
+    expect(store.nodes.find((node) => node.id === ids[0]).data.storyboardProductReferences).toEqual([
+      { id: 'asset-1', name: '商品正面', url: 'https://example.com/product.png' },
+    ])
 
     const storyboardImage = store.nodes.find((node) => node.id === ids[0])
     storyboardImage.data = { ...storyboardImage.data, asset: 'https://example.com/storyboard.png', status: 'ready' }
@@ -345,6 +349,7 @@ describe('canvas node packs', () => {
       aspectRatio: '9:16',
       resolution: '720p',
       storyboardCharacter: expect.objectContaining({ id: 'character-1', assetUrl: 'asset://pa_test' }),
+      storyboardProductReferences: [{ id: 'asset-1', name: '商品正面', url: 'https://example.com/product.png' }],
     }))
     expect(store.edges).toContainEqual(expect.objectContaining({ source: ids[0], target: videoId }))
     expect(store.addStoryboardVideoNode(ids[0])).toBe(videoId)
