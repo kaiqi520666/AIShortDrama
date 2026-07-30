@@ -29,12 +29,6 @@ def video_request(**updates):
         {"aspect_ratio": "2:1"},
         {"reference_images": [f"https://example.com/{index}.png" for index in range(10)]},
         {"reference_images": ["file:///tmp/reference.png"]},
-        {
-            "model": "happyhorse-1.1",
-            "duration": 5,
-            "resolution": "1080P",
-            "generate_audio": True,
-        },
         {"reference_audios": ["https://example.com/reference.mp3"]},
         {
             "reference_images": ["https://example.com/reference.png"],
@@ -43,18 +37,6 @@ def video_request(**updates):
         {
             "reference_images": ["https://example.com/reference.png"],
             "reference_audios": [f"https://example.com/{index}.mp3" for index in range(4)],
-        },
-        {
-            "model": "happyhorse-1.1",
-            "duration": 5,
-            "resolution": "1080P",
-            "reference_audios": ["https://example.com/reference.mp3"],
-        },
-        {
-            "model": "happyhorse-1.1",
-            "duration": 5,
-            "resolution": "1080P",
-            "reference_videos": ["https://example.com/reference.mp4"],
         },
     ],
 )
@@ -76,17 +58,6 @@ def test_provider_payloads_use_reference_mode():
             reference_audios=["https://example.com/one.mp3"],
         )
     )
-    happyhorse = build_video_provider_payload(
-        video_request(
-            model="happyhorse-1.1",
-            duration=5,
-            resolution="1080P",
-            reference_images=["https://example.com/one.png"],
-        )
-    )
-    happyhorse_text = build_video_provider_payload(
-        video_request(model="happyhorse-1.1", duration=5, resolution="1080P")
-    )
     assert seedance["image_with_roles"] == [
         {"url": "https://example.com/one.png", "role": "reference_image"}
     ]
@@ -96,11 +67,6 @@ def test_provider_payloads_use_reference_mode():
     assert seedance["audio_with_roles"] == [
         {"url": "https://example.com/one.mp3", "role": "reference_audio"}
     ]
-    assert happyhorse["action"] == "reference-to-video"
-    assert happyhorse["reference_images"] == ["https://example.com/one.png"]
-    assert "generate_audio" not in happyhorse
-    assert happyhorse_text["action"] == "text-to-video"
-    assert "reference_images" not in happyhorse_text
 
 
 def test_seedance_accepts_registered_avatar_asset_reference():

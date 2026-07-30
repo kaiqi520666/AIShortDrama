@@ -141,7 +141,6 @@ def upgrade() -> None:
         "seedance-2": "0.900",
         "seedance-2-fast": "0.720",
         "seedance-2-mini": "0.5002",
-        "happyhorse-1.1": "0.600",
     }.items():
         rows.append(
             {

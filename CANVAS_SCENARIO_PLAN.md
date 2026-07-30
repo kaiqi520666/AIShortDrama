@@ -177,8 +177,7 @@ frontend/src/config/canvas/
 复用视频节点：
 
 - 输入商品图、模特/场景参考、卖点文案和可选音频。
-- 继续使用现有 Seedance/HappyHorse 模型能力与连接限制。
-- HappyHorse 遇到视频或音频参考时继续执行现有自动切换规则。
+- 统一使用 Seedance 2 系列模型能力与连接限制。
 - 输出进入现有资产库并按视频模型规则计费。
 
 ### 5.5 批量变体节点 `batch_variant`

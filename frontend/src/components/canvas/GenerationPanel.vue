@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import { ArrowUp, ChevronDown, Clapperboard, Coins, FileText, Image, Images, LoaderCircle, Music2, Package, Shirt, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
 import { createAudioGeneration, createImageGeneration, createVideoGeneration } from '../../api/generations'
@@ -10,7 +10,7 @@ import { buildImageRequest, normalizeImageSettings } from '../../config/imageMod
 import { mergeProductProfile, parseProductProfile } from '../../config/canvas/ecommerce'
 import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
-import { buildVideoRequest, defaultVideoModel, getVideoModelError, getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
+import { buildVideoRequest, getVideoModelError, getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
 import { useGlobalToast } from '../../composables/useGlobalUI'
 import { useCanvasStore } from '../../stores/canvas'
 import { useAuthStore } from '../../stores/auth'
@@ -270,13 +270,6 @@ function updateVideoSetting(key, value) {
 function updateAudioSetting(key, value) {
   updateNodeData(props.nodeId, { [key]: value })
 }
-
-watch(() => `${props.type}:${props.data.model}:${references.value.map((node) => node.type).join(',')}`, () => {
-  if (props.type !== 'video' || props.data.model !== 'happyhorse-1.1') return
-  if (!references.value.some((node) => ['audio', 'video'].includes(node.type))) return
-  updateVideoModel(defaultVideoModel)
-  toast.info('HappyHorse 不支持音频或视频参考，已切换为 Seedance 2')
-}, { immediate: true })
 
 function getElement(target) {
   return target?.element || target?.$el || target

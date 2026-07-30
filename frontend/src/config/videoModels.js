@@ -1,6 +1,5 @@
 export const videoAspectRatios = ['21:9', '16:9', '4:3', '1:1', '3:4', '9:16']
 const seedanceRatios = videoAspectRatios
-const happyHorseRatios = ['16:9', '9:16', '1:1', '4:3', '3:4']
 
 export const videoModels = [
   {
@@ -43,19 +42,6 @@ export const videoModels = [
     generateAudio: true,
     requiresPrivateAsset: true,
     referenceLimits: { image: 9, video: 3, audio: 3 },
-  },
-  {
-    id: 'happyhorse-1.1',
-    label: 'HappyHorse 1.1',
-    resolutions: ['720P', '1080P'],
-    aspectRatios: happyHorseRatios,
-    defaultResolution: '1080P',
-    defaultAspectRatio: '16:9',
-    defaultDuration: 5,
-    durationMin: 3,
-    durationMax: 15,
-    referenceLimits: { image: 9, video: 0, audio: 0 },
-    remoteOnly: true,
   },
 ]
 
@@ -119,7 +105,6 @@ export function getVideoReferenceError(data, references = []) {
   const types = normalized.map((reference) => reference.type)
   if (types.includes('audio') && !types.some((type) => ['image', 'video'].includes(type))) return '参考音频需同时连接图片或视频'
   if (normalized.some((reference) => reference.type in referenceLabels && !reference.url)) return '请先上传已连接的参考素材'
-  if (getVideoModel(data.model).remoteOnly && normalized.some((reference) => reference.url && !/^https?:\/\//i.test(reference.url))) return '当前模型的参考素材必须是公开 URL'
   return ''
 }
 

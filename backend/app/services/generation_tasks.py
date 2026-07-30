@@ -115,24 +115,19 @@ def build_video_provider_payload(request: VideoGenerationRequest) -> dict[str, A
         "resolution": request.resolution,
         "aspect_ratio": request.aspect_ratio,
     }
-    if request.model == "happyhorse-1.1":
-        provider_payload["action"] = "reference-to-video" if reference_images else "text-to-video"
-        if reference_images:
-            provider_payload["reference_images"] = reference_images
-    else:
-        provider_payload["generate_audio"] = request.generate_audio is not False
-        if reference_images:
-            provider_payload["image_with_roles"] = [
-                {"url": url, "role": "reference_image"} for url in reference_images
-            ]
-        if reference_videos:
-            provider_payload["video_with_roles"] = [
-                {"url": url, "role": "reference_video"} for url in reference_videos
-            ]
-        if reference_audios:
-            provider_payload["audio_with_roles"] = [
-                {"url": url, "role": "reference_audio"} for url in reference_audios
-            ]
+    provider_payload["generate_audio"] = request.generate_audio is not False
+    if reference_images:
+        provider_payload["image_with_roles"] = [
+            {"url": url, "role": "reference_image"} for url in reference_images
+        ]
+    if reference_videos:
+        provider_payload["video_with_roles"] = [
+            {"url": url, "role": "reference_video"} for url in reference_videos
+        ]
+    if reference_audios:
+        provider_payload["audio_with_roles"] = [
+            {"url": url, "role": "reference_audio"} for url in reference_audios
+        ]
     return provider_payload
 
 

@@ -100,15 +100,6 @@ VIDEO_REQUESTS = [
             "https://example.com/two.png",
         ],
     },
-    {
-        "node_id": "video-happyhorse-test",
-        "model": "happyhorse-1.1",
-        "prompt": "test video",
-        "duration": 5,
-        "resolution": "1080P",
-        "aspect_ratio": "16:9",
-        "reference_images": ["https://example.com/one.png"],
-    },
 ]
 
 for request in VIDEO_REQUESTS:
@@ -208,19 +199,14 @@ async def test_create_video_generation(monkeypatch, payload, generation_user_id)
         async with SessionLocal() as db:
             task = await db.get(GenerationTask, task_id)
             assert task.model == payload["model"]
-            if payload["model"] == "happyhorse-1.1":
-                assert task.request_snapshot["action"] == "reference-to-video"
-                assert task.request_snapshot["reference_images"] == payload["reference_images"]
-                assert "generate_audio" not in task.request_snapshot
-            else:
-                expected = [
-                    {"url": url, "role": "reference_image"}
-                    for url in payload["reference_images"]
-                ]
-                assert task.request_snapshot.get("image_with_roles", []) == expected
-                assert task.request_snapshot["generate_audio"] is payload.get(
-                    "generate_audio", True
-                )
+            expected = [
+                {"url": url, "role": "reference_image"}
+                for url in payload["reference_images"]
+            ]
+            assert task.request_snapshot.get("image_with_roles", []) == expected
+            assert task.request_snapshot["generate_audio"] is payload.get(
+                "generate_audio", True
+            )
     finally:
         async with SessionLocal() as db:
             task = await db.get(GenerationTask, task_id)

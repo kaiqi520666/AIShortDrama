@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildVideoRequest, getVideoModelError, getVideoReferenceError, normalizeVideoSettings, videoAspectRatios, videoModels } from './videoModels'
+import { buildVideoRequest, getVideoReferenceError, normalizeVideoSettings, videoAspectRatios, videoModels } from './videoModels'
 
 const imageNode = (id) => ({ id, type: 'image', data: { asset: `https://example.com/${id}.png` } })
 const mediaNode = (type, id) => ({ id, type, data: { asset: `https://example.com/${id}.${type === 'audio' ? 'mp3' : 'mp4'}` } })
@@ -43,7 +43,7 @@ describe('buildVideoRequest', () => {
     expect(buildVideoRequest({ model: 'seedance-2', prompt: 'test', duration: 5, resolution: '720p', aspectRatio: '16:9' }, [avatar]).reference_images).toEqual(['asset://pa_test'])
   })
 
-  it('uses the original storyboard URL for HappyHorse and the registered asset for Seedance', () => {
+  it('uses the registered storyboard asset for Seedance', () => {
     const storyboard = {
       id: 'storyboard',
       type: 'image',
@@ -55,7 +55,6 @@ describe('buildVideoRequest', () => {
     }
     const settings = { prompt: 'test', duration: 5, aspectRatio: '16:9' }
     expect(buildVideoRequest({ ...settings, model: 'seedance-2', resolution: '720p' }, [storyboard]).reference_images).toEqual(['asset://pa_storyboard'])
-    expect(buildVideoRequest({ ...settings, model: 'happyhorse-1.1', resolution: '1080P' }, [storyboard]).reference_images).toEqual(['https://example.com/storyboard.png'])
   })
 
   it('requires registration for a Seedance storyboard with a selected character', () => {
@@ -69,25 +68,9 @@ describe('buildVideoRequest', () => {
       },
     }
     expect(getVideoReferenceError({ model: 'seedance-2' }, [storyboard])).toContain('注册虚拟人像素材')
-    expect(getVideoReferenceError({ model: 'happyhorse-1.1' }, [storyboard])).toBe('')
-  })
-
-  it('omits unsupported HappyHorse parameters', () => {
-    const request = buildVideoRequest({
-      model: 'happyhorse-1.1',
-      prompt: 'test video',
-      duration: 5,
-      resolution: '1080P',
-      aspectRatio: '16:9',
-    }, [imageNode('one')])
-    expect(request.reference_images).toEqual(['https://example.com/one.png'])
-    expect(request).not.toHaveProperty('generate_audio')
-    expect(request).not.toHaveProperty('action')
   })
 
   it('validates model-specific reference capabilities', () => {
-    expect(getVideoModelError({ model: 'happyhorse-1.1' }, [mediaNode('audio', 'one')])).toContain('不支持参考音频')
-    expect(getVideoModelError({ model: 'happyhorse-1.1' }, [mediaNode('video', 'one')])).toContain('不支持参考视频')
     expect(getVideoReferenceError({}, [mediaNode('audio', 'one')])).toContain('需同时连接图片或视频')
     expect(getVideoReferenceError({}, Array.from({ length: 10 }, (_, index) => imageNode(index)))).toContain('最多支持 9 张')
     expect(getVideoReferenceError({}, [imageNode('image'), ...Array.from({ length: 4 }, (_, index) => mediaNode('audio', index))])).toContain('最多支持 3 条参考音频')

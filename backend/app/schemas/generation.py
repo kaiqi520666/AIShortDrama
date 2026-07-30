@@ -16,14 +16,12 @@ VideoModel = Literal[
     "seedance-2",
     "seedance-2-fast",
     "seedance-2-mini",
-    "happyhorse-1.1",
 ]
 
 AudioModel = Literal["seed-audio-1.0-multilingual"]
 TextModel = Literal["qwen3.7-plus", "qwen3.6-flash"]
 
 SEEDANCE_RATIOS = {"21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "adaptive"}
-HAPPYHORSE_RATIOS = {"16:9", "9:16", "1:1", "4:3", "3:4"}
 VIDEO_MODEL_RULES: dict[str, dict[str, Any]] = {
     "seedance-2": {
         "resolutions": {"480p", "720p", "1080p", "4k"},
@@ -42,12 +40,6 @@ VIDEO_MODEL_RULES: dict[str, dict[str, Any]] = {
         "ratios": SEEDANCE_RATIOS,
         "durations": {4, 8, 10, 12, 15},
         "audio": True,
-    },
-    "happyhorse-1.1": {
-        "resolutions": {"720P", "1080P"},
-        "ratios": HAPPYHORSE_RATIOS,
-        "duration_range": range(3, 16),
-        "audio": False,
     },
 }
 
@@ -207,8 +199,6 @@ class VideoGenerationRequest(BaseModel):
             raise ValueError(f"{self.model} 不支持时长 {self.duration}")
         if self.generate_audio is not None and not rules["audio"]:
             raise ValueError(f"{self.model} 不支持音频生成参数")
-        if self.model == "happyhorse-1.1" and (self.reference_videos or self.reference_audios):
-            raise ValueError("HappyHorse 1.1 不支持视频或音频参考")
         if self.reference_audios and not (self.reference_images or self.reference_videos):
             raise ValueError("参考音频需同时提供图片或视频")
         return self

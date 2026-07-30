@@ -52,7 +52,6 @@ async def test_model_price_calculation():
             ("seedance-2", 26),
             ("seedance-2-fast", 21),
             ("seedance-2-mini", 15),
-            ("happyhorse-1.1", 18),
         ]:
             assert (await build_price_snapshot(db, "video", model, duration=1))[
                 "frozen_credits"
