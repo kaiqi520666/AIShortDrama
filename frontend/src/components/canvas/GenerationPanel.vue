@@ -491,7 +491,7 @@ onBeforeUnmount(() => {
     />
     <footer v-else>
       <AppButton v-if="isStoryboardVideo && data.status === 'ready'" class="storyboard-confirm-button" variant="soft" @click="confirmStoryboardSegment">
-        <Check :size="15" />{{ hasNextStoryboardSegment ? `确认并解锁第 ${data.storyboardSegmentIndex + 1} 段` : '确认完成' }}
+        <Check :size="15" />{{ hasNextStoryboardSegment ? `继续第${data.storyboardSegmentIndex + 1}段` : '完成' }}
       </AppButton>
       <AppButton v-if="type === 'video' || isVisionTextTask" ref="modelTrigger" class="model-select model-select-trigger" @click="toggleModelMenu">
         <component :is="modelIcon" :size="16" />{{ selectedModel.label }}<ChevronDown :size="14" :class="{ rotated: modelOpen }" />
