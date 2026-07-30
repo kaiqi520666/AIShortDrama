@@ -429,7 +429,7 @@ describe('canvas node packs', () => {
     expect(store.nodes).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'image-1', data: expect.objectContaining({ title: '服饰参考图', assetSource: 'upload', resourceType: 'garment' }) }),
       expect.objectContaining({ id: 'image-2', data: expect.objectContaining({ title: '模特参考图', assetSource: 'upload', resourceType: 'model' }) }),
-      expect.objectContaining({ id: outfitId, type: 'outfit', data: expect.objectContaining({ title: '服饰穿搭 3', textModel: 'qwen3.7-plus', imageModel: 'gpt-image-2', aspectRatio: '1:1', resolution: '1K', sceneIds: ['studio'], customScene: '', generatedNodeIds: [] }) }),
+      expect.objectContaining({ id: outfitId, type: 'outfit', data: expect.objectContaining({ title: '服饰穿搭 3', textModel: 'qwen3.7-plus', imageModel: 'gpt-image-2', aspectRatio: '1:1', resolution: '1K', moduleIds: ['front', 'side', 'back'], customRequirement: '', generatedNodeIds: [] }) }),
     ]))
     expect(store.edges).toEqual(expect.arrayContaining([
       expect.objectContaining({ source: 'image-1', target: outfitId, targetHandle: 'garment' }),
@@ -448,15 +448,15 @@ describe('canvas node packs', () => {
     })
     const outfitId = store.addNode('outfit', { x: 500, y: 300 })
     const resultIds = store.addOutfitVisualNodes(outfitId, 'image-1', 'image-2', [
-      { id: 'studio', label: '纯色棚拍', prompt: '棚拍穿搭效果' },
-      { id: 'street', label: '都市街头', prompt: '街头穿搭效果' },
+      { id: 'front', label: '正面全身', category: 'view', categoryLabel: '基础视角', prompt: '正面穿搭效果' },
+      { id: 'street', label: '街头穿搭', category: 'lifestyle', categoryLabel: '内容场景', prompt: '街头穿搭效果' },
     ], {
       model: 'gpt-image-2', aspectRatio: '3:4', resolution: '2K',
     })
 
     expect(resultIds).toEqual(['image-4', 'image-5'])
     expect(store.nodes.find((node) => node.id === resultIds[0]).data).toEqual(expect.objectContaining({
-      title: '纯色棚拍', outfitSourceId: outfitId, status: 'empty', prompt: '棚拍穿搭效果', model: 'gpt-image-2', aspectRatio: '3:4', resolution: '2K',
+      title: '正面全身', outfitSourceId: outfitId, outfitMaterialId: 'front', outfitMaterialCategory: 'view', outfitMaterialCategoryLabel: '基础视角', resourceType: 'outfit-material', status: 'empty', prompt: '正面穿搭效果', model: 'gpt-image-2', aspectRatio: '3:4', resolution: '2K',
     }))
     expect(store.edges.filter((edge) => edge.target === resultIds[0])).toEqual(expect.arrayContaining([
       expect.objectContaining({ source: outfitId }),

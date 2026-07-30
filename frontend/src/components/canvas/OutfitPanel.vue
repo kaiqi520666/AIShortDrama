@@ -1,9 +1,9 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { ArrowUp, Coins, FileText, LoaderCircle, MapPin, Shirt, UserRound } from 'lucide-vue-next'
+import { ArrowUp, Coins, FileText, Images, LoaderCircle, Shirt, UserRound } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
-import { buildOutfitPlanPrompt, outfitScenes, parseOutfitPlan, resolveOutfitScenes } from '../../config/canvas/outfit'
+import { buildOutfitPlanPrompt, outfitMaterialGroups, parseOutfitPlan, resolveOutfitMaterials } from '../../config/canvas/outfit'
 import { imageModels, normalizeImageSettings } from '../../config/imageModels'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
@@ -38,8 +38,10 @@ const selectedImageSettings = computed(() => normalizeImageSettings({
   resolution: props.data.resolution,
 }))
 const selectedTextModel = computed(() => reverseModels.find((model) => model.id === props.data.textModel) || defaultReverseModel)
-const selectedScenes = computed(() => resolveOutfitScenes(props.data.sceneIds, props.data.customScene))
-const prompt = computed(() => buildOutfitPlanPrompt(selectedScenes.value, props.data.customScene, props.data))
+const customRequirement = computed(() => props.data.customRequirement ?? props.data.customScene ?? '')
+const selectedMaterials = computed(() => resolveOutfitMaterials(props.data.moduleIds, props.data.sceneIds, customRequirement.value))
+const selectedMaterialIds = computed(() => selectedMaterials.value.map((item) => item.id))
+const prompt = computed(() => buildOutfitPlanPrompt(selectedMaterials.value, customRequirement.value, props.data))
 const running = computed(() => props.data.status === 'generating')
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedTextModel.value.id))
 const insufficientCredits = computed(() => (authStore.user?.credit_balance || 0) < estimatedCredits.value)
@@ -52,12 +54,12 @@ const message = computed(() => notice.value || props.data.generationError || (!g
   ? '请先选择服饰参考图'
   : !modelNode.value?.data.asset
     ? '请先选择模特参考图'
-    : !selectedScenes.value.length
-      ? '请选择拍摄场景或填写自定义场景'
+    : !selectedMaterials.value.length
+      ? '请选择穿搭素材或填写自定义要求'
       : insufficientCredits.value
         ? `积分不足，本次需要 ${estimatedCredits.value} 积分`
         : ''))
-const canSubmit = computed(() => !running.value && garmentNode.value?.data.asset && modelNode.value?.data.asset && selectedScenes.value.length && !insufficientCredits.value)
+const canSubmit = computed(() => !running.value && garmentNode.value?.data.asset && modelNode.value?.data.asset && selectedMaterials.value.length && !insufficientCredits.value)
 const sourceItems = computed(() => [
   { label: '服饰参考图', icon: Shirt, node: garmentNode.value },
   { label: '模特参考图', icon: UserRound, node: modelNode.value },
@@ -68,9 +70,9 @@ function updateData(value) {
   updateNodeData(props.nodeId, { ...value, generationError: '' })
 }
 
-function toggleScene(id) {
-  const sceneIds = props.data.sceneIds || []
-  updateData({ sceneIds: sceneIds.includes(id) ? sceneIds.filter((value) => value !== id) : [...sceneIds, id] })
+function toggleMaterial(id) {
+  const moduleIds = selectedMaterialIds.value.filter((value) => value !== 'custom')
+  updateData({ moduleIds: moduleIds.includes(id) ? moduleIds.filter((value) => value !== id) : [...moduleIds, id] })
 }
 
 function updateImageModel(imageModel) {
@@ -86,7 +88,7 @@ async function submitTask() {
   if (!canSubmit.value) return
   if (existingGeneratedNodes.value.length && !await confirm({
     title: '重新生成穿搭方案',
-    message: `将新增 ${selectedScenes.value.length} 个图片节点，已有节点不会删除。`,
+    message: `将新增 ${selectedMaterials.value.length} 个穿搭素材节点，已有节点不会删除。`,
     confirmText: '继续生成',
   })) return
 
@@ -107,7 +109,7 @@ async function submitTask() {
       updateNodeData(props.nodeId, { generationTaskId: taskId, generationStatus: 'running' })
     })
     const settings = selectedImageSettings.value
-    const plans = parseOutfitPlan(content, selectedScenes.value)
+    const plans = parseOutfitPlan(content, selectedMaterials.value)
     const generatedNodeIds = store.addOutfitVisualNodes(
       props.nodeId,
       garmentNode.value.id,
@@ -135,8 +137,8 @@ defineExpose({ submitTask })
 <template>
   <section class="generation-panel outfit-panel nodrag nowheel" @pointerdown.stop>
     <header class="product-visual-panel-header">
-      <span><Shirt :size="16" />服饰穿搭</span>
-      <small>{{ selectedScenes.length }} 个场景</small>
+      <span><Shirt :size="16" />穿搭素材</span>
+      <small>已选 {{ selectedMaterials.length }} 项</small>
     </header>
 
     <div class="outfit-panel-references">
@@ -147,20 +149,23 @@ defineExpose({ submitTask })
       </div>
     </div>
 
-    <section class="outfit-scene-section">
-      <h3><MapPin :size="14" />拍摄场景</h3>
-      <div class="outfit-scene-options">
-        <label v-for="scene in outfitScenes" :key="scene.id" class="product-visual-option" :class="{ active: (data.sceneIds || []).includes(scene.id) }">
-          <input type="checkbox" :checked="(data.sceneIds || []).includes(scene.id)" @change="toggleScene(scene.id)" />
-          <span>{{ scene.label }}</span>
-        </label>
+    <section class="outfit-material-section">
+      <h3><Images :size="14" />选择要生成的素材</h3>
+      <div v-for="group in outfitMaterialGroups" :key="group.id" class="outfit-material-group">
+        <span>{{ group.label }}</span>
+        <div class="outfit-material-options">
+          <label v-for="item in group.items" :key="item.id" class="product-visual-option" :class="{ active: selectedMaterialIds.includes(item.id) }" :title="item.description">
+            <input type="checkbox" :checked="selectedMaterialIds.includes(item.id)" @change="toggleMaterial(item.id)" />
+            <span>{{ item.label }}</span>
+          </label>
+        </div>
       </div>
       <AppTextarea
-        :model-value="data.customScene"
+        :model-value="customRequirement"
         rows="2"
         maxlength="600"
-        placeholder="自定义场景；已选预设时作为所有场景的补充要求"
-        @input="updateData({ customScene: $event.target.value })"
+        placeholder="补充场景、风格或展示要求；未选预设时将单独生成自定义素材"
+        @input="updateData({ customRequirement: $event.target.value })"
       />
     </section>
 
@@ -176,7 +181,7 @@ defineExpose({ submitTask })
       <AppSelect :model-value="selectedTextModel.id" :options="textModelOptions" aria-label="文本模型" @update:model-value="updateData({ textModel: $event })" />
       <span class="panel-divider"></span>
       <span class="task-credit-cost"><Coins :size="14" />本次 {{ estimatedCredits }} 积分</span>
-      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '生成中' : '生成穿搭方案'" @click="submitTask">
+      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '生成中' : '生成穿搭素材'" @click="submitTask">
         <LoaderCircle v-if="running" class="run-task-spinner" :size="18" />
         <ArrowUp v-else :size="18" />
       </AppButton>

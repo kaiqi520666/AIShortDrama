@@ -102,7 +102,7 @@ export const nodeDefinitions = {
     }),
   },
   outfit: {
-    type: 'outfit', label: '服饰穿搭', model: defaultReverseModel.id, hint: '规划多场景服饰穿搭图',
+    type: 'outfit', label: '服饰穿搭', model: defaultReverseModel.id, hint: '批量生成可用于分镜的穿搭素材',
     setting: '服饰图 + 模特图', icon: Shirt,
     inputs: ['image'], outputs: ['image'],
     createData: ({ number }) => ({
@@ -112,8 +112,8 @@ export const nodeDefinitions = {
       imageModel: defaultImageModel.id,
       aspectRatio: defaultImageModel.defaultAspectRatio,
       resolution: defaultImageModel.defaultResolution,
-      sceneIds: ['studio'],
-      customScene: '',
+      moduleIds: ['front', 'side', 'back'],
+      customRequirement: '',
       generatedNodeIds: [],
     }),
   },

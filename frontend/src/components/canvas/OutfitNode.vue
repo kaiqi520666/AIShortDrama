@@ -24,14 +24,15 @@ const inputs = computed(() => [
   { id: 'garment', label: '服饰参考图', icon: Shirt, node: inputNode('garment') },
   { id: 'model', label: '模特参考图', icon: UserRound, node: inputNode('model') },
 ])
+const materialCount = computed(() => props.data.moduleIds?.length ?? props.data.sceneIds?.length ?? 0)
 </script>
 
 <template>
   <StructuredNodeShell :id="id" :type="type" :data="data" :icon="Shirt" :selected="selected" :target-handles="targetHandles">
     <div class="outfit-node-content nowheel">
       <div class="structured-node-summary">
-        <span><Shirt :size="15" />服饰穿搭</span>
-        <small>{{ inputs.filter((item) => item.node?.data.asset).length }}/2 已选择</small>
+        <span><Shirt :size="15" />穿搭素材</span>
+        <small>{{ materialCount }} 项 · {{ inputs.filter((item) => item.node?.data.asset).length }}/2 图</small>
       </div>
       <div class="outfit-sources">
         <div v-for="item in inputs" :key="item.id" class="outfit-source" :class="{ empty: !item.node?.data.asset }">

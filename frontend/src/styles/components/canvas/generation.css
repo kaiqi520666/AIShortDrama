@@ -320,8 +320,8 @@
 }
 .outfit-panel {
   display: flex;
-  width: min(600px, calc(100vw - 32px));
-  height: min(470px, calc(100vh - 32px));
+  width: min(640px, calc(100vw - 32px));
+  height: min(460px, calc(100vh - 32px));
   flex-direction: column;
   padding: 16px 18px 14px;
 }
@@ -370,13 +370,16 @@
   color: var(--color-text-muted);
   font-size: 10px;
 }
-.outfit-scene-section {
+.outfit-material-section {
   display: grid;
-  flex: none;
+  min-height: 0;
+  flex: 1;
   gap: 8px;
   padding: 12px 3px 11px 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
 }
-.outfit-scene-section h3 {
+.outfit-material-section h3 {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -385,12 +388,22 @@
   font-size: 11px;
   font-weight: 650;
 }
-.outfit-scene-options {
+.outfit-material-group {
+  display: grid;
+  grid-template-columns: 68px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+.outfit-material-group > span {
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+.outfit-material-options {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 5px;
 }
-.outfit-scene-section .ui-textarea {
+.outfit-material-section .ui-textarea {
   height: 58px;
   min-height: 58px;
   flex: none;
