@@ -414,7 +414,26 @@ describe('canvas node packs', () => {
     expect(store.edges[0]).toEqual(expect.objectContaining({ source: imageId, target: productId }))
   })
 
-  it('creates an outfit workflow with garment and model inputs', async () => {
+  it('creates an apparel profile with an image input', async () => {
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1',
+      version: 1,
+      workspace_type: 'ecommerce',
+      canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
+    })
+
+    const apparelId = store.addNode('apparel', { x: 460, y: 0 })
+
+    expect(apparelId).toBe('apparel-2')
+    expect(store.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'image-1', data: expect.objectContaining({ title: '服饰参考图', resourceType: 'garment' }) }),
+      expect.objectContaining({ id: apparelId, data: expect.objectContaining({ compositionType: 'single', summary: '', items: [], prompt: '' }) }),
+    ]))
+    expect(store.edges).toEqual([expect.objectContaining({ source: 'image-1', target: apparelId })])
+  })
+
+  it('creates an outfit workflow with apparel profile and model inputs', async () => {
     const store = useCanvasStore()
     await store.loadWorkspace({
       id: 'workspace-1',
@@ -425,15 +444,17 @@ describe('canvas node packs', () => {
 
     const outfitId = store.addNode('outfit', { x: 500, y: 300 })
 
-    expect(outfitId).toBe('outfit-3')
+    expect(outfitId).toBe('outfit-4')
     expect(store.nodes).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: 'image-1', data: expect.objectContaining({ title: '服饰参考图', assetSource: 'upload', resourceType: 'garment' }) }),
-      expect.objectContaining({ id: 'image-2', data: expect.objectContaining({ title: '模特参考图', assetSource: 'upload', resourceType: 'model' }) }),
-      expect.objectContaining({ id: outfitId, type: 'outfit', data: expect.objectContaining({ title: '服饰穿搭 3', textModel: 'qwen3.7-plus', imageModel: 'gpt-image-2', aspectRatio: '1:1', resolution: '1K', moduleIds: ['front', 'side', 'back'], customRequirement: '', generatedNodeIds: [] }) }),
+      expect.objectContaining({ id: 'apparel-2', type: 'apparel', data: expect.objectContaining({ title: '服饰资料 2', items: [] }) }),
+      expect.objectContaining({ id: 'image-3', data: expect.objectContaining({ title: '模特参考图', assetSource: 'upload', resourceType: 'model' }) }),
+      expect.objectContaining({ id: outfitId, type: 'outfit', data: expect.objectContaining({ title: '服饰穿搭 4', textModel: 'qwen3.7-plus', imageModel: 'gpt-image-2', aspectRatio: '1:1', resolution: '1K', moduleIds: ['front', 'side', 'back'], customRequirement: '', generatedNodeIds: [] }) }),
     ]))
     expect(store.edges).toEqual(expect.arrayContaining([
-      expect.objectContaining({ source: 'image-1', target: outfitId, targetHandle: 'garment' }),
-      expect.objectContaining({ source: 'image-2', target: outfitId, targetHandle: 'model' }),
+      expect.objectContaining({ source: 'image-1', target: 'apparel-2' }),
+      expect.objectContaining({ source: 'apparel-2', target: outfitId, targetHandle: 'apparel' }),
+      expect.objectContaining({ source: 'image-3', target: outfitId, targetHandle: 'model' }),
     ]))
     expect(store.nodes.filter((node) => node.selected).map((node) => node.id)).toEqual([outfitId])
   })
@@ -447,21 +468,21 @@ describe('canvas node packs', () => {
       canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
     })
     const outfitId = store.addNode('outfit', { x: 500, y: 300 })
-    const resultIds = store.addOutfitVisualNodes(outfitId, 'image-1', 'image-2', [
+    const resultIds = store.addOutfitVisualNodes(outfitId, 'image-1', 'image-3', [
       { id: 'front', label: '正面全身', category: 'view', categoryLabel: '基础视角', prompt: '正面穿搭效果' },
       { id: 'street', label: '街头穿搭', category: 'lifestyle', categoryLabel: '内容场景', prompt: '街头穿搭效果' },
     ], {
       model: 'gpt-image-2', aspectRatio: '3:4', resolution: '2K',
     })
 
-    expect(resultIds).toEqual(['image-4', 'image-5'])
+    expect(resultIds).toEqual(['image-5', 'image-6'])
     expect(store.nodes.find((node) => node.id === resultIds[0]).data).toEqual(expect.objectContaining({
       title: '正面全身', outfitSourceId: outfitId, outfitMaterialId: 'front', outfitMaterialCategory: 'view', outfitMaterialCategoryLabel: '基础视角', resourceType: 'outfit-material', status: 'empty', prompt: '正面穿搭效果', model: 'gpt-image-2', aspectRatio: '3:4', resolution: '2K',
     }))
     expect(store.edges.filter((edge) => edge.target === resultIds[0])).toEqual(expect.arrayContaining([
       expect.objectContaining({ source: outfitId }),
       expect.objectContaining({ source: 'image-1' }),
-      expect.objectContaining({ source: 'image-2' }),
+      expect.objectContaining({ source: 'image-3' }),
     ]))
     expect(store.edges.filter((edge) => resultIds.includes(edge.target))).toHaveLength(6)
     expect(store.nodes.filter((node) => node.selected).map((node) => node.id)).toEqual([resultIds[0]])

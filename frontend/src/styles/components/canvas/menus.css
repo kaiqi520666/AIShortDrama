@@ -189,6 +189,8 @@
 }
 .context-submenu .node-option--product .menu-icon,
 .node-create-menu .node-option--product .menu-icon,
+.context-submenu .node-option--apparel .menu-icon,
+.node-create-menu .node-option--apparel .menu-icon,
 .context-submenu .node-option--outfit .menu-icon,
 .node-create-menu .node-option--outfit .menu-icon {
   color: var(--color-warning);

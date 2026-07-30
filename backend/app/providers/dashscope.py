@@ -11,6 +11,10 @@ PRODUCT_PROFILE_PROMPT = """识别图片中的商品并严格输出一个 JSON �
 {"name":"商品名称","brand":"品牌","category":"品类","price":"图片中可见的价格","specifications":"规格、型号、颜色、尺寸或容量","sellingPoints":["核心卖点1","核心卖点2"],"audience":"目标人群","scenario":"适用场景","additionalInfo":"无法归入以上字段的有效商品信息"}
 无法从图片确认的字段填写空字符串，不要猜测品牌、价格和规格。"""
 
+APPAREL_PROFILE_PROMPT = """识别图片中所有可独立穿戴的服饰与配件，并严格输出一个 JSON 对象，不要解释，不要使用 Markdown。格式固定为：
+{"compositionType":"single 或 set","summary":"整体风格、配色和适用场景","items":[{"name":"单品名称","category":"上衣、裤装、裙装、外套、鞋履或配饰等","color":"可见颜色","material":"可确认的面料，不确定则留空","silhouette":"版型、长度或轮廓","details":"领型、袖型、图案、工艺及其他可见特征"}]}
+单件服饰使用 single，多件搭配使用 set；每件独立服饰各占一项，一双鞋只算一项，西装外套与西裤分别计项，领带等配饰单独计项。只识别图片中可见内容，不猜测品牌、材质或被遮挡细节。"""
+
 
 class DashScopeError(RuntimeError):
     pass
@@ -48,8 +52,8 @@ class DashScopeProvider:
         response_mode: str = "prompt",
     ) -> AsyncIterator[str]:
         user_prompt = prompt
-        if response_mode == "product_profile":
-            user_prompt = PRODUCT_PROFILE_PROMPT
+        if response_mode in {"product_profile", "apparel_profile"}:
+            user_prompt = PRODUCT_PROFILE_PROMPT if response_mode == "product_profile" else APPAREL_PROFILE_PROMPT
             if prompt.strip():
                 user_prompt += (
                     "\n\n用户补充识别要求（只影响识别重点，不得改变上述输出格式）：\n"
@@ -64,6 +68,7 @@ class DashScopeProvider:
         ]
         system_prompts = {
             "product_profile": "你是专业的中文商品视觉识别助手。严格按用户指定的 JSON 结构输出，不解释，不使用 Markdown。",
+            "apparel_profile": "你是专业的中文服饰视觉识别助手。严格按用户指定的 JSON 结构输出，不解释，不使用 Markdown。",
             "product_visual_plan": "你是专业的中文电商视觉策划师。严格按用户指定的 JSON 数组输出，不解释，不使用 Markdown。",
             "product_storyboard_plan": "你是专业的中文电商短视频分镜策划师。严格按用户指定的 JSON 数组输出，不解释，不使用 Markdown。",
             "character_profile": "你是专业的中文短剧角色设定师。严格按用户指定的 JSON 结构输出，不解释，不使用 Markdown。",

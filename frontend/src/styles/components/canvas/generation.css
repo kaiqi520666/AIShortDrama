@@ -325,6 +325,130 @@
   flex-direction: column;
   padding: 16px 18px 14px;
 }
+.apparel-panel {
+  display: flex;
+  width: min(680px, calc(100vw - 32px));
+  height: min(440px, calc(100vh - 32px));
+  flex-direction: column;
+  padding: 16px 18px 14px;
+}
+.apparel-profile-head {
+  display: grid;
+  flex: none;
+  grid-template-columns: 64px 126px minmax(0, 1fr);
+  align-items: end;
+  gap: 9px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.apparel-reference {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+}
+.apparel-reference img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.apparel-profile-head > label,
+.apparel-item-fields label {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+  font-size: 10px;
+}
+.apparel-profile-head .ui-select,
+.apparel-profile-head .ui-select-trigger,
+.apparel-profile-head .ui-input {
+  width: 100%;
+}
+.apparel-items-section {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 8px;
+  padding: 10px 0;
+}
+.apparel-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 650;
+}
+.apparel-section-title .ui-button {
+  height: 28px;
+  gap: 5px;
+  padding: 0 8px;
+  font-size: 10px;
+}
+.apparel-items {
+  display: grid;
+  min-height: 0;
+  align-content: start;
+  gap: 7px;
+  overflow-y: auto;
+  padding-right: 3px;
+  scrollbar-width: thin;
+}
+.apparel-item {
+  display: grid;
+  gap: 7px;
+  padding: 8px;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 6px;
+}
+.apparel-item-head {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: 15px 48px minmax(0, 1.4fr) minmax(0, 0.9fr) 28px;
+  align-items: center;
+  gap: 6px;
+}
+.apparel-item-head > input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--node-accent);
+}
+.apparel-item-head > span {
+  font-size: 10px;
+}
+.apparel-item-head .ui-input,
+.apparel-item-fields .ui-input {
+  min-width: 0;
+  width: 100%;
+}
+.apparel-item-head .ui-button {
+  width: 28px;
+  min-width: 28px;
+  height: 28px;
+  color: var(--color-text-muted);
+}
+.apparel-item-fields {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+.apparel-empty {
+  margin: 38px 0;
+  text-align: center;
+  font-size: 11px;
+}
+.apparel-extra.ui-textarea {
+  width: 100%;
+  height: 50px;
+  min-height: 50px;
+  flex: none;
+  margin: 0 0 8px;
+  resize: none;
+}
 .outfit-panel-references {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

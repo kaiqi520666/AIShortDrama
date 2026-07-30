@@ -17,6 +17,7 @@ class ReversePromptRequest(BaseModel):
     response_mode: Literal[
         "prompt",
         "product_profile",
+        "apparel_profile",
         "product_visual_plan",
         "product_storyboard_plan",
         "character_profile",
@@ -25,6 +26,6 @@ class ReversePromptRequest(BaseModel):
 
     @model_validator(mode="after")
     def validate_prompt(self):
-        if self.response_mode != "product_profile" and not self.prompt.strip():
+        if self.response_mode not in {"product_profile", "apparel_profile"} and not self.prompt.strip():
             raise ValueError("提示词不能为空")
         return self

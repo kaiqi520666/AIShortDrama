@@ -36,7 +36,7 @@ export const nodeDefinitions = {
   image: {
     type: 'image', label: '图片', model: 'Moon Image', hint: '商品图与视觉生成',
     placeholder: '描述你想生成的商品画面，@ 引用素材…', setting: '16:9 · 2K', icon: Image,
-    generationPanel: true, inputs: ['text', 'image', 'product', 'product_visual', 'product_storyboard', 'outfit', 'character'], outputs: ['text', 'image', 'video', 'audio', 'product', 'outfit', 'character'],
+    generationPanel: true, inputs: ['text', 'image', 'product', 'product_visual', 'product_storyboard', 'outfit', 'character'], outputs: ['text', 'image', 'video', 'audio', 'product', 'apparel', 'outfit', 'character'],
     createData: ({ number }) => ({ model: defaultImageModel.id, title: `图片节点 ${number}`, status: 'empty', prompt: '' }),
   },
   video: {
@@ -101,10 +101,24 @@ export const nodeDefinitions = {
       generatedNodeIds: [],
     }),
   },
+  apparel: {
+    type: 'apparel', label: '服饰资料', model: defaultReverseModel.id, hint: '识别并编辑单品与整套搭配资料',
+    placeholder: '补充识别重点，例如重点区分配饰、鞋履或面料…', setting: '服饰图 + AI 识别', icon: Shirt,
+    inputs: ['image'], outputs: ['outfit'],
+    createData: ({ number }) => ({
+      title: `服饰资料 ${number}`,
+      status: 'empty',
+      model: defaultReverseModel.id,
+      compositionType: 'single',
+      summary: '',
+      items: [],
+      prompt: '',
+    }),
+  },
   outfit: {
     type: 'outfit', label: '服饰穿搭', model: defaultReverseModel.id, hint: '批量生成可用于分镜的穿搭素材',
-    setting: '服饰图 + 模特图', icon: Shirt,
-    inputs: ['image'], outputs: ['image'],
+    setting: '服饰资料 + 模特图', icon: Shirt,
+    inputs: ['apparel', 'image'], outputs: ['image'],
     createData: ({ number }) => ({
       title: `服饰穿搭 ${number}`,
       status: 'empty',

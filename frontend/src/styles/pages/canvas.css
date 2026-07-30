@@ -26,6 +26,10 @@
 .media-node--product {
   --node-accent: var(--color-warning);
 }
+.media-node--apparel,
+.apparel-panel {
+  --node-accent: var(--color-media-image);
+}
 .media-node--outfit {
   --node-accent: var(--color-warning);
 }
@@ -61,6 +65,20 @@
 }
 .outfit-panel-reference.empty {
   color: var(--color-text-muted);
+}
+.apparel-reference,
+.apparel-item {
+  background: var(--color-surface-raised);
+}
+.apparel-reference.empty,
+.apparel-empty,
+.apparel-profile-head label > span,
+.apparel-item-fields label > span {
+  color: var(--color-text-muted);
+}
+.apparel-section-title,
+.apparel-item-head > span {
+  color: var(--color-text-secondary);
 }
 .node-title {
   color: var(--color-text-secondary);

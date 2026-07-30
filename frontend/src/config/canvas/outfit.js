@@ -45,28 +45,19 @@ export const outfitMaterials = outfitMaterialGroups.flatMap((group) => group.ite
   categoryLabel: group.label,
 })))
 
-const legacySceneMap = {
-  studio: 'front',
-  cafe: 'date',
-  lawn: 'travel',
-  beach: 'travel',
-  home: 'mirror',
-  party: 'date',
-  gallery: 'street',
-}
-
-export function resolveOutfitMaterials(moduleIds, legacySceneIds = [], customRequirement = '') {
-  const ids = moduleIds?.length ? moduleIds : legacySceneIds.map((id) => legacySceneMap[id] || id)
-  const selected = outfitMaterials.filter((item) => ids.includes(item.id))
+export function resolveOutfitMaterials(moduleIds = [], customRequirement = '') {
+  const selected = outfitMaterials.filter((item) => moduleIds.includes(item.id))
   if (selected.length) return selected
   const description = customRequirement.trim()
   return description ? [{ id: 'custom', label: '自定义素材', category: 'custom', categoryLabel: '自定义', description }] : []
 }
 
-export function buildOutfitPlanPrompt(materials, customRequirement, settings = {}) {
+export function buildOutfitPlanPrompt(materials, customRequirement, settings = {}, apparelContext = '') {
   const materialList = materials.map((item) => `${item.id}=${item.label}（${item.categoryLabel}）：${item.description}`).join('\n')
   const supplement = materials.some((item) => item.id === 'custom') ? '' : customRequirement.trim()
-  return `参考图1是服饰，参考图2是模特。请为以下每个穿搭素材模块分别生成一条中文静态图片生成提示词，每个模块生成一张独立图片：
+  return `参考图1是服饰，参考图2是模特。服饰资料如下：
+${apparelContext}
+请为以下每个穿搭素材模块分别生成一条中文静态图片生成提示词，每个模块生成一张独立图片：
 ${materialList}
 ${supplement ? `统一补充要求：${supplement}\n` : ''}统一画面规格：${settings.aspectRatio || '3:4'}，${settings.resolution || '1K'}。
 严格输出JSON数组，格式为[{"type":"模块ID","prompt":"图片提示词"}]。每个模块必须且只能出现一次，顺序与请求一致。每条提示词不超过260个中文字符，必须明确参考图1的服饰穿到参考图2的模特身上，保持服饰颜色、版型、材质、纹理、图案和细节，保持模特身份、面部与体型一致；根据模块准确描述静态姿态、景别、构图、背景和光线。只出现一名模特，不换款，不虚构品牌、文字或配饰，不描述说话、台词、音效、运镜或连续动作，无字幕、Logo、文字、水印，不解释，不使用Markdown。`

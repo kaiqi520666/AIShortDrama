@@ -222,6 +222,9 @@
 .media-node--product_storyboard {
   width: 400px;
 }
+.media-node--apparel {
+  width: 400px;
+}
 .media-node--product_storyboard .vue-flow__handle-left {
   top: 62px;
 }
@@ -240,6 +243,7 @@
 .product-node-content,
 .product-visual-node-content,
 .storyboard-node-content,
+.apparel-node-content,
 .outfit-node-content,
 .world-node-content {
   padding: 15px;
@@ -358,6 +362,9 @@
   align-self: center;
   margin: auto;
   font-size: 11px;
+}
+.apparel-node-items {
+  min-height: 50px;
 }
 .outfit-sources {
   display: grid;

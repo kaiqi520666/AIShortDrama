@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { ArrowUp, Coins, FileText, Images, LoaderCircle, Shirt, UserRound } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
+import { apparelPromptContext } from '../../config/canvas/apparel'
 import { buildOutfitPlanPrompt, outfitMaterialGroups, parseOutfitPlan, resolveOutfitMaterials } from '../../config/canvas/outfit'
 import { imageModels, normalizeImageSettings } from '../../config/imageModels'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
@@ -30,18 +31,20 @@ function inputNode(handle) {
   return store.nodes.find((item) => item.id === edge?.source)
 }
 
-const garmentNode = computed(() => inputNode('garment'))
+const apparelNode = computed(() => inputNode('apparel'))
+const garmentNode = computed(() => apparelNode.value && store.incomingNodes(apparelNode.value.id).find((node) => node.type === 'image' && node.data.asset))
 const modelNode = computed(() => inputNode('model'))
+const apparelContext = computed(() => apparelPromptContext(apparelNode.value?.data))
 const selectedImageSettings = computed(() => normalizeImageSettings({
   model: props.data.imageModel,
   aspectRatio: props.data.aspectRatio,
   resolution: props.data.resolution,
 }))
 const selectedTextModel = computed(() => reverseModels.find((model) => model.id === props.data.textModel) || defaultReverseModel)
-const customRequirement = computed(() => props.data.customRequirement ?? props.data.customScene ?? '')
-const selectedMaterials = computed(() => resolveOutfitMaterials(props.data.moduleIds, props.data.sceneIds, customRequirement.value))
+const customRequirement = computed(() => props.data.customRequirement || '')
+const selectedMaterials = computed(() => resolveOutfitMaterials(props.data.moduleIds, customRequirement.value))
 const selectedMaterialIds = computed(() => selectedMaterials.value.map((item) => item.id))
-const prompt = computed(() => buildOutfitPlanPrompt(selectedMaterials.value, customRequirement.value, props.data))
+const prompt = computed(() => buildOutfitPlanPrompt(selectedMaterials.value, customRequirement.value, props.data, apparelContext.value))
 const running = computed(() => props.data.status === 'generating')
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedTextModel.value.id))
 const insufficientCredits = computed(() => (authStore.user?.credit_balance || 0) < estimatedCredits.value)
@@ -50,19 +53,19 @@ const imageModelOptions = imageModels.map(({ id, label }) => ({ value: id, label
 const textModelOptions = reverseModels.map(({ id, label }) => ({ value: id, label }))
 const ratioOptions = computed(() => selectedImageSettings.value.model.aspectRatios.map((value) => ({ value, label: value })))
 const resolutionOptions = computed(() => selectedImageSettings.value.model.resolutions.map((value) => ({ value, label: value })))
-const message = computed(() => notice.value || props.data.generationError || (!garmentNode.value?.data.asset
-  ? '请先选择服饰参考图'
-  : !modelNode.value?.data.asset
-    ? '请先选择模特参考图'
-    : !selectedMaterials.value.length
-      ? '请选择穿搭素材或填写自定义要求'
-      : insufficientCredits.value
-        ? `积分不足，本次需要 ${estimatedCredits.value} 积分`
-        : ''))
-const canSubmit = computed(() => !running.value && garmentNode.value?.data.asset && modelNode.value?.data.asset && selectedMaterials.value.length && !insufficientCredits.value)
+const message = computed(() => {
+  if (notice.value || props.data.generationError) return notice.value || props.data.generationError
+  if (!apparelNode.value) return '请先连接服饰资料节点'
+  if (!garmentNode.value?.data.asset) return '请先上传服饰参考图'
+  if (!apparelContext.value) return '请先完成服饰资料识别并启用至少一件单品'
+  if (!modelNode.value?.data.asset) return '请先选择模特参考图'
+  if (!selectedMaterials.value.length) return '请选择穿搭素材或填写自定义要求'
+  return insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''
+})
+const canSubmit = computed(() => !running.value && garmentNode.value?.data.asset && apparelContext.value && modelNode.value?.data.asset && selectedMaterials.value.length && !insufficientCredits.value)
 const sourceItems = computed(() => [
-  { label: '服饰参考图', icon: Shirt, node: garmentNode.value },
-  { label: '模特参考图', icon: UserRound, node: modelNode.value },
+  { label: '服饰资料', icon: Shirt, asset: garmentNode.value?.data.asset, title: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件已启用` : '尚未连接' },
+  { label: '模特参考图', icon: UserRound, asset: modelNode.value?.data.asset, title: modelNode.value?.data.title || '尚未选择' },
 ])
 
 function updateData(value) {
@@ -115,7 +118,7 @@ async function submitTask() {
       garmentNode.value.id,
       modelNode.value.id,
       plans,
-      { model: settings.model.id, aspectRatio: settings.aspectRatio, resolution: settings.resolution },
+      { model: settings.model.id, aspectRatio: settings.aspectRatio, resolution: settings.resolution, outfitApparelId: apparelNode.value.id },
     )
     updateNodeData(props.nodeId, {
       status: 'ready',
@@ -142,10 +145,10 @@ defineExpose({ submitTask })
     </header>
 
     <div class="outfit-panel-references">
-      <div v-for="item in sourceItems" :key="item.label" class="outfit-panel-reference" :class="{ empty: !item.node?.data.asset }">
-        <img v-if="item.node?.data.asset" :src="buildOssImageUrl(item.node.data.asset, { width: 240, quality: 80 })" :alt="item.label" referrerpolicy="no-referrer" />
+      <div v-for="item in sourceItems" :key="item.label" class="outfit-panel-reference" :class="{ empty: !item.asset }">
+        <img v-if="item.asset" :src="buildOssImageUrl(item.asset, { width: 240, quality: 80 })" :alt="item.label" referrerpolicy="no-referrer" />
         <component :is="item.icon" v-else :size="20" />
-        <span><strong>{{ item.label }}</strong><small>{{ item.node?.data.asset ? item.node.data.title : '尚未选择' }}</small></span>
+        <span><strong>{{ item.label }}</strong><small>{{ item.title }}</small></span>
       </div>
     </div>
 

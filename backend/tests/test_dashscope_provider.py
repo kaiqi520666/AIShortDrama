@@ -129,6 +129,41 @@ async def test_product_profile_uses_structured_system_prompt(monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_apparel_profile_uses_item_array_prompt(monkeypatch):
+    requests = []
+
+    async def handler(request):
+        requests.append(request)
+        return httpx.Response(
+            200,
+            stream=ChunkStream([frame({"choices": [{"delta": {"content": "{}"}}]}), frame("[DONE]")]),
+        )
+
+    monkeypatch.setattr(
+        dashscope_module,
+        "get_settings",
+        lambda: SimpleNamespace(dashscope_api_key="secret", dashscope_url="https://provider.test"),
+    )
+    async with DashScopeProvider(transport=httpx.MockTransport(handler)) as provider:
+        _ = [
+            item
+            async for item in provider.stream_reverse_prompt(
+                model="qwen3.7-plus",
+                media_type="image",
+                media_url="https://example.com/apparel.png",
+                prompt="重点区分鞋履",
+                response_mode="apparel_profile",
+            )
+        ]
+
+    payload = json.loads(requests[0].content)
+    prompt = payload["messages"][1]["content"][1]["text"]
+    assert '"items"' in prompt
+    assert "一双鞋只算一项" in prompt
+    assert "重点区分鞋履" in prompt
+
+
+@pytest.mark.asyncio
 async def test_product_visual_plan_uses_json_system_prompt(monkeypatch):
     requests = []
 

@@ -9,17 +9,18 @@ describe('outfit planning', () => {
   })
 
   it('uses selected modules and treats custom text as a shared supplement', () => {
-    const materials = resolveOutfitMaterials(['front', 'street'], [], '突出秋季氛围')
-    const prompt = buildOutfitPlanPrompt(materials, '突出秋季氛围', { aspectRatio: '3:4', resolution: '2K' })
+    const materials = resolveOutfitMaterials(['front', 'street'], '突出秋季氛围')
+    const prompt = buildOutfitPlanPrompt(materials, '突出秋季氛围', { aspectRatio: '3:4', resolution: '2K' }, '单品1：白色衬衫')
 
     expect(materials.map((item) => item.id)).toEqual(['front', 'street'])
     expect(prompt).toContain('统一补充要求：突出秋季氛围')
     expect(prompt).toContain('统一画面规格：3:4，2K')
+    expect(prompt).toContain('单品1：白色衬衫')
     expect(prompt).toContain('不描述说话、台词、音效、运镜或连续动作')
   })
 
   it('creates one custom material when no preset is selected', () => {
-    expect(resolveOutfitMaterials([], [], '秋季枫叶小径')).toEqual([
+    expect(resolveOutfitMaterials([], '秋季枫叶小径')).toEqual([
       { id: 'custom', label: '自定义素材', category: 'custom', categoryLabel: '自定义', description: '秋季枫叶小径' },
     ])
   })
@@ -32,7 +33,4 @@ describe('outfit planning', () => {
     ])
   })
 
-  it('maps saved scene selections to the closest material modules', () => {
-    expect(resolveOutfitMaterials(undefined, ['studio', 'cafe']).map((item) => item.id)).toEqual(['front', 'date'])
-  })
 })

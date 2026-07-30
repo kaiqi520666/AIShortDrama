@@ -119,9 +119,10 @@ const panelStyle = computed(() => {
   const zoom = viewport.value.zoom
   const center = (assetsVisible.value ? 292 : 0) + viewport.value.x + (node.computedPosition.x + node.dimensions.width / 2) * zoom
   const top = viewport.value.y + (node.computedPosition.y + node.dimensions.height) * zoom + panelConfig.gap
+  const panelHeight = nodeRegistry[node.type]?.panelHeight || 260
   return {
     left: `clamp(${panelConfig.margin}px, ${center - panelConfig.width / 2}px, calc(100vw - ${panelConfig.width + panelConfig.margin}px))`,
-    top: `${top}px`,
+    top: `clamp(${panelConfig.margin}px, ${top}px, calc(100vh - ${panelHeight + 84}px))`,
   }
 })
 function openGlobalMenu(event) {

@@ -69,6 +69,18 @@ def test_reverse_prompt_accepts_character_response_modes():
     assert ReversePromptRequest(**payload, response_mode="character_visual_plan").response_mode == "character_visual_plan"
 
 
+def test_reverse_prompt_accepts_apparel_profile_without_prompt():
+    payload = ReversePromptRequest(
+        workspace_id=DEFAULT_WORKSPACE_ID,
+        node_id="apparel-1",
+        model="qwen3.7-plus",
+        media_type="image",
+        media_url="https://example.com/apparel.png",
+        response_mode="apparel_profile",
+    )
+    assert payload.response_mode == "apparel_profile"
+
+
 def test_reverse_prompt_accepts_product_storyboard_mode():
     payload = ReversePromptRequest(
         workspace_id=DEFAULT_WORKSPACE_ID,

@@ -8,7 +8,7 @@ export const workspaceTypes = [
 
 export const nodePacks = {
   general: generalNodes,
-  ecommerce: ['product', 'product_visual', 'product_storyboard', 'outfit', ...generalNodes],
+  ecommerce: ['product', 'product_visual', 'product_storyboard', 'apparel', 'outfit', ...generalNodes],
   drama: ['world', 'character', ...generalNodes],
 }
 
