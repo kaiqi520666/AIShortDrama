@@ -3,34 +3,32 @@ import { buildOutfitPlanPrompt, outfitMaterialGroups, outfitMaterials, parseOutf
 
 describe('outfit planning', () => {
   it('provides categorized reusable material modules', () => {
-    expect(outfitMaterialGroups.map((group) => group.label)).toEqual(['基础视角', '动态展示', '细节卖点', '内容场景'])
-    expect(outfitMaterials).toHaveLength(14)
-    expect(outfitMaterials.slice(0, 3).map((item) => item.id)).toEqual(['front', 'side', 'back'])
+    expect(outfitMaterialGroups.map((group) => group.label)).toEqual(['固定六格参考图板'])
+    expect(outfitMaterials).toHaveLength(6)
+    expect(outfitMaterials.map((item) => item.id)).toEqual(['front', 'three-quarter', 'back', 'turn', 'fabric', 'lifestyle'])
   })
 
-  it('uses selected modules and treats custom text as a shared supplement', () => {
+  it('always returns the fixed six reference views', () => {
     const materials = resolveOutfitMaterials(['front', 'street'], '突出秋季氛围')
     const prompt = buildOutfitPlanPrompt(materials, '突出秋季氛围', { aspectRatio: '3:4', resolution: '2K' }, '单品1：白色衬衫')
 
-    expect(materials.map((item) => item.id)).toEqual(['front', 'street'])
+    expect(materials).toHaveLength(6)
+    expect(materials.map((item) => item.id)).toEqual(['front', 'three-quarter', 'back', 'turn', 'fabric', 'lifestyle'])
     expect(prompt).toContain('统一补充要求：突出秋季氛围')
-    expect(prompt).toContain('统一画面规格：3:4，2K')
+    expect(prompt).toContain('统一画面规格：9:16，4K')
     expect(prompt).toContain('单品1：白色衬衫')
     expect(prompt).toContain('不描述说话、台词、音效、运镜或连续动作')
   })
 
-  it('creates one custom material when no preset is selected', () => {
-    expect(resolveOutfitMaterials([], '秋季枫叶小径')).toEqual([
-      { id: 'custom', label: '自定义素材', category: 'custom', categoryLabel: '自定义', description: '秋季枫叶小径' },
-    ])
+  it('keeps the fixed views when no custom requirement is provided', () => {
+    expect(resolveOutfitMaterials()).toHaveLength(6)
   })
 
   it('parses one prompt for every requested module', () => {
-    const materials = resolveOutfitMaterials(['front', 'street'])
-    expect(parseOutfitPlan('[{"type":"front","prompt":"正面全身穿搭"},{"type":"street","prompt":"街拍穿搭"}]', materials)).toEqual([
-      expect.objectContaining({ id: 'front', category: 'view', prompt: '正面全身穿搭' }),
-      expect.objectContaining({ id: 'street', prompt: '街拍穿搭' }),
-    ])
+    const materials = resolveOutfitMaterials()
+    const content = JSON.stringify(materials.map((item) => ({ type: item.id, prompt: `${item.label}穿搭` })))
+    expect(parseOutfitPlan(content, materials)).toHaveLength(6)
+    expect(parseOutfitPlan(content, materials)[0]).toEqual(expect.objectContaining({ id: 'front', prompt: '正面全身穿搭' }))
   })
 
 })

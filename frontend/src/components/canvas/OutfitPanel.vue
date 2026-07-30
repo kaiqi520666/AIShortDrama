@@ -4,8 +4,7 @@ import { ArrowUp, Coins, FileText, Images, LoaderCircle, Shirt, UserRound } from
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
 import { apparelPromptContext } from '../../config/canvas/apparel'
-import { buildOutfitPlanPrompt, outfitMaterialGroups, parseOutfitPlan, resolveOutfitMaterials } from '../../config/canvas/outfit'
-import { imageModels, normalizeImageSettings } from '../../config/imageModels'
+import { buildOutfitPlanPrompt, parseOutfitPlan, resolveOutfitMaterials } from '../../config/canvas/outfit'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
 import { useAuthStore } from '../../stores/auth'
@@ -35,24 +34,16 @@ const apparelNode = computed(() => inputNode('apparel'))
 const garmentNode = computed(() => apparelNode.value && store.incomingNodes(apparelNode.value.id).find((node) => node.type === 'image' && node.data.asset))
 const modelNode = computed(() => inputNode('model'))
 const apparelContext = computed(() => apparelPromptContext(apparelNode.value?.data))
-const selectedImageSettings = computed(() => normalizeImageSettings({
-  model: props.data.imageModel,
-  aspectRatio: props.data.aspectRatio,
-  resolution: props.data.resolution,
-}))
+const selectedImageSettings = computed(() => ({ model: { id: 'gpt-image-2' }, aspectRatio: '9:16', resolution: '4K' }))
 const selectedTextModel = computed(() => reverseModels.find((model) => model.id === props.data.textModel) || defaultReverseModel)
 const customRequirement = computed(() => props.data.customRequirement || '')
-const selectedMaterials = computed(() => resolveOutfitMaterials(props.data.moduleIds, customRequirement.value))
-const selectedMaterialIds = computed(() => selectedMaterials.value.map((item) => item.id))
-const prompt = computed(() => buildOutfitPlanPrompt(selectedMaterials.value, customRequirement.value, props.data, apparelContext.value))
+const selectedMaterials = computed(() => resolveOutfitMaterials())
+const prompt = computed(() => buildOutfitPlanPrompt(selectedMaterials.value, customRequirement.value, selectedImageSettings.value, apparelContext.value))
 const running = computed(() => props.data.status === 'generating')
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedTextModel.value.id))
 const insufficientCredits = computed(() => (authStore.user?.credit_balance || 0) < estimatedCredits.value)
 const existingGeneratedNodes = computed(() => (props.data.generatedNodeIds || []).filter((id) => store.nodes.some((node) => node.id === id)))
-const imageModelOptions = imageModels.map(({ id, label }) => ({ value: id, label }))
 const textModelOptions = reverseModels.map(({ id, label }) => ({ value: id, label }))
-const ratioOptions = computed(() => selectedImageSettings.value.model.aspectRatios.map((value) => ({ value, label: value })))
-const resolutionOptions = computed(() => selectedImageSettings.value.model.resolutions.map((value) => ({ value, label: value })))
 const message = computed(() => {
   if (notice.value || props.data.generationError) return notice.value || props.data.generationError
   if (!apparelNode.value) return '请先连接服饰资料节点'
@@ -73,31 +64,24 @@ function updateData(value) {
   updateNodeData(props.nodeId, { ...value, generationError: '' })
 }
 
-function toggleMaterial(id) {
-  const moduleIds = selectedMaterialIds.value.filter((value) => value !== 'custom')
-  updateData({ moduleIds: moduleIds.includes(id) ? moduleIds.filter((value) => value !== id) : [...moduleIds, id] })
-}
-
-function updateImageModel(imageModel) {
-  const model = imageModels.find(({ id }) => id === imageModel)
-  updateData({
-    imageModel: model.id,
-    aspectRatio: model.aspectRatios.includes(props.data.aspectRatio) ? props.data.aspectRatio : model.defaultAspectRatio,
-    resolution: model.resolutions.includes(props.data.resolution) ? props.data.resolution : model.defaultResolution,
-  })
-}
-
 async function submitTask() {
   if (!canSubmit.value) return
   if (existingGeneratedNodes.value.length && !await confirm({
     title: '重新生成穿搭方案',
-    message: `将新增 ${selectedMaterials.value.length} 个穿搭素材节点，已有节点不会删除。`,
+      message: '将重新生成固定六格参考图，已有图片节点不会删除。',
     confirmText: '继续生成',
   })) return
 
   let content = ''
   notice.value = ''
-  updateNodeData(props.nodeId, { status: 'generating', generationError: '' })
+  updateNodeData(props.nodeId, {
+    status: 'generating',
+    generationError: '',
+    imageModel: 'gpt-image-2',
+    aspectRatio: '9:16',
+    resolution: '4K',
+    moduleIds: selectedMaterials.value.map((item) => item.id),
+  })
   try {
     await streamReversePrompt({
       workspace_id: store.workspaceId,
@@ -123,7 +107,7 @@ async function submitTask() {
     updateNodeData(props.nodeId, {
       status: 'ready',
       generationStatus: 'succeeded',
-      generatedNodeIds: [...existingGeneratedNodes.value, ...generatedNodeIds],
+      generatedNodeIds,
     })
   } catch (error) {
     const messageText = error.response?.data?.message || error.message || '穿搭方案生成失败'
@@ -152,31 +136,22 @@ defineExpose({ submitTask })
       </div>
     </div>
 
-    <section class="outfit-material-section">
-      <h3><Images :size="14" />选择要生成的素材</h3>
-      <div v-for="group in outfitMaterialGroups" :key="group.id" class="outfit-material-group">
-        <span>{{ group.label }}</span>
-        <div class="outfit-material-options">
-          <label v-for="item in group.items" :key="item.id" class="product-visual-option" :class="{ active: selectedMaterialIds.includes(item.id) }" :title="item.description">
-            <input type="checkbox" :checked="selectedMaterialIds.includes(item.id)" @change="toggleMaterial(item.id)" />
-            <span>{{ item.label }}</span>
-          </label>
-        </div>
+    <section class="outfit-material-section outfit-reference-board-config">
+      <h3><Images :size="14" />固定六格参考图板</h3>
+      <p>自动生成 2×3 竖版参考图，全部完成后供服饰分镜使用。</p>
+      <div class="outfit-reference-plan-list">
+        <span v-for="(item, index) in selectedMaterials" :key="item.id"><b>{{ index + 1 }}</b>{{ item.label }}</span>
       </div>
       <AppTextarea
         :model-value="customRequirement"
         rows="2"
         maxlength="600"
-        placeholder="补充场景、风格或展示要求；未选预设时将单独生成自定义素材"
+        placeholder="补充统一风格或场景要求（不改变六格结构）"
         @input="updateData({ customRequirement: $event.target.value })"
       />
     </section>
 
-    <div class="product-visual-settings">
-      <label><span>图片模型</span><AppSelect :model-value="selectedImageSettings.model.id" :options="imageModelOptions" aria-label="图片模型" @update:model-value="updateImageModel" /></label>
-      <label><span>画面比例</span><AppSelect :model-value="selectedImageSettings.aspectRatio" :options="ratioOptions" aria-label="画面比例" @update:model-value="updateData({ aspectRatio: $event })" /></label>
-      <label><span>清晰度</span><AppSelect :model-value="selectedImageSettings.resolution" :options="resolutionOptions" aria-label="清晰度" @update:model-value="updateData({ resolution: $event })" /></label>
-    </div>
+    <div class="outfit-fixed-settings"><span>GPT Image 2</span><span>9:16</span><span>4K</span></div>
 
     <p v-if="message" class="panel-notice">{{ message }}</p>
     <footer class="product-visual-panel-footer">
