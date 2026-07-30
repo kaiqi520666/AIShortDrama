@@ -6,7 +6,9 @@ describe('outfit storyboard prompts', () => {
     const prompt = buildOutfitStoryboardPrompt('服饰类型：整套搭配\n单品1：蕾丝衬衫（颜色：粉色；面料：蕾丝）', { duration: 15, videoAspectRatio: '9:16' })
     expect(prompt).toContain('单品1：蕾丝衬衫')
     expect(prompt).toContain('颜色：粉色')
-    expect(prompt).toContain('参考图片1是一张服饰穿搭参考总览图')
+    expect(prompt).toContain('参考图片1是一张服饰穿搭参考总览图，仅用于锁定模特身份')
+    expect(prompt).toContain('镜头1动态吸引注意的开场')
+    expect(prompt).toContain('禁止复制参考图的六格布局')
   })
 
   it('keeps image prompts static and requires character speech in video prompts', () => {

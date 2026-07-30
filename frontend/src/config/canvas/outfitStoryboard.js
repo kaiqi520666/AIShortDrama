@@ -6,7 +6,7 @@ export { storyboardDurations, videoAspectRatios }
 export const outfitStoryboardTemplate = {
   id: 'outfit-showcase',
   label: '服饰展示',
-  description: '连续展示版型、走动、面料与场景穿搭',
+  description: '六镜头电商展示版型、动态、细节与场景穿搭',
 }
 
 export function buildOutfitStoryboardPrompt(outfitContext, data = {}) {
@@ -15,10 +15,13 @@ export function buildOutfitStoryboardPrompt(outfitContext, data = {}) {
   const ratio = videoAspectRatios.includes(data.videoAspectRatio) ? data.videoAspectRatio : '9:16'
   const segmentRules = Array.from({ length: segments }, (_, index) => {
     const segmentIndex = index + 1
-    return `第${segmentIndex}段（15秒）：输出 segmentIndex=${segmentIndex}、duration=15、shotCount=6、continuityMode="${segmentIndex === 1 ? 'cut' : 'extend'}"、plotGoal、openingState、endingState、prompt、videoPrompt。prompt 和 videoPrompt 必须严格写镜头1至镜头6，分别对应六格服饰分镜图。`
+    const continuityRule = segmentIndex === 1
+      ? '首段从动态开场开始，建立展示节奏。'
+      : '本段从上一段 endingState 继续，但必须更换动作、景别或场景，不能重复上一段镜头。'
+    return `第${segmentIndex}段（15秒）：输出 segmentIndex=${segmentIndex}、duration=15、shotCount=6、continuityMode="${segmentIndex === 1 ? 'cut' : 'extend'}"、plotGoal、openingState、endingState、prompt、videoPrompt。${continuityRule}prompt 和 videoPrompt 必须严格写镜头1至镜头6，每个镜头都要有独立展示目的。`
   }).join('\n')
   const extra = data.prompt?.trim() ? `\n用户补充要求：${data.prompt.trim()}` : ''
-  return `参考图片1是一张服饰穿搭参考总览图，按从左到右、从上到下依次为正面全身、45°侧面、背面展示、转身定格、面料细节、场景穿搭。只读取总览图中的服饰、模特外观和搭配信息，不复制六格宫格布局。请为“${outfitStoryboardTemplate.label}”生成总时长 ${duration} 秒、${ratio} 画幅的连续服饰展示视频方案，拆成 ${segments} 个连续的15秒段落。\n${segmentRules}\n服饰资料：${outfitContext || '以参考图片1为准。'}${extra}\n严格输出一个 JSON 对象，不要 Markdown：{"templateId":"outfit-showcase","title":"服饰展示","globalScript":"全局脚本","segments":[{"segmentIndex":1,"duration":15,"shotCount":6,"plotGoal":"剧情目标","openingState":"开场状态","endingState":"结束状态","continuityMode":"cut","prompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……","videoPrompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……"}]}。segments 必须恰好 ${segments} 条且按顺序。prompt 只描述静态画面、主体动作、版型、服饰状态、场景、景别、构图和光线，禁止对白、台词、说话、口型、声音、音效、环境音、旁白和引号内容。videoPrompt 描述主体动作、场景、景别、单一运镜、光影、自然衔接和现场环境音；每个15秒段落至少安排2句简短角色口播，使用“模特说道：\"……\"”或“模特回答：\"……\"”，必须说明口型与声音同步，不要写“台词：”。面料和裙摆等纯特写镜头可延续上一镜声音。不生成背景音乐、字幕、Logo、水印、价格、二维码、乱码或额外文字。保持同一套服饰、模特身份、发型、体型、颜色、材质和搭配一致。`
+  return `参考图片1是一张服饰穿搭参考总览图，仅用于锁定模特身份、服装版型、颜色、材质、纹理和搭配。禁止复制参考图的六格布局、姿势、背景、光线和构图，也不要把总览图当作分镜内容。请为“${outfitStoryboardTemplate.label}”生成总时长 ${duration} 秒、${ratio} 画幅的连续服饰展示视频方案，拆成 ${segments} 个连续的15秒段落。\n${segmentRules}\n服饰资料：${outfitContext || '以参考图片1为准。'}${extra}\n严格输出一个 JSON 对象，不要 Markdown：{"templateId":"outfit-showcase","title":"服饰展示","globalScript":"全局脚本","segments":[{"segmentIndex":1,"duration":15,"shotCount":6,"plotGoal":"剧情目标","openingState":"开场状态","endingState":"结束状态","continuityMode":"cut","prompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……","videoPrompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……"}]}。segments 必须恰好 ${segments} 条且按顺序。六个镜头必须按不同电商展示目的推进：镜头1动态吸引注意的开场，镜头2正面或侧面展示版型，镜头3走动或转身展示垂坠感，镜头4面料或工艺局部特写，镜头5真实生活场景穿搭，镜头6模特面对镜头总结推荐。每个镜头必须使用不同动作、景别、构图或场景，禁止六个镜头只换角度或重复站姿。prompt 只描述新的静态画面、主体动作、版型、服饰状态、场景、景别、构图和光线，禁止对白、台词、说话、口型、声音、音效、环境音、旁白和引号内容；prompt 必须是一张新的六格分镜板，不得复刻参考总览图。videoPrompt 描述主体动作、场景、景别、单一运镜、光影、自然衔接和现场环境音；每个15秒段落至少安排2句简短角色口播，使用“模特说道：\"……\"”或“模特回答：\"……\"”，必须说明口型与声音同步，不要写“台词：”。面料和裙摆等纯特写镜头可延续上一镜声音。不生成背景音乐、字幕、Logo、水印、价格、二维码、乱码或额外文字。保持同一套服饰、模特身份、发型、体型、颜色、材质和搭配一致。`
 }
 
 export function parseOutfitStoryboardPlan(content, duration) {
