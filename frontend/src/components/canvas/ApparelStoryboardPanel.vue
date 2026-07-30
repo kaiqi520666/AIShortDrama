@@ -1,6 +1,6 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { ArrowUp, Clapperboard, Coins, FileText, Images, LoaderCircle, Shirt } from 'lucide-vue-next'
+import { ArrowUp, Clapperboard, Coins, FileText, Images, LoaderCircle } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
 import { apparelPromptContext } from '../../config/canvas/apparel'
@@ -28,7 +28,6 @@ const notice = ref('')
 const outfitNode = computed(() => store.incomingNodes(props.nodeId).find((node) => node.type === 'outfit'))
 const boardUrl = computed(() => outfitNode.value?.data.outfitBoardAsset || '')
 const apparelNode = computed(() => outfitNode.value && store.incomingNodes(outfitNode.value.id).find((node) => node.type === 'apparel'))
-const apparelItems = computed(() => (apparelNode.value?.data.items || []).filter((item) => item.enabled !== false))
 const apparelContext = computed(() => apparelPromptContext(apparelNode.value?.data))
 const selectedTextModel = computed(() => reverseModels.find((model) => model.id === props.data.textModel) || defaultReverseModel)
 const textModelOptions = reverseModels.map(({ id, label }) => ({ value: id, label }))
@@ -110,15 +109,11 @@ defineExpose({ submitTask })
           <div v-if="boardUrl" class="storyboard-reference-item">
             <div class="storyboard-reference-main">
               <img :src="buildOssImageUrl(boardUrl, { width: 120, quality: 80 })" alt="服饰穿搭参考总览" referrerpolicy="no-referrer" />
-              <strong>2K · 9:16 六格总览</strong>
+              <strong>服饰参考总览</strong>
             </div>
           </div>
           <span v-else class="panel-notice">等待服饰穿搭节点完成总览图</span>
         </div>
-      </div>
-      <div class="apparel-storyboard-context-note">
-        <Shirt :size="14" />
-        <span>服饰资料已读取 {{ apparelItems.length }} 件，颜色、面料、版型与细节会写入提示词</span>
       </div>
     </section>
 
