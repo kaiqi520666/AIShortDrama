@@ -499,6 +499,8 @@ describe('canvas node packs', () => {
     const outfitId = store.addNode('outfit', { x: 500, y: 300 })
     const storyboardId = store.addNode('apparel_storyboard', { x: 1000, y: 300 }, outfitId)
     const outfit = store.nodes.find((node) => node.id === outfitId)
+    const modelId = store.edges.find((edge) => edge.target === outfitId && edge.targetHandle === 'model')?.source
+    store.nodes.find((node) => node.id === modelId).data.asset = 'https://example.com/model.png'
     outfit.data.outfitBoardAsset = 'https://example.com/outfit-board.jpg'
     outfit.data.outfitBoardAssetId = 'board-1'
 
@@ -512,7 +514,7 @@ describe('canvas node packs', () => {
 
     expect(resultIds).toHaveLength(2)
     const image = store.nodes.find((node) => node.id === resultIds[0])
-    expect(image.data).toEqual(expect.objectContaining({ storyboardOutfitBoard: { url: 'https://example.com/outfit-board.jpg', assetId: 'board-1' }, storyboardSegmentIndex: 1 }))
+    expect(image.data).toEqual(expect.objectContaining({ storyboardOutfitBoard: { url: 'https://example.com/outfit-board.jpg', assetId: 'board-1' }, storyboardSegmentIndex: 1, storyboardRequiresRegistration: true }))
     expect(store.edges.filter((edge) => edge.target === resultIds[0])).toEqual(expect.arrayContaining([
       expect.objectContaining({ source: storyboardId }),
       expect.objectContaining({ source: outfitId }),
