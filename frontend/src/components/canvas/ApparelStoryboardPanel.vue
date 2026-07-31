@@ -51,9 +51,9 @@ const existingGeneratedNodes = computed(() => (props.data.generatedNodeIds || []
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedTextModel.value.id))
 const insufficientCredits = computed(() => estimatedCredits.value !== null && (authStore.user?.credit_balance || 0) < estimatedCredits.value)
 const sourceItems = computed(() => [
-  { label: '服饰', icon: Shirt, asset: garmentNode.value?.data.asset, detail: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件` : '待连接' },
-  { label: '模特', icon: UserRound, asset: modelNode.value?.data.asset, detail: modelNode.value?.data.title || '待连接' },
-  { label: '场景', icon: Images, asset: sceneNode.value?.data.asset, detail: sceneNode.value?.data.title || '待连接' },
+  { label: '服饰', icon: Shirt, asset: garmentNode.value?.data.asset },
+  { label: '模特', icon: UserRound, asset: modelNode.value?.data.asset },
+  { label: '场景', icon: Images, asset: sceneNode.value?.data.asset },
 ])
 const connectedSourceCount = computed(() => sourceItems.value.filter((item) => item.asset).length)
 const message = computed(() => {
@@ -151,7 +151,7 @@ defineExpose({ submitTask })
               <img :src="buildOssImageUrl(item.asset, { width: 120, quality: 80 })" :alt="item.label" referrerpolicy="no-referrer" />
             </AppImageHoverPreview>
             <component :is="item.icon" v-else :size="16" />
-            <strong>{{ item.asset ? item.detail || '已连接' : '待连接' }}</strong>
+            <strong v-if="!item.asset">待连接</strong>
           </div>
         </div>
       </div>

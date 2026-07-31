@@ -199,7 +199,8 @@
   overflow: hidden;
 }
 .apparel-storyboard-reference-item {
-  width: 150px;
+  width: 42px;
+  justify-content: center;
 }
 .apparel-storyboard-reference-item > .app-image-hover-preview-trigger {
   width: 30px;
@@ -219,6 +220,8 @@
   flex: none;
 }
 .apparel-storyboard-reference-item.empty {
+  width: 110px;
+  justify-content: flex-start;
   color: var(--color-text-muted);
 }
 .storyboard-reference-main {

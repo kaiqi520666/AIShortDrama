@@ -32,9 +32,9 @@ const sceneNode = computed(() => inputNode('scene'))
 const generatedCount = computed(() => (props.data.generatedNodeIds || []).filter((id) => store.nodes.some((node) => node.id === id)).length)
 const settings = computed(() => getApparelVideoSettings(props.data))
 const inputs = computed(() => [
-  { label: '服饰', icon: Shirt, node: apparelNode.value, asset: garmentNode.value?.data.asset, detail: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件` : '待连接' },
-  { label: '模特', icon: UserRound, node: modelNode.value, asset: modelNode.value?.data.asset, detail: modelNode.value?.data.title || '待连接' },
-  { label: '场景', icon: Images, node: sceneNode.value, asset: sceneNode.value?.data.asset, detail: sceneNode.value?.data.title || '待连接' },
+  { label: '服饰', icon: Shirt, node: apparelNode.value, asset: garmentNode.value?.data.asset },
+  { label: '模特', icon: UserRound, node: modelNode.value, asset: modelNode.value?.data.asset },
+  { label: '场景', icon: Images, node: sceneNode.value, asset: sceneNode.value?.data.asset },
 ])
 const connectedCount = computed(() => inputs.value.filter((item) => item.asset).length)
 </script>
@@ -52,7 +52,7 @@ const connectedCount = computed(() => inputs.value.filter((item) => item.asset).
             <img v-if="item.asset" :src="buildOssImageUrl(item.asset, { width: 120, quality: 78 })" :alt="item.label" referrerpolicy="no-referrer" />
             <component :is="item.icon" v-else :size="16" />
           </span>
-          <span><strong>{{ item.label }}</strong><small>{{ item.detail }}</small></span>
+          <span><strong>{{ item.label }}</strong></span>
         </div>
       </div>
       <div class="product-creation-settings-summary storyboard-node-summary apparel-storyboard-node-summary">
