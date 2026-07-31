@@ -78,6 +78,7 @@ export function buildProductStoryboardPrompt(productContext, templates, data = {
     const productCount = Math.max(1, data.productReferences?.length || 1)
     const characterLabel = character?.url ? `参考图${productCount + 1}` : ''
     const productLabels = Array.from({ length: productCount }, (_, index) => `图片${index + 1}`).join('、')
+    const videoReferenceRule = buildVideoReferenceRule(character, productCount)
     const characterRule = character?.url
       ? `出镜角色使用${characterLabel}，保持身份、人脸、发型、体型、服装一致。`
       : '禁止出现人脸、正脸、侧脸及面部局部；人物只允许出现手部、背影或肩部以下。'
@@ -91,7 +92,7 @@ export function buildProductStoryboardPrompt(productContext, templates, data = {
     const speechRule = character?.url
       ? '有人物出镜时必须自然说一句话，使用“她说道："……"”“他说道："……"”或“他回答："……"”，说明口型与声音同步，禁止写“台词：”。'
       : '没有注册角色时不得出现人脸，使用画外音或现场音。'
-    const suffix = `${extra}\n严格输出一个 JSON 对象，不要 Markdown：{"templateId":"${selectedTemplate.id}","title":"${selectedTemplate.label}","globalScript":"全局脚本","segments":[{"segmentIndex":1,"duration":15,"shotCount":6,"plotGoal":"剧情目标","openingState":"开场状态","endingState":"结束状态","continuityMode":"cut","prompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……","videoPrompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……"}]}。segments 必须恰好 ${segments} 条且按顺序。每条 prompt 和 videoPrompt 必须严格包含且只按时间顺序描述镜头1至镜头6，六个镜头分别对应分镜板的六个格子，不能用“ montage ”或一句话概括多个镜头。${imagePromptRule}每个 videoPrompt 镜头写主体动作、场景、景别、单一运镜、光影、角色说话和音效。${speechRule}每条 videoPrompt 必须包含现场音或商品操作音，禁止背景音乐、字幕、价格、二维码、水印、乱码和额外 Logo。${characterRule}${productLabels}中的商品外观、颜色、材质和包装保持一致。`
+    const suffix = `${extra}\n严格输出一个 JSON 对象，不要 Markdown：{"templateId":"${selectedTemplate.id}","title":"${selectedTemplate.label}","globalScript":"全局脚本","segments":[{"segmentIndex":1,"duration":15,"shotCount":6,"plotGoal":"剧情目标","openingState":"开场状态","endingState":"结束状态","continuityMode":"cut","prompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……","videoPrompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……"}]}。segments 必须恰好 ${segments} 条且按顺序。每条 prompt 和 videoPrompt 必须严格包含且只按时间顺序描述镜头1至镜头6，六个镜头分别对应分镜板的六个格子，不能用“ montage ”或一句话概括多个镜头。${imagePromptRule}每条 videoPrompt 必须以“${videoReferenceRule}”开头。每个 videoPrompt 镜头写主体动作、场景、景别、单一运镜、光影、角色说话和音效。${speechRule}每条 videoPrompt 必须包含现场音或商品操作音，禁止背景音乐、字幕、价格、二维码、水印、乱码和额外 Logo。${characterRule}${productLabels}中的商品外观、颜色、材质和包装保持一致。`
     return `${prefix}${productContext.slice(0, Math.max(0, 3000 - prefix.length - suffix.length))}${suffix}`
   }
   const duration = Math.min(15, Math.max(4, Number(data.duration) || 4))
@@ -151,7 +152,7 @@ export function parseProductStoryboardPlan(content, templates, characterReferenc
         endingState: segment.endingState.trim(),
         continuityMode: index === 0 ? 'cut' : segment.continuityMode,
         prompt: `${segment.prompt.trim()}\n${characterReference?.url ? '保持指定角色身份与外观一致。' : '禁止出现人脸、正脸、侧脸及面部局部。'}\n无文字水印。`,
-        videoPrompt: `${segment.videoPrompt.trim()}\n${index > 0 && segment.continuityMode === 'extend' ? `向后延长视频${index}，延续上一段的主体、场景、光影和运镜。` : ''}\n不生成背景音乐。`,
+        videoPrompt: `${ensureVideoReferenceRule(segment.videoPrompt, characterReference, productReferenceCount)}\n${index > 0 && segment.continuityMode === 'extend' ? `向后延长视频${index}，延续上一段的主体、场景、光影和运镜。` : ''}\n不生成背景音乐。`,
       }
     })
     return {
@@ -209,4 +210,19 @@ function hasStoryboardShotLabels(value) {
 
 function hasImagePromptAudio(value) {
   return /(说道|说：|说“|台词|对白|口型|声音|音效|环境音|现场音|旁白)/.test(value)
+}
+
+function buildVideoReferenceRule(characterReference, productReferenceCount) {
+  const productCount = Math.max(1, Number(productReferenceCount) || 1)
+  const hasCharacter = Boolean(characterReference?.url || characterReference?.assetUrl)
+  const productLabels = Array.from({ length: productCount }, (_, index) => `图片${index + (hasCharacter ? 3 : 2)}`).join('、')
+  return hasCharacter
+    ? `图片1是分镜图，图片2是指定出镜角色，${productLabels}是商品参考图。`
+    : `图片1是分镜图，${productLabels}是商品参考图。`
+}
+
+function ensureVideoReferenceRule(value, characterReference, productReferenceCount) {
+  const prompt = value.trim()
+  const rule = buildVideoReferenceRule(characterReference, productReferenceCount)
+  return prompt.startsWith(rule) ? prompt : `${rule}\n${prompt}`
 }

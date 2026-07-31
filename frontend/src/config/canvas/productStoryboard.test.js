@@ -34,6 +34,7 @@ describe('product storyboard planning', () => {
     expect(storyboardSegmentCount(30)).toBe(2)
     expect(plan.segments.map((segment) => segment.continuityMode)).toEqual(['cut', 'extend'])
     expect(plan.segments.map((segment) => segment.shotCount)).toEqual([6, 6])
+    expect(plan.segments[0].videoPrompt).toContain('图片1是分镜图，图片2是商品参考图。')
     expect(plan.segments[1].videoPrompt).toContain('向后延长视频1')
   })
 
@@ -105,6 +106,7 @@ describe('product storyboard planning', () => {
     expect(prompt).toContain('shotCount=6')
     expect(prompt).toContain('镜头1、镜头2、镜头3、镜头4、镜头5、镜头6')
     expect(prompt).toContain('六个镜头分别对应分镜板的六个格子')
+    expect(prompt).toContain('图片1是分镜图，图片2是商品参考图。')
   })
 
   it('orders parsed prompts by selected template order', () => {
@@ -131,6 +133,33 @@ describe('product storyboard planning', () => {
     expect(prompt).toContain('禁止写成“台词：”')
     expect(plans[0].prompt).toContain('参考图2为指定出镜角色')
     expect(plans[0].videoPrompt).toContain('参考图片2为指定出镜角色')
+  })
+
+  it('labels storyboard, character, and product references in segmented video prompts', () => {
+    const character = { name: '测试角色', url: 'https://example.com/character.png', assetUrl: 'asset://pa_test' }
+    const prompt = buildProductStoryboardPrompt('测试商品', storyboardTemplates.slice(0, 1), {
+      duration: 15,
+      productReferences: [{ id: 'product-1', url: 'https://example.com/product.png' }],
+      characterReference: character,
+    })
+    expect(prompt).toContain('图片1是分镜图，图片2是指定出镜角色，图片3是商品参考图。')
+
+    const plan = parseProductStoryboardPlan(JSON.stringify({
+      templateId: 'ugc-seeding',
+      totalDuration: 15,
+      segments: [{
+        segmentIndex: 1,
+        duration: 15,
+        shotCount: 6,
+        plotGoal: '开场',
+        openingState: '未使用',
+        endingState: '拿起商品',
+        continuityMode: 'cut',
+        prompt: '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6',
+        videoPrompt: '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6',
+      }],
+    }), [storyboardTemplates[0]], character, 1)
+    expect(plan.segments[0].videoPrompt).toContain('图片1是分镜图，图片2是指定出镜角色，图片3是商品参考图。')
   })
 
   it('labels independent product references before the character reference', () => {
