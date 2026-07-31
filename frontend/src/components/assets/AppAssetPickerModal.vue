@@ -9,6 +9,7 @@ import { useGlobalToast } from '../../composables/useGlobalUI'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import { mediaUploadRules, readMediaMetadata, validateMediaFile } from '../../utils/mediaFiles'
 import AppButton from '../ui/AppButton.vue'
+import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
 import AppInput from '../ui/AppInput.vue'
 import AppModal from '../ui/AppModal.vue'
 import EmptyState from '../ui/EmptyState.vue'
@@ -139,8 +140,10 @@ onMounted(loadAssets)
         :aria-pressed="selected?.source === item.source && selected?.id === item.id"
         @click="selectItem(item)"
       >
-        <img :src="buildOssImageUrl(item.url, { width: 480, quality: 80 })" :alt="item.name" loading="lazy" referrerpolicy="no-referrer" />
-        <span><strong>{{ item.name }}</strong><small v-if="resourceType === 'character'">{{ registeringId === item.id ? '注册中' : ({ active: 'Seedance 可用', processing: '处理中，点击刷新', failed: '失败，点击重试', unregistered: '点击注册' })[item.seedanceStatus] }}</small></span>
+        <AppImageHoverPreview :src="item.url" :preview-src="buildOssImageUrl(item.url, { width: 1200, quality: 90 })" :alt="item.name">
+          <img :src="buildOssImageUrl(item.url, { width: 480, quality: 80 })" :alt="item.name" loading="lazy" referrerpolicy="no-referrer" />
+        </AppImageHoverPreview>
+        <span class="asset-picker-item-label"><strong>{{ item.name }}</strong><small v-if="resourceType === 'character'">{{ registeringId === item.id ? '注册中' : ({ active: 'Seedance 可用', processing: '处理中，点击刷新', failed: '失败，点击重试', unregistered: '点击注册' })[item.seedanceStatus] }}</small></span>
       </AppButton>
       <EmptyState v-if="!visibleItems.length" compact title="暂无匹配素材" />
     </div>

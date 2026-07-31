@@ -12,6 +12,7 @@ import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import AppButton from '../ui/AppButton.vue'
+import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
 import AppSelect from '../ui/AppSelect.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
 
@@ -108,7 +109,9 @@ defineExpose({ submitTask })
         <div class="storyboard-reference-list">
           <div v-if="boardUrl" class="storyboard-reference-item">
             <div class="storyboard-reference-main">
-              <img :src="buildOssImageUrl(boardUrl, { width: 120, quality: 80 })" alt="服饰穿搭参考总览" referrerpolicy="no-referrer" />
+              <AppImageHoverPreview :src="boardUrl" :preview-src="buildOssImageUrl(boardUrl, { width: 1200, quality: 90 })" alt="服饰穿搭参考总览">
+                <img :src="buildOssImageUrl(boardUrl, { width: 120, quality: 80 })" alt="服饰穿搭参考总览" referrerpolicy="no-referrer" />
+              </AppImageHoverPreview>
               <strong>服饰参考总览</strong>
             </div>
           </div>

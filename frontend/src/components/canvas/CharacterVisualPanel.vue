@@ -13,6 +13,7 @@ import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import AppButton from '../ui/AppButton.vue'
+import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
 import AppSelect from '../ui/AppSelect.vue'
 
 const props = defineProps({
@@ -132,7 +133,9 @@ async function submitTask() {
         <span><strong>世界观</strong><small>{{ worldNode?.data.title || '尚未连接' }}</small></span>
       </div>
       <div class="outfit-panel-reference" :class="{ empty: !referenceImage?.data.asset }">
-        <img v-if="referenceImage?.data.asset" :src="buildOssImageUrl(referenceImage.data.asset, { width: 240, quality: 80 })" alt="角色参考图" referrerpolicy="no-referrer" />
+        <AppImageHoverPreview v-if="referenceImage?.data.asset" :src="referenceImage.data.asset" :preview-src="buildOssImageUrl(referenceImage.data.asset, { width: 1200, quality: 90 })" alt="角色参考图">
+          <img :src="buildOssImageUrl(referenceImage.data.asset, { width: 240, quality: 80 })" alt="角色参考图" referrerpolicy="no-referrer" />
+        </AppImageHoverPreview>
         <Image v-else :size="20" />
         <span><strong>角色参考图</strong><small>{{ referenceImage?.data.asset ? referenceImage.data.title : '可选' }}</small></span>
       </div>

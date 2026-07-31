@@ -3,6 +3,7 @@ import { nextTick, onMounted, ref, watch } from 'vue'
 import { Image, Music2, Video as VideoIcon } from 'lucide-vue-next'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import AppButton from '../ui/AppButton.vue'
+import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
 import AppMenu from '../ui/AppMenu.vue'
 
 const props = defineProps({
@@ -205,7 +206,9 @@ onMounted(renderEditor)
         @mouseenter="activeIndex = index"
         @click="insertReference(reference)"
       >
-        <img v-if="getReferenceType(reference) === 'image'" :src="buildOssImageUrl(reference.data.asset)" alt="" />
+        <AppImageHoverPreview v-if="getReferenceType(reference) === 'image'" :src="reference.data.asset" :preview-src="buildOssImageUrl(reference.data.asset, { width: 1200, quality: 90 })" :alt="reference.data.title">
+          <img :src="buildOssImageUrl(reference.data.asset)" alt="" />
+        </AppImageHoverPreview>
         <VideoIcon v-else-if="getReferenceType(reference) === 'video'" :size="24" />
         <Music2 v-else-if="getReferenceType(reference) === 'audio'" :size="24" />
         <Image v-else :size="24" />

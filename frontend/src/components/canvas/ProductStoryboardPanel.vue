@@ -21,6 +21,7 @@ import { useCanvasStore } from '../../stores/canvas'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import AppAssetPickerModal from '../assets/AppAssetPickerModal.vue'
 import AppButton from '../ui/AppButton.vue'
+import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
 import AppSelect from '../ui/AppSelect.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
 
@@ -179,7 +180,9 @@ async function submitTask() {
         <div class="storyboard-reference-list">
           <div v-if="character" class="storyboard-reference-item">
             <AppButton class="storyboard-reference-main" :title="`更换${character.name}`" @click="characterPickerOpen = true">
-              <img :src="buildOssImageUrl(character.url, { width: 120, quality: 80 })" :alt="character.name" referrerpolicy="no-referrer" />
+              <AppImageHoverPreview :src="character.url" :preview-src="buildOssImageUrl(character.url, { width: 1200, quality: 90 })" :alt="character.name">
+                <img :src="buildOssImageUrl(character.url, { width: 120, quality: 80 })" :alt="character.name" referrerpolicy="no-referrer" />
+              </AppImageHoverPreview>
               <strong>{{ character.name }}</strong>
             </AppButton>
             <AppButton class="storyboard-reference-remove" icon-only size="sm" title="移除出镜角色" @click="updateData({ characterReference: null })"><X :size="13" /></AppButton>
@@ -192,7 +195,9 @@ async function submitTask() {
         <div class="storyboard-reference-list">
           <div v-for="reference in productReferences" :key="reference.id" class="storyboard-reference-item">
             <AppButton class="storyboard-reference-main" :title="`更换${reference.name}`" @click="openProductPicker(reference.id)">
-              <img :src="buildOssImageUrl(reference.url, { width: 120, quality: 80 })" :alt="reference.name" referrerpolicy="no-referrer" />
+              <AppImageHoverPreview :src="reference.url" :preview-src="buildOssImageUrl(reference.url, { width: 1200, quality: 90 })" :alt="reference.name">
+                <img :src="buildOssImageUrl(reference.url, { width: 120, quality: 80 })" :alt="reference.name" referrerpolicy="no-referrer" />
+              </AppImageHoverPreview>
               <strong>{{ reference.name }}</strong>
             </AppButton>
             <AppButton class="storyboard-reference-remove" icon-only size="sm" :title="`移除${reference.name}`" @click="removeProductReference(reference.id)"><X :size="13" /></AppButton>

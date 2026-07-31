@@ -16,6 +16,7 @@ import { useCanvasStore } from '../../stores/canvas'
 import { useAuthStore } from '../../stores/auth'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import AppButton from '../ui/AppButton.vue'
+import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
 import AppMenu from '../ui/AppMenu.vue'
 import AppSelect from '../ui/AppSelect.vue'
 import AppSlider from '../ui/AppSlider.vue'
@@ -368,7 +369,9 @@ onBeforeUnmount(() => {
   <section v-if="!data.assetSource && (type !== 'text' || data.textMode === 'task')" class="generation-panel nodrag nowheel" :class="{ embedded }" @pointerdown.stop>
     <div v-if="displayReferences.length" class="reference-strip">
       <div v-for="reference in displayReferences" :key="reference.key" class="reference-item" :title="reference.label" :aria-label="reference.label">
-        <img v-if="reference.node.type === 'image' && reference.node.data.asset" :src="buildOssImageUrl(reference.node.data.asset)" alt="" />
+        <AppImageHoverPreview v-if="reference.node.type === 'image' && reference.node.data.asset" :src="reference.node.data.asset" :preview-src="buildOssImageUrl(reference.node.data.asset, { width: 1200, quality: 90 })" :alt="reference.label">
+          <img :src="buildOssImageUrl(reference.node.data.asset)" alt="" />
+        </AppImageHoverPreview>
         <FileText v-else-if="reference.node.type === 'text'" :size="20" />
         <Image v-else-if="reference.node.type === 'image'" :size="20" />
         <VideoIcon v-else-if="reference.node.type === 'video'" :size="20" />

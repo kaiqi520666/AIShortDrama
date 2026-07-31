@@ -10,6 +10,7 @@ import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import AppButton from '../ui/AppButton.vue'
+import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
 import AppInput from '../ui/AppInput.vue'
 import AppSelect from '../ui/AppSelect.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
@@ -105,7 +106,9 @@ defineExpose({ submitTask })
 
     <div class="apparel-profile-head">
       <div class="apparel-reference" :class="{ empty: !reference?.data.asset }">
-        <img v-if="reference?.data.asset" :src="buildOssImageUrl(reference.data.asset, { width: 220, quality: 82 })" alt="服饰参考图" referrerpolicy="no-referrer" />
+        <AppImageHoverPreview v-if="reference?.data.asset" :src="reference.data.asset" :preview-src="buildOssImageUrl(reference.data.asset, { width: 1200, quality: 90 })" alt="服饰参考图">
+          <img :src="buildOssImageUrl(reference.data.asset, { width: 220, quality: 82 })" alt="服饰参考图" referrerpolicy="no-referrer" />
+        </AppImageHoverPreview>
         <Image v-else :size="22" />
       </div>
       <label><span>资料类型</span><AppSelect :model-value="data.compositionType" :options="compositionOptions" aria-label="服饰资料类型" @update:model-value="updateData({ compositionType: $event })" /></label>

@@ -11,6 +11,7 @@ import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import AppButton from '../ui/AppButton.vue'
+import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
 import AppSelect from '../ui/AppSelect.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
 
@@ -136,7 +137,9 @@ defineExpose({ submitTask })
 
     <div class="outfit-panel-references">
       <div v-for="item in sourceItems" :key="item.label" class="outfit-panel-reference" :class="{ empty: !item.asset }">
-        <img v-if="item.asset" :src="buildOssImageUrl(item.asset, { width: 240, quality: 80 })" :alt="item.label" referrerpolicy="no-referrer" />
+        <AppImageHoverPreview v-if="item.asset" :src="item.asset" :preview-src="buildOssImageUrl(item.asset, { width: 1200, quality: 90 })" :alt="item.label">
+          <img :src="buildOssImageUrl(item.asset, { width: 240, quality: 80 })" :alt="item.label" referrerpolicy="no-referrer" />
+        </AppImageHoverPreview>
         <component :is="item.icon" v-else :size="20" />
         <span><strong>{{ item.label }}</strong><small>{{ item.title }}</small></span>
       </div>

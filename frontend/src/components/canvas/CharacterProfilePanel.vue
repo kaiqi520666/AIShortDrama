@@ -11,6 +11,7 @@ import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import AppButton from '../ui/AppButton.vue'
+import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
 import AppSelect from '../ui/AppSelect.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
 
@@ -91,7 +92,10 @@ async function submitTask() {
         <Globe2 :size="20" /><b>{{ worldNode ? 1 : '?' }}</b>
       </div>
       <div v-if="referenceImage?.data.asset" class="reference-item" title="角色参考图">
-        <img :src="buildOssImageUrl(referenceImage.data.asset)" alt="角色参考图" referrerpolicy="no-referrer" /><b>1</b>
+        <AppImageHoverPreview :src="referenceImage.data.asset" :preview-src="buildOssImageUrl(referenceImage.data.asset, { width: 1200, quality: 90 })" alt="角色参考图">
+          <img :src="buildOssImageUrl(referenceImage.data.asset)" alt="角色参考图" referrerpolicy="no-referrer" />
+        </AppImageHoverPreview>
+        <b>1</b>
       </div>
       <div v-else class="reference-item optional" title="角色参考图（可选）">
         <Image :size="20" /><b>?</b>
