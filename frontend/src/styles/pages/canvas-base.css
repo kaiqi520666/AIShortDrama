@@ -1048,3 +1048,10 @@
 .media-node:hover .vue-flow__handle::after {
   opacity: 1;
 }
+.media-node:has(.vue-flow__handle:hover) .vue-flow__handle {
+  pointer-events: auto;
+}
+.media-node:has(.vue-flow__handle:hover) .vue-flow__handle::after,
+.media-node .vue-flow__handle:hover::after {
+  opacity: 1;
+}
