@@ -179,6 +179,47 @@ describe('product storyboard planning', () => {
     expect(plans[0].videoPrompt).toContain('参考图片3、参考图片4为商品参考图')
   })
 
+  it('remaps planning reference labels to video-stage labels', () => {
+    const character = { name: '测试角色', url: 'https://example.com/character.png', assetUrl: 'asset://character' }
+    const plan = parseProductStoryboardPlan(JSON.stringify({
+      templateId: 'ugc-seeding',
+      totalDuration: 15,
+      segments: [{
+        segmentIndex: 1,
+        duration: 15,
+        shotCount: 6,
+        plotGoal: '开场',
+        openingState: '未使用',
+        endingState: '展示商品',
+        continuityMode: 'cut',
+        prompt: '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6',
+        videoPrompt: '图片1是分镜图，图片2是指定出镜角色，图片3、图片4、图片5是商品参考图。镜头1参考图4女性展示参考图1商品。镜头2 镜头3 镜头4 镜头5 镜头6',
+      }],
+    }), [storyboardTemplates[0]], character, 3)
+
+    expect(plan.segments[0].videoPrompt).toContain('镜头1参考图片2女性展示参考图片3商品')
+    expect(plan.segments[0].videoPrompt).not.toContain('参考图4女性')
+    expect(plan.segments[0].videoPrompt).toContain('图片1是分镜图，图片2是指定出镜角色，图片3、图片4、图片5是商品参考图。')
+
+    const finalPlan = parseProductStoryboardPlan(JSON.stringify({
+      templateId: 'ugc-seeding',
+      totalDuration: 15,
+      segments: [{
+        segmentIndex: 1,
+        duration: 15,
+        shotCount: 6,
+        plotGoal: '开场',
+        openingState: '未使用',
+        endingState: '展示商品',
+        continuityMode: 'cut',
+        prompt: '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6',
+        videoPrompt: '图片1是分镜图，图片2是指定出镜角色，图片3、图片4、图片5是商品参考图。镜头1参考图片2女性展示参考图片3商品。镜头2 镜头3 镜头4 镜头5 镜头6',
+      }],
+    }), [storyboardTemplates[0]], character, 3)
+
+    expect(finalPlan.segments[0].videoPrompt).toContain('镜头1参考图片2女性展示参考图片3商品')
+  })
+
   it('rejects incomplete template plans', () => {
     expect(() => parseProductStoryboardPlan('[{"type":"ugc-seeding","prompt":"种草分镜"}]', storyboardTemplates.slice(0, 1))).toThrow('缺少')
   })
