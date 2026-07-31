@@ -24,6 +24,7 @@ describe('canvas node packs', () => {
     expect(canConnect('product_visual', 'image', 'ecommerce')).toBe(true)
     expect(canConnect('product_storyboard', 'image', 'ecommerce')).toBe(true)
     expect(canConnect('image', 'product_visual', 'ecommerce')).toBe(false)
+    expect(getConnectionError('image', 'product', Array(9).fill('image'), 'ecommerce')).toContain('9 张参考图片')
     expect(getConnectionError('product', 'product_visual', ['product'], 'ecommerce')).toContain('只能连接 1 个')
     expect(getConnectionError('product', 'product_storyboard', ['product'], 'ecommerce')).toContain('只能连接 1 个')
     expect(canConnect('image', 'apparel', 'ecommerce')).toBe(true)

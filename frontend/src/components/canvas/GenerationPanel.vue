@@ -196,13 +196,18 @@ async function submitTask() {
     notice.value = ''
     updateNodeData(nodeId, { status: 'generating', ...(isReverseTask.value ? { content: '' } : {}), generationError: '' })
     try {
+      const productImageReferences = isProductRecognition.value ? imageReferences.value.slice(0, 9) : []
+      const primaryReference = productImageReferences[0] || reverseReference.value
       await streamReversePrompt({
         workspace_id: store.workspaceId,
         node_id: nodeId,
         model: selectedReverseModel.value.id,
         media_type: isProductRecognition.value ? 'image' : props.data.reverseType,
-        media_url: reverseReference.value.data.asset,
+        media_url: primaryReference.data.asset,
         prompt: effectivePrompt.value,
+        ...(productImageReferences.length > 1
+          ? { media_urls: productImageReferences.slice(1).map((reference) => reference.data.asset) }
+          : {}),
         ...(isProductRecognition.value ? { response_mode: 'product_profile' } : {}),
       }, (delta) => {
         content += delta

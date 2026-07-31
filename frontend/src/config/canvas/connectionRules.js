@@ -10,6 +10,7 @@ export function canConnect(sourceType, targetType, workspaceType = 'general') {
 
 export function getConnectionError(sourceType, targetType, incomingTypes = [], workspaceType = 'general', targetHandle = '', incomingConnections = []) {
   if (!canConnect(sourceType, targetType, workspaceType)) return '节点类型不能连接'
+  if (targetType === 'product' && sourceType === 'image' && incomingTypes.filter((type) => type === 'image').length >= 9) return '商品创作节点最多连接 9 张参考图片'
   if (targetType === 'product_visual' && incomingTypes.includes('product')) return '商品出图节点只能连接 1 个商品资料'
   if (targetType === 'product_storyboard' && incomingTypes.includes('product')) return '商品分镜节点只能连接 1 个商品创作'
   if (targetType === 'outfit' && sourceType === 'apparel' && incomingTypes.includes('apparel')) return '服饰穿搭节点只能连接 1 个服饰资料'
