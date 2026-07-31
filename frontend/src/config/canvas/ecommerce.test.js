@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { mergeProductProfile, parseProductProfile } from './ecommerce'
+import { mergeProductProfile, parseProductProfile, productPromptContext } from './ecommerce'
 
 describe('product profile parsing', () => {
   it('parses fenced JSON and normalizes selling point arrays', () => {
@@ -23,5 +23,27 @@ describe('product profile parsing', () => {
       name: '手填名称',
       brand: '识别品牌',
     }))
+  })
+
+  it('adds product and packaging scale data to generation context', () => {
+    const context = productPromptContext({
+      name: '鲜炖花胶',
+      packagingType: '带包装',
+      productDimensions: '单瓶高8.5cm，直径6cm',
+      packageDimensions: '礼盒28×20×8cm',
+      packageRelation: '6瓶/盒，单瓶竖直排列',
+      scaleReference: '成人单手可握，瓶身约为掌长80%',
+    })
+    expect(context).toContain('商品形态：带包装')
+    expect(context).toContain('主体尺寸：单瓶高8.5cm，直径6cm')
+    expect(context).toContain('外包装尺寸：礼盒28×20×8cm')
+    expect(context).toContain('包装关系：6瓶/盒，单瓶竖直排列')
+    expect(context).toContain('尺度参照：成人单手可握，瓶身约为掌长80%')
+  })
+
+  it('omits stale package fields for unpackaged products', () => {
+    const context = productPromptContext({ packagingType: '无包装', productDimensions: '长12cm', packageDimensions: '旧包装尺寸' })
+    expect(context).toContain('主体尺寸：长12cm')
+    expect(context).not.toContain('旧包装尺寸')
   })
 })

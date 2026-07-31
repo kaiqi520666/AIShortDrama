@@ -4,6 +4,7 @@ import { Images, Package } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { productPromptContext } from '../../config/canvas/ecommerce'
 import AppInput from '../ui/AppInput.vue'
+import AppSelect from '../ui/AppSelect.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
 import ProductWorkflowSteps from './ProductWorkflowSteps.vue'
 import StructuredNodeShell from './StructuredNodeShell.vue'
@@ -21,6 +22,12 @@ const completed = computed(() => ['name', 'category', 'sellingPoints'].filter((k
 const profileReady = computed(() => Boolean(productPromptContext(product.value)))
 const step = computed(() => props.data.workflowStep || 'recognition')
 const selectedItems = computed(() => (props.data.items || []).filter((item) => item.enabled))
+const packagingOptions = [
+  { value: '无包装', label: '无包装' },
+  { value: '带包装', label: '带包装' },
+  { value: '套装', label: '套装 / 组合' },
+]
+const hasPackaging = computed(() => ['带包装', '套装'].includes(product.value.packagingType))
 
 function updateField(key, value) {
   updateNodeData(props.id, { product: { ...product.value, [key]: value }, status: 'ready' })
@@ -48,6 +55,18 @@ function setStep(value) {
           <label><span>价格</span><AppInput class="nodrag nopan" :model-value="product.price" placeholder="例如：¥299" @input="updateField('price', $event.target.value)" /></label>
         </div>
         <label class="product-field-wide"><span>规格 / SKU</span><AppInput class="nodrag nopan" :model-value="product.specifications" placeholder="颜色、尺码、容量等" @input="updateField('specifications', $event.target.value)" /></label>
+        <section class="product-scale-section">
+          <div class="structured-node-summary"><span>尺度信息</span><small>选填</small></div>
+          <div class="product-fields two-columns">
+            <label><span>商品形态</span><AppSelect class="nodrag nopan" :model-value="product.packagingType" :options="packagingOptions" aria-label="商品形态" @update:model-value="updateField('packagingType', $event)" /></label>
+            <label><span>主体尺寸</span><AppInput class="nodrag nopan" :model-value="product.productDimensions" placeholder="如：高8.5cm，直径6cm" @input="updateField('productDimensions', $event.target.value)" /></label>
+          </div>
+          <div v-if="hasPackaging" class="product-fields product-fields--secondary two-columns">
+            <label><span>外包装尺寸</span><AppInput class="nodrag nopan" :model-value="product.packageDimensions" placeholder="如：28×20×8cm" @input="updateField('packageDimensions', $event.target.value)" /></label>
+            <label><span>包装关系</span><AppInput class="nodrag nopan" :model-value="product.packageRelation" placeholder="如：6瓶/盒，竖直排列" @input="updateField('packageRelation', $event.target.value)" /></label>
+          </div>
+          <label class="product-field-wide"><span>尺度参照</span><AppInput class="nodrag nopan" :model-value="product.scaleReference" placeholder="如：成人单手可握，瓶身约为掌长80%" @input="updateField('scaleReference', $event.target.value)" /></label>
+        </section>
         <label class="product-field-wide"><span>核心卖点</span><AppTextarea class="nodrag nopan" :model-value="product.sellingPoints" maxlength="800" placeholder="用换行分隔主要卖点" @input="updateField('sellingPoints', $event.target.value)" /></label>
         <div class="product-fields product-fields--secondary two-columns">
           <label><span>目标人群</span><AppInput class="nodrag nopan" :model-value="product.audience" placeholder="目标用户" @input="updateField('audience', $event.target.value)" /></label>

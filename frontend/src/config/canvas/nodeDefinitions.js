@@ -66,7 +66,10 @@ export const nodeDefinitions = {
       resolution: defaultImageModel.defaultResolution,
       items: createProductVisualItems(),
       prompt: '',
-      product: { name: '', brand: '', category: '', price: '', specifications: '', sellingPoints: '', audience: '', scenario: '', additionalInfo: '' },
+      product: {
+        name: '', brand: '', category: '', price: '', specifications: '', packagingType: '', productDimensions: '',
+        packageDimensions: '', packageRelation: '', scaleReference: '', sellingPoints: '', audience: '', scenario: '', additionalInfo: '',
+      },
     }),
   },
   product_visual: {

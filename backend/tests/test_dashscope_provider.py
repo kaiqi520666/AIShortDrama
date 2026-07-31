@@ -125,6 +125,9 @@ async def test_product_profile_uses_structured_system_prompt(monkeypatch):
     assert "JSON" in payload["messages"][0]["content"]
     prompt = payload["messages"][1]["content"][1]["text"]
     assert '"additionalInfo"' in prompt
+    assert '"productDimensions"' in prompt
+    assert '"packageDimensions"' in prompt
+    assert "不要根据画面透视猜测物理尺寸" in prompt
     assert "重点读取包装容量" in prompt
 
 

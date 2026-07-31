@@ -8,8 +8,8 @@ from app.core.config import get_settings
 
 
 PRODUCT_PROFILE_PROMPT = """识别图片中的商品并严格输出一个 JSON 对象，不要解释，不要使用 Markdown。字段固定为：
-{"name":"商品名称","brand":"品牌","category":"品类","price":"图片中可见的价格","specifications":"规格、型号、颜色、尺寸或容量","sellingPoints":["核心卖点1","核心卖点2"],"audience":"目标人群","scenario":"适用场景","additionalInfo":"无法归入以上字段的有效商品信息"}
-无法从图片确认的字段填写空字符串，不要猜测品牌、价格和规格。"""
+{"name":"商品名称","brand":"品牌","category":"品类","price":"图片中可见的价格","specifications":"规格、型号、颜色、尺码或容量","packagingType":"无包装、带包装、套装或空字符串","productDimensions":"主体商品明确可见的物理尺寸","packageDimensions":"外包装明确可见的物理尺寸","packageRelation":"内件数量、排列及其与外包装的关系","scaleReference":"图片中明确可见的手持、桌面或其他相对尺度参照","sellingPoints":["核心卖点1","核心卖点2"],"audience":"目标人群","scenario":"适用场景","additionalInfo":"无法归入以上字段的有效商品信息"}
+无法从图片确认的字段填写空字符串，不要根据画面透视猜测物理尺寸，不要猜测品牌、价格和规格。"""
 
 APPAREL_PROFILE_PROMPT = """识别图片中所有可独立穿戴的服饰与配件，并严格输出一个 JSON 对象，不要解释，不要使用 Markdown。格式固定为：
 {"compositionType":"single 或 set","summary":"整体风格、配色和适用场景","items":[{"name":"单品名称","category":"上衣、裤装、裙装、外套、鞋履或配饰等","color":"可见颜色","material":"可确认的面料，不确定则留空","silhouette":"版型、长度或轮廓","details":"领型、袖型、图案、工艺及其他可见特征"}]}

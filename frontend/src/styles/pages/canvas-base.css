@@ -544,6 +544,14 @@
 .product-fields--secondary {
   margin-top: 10px;
 }
+.product-scale-section {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+.product-scale-section > .structured-node-summary {
+  margin-bottom: 10px;
+}
 .product-node-content .ui-input,
 .product-node-content .ui-textarea,
 .product-node-content .ui-select,

@@ -1,4 +1,7 @@
-const productFields = ['name', 'brand', 'category', 'price', 'specifications', 'sellingPoints', 'audience', 'scenario', 'additionalInfo']
+const productFields = [
+  'name', 'brand', 'category', 'price', 'specifications', 'packagingType', 'productDimensions',
+  'packageDimensions', 'packageRelation', 'scaleReference', 'sellingPoints', 'audience', 'scenario', 'additionalInfo',
+]
 
 export function parseProductProfile(content) {
   const source = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
@@ -24,12 +27,18 @@ export function mergeProductProfile(current = {}, recognized = {}) {
 }
 
 export function productPromptContext(product = {}) {
+  const hasPackaging = ['带包装', '套装'].includes(product.packagingType)
   const fields = [
     ['商品名称', product.name],
     ['品牌', product.brand],
     ['品类', product.category],
     ['价格', product.price],
     ['规格 / SKU', product.specifications],
+    ['商品形态', product.packagingType],
+    ['主体尺寸', product.productDimensions],
+    ['外包装尺寸', hasPackaging ? product.packageDimensions : ''],
+    ['包装关系', hasPackaging ? product.packageRelation : ''],
+    ['尺度参照', product.scaleReference],
     ['核心卖点', product.sellingPoints],
     ['目标人群', product.audience],
     ['使用场景', product.scenario],

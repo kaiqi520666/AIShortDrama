@@ -107,6 +107,8 @@ describe('product storyboard planning', () => {
     expect(prompt).toContain('镜头1、镜头2、镜头3、镜头4、镜头5、镜头6')
     expect(prompt).toContain('六个镜头分别对应分镜板的六个格子')
     expect(prompt).toContain('图片1是分镜图，图片2是商品参考图。')
+    expect(prompt).toContain('开箱镜头使用外包装尺寸')
+    expect(prompt).toContain('禁止因特写、透视或运镜改变商品实际大小')
   })
 
   it('orders parsed prompts by selected template order', () => {
