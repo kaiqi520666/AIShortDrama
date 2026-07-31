@@ -29,7 +29,10 @@ const notice = ref('')
 const productNode = computed(() => props.productNodeId
   ? store.nodes.find((node) => node.id === props.productNodeId)
   : store.incomingNodes(props.nodeId).find((node) => node.type === 'product'))
-const referenceImage = computed(() => productNode.value && store.incomingNodes(productNode.value.id).find((node) => node.type === 'image' && node.data.asset))
+const referenceImages = computed(() => productNode.value
+  ? store.incomingNodes(productNode.value.id).filter((node) => node.type === 'image' && node.data.asset).slice(0, 9)
+  : [])
+const referenceImage = computed(() => referenceImages.value[0])
 const productContext = computed(() => productPromptContext(productNode.value?.data.product))
 const selectedImageSettings = computed(() => normalizeImageSettings({
   model: props.data.imageModel,
@@ -95,6 +98,9 @@ async function submitTask() {
       model: selectedTextModel.value.id,
       media_type: 'image',
       media_url: referenceImage.value.data.asset,
+      ...(referenceImages.value.length > 1
+        ? { media_urls: referenceImages.value.slice(1).map((reference) => reference.data.asset) }
+        : {}),
       prompt: prompt.value,
       response_mode: 'product_visual_plan',
     }, (delta) => { content += delta }, (taskId) => {
@@ -105,7 +111,7 @@ async function submitTask() {
     const generatedNodeIds = store.addProductVisualNodes(
       props.nodeId,
       productNode.value.id,
-      referenceImage.value.id,
+      referenceImages.value.map((reference) => reference.id),
       plans,
       { model: settings.model.id, aspectRatio: settings.aspectRatio, resolution: settings.resolution },
     )

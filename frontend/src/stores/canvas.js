@@ -247,9 +247,10 @@ export const useCanvasStore = defineStore('canvas', {
       if (target.type === 'video' && !target.data.prompt?.trim()) Object.assign(target.data, storyboardVideoData(source) || {})
       return true
     },
-    addProductVisualNodes(plannerId, productId, referenceId, plans, settings) {
+    addProductVisualNodes(plannerId, productId, referenceIds, plans, settings) {
       const planner = this.nodes.find((node) => node.id === plannerId)
       if (!planner || !plans.length) return []
+      const references = (Array.isArray(referenceIds) ? referenceIds : [referenceIds]).filter(Boolean)
 
       const columns = Math.min(3, plans.length)
       const ids = plans.map((plan, index) => {
@@ -268,7 +269,7 @@ export const useCanvasStore = defineStore('canvas', {
           resolution: settings.resolution,
         }
         this.addEdge({ source: plannerId, target: id })
-        this.addEdge({ source: referenceId, target: id })
+        references.forEach((referenceId) => this.addEdge({ source: referenceId, target: id }))
         this.addEdge({ source: productId, target: id })
         return id
       })
