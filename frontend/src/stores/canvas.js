@@ -394,6 +394,22 @@ export const useCanvasStore = defineStore('canvas', {
       this.selectNodes(ids.slice(0, 1))
       return ids
     },
+    syncProductStoryboardReferences(plannerId, productReferences = [], characterReference = null) {
+      const references = Array.isArray(productReferences)
+        ? productReferences.map((reference) => ({ ...reference }))
+        : []
+      const character = characterReference ? { ...characterReference } : null
+      const storyboardImageIds = new Set(this.nodes
+        .filter((node) => node.type === 'image' && node.data.storyboardSourceId === plannerId)
+        .map((node) => node.id))
+      this.nodes
+        .filter((node) => ['image', 'video'].includes(node.type)
+          && (node.data.storyboardSourceId === plannerId || storyboardImageIds.has(node.data.storyboardImageId)))
+        .forEach((node) => {
+          node.data.storyboardProductReferences = references.map((reference) => ({ ...reference }))
+          node.data.storyboardCharacter = character ? { ...character } : null
+        })
+    },
     addApparelStoryboardNodes(plannerId, garmentId, modelId, sceneId, plan, settings = {}) {
       const planner = this.nodes.find((node) => node.id === plannerId)
       if (!planner || !plan?.storyboardPrompt?.trim() || !plan.videoPrompt?.trim()) return []

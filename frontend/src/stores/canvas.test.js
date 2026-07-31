@@ -398,6 +398,33 @@ describe('canvas node packs', () => {
     expect(image2.data.storyboardHistory).toHaveLength(1)
   })
 
+  it('syncs changed storyboard references to generated image and video nodes', async () => {
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1', version: 1, workspace_type: 'ecommerce', canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
+    })
+    const productId = store.addNode('product', { x: 0, y: 0 })
+    const storyboardId = store.addNode('product_storyboard', { x: 500, y: 0 }, productId)
+    const planner = store.nodes.find((node) => node.id === storyboardId)
+    planner.data.productReferences = [{ id: 'old-product', name: '旧商品图', url: 'https://example.com/old-product.png' }]
+    planner.data.characterReference = { id: 'old-character', name: '旧角色', url: 'https://example.com/old-character.png' }
+    const [imageId] = store.addProductStoryboardNodes(storyboardId, productId, [
+      { id: 'ugc-seeding', label: 'UGC 种草', prompt: '分镜板', videoPrompt: '视频提示词' },
+    ], { model: 'gpt-image-2', aspectRatio: '9:16', resolution: '2K' })
+    const image = store.nodes.find((node) => node.id === imageId)
+    image.data.asset = 'https://example.com/storyboard.png'
+    const videoId = store.addStoryboardVideoNode(imageId)
+    const nextReferences = [{ id: 'new-product', name: '新商品图', url: 'https://example.com/new-product.png' }]
+    const nextCharacter = { id: 'new-character', name: '新角色', url: 'https://example.com/new-character.png', assetUrl: 'asset://new-character' }
+
+    store.syncProductStoryboardReferences(storyboardId, nextReferences, nextCharacter)
+
+    expect(store.nodes.filter((node) => [imageId, videoId].includes(node.id)).map((node) => node.data)).toEqual([
+      expect.objectContaining({ storyboardProductReferences: nextReferences, storyboardCharacter: nextCharacter }),
+      expect.objectContaining({ storyboardProductReferences: nextReferences, storyboardCharacter: nextCharacter }),
+    ])
+  })
+
   it('uses an existing image when product creation is contextual', async () => {
     const store = useCanvasStore()
     await store.loadWorkspace({

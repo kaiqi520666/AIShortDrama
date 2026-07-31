@@ -68,6 +68,13 @@ const canSubmit = computed(() => !running.value && productNode.value && productR
 function updateData(value) {
   notice.value = ''
   updateNodeData(props.nodeId, { ...value, generationError: '' })
+  if (Object.prototype.hasOwnProperty.call(value, 'productReferences') || Object.prototype.hasOwnProperty.call(value, 'characterReference')) {
+    store.syncProductStoryboardReferences(
+      props.nodeId,
+      Object.prototype.hasOwnProperty.call(value, 'productReferences') ? value.productReferences : productReferences.value,
+      Object.prototype.hasOwnProperty.call(value, 'characterReference') ? value.characterReference : character.value,
+    )
+  }
 }
 
 function updateTemplate(id) {
