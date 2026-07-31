@@ -370,11 +370,12 @@
   white-space: nowrap;
 }
 .apparel-storyboard-node-summary {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 8px;
 }
 .apparel-storyboard-node-summary span {
   padding: 8px 6px;
+  font-size: 12px;
 }
 .product-visual-source {
   display: flex;
@@ -384,7 +385,7 @@
   padding: 9px 10px;
   border: 1px solid var(--color-border-subtle);
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
 }
 .product-visual-source span {
   overflow: hidden;

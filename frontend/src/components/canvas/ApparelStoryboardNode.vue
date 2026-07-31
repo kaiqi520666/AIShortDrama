@@ -15,9 +15,9 @@ const props = defineProps({
 
 const store = useCanvasStore()
 const targetHandles = [
-  { id: 'apparel', top: '38%', label: '服饰' },
-  { id: 'model', top: '61%', label: '角色' },
-  { id: 'scene', top: '84%', label: '场景' },
+  { id: 'apparel', top: '38%' },
+  { id: 'model', top: '61%' },
+  { id: 'scene', top: '84%' },
 ]
 
 function inputNode(handle) {
@@ -32,10 +32,11 @@ const sceneNode = computed(() => inputNode('scene'))
 const generatedCount = computed(() => (props.data.generatedNodeIds || []).filter((id) => store.nodes.some((node) => node.id === id)).length)
 const settings = computed(() => getApparelVideoSettings(props.data))
 const inputs = computed(() => [
-  { label: '服饰资料', icon: Shirt, node: apparelNode.value, asset: garmentNode.value?.data.asset, detail: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件已启用` : '等待连接' },
-  { label: '角色节点', icon: UserRound, node: modelNode.value, asset: modelNode.value?.data.asset, detail: modelNode.value?.data.title || '等待连接' },
-  { label: '场景节点', icon: Images, node: sceneNode.value, asset: sceneNode.value?.data.asset, detail: sceneNode.value?.data.title || '等待连接' },
+  { label: '服饰', icon: Shirt, node: apparelNode.value, asset: garmentNode.value?.data.asset, detail: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件` : '待连接' },
+  { label: '模特', icon: UserRound, node: modelNode.value, asset: modelNode.value?.data.asset, detail: modelNode.value?.data.title || '待连接' },
+  { label: '场景', icon: Images, node: sceneNode.value, asset: sceneNode.value?.data.asset, detail: sceneNode.value?.data.title || '待连接' },
 ])
+const connectedCount = computed(() => inputs.value.filter((item) => item.asset).length)
 </script>
 
 <template>
@@ -43,7 +44,7 @@ const inputs = computed(() => [
     <div class="product-visual-node-content storyboard-node-content apparel-storyboard-node-content nowheel">
       <div class="structured-node-summary">
         <span><Clapperboard :size="15" />服饰分镜</span>
-        <small>{{ generatedCount ? '故事板 + 视频已创建' : '等待生成方案' }}</small>
+        <small>{{ generatedCount ? '已生成' : '待生成' }}</small>
       </div>
       <div class="apparel-storyboard-inputs">
         <div v-for="item in inputs" :key="item.label" class="product-visual-source" :class="{ empty: !item.asset }">
@@ -55,7 +56,7 @@ const inputs = computed(() => [
         </div>
       </div>
       <div class="product-creation-settings-summary storyboard-node-summary apparel-storyboard-node-summary">
-        <span>{{ settings.duration }} 秒</span><span>{{ data.storyboardShotCount || '按时长' }} 格</span><span>{{ settings.aspectRatio }}</span>
+        <span>{{ settings.duration }} 秒</span><span>{{ connectedCount }}/3 素材</span>
       </div>
     </div>
   </StructuredNodeShell>

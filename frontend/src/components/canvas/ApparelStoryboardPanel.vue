@@ -46,17 +46,16 @@ const durationOptions = computed(() => {
   const values = selectedVideoModel.value.durationOptions || Array.from({ length: selectedVideoModel.value.durationMax - selectedVideoModel.value.durationMin + 1 }, (_, index) => selectedVideoModel.value.durationMin + index)
   return values.map((value) => ({ value, label: `${value} 秒` }))
 })
-const resolutionOptions = computed(() => selectedVideoModel.value.resolutions.map((value) => ({ value, label: value === '4k' ? '4K' : value })))
-const ratioOptions = computed(() => selectedVideoModel.value.aspectRatios.map((value) => ({ value, label: value })))
 const running = computed(() => props.data.status === 'generating')
 const existingGeneratedNodes = computed(() => (props.data.generatedNodeIds || []).filter((id) => store.nodes.some((node) => node.id === id)))
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedTextModel.value.id))
 const insufficientCredits = computed(() => estimatedCredits.value !== null && (authStore.user?.credit_balance || 0) < estimatedCredits.value)
 const sourceItems = computed(() => [
-  { reference: '图片1', label: '服饰参考图', icon: Shirt, asset: garmentNode.value?.data.asset, detail: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件已启用` : '连接服饰资料节点' },
-  { reference: '图片2', label: '角色节点', icon: UserRound, asset: modelNode.value?.data.asset, detail: modelNode.value?.data.title || '连接角色节点' },
-  { reference: '图片3', label: '场景节点', icon: Images, asset: sceneNode.value?.data.asset, detail: sceneNode.value?.data.title || '连接场景节点' },
+  { label: '服饰', icon: Shirt, asset: garmentNode.value?.data.asset, detail: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件` : '待连接' },
+  { label: '模特', icon: UserRound, asset: modelNode.value?.data.asset, detail: modelNode.value?.data.title || '待连接' },
+  { label: '场景', icon: Images, asset: sceneNode.value?.data.asset, detail: sceneNode.value?.data.title || '待连接' },
 ])
+const connectedSourceCount = computed(() => sourceItems.value.filter((item) => item.asset).length)
 const message = computed(() => {
   if (notice.value || props.data.generationError) return notice.value || props.data.generationError
   if (!apparelNode.value) return '请先连接服饰资料节点'
@@ -140,34 +139,31 @@ defineExpose({ submitTask })
   <section class="generation-panel product-visual-panel storyboard-panel apparel-storyboard-panel nodrag nowheel" @pointerdown.stop>
     <header class="product-visual-panel-header">
       <span><Clapperboard :size="16" />服饰分镜</span>
-      <small>生成 1 张故事板 + 1 个视频节点</small>
     </header>
 
-    <section class="storyboard-reference-section">
-      <header class="storyboard-section-header"><span><Images :size="14" />输入素材</span><small>图片1 服饰 · 图片2 角色 · 图片3 场景</small></header>
+    <section class="storyboard-reference-section apparel-storyboard-reference-section">
+      <header class="storyboard-section-header"><span><Images :size="14" />参考素材</span><small>{{ connectedSourceCount }}/3 已连接</small></header>
       <div v-for="item in sourceItems" :key="item.label" class="storyboard-reference-row">
-        <div class="storyboard-reference-label"><b class="storyboard-reference-index">{{ item.reference }}</b><component :is="item.icon" :size="14" /><span><strong>{{ item.label }}</strong><small>必选 · {{ item.asset ? '已就绪' : '待连接' }}</small></span></div>
+        <div class="storyboard-reference-label"><component :is="item.icon" :size="14" /><span><strong>{{ item.label }}</strong></span></div>
         <div class="storyboard-reference-list">
-          <div v-if="item.asset" class="storyboard-reference-item">
-            <AppImageHoverPreview :src="item.asset" :preview-src="buildOssImageUrl(item.asset, { width: 1200, quality: 90 })" :alt="item.label">
+          <div class="storyboard-reference-item apparel-storyboard-reference-item" :class="{ empty: !item.asset }">
+            <AppImageHoverPreview v-if="item.asset" :src="item.asset" :preview-src="buildOssImageUrl(item.asset, { width: 1200, quality: 90 })" :alt="item.label">
               <img :src="buildOssImageUrl(item.asset, { width: 120, quality: 80 })" :alt="item.label" referrerpolicy="no-referrer" />
             </AppImageHoverPreview>
-            <strong>{{ item.detail }}</strong>
+            <component :is="item.icon" v-else :size="16" />
+            <strong>{{ item.asset ? item.detail || '已连接' : '待连接' }}</strong>
           </div>
-          <span v-else class="storyboard-reference-empty">未连接</span>
         </div>
       </div>
     </section>
 
     <div class="storyboard-settings apparel-storyboard-settings">
-      <label><span>视频模型</span><AppSelect :model-value="selectedVideoModel.id" :options="videoModelOptions" aria-label="视频模型" @update:model-value="updateVideoModel" /></label>
       <label><span>视频时长</span><AppSelect :model-value="selectedVideoSettings.duration" :options="durationOptions" aria-label="视频时长" @update:model-value="updateVideoSetting('duration', $event)" /></label>
-      <label><span>视频比例</span><AppSelect :model-value="selectedVideoSettings.aspectRatio" :options="ratioOptions" aria-label="视频比例" @update:model-value="updateVideoSetting('videoAspectRatio', $event)" /></label>
-      <label><span>视频清晰度</span><AppSelect :model-value="selectedVideoSettings.resolution" :options="resolutionOptions" aria-label="视频清晰度" @update:model-value="updateVideoSetting('videoResolution', $event)" /></label>
-      <div class="storyboard-recommendation"><Clapperboard :size="14" />故事板按 {{ selectedVideoSettings.duration }} 秒生成，无台词、无角色说话、保留自然环境音</div>
+      <label><span>视频模型</span><AppSelect :model-value="selectedVideoModel.id" :options="videoModelOptions" aria-label="视频模型" @update:model-value="updateVideoModel" /></label>
+      <label><span>视频比例</span><AppSelect :model-value="selectedVideoSettings.aspectRatio" :options="selectedVideoModel.aspectRatios.map((value) => ({ value, label: value }))" aria-label="视频比例" @update:model-value="updateVideoSetting('videoAspectRatio', $event)" /></label>
     </div>
 
-    <AppTextarea :model-value="data.prompt" maxlength="600" placeholder="可选：补充动作节奏、场景氛围或展示重点…" @input="updateData({ prompt: $event.target.value })" />
+    <AppTextarea :model-value="data.prompt" maxlength="600" placeholder="补充要求（可选）" aria-label="补充要求" @input="updateData({ prompt: $event.target.value })" />
     <p v-if="message" class="panel-notice">{{ message }}</p>
     <footer class="product-visual-panel-footer">
       <FileText :size="16" />
