@@ -30,9 +30,11 @@ const notice = ref('')
 const productNode = computed(() => props.productNodeId
   ? store.nodes.find((node) => node.id === props.productNodeId)
   : store.incomingNodes(props.nodeId).find((node) => node.type === 'product'))
-const referenceImages = computed(() => productNode.value
+const allReferenceImages = computed(() => productNode.value
   ? store.incomingNodes(productNode.value.id).filter((node) => node.type === 'image' && node.data.asset).slice(0, maxProductReferenceImages)
   : [])
+const disabledReferenceIds = computed(() => new Set(productNode.value?.data.disabledReferenceIds || []))
+const referenceImages = computed(() => allReferenceImages.value.filter((node) => !disabledReferenceIds.value.has(node.id)))
 const referenceImage = computed(() => referenceImages.value[0])
 const productContext = computed(() => productPromptContext(productNode.value?.data.product))
 const selectedImageSettings = computed(() => normalizeImageSettings({
@@ -53,8 +55,10 @@ const ratioOptions = computed(() => selectedImageSettings.value.model.aspectRati
 const resolutionOptions = computed(() => selectedImageSettings.value.model.resolutions.map((value) => ({ value, label: value })))
 const message = computed(() => notice.value || props.data.generationError || (!productNode.value
   ? '请先连接商品资料节点'
-  : !referenceImage.value
+  : !allReferenceImages.value.length
     ? '请先上传商品参考图'
+    : !referenceImage.value
+      ? '请至少启用一张商品参考图'
     : !productContext.value
       ? '请先填写商品资料'
       : !selectedItems.value.length

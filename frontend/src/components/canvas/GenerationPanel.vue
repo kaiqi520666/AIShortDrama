@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
-import { ArrowUp, Check, ChevronDown, Clapperboard, Coins, FileText, Image, Images, LoaderCircle, Music2, Package, Shirt, Video as VideoIcon, WandSparkles, X } from 'lucide-vue-next'
+import { ArrowUp, Check, ChevronDown, Clapperboard, Coins, Eye, EyeOff, FileText, Image, Images, LoaderCircle, Music2, Package, Shirt, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
 import { createAudioGeneration, createImageGeneration, createVideoGeneration } from '../../api/generations'
 import { streamReversePrompt } from '../../api/reversals'
 import { audioFormatOptions, audioModel, audioSampleRateOptions, buildAudioRequest, getAudioReferenceError, maxAudioPromptLength, normalizeAudioSettings } from '../../config/audioModels'
@@ -90,19 +90,22 @@ const references = computed(() => {
   if (isStoryboardImage.value) return [...continuityReference, ...connectedReferences.value, ...outfitBoard, ...productReferences, ...characterReference]
   return [...connectedReferences.value, ...characterReference, ...productReferences]
 })
-const imageReferences = computed(() => references.value.filter((node) => node.type === 'image' && node.data.asset))
-const audioReferences = computed(() => references.value.filter((node) => node.type === 'audio' && node.data.asset))
+const disabledReferenceIds = computed(() => new Set(props.data.disabledReferenceIds || []))
+const activeReferences = computed(() => references.value.filter((node) => !disabledReferenceIds.value.has(node.id)))
+const allImageReferences = computed(() => references.value.filter((node) => node.type === 'image' && node.data.asset))
+const imageReferences = computed(() => activeReferences.value.filter((node) => node.type === 'image' && node.data.asset))
+const audioReferences = computed(() => activeReferences.value.filter((node) => node.type === 'audio' && node.data.asset))
 const mentionReferences = computed(() => {
-  if (props.type === 'video') return references.value.filter((node) => ['image', 'video', 'audio'].includes(node.type) && node.data.asset)
+  if (props.type === 'video') return activeReferences.value.filter((node) => ['image', 'video', 'audio'].includes(node.type) && node.data.asset)
   return props.type === 'audio' ? audioReferences.value : imageReferences.value
 })
 const isReverseTask = computed(() => props.type === 'text' && ['image', 'video'].includes(props.data.reverseType))
 const isProductRecognition = computed(() => props.type === 'product')
 const isVisionTextTask = computed(() => isReverseTask.value || isProductRecognition.value)
-const reverseReference = computed(() => references.value.find((node) => node.type === (isProductRecognition.value ? 'image' : props.data.reverseType) && node.data.asset))
+const reverseReference = computed(() => activeReferences.value.find((node) => node.type === (isProductRecognition.value ? 'image' : props.data.reverseType) && node.data.asset))
 const legacyProductPrompt = computed(() => isProductRecognition.value && props.data.prompt?.startsWith('识别图片中的商品并严格输出一个 JSON 对象'))
 const effectivePrompt = computed(() => ['image', 'video', 'audio'].includes(props.type)
-  ? getEffectivePrompt(props.data, references.value)
+  ? getEffectivePrompt(props.data, activeReferences.value)
   : legacyProductPrompt.value ? '' : props.data.prompt?.trim() || '')
 const videoGenerationPrompt = computed(() => {
   if (!isStoryboardVideo.value || props.data.storyboardSegmentIndex <= 1) return effectivePrompt.value
@@ -134,8 +137,10 @@ const estimatedCredits = computed(() => {
 const insufficientCredits = computed(() => estimatedCredits.value !== null && (authStore.user?.credit_balance || 0) < estimatedCredits.value)
 const creditLabel = computed(() => `${props.type === 'audio' ? '冻结' : '本次'} ${estimatedCredits.value} 积分`)
 const referenceError = computed(() => {
-  if (props.type === 'video') return getVideoReferenceError(props.data, references.value)
-  if (props.type === 'audio') return getAudioReferenceError(references.value)
+  if (props.type === 'video') return getVideoReferenceError(props.data, activeReferences.value)
+  if (props.type === 'audio') return getAudioReferenceError(activeReferences.value)
+  if (isProductRecognition.value && !allImageReferences.value.length) return '请先上传商品参考图'
+  if (isProductRecognition.value && !imageReferences.value.length) return '请至少启用一张商品参考图片'
   if (isProductRecognition.value && imageReferences.value.length > maxProductReferenceImages) return `商品创作最多支持 ${maxProductReferenceImages} 张参考图片`
   return props.type === 'image' && selectedImageModel.value.maxReferences && imageReferences.value.length > selectedImageModel.value.maxReferences
     ? `当前模型最多支持 ${selectedImageModel.value.maxReferences} 张参考图片`
@@ -155,15 +160,16 @@ const displayReferences = computed(() => {
   const counts = {}
   return references.value.map((node) => {
     counts[node.type] = (counts[node.type] || 0) + 1
-    const removable = node.type === 'image' && store.edges.some((edge) => edge.target === props.nodeId && edge.source === node.id)
-    return { key: node.id, node, number: counts[node.type], label: `${nodeDefinitions[node.type].label}${counts[node.type]}`, removable }
+    const enabled = !disabledReferenceIds.value.has(node.id)
+    const toggleable = node.type === 'image' && node.data.asset
+    return { key: node.id, node, number: counts[node.type], label: `${nodeDefinitions[node.type].label}${counts[node.type]}`, enabled, toggleable }
   })
 })
 const canSubmit = computed(() => {
   if (storyboardLocked.value || running.value || (!effectivePrompt.value && !isProductRecognition.value) || referenceError.value || promptError.value || insufficientCredits.value) return false
   if (isVisionTextTask.value) return Boolean(reverseReference.value)
   if (props.type !== 'text') return true
-  return references.value.some((node) => node.type === 'text' ? node.data.content?.trim() : node.data.asset)
+  return activeReferences.value.some((node) => node.type === 'text' ? node.data.content?.trim() : node.data.asset)
 })
 
 function updatePrompt(parts) {
@@ -185,13 +191,13 @@ function updateTextPrompt(event) {
   updateNodeData(props.nodeId, { prompt: event.target.value })
 }
 
-function removeReference(reference) {
-  if (!reference.removable) return
-  const edge = store.edges.find((item) => item.target === props.nodeId && item.source === reference.node.id)
-  if (!edge) return
-  store.deleteEdge(edge.id)
+function toggleReference(reference) {
+  if (!reference.toggleable) return
+  const disabled = new Set(props.data.disabledReferenceIds || [])
+  if (disabled.has(reference.node.id)) disabled.delete(reference.node.id)
+  else disabled.add(reference.node.id)
   notice.value = ''
-  updateNodeData(props.nodeId, { generationError: '' })
+  updateNodeData(props.nodeId, { disabledReferenceIds: [...disabled], generationError: '' })
 }
 
 async function submitTask() {
@@ -402,7 +408,7 @@ onBeforeUnmount(() => {
 <template>
   <section v-if="!data.assetSource && (type !== 'text' || data.textMode === 'task')" class="generation-panel nodrag nowheel" :class="{ embedded }" @pointerdown.stop>
     <div v-if="displayReferences.length" class="reference-strip">
-      <div v-for="reference in displayReferences" :key="reference.key" class="reference-item" :title="reference.label" :aria-label="reference.label">
+      <div v-for="reference in displayReferences" :key="reference.key" class="reference-item" :class="{ 'is-disabled': !reference.enabled }" :title="`${reference.label} · ${reference.enabled ? '已启用' : '已禁用'}`" :aria-label="`${reference.label} · ${reference.enabled ? '已启用' : '已禁用'}`">
         <AppImageHoverPreview v-if="reference.node.type === 'image' && reference.node.data.asset" :src="reference.node.data.asset" :preview-src="buildOssImageUrl(reference.node.data.asset, { width: 1200, quality: 90 })" :alt="reference.label">
           <img :src="buildOssImageUrl(reference.node.data.asset)" alt="" />
         </AppImageHoverPreview>
@@ -416,17 +422,19 @@ onBeforeUnmount(() => {
         <WandSparkles v-else :size="20" />
         <b>{{ reference.number }}</b>
         <AppButton
-          v-if="reference.removable"
-          class="reference-remove"
+          v-if="reference.toggleable"
+          class="reference-toggle"
           icon-only
           size="sm"
-          variant="danger"
-          :title="`移除${reference.label}`"
-          :aria-label="`移除${reference.label}`"
+          variant="ghost"
+          :title="`${reference.enabled ? '禁用' : '启用'}${reference.label}`"
+          :aria-label="`${reference.enabled ? '禁用' : '启用'}${reference.label}`"
+          :aria-pressed="reference.enabled"
           @pointerdown.stop
-          @click.stop="removeReference(reference)"
+          @click.stop="toggleReference(reference)"
         >
-          <X :size="12" />
+          <Eye v-if="reference.enabled" :size="12" />
+          <EyeOff v-else :size="12" />
         </AppButton>
       </div>
     </div>

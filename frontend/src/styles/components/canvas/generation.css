@@ -797,7 +797,11 @@
   background: var(--color-surface-base);
   font-size: 9px;
 }
-.reference-strip .reference-item .reference-remove.ui-button {
+.reference-item.is-disabled {
+  opacity: 0.48;
+  filter: grayscale(0.7);
+}
+.reference-strip .reference-item .reference-toggle.ui-button {
   position: absolute;
   z-index: 2;
   top: 1px;
@@ -812,10 +816,10 @@
   background: var(--color-backdrop);
   color: var(--color-text-primary);
   opacity: 1;
-  transition: background-color 0.16s ease;
+  transition: background-color 0.16s ease, color 0.16s ease;
 }
-.reference-remove.ui-button:hover {
-  background: var(--color-danger);
+.reference-toggle.ui-button:hover {
+  background: var(--color-brand);
   color: var(--color-brand-ink);
 }
 .prompt-reference-editor {
