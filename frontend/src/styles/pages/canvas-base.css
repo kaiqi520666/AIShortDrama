@@ -1042,3 +1042,9 @@
 .media-node .vue-flow__handle-right::after {
   left: 5px;
 }
+.media-node:hover .vue-flow__handle {
+  pointer-events: auto;
+}
+.media-node:hover .vue-flow__handle::after {
+  opacity: 1;
+}
