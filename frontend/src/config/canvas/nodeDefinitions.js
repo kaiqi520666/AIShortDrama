@@ -135,8 +135,8 @@ export const nodeDefinitions = {
     }),
   },
   apparel_storyboard: {
-    type: 'apparel_storyboard', label: '服饰分镜', model: defaultReverseModel.id, hint: '连接服饰、模特与场景，生成故事板和视频脚本',
-    setting: '服饰 + 模特 + 场景 · 故事板', icon: Clapperboard,
+    type: 'apparel_storyboard', label: '服饰分镜', model: defaultReverseModel.id, hint: '自动创建服饰、角色和场景输入，生成故事板',
+    setting: '自动创建 3 个输入节点', icon: Clapperboard,
     inputs: ['apparel', 'image'], outputs: ['image'],
     createData: ({ number }) => ({
       title: `服饰分镜 ${number}`,

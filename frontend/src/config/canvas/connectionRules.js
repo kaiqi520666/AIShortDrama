@@ -39,9 +39,9 @@ export function inferTargetHandle(source, targetType, incomingConnections = []) 
   if (!source || targetType !== 'apparel_storyboard') return undefined
   if (source.type === 'apparel') return 'apparel'
   if (source.type !== 'image') return undefined
-  const preferred = source.data?.resourceType === 'scene'
+  const preferred = source.data?.inputRole === 'scene' || source.data?.resourceType === 'scene'
     ? 'scene'
-    : source.data?.resourceType === 'model' ? 'model' : ''
+    : source.data?.inputRole === 'role' || source.data?.resourceType === 'model' ? 'model' : ''
   if (preferred && !incomingConnections.some((connection) => connection.targetHandle === preferred)) return preferred
   return ['model', 'scene'].find((handle) => !incomingConnections.some((connection) => connection.targetHandle === handle))
 }

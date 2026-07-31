@@ -15,9 +15,9 @@ const props = defineProps({
 
 const store = useCanvasStore()
 const targetHandles = [
-  { id: 'apparel', top: '38%' },
-  { id: 'model', top: '61%' },
-  { id: 'scene', top: '84%' },
+  { id: 'apparel', top: '38%', label: '服饰' },
+  { id: 'model', top: '61%', label: '角色' },
+  { id: 'scene', top: '84%', label: '场景' },
 ]
 
 function inputNode(handle) {
@@ -33,8 +33,8 @@ const generatedCount = computed(() => (props.data.generatedNodeIds || []).filter
 const settings = computed(() => getApparelVideoSettings(props.data))
 const inputs = computed(() => [
   { label: '服饰资料', icon: Shirt, node: apparelNode.value, asset: garmentNode.value?.data.asset, detail: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件已启用` : '等待连接' },
-  { label: '模特图片', icon: UserRound, node: modelNode.value, asset: modelNode.value?.data.asset, detail: modelNode.value?.data.title || '等待连接' },
-  { label: '场景图片', icon: Images, node: sceneNode.value, asset: sceneNode.value?.data.asset, detail: sceneNode.value?.data.title || '等待连接' },
+  { label: '角色节点', icon: UserRound, node: modelNode.value, asset: modelNode.value?.data.asset, detail: modelNode.value?.data.title || '等待连接' },
+  { label: '场景节点', icon: Images, node: sceneNode.value, asset: sceneNode.value?.data.asset, detail: sceneNode.value?.data.title || '等待连接' },
 ])
 </script>
 
@@ -55,7 +55,7 @@ const inputs = computed(() => [
         </div>
       </div>
       <div class="product-creation-settings-summary storyboard-node-summary apparel-storyboard-node-summary">
-        <span>单模板</span><span>{{ settings.duration }} 秒</span><span>{{ data.storyboardShotCount || '按时长' }} 格</span><span>{{ settings.aspectRatio }}</span>
+        <span>{{ settings.duration }} 秒</span><span>{{ data.storyboardShotCount || '按时长' }} 格</span><span>{{ settings.aspectRatio }}</span>
       </div>
     </div>
   </StructuredNodeShell>

@@ -6,7 +6,7 @@ import { streamReversePrompt } from '../../api/reversals'
 import { apparelPromptContext } from '../../config/canvas/apparel'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { videoModels } from '../../config/videoModels'
-import { buildOutfitStoryboardPrompt, getApparelVideoSettings, outfitStoryboardTemplate, parseOutfitStoryboardPlan } from '../../config/canvas/outfitStoryboard'
+import { buildOutfitStoryboardPrompt, getApparelVideoSettings, parseOutfitStoryboardPlan } from '../../config/canvas/outfitStoryboard'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
@@ -53,17 +53,17 @@ const existingGeneratedNodes = computed(() => (props.data.generatedNodeIds || []
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedTextModel.value.id))
 const insufficientCredits = computed(() => estimatedCredits.value !== null && (authStore.user?.credit_balance || 0) < estimatedCredits.value)
 const sourceItems = computed(() => [
-  { label: '服饰参考图', icon: Shirt, asset: garmentNode.value?.data.asset, detail: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件已启用` : '等待服饰资料' },
-  { label: '模特参考图', icon: UserRound, asset: modelNode.value?.data.asset, detail: modelNode.value?.data.title || '等待模特图片' },
-  { label: '场景参考图', icon: Images, asset: sceneNode.value?.data.asset, detail: sceneNode.value?.data.title || '等待场景图片' },
+  { reference: '图片1', label: '服饰参考图', icon: Shirt, asset: garmentNode.value?.data.asset, detail: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件已启用` : '连接服饰资料节点' },
+  { reference: '图片2', label: '角色节点', icon: UserRound, asset: modelNode.value?.data.asset, detail: modelNode.value?.data.title || '连接角色节点' },
+  { reference: '图片3', label: '场景节点', icon: Images, asset: sceneNode.value?.data.asset, detail: sceneNode.value?.data.title || '连接场景节点' },
 ])
 const message = computed(() => {
   if (notice.value || props.data.generationError) return notice.value || props.data.generationError
   if (!apparelNode.value) return '请先连接服饰资料节点'
   if (!apparelContext.value) return '请先完成服饰资料识别并启用至少一件单品'
   if (!garmentNode.value?.data.asset) return '请先完成服饰资料的参考图上传'
-  if (!modelNode.value?.data.asset) return '请先连接并上传模特图片'
-  if (!sceneNode.value?.data.asset) return '请先连接并上传场景图片'
+  if (!modelNode.value?.data.asset) return '请先在角色节点选择或上传图片'
+  if (!sceneNode.value?.data.asset) return '请先在场景节点选择或上传图片'
   return insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''
 })
 const canSubmit = computed(() => !running.value && Boolean(apparelContext.value && garmentNode.value?.data.asset && modelNode.value?.data.asset && sceneNode.value?.data.asset) && !insufficientCredits.value)
@@ -144,9 +144,9 @@ defineExpose({ submitTask })
     </header>
 
     <section class="storyboard-reference-section">
-      <header class="storyboard-section-header"><span><Images :size="14" />参考素材</span><small>图片1 · 图片2 · 图片3</small></header>
+      <header class="storyboard-section-header"><span><Images :size="14" />输入素材</span><small>图片1 服饰 · 图片2 角色 · 图片3 场景</small></header>
       <div v-for="item in sourceItems" :key="item.label" class="storyboard-reference-row">
-        <div class="storyboard-reference-label"><component :is="item.icon" :size="14" /><span><strong>{{ item.label }}</strong><small>必选 · {{ item.asset ? '已就绪' : '待连接' }}</small></span></div>
+        <div class="storyboard-reference-label"><b class="storyboard-reference-index">{{ item.reference }}</b><component :is="item.icon" :size="14" /><span><strong>{{ item.label }}</strong><small>必选 · {{ item.asset ? '已就绪' : '待连接' }}</small></span></div>
         <div class="storyboard-reference-list">
           <div v-if="item.asset" class="storyboard-reference-item">
             <AppImageHoverPreview :src="item.asset" :preview-src="buildOssImageUrl(item.asset, { width: 1200, quality: 90 })" :alt="item.label">
@@ -154,14 +154,9 @@ defineExpose({ submitTask })
             </AppImageHoverPreview>
             <strong>{{ item.detail }}</strong>
           </div>
-          <span v-else class="panel-notice">等待连接</span>
+          <span v-else class="storyboard-reference-empty">未连接</span>
         </div>
       </div>
-    </section>
-
-    <section class="storyboard-template-section apparel-storyboard-template-section">
-      <header class="storyboard-section-header"><span><Clapperboard :size="14" />脚本模板</span><small>固定</small></header>
-      <div class="storyboard-template-option apparel-storyboard-template-option active"><span><strong>{{ outfitStoryboardTemplate.label }}</strong><small>{{ outfitStoryboardTemplate.description }}</small></span></div>
     </section>
 
     <div class="storyboard-settings apparel-storyboard-settings">

@@ -149,7 +149,7 @@ export const useCanvasStore = defineStore('canvas', {
     setViewport(viewport) {
       this.viewportData = { x: viewport.x, y: viewport.y, zoom: viewport.zoom }
     },
-    addNode(type, position, sourceId) {
+    addNode(type, position, sourceId, skipStoryboardInputs = false) {
       if (!isNodeTypeAvailable(this.workspaceType, type)) return
       const source = this.nodes.find((node) => node.id === sourceId)
       if (type === 'apparel' && !sourceId) {
@@ -169,6 +169,26 @@ export const useCanvasStore = defineStore('canvas', {
         this.edges.push(createEdge(`edge-${crypto.randomUUID()}`, modelId, outfitId, 'model'))
         this.selectNodes([outfitId])
         return outfitId
+      }
+      if (type === 'apparel_storyboard' && !skipStoryboardInputs && (!sourceId || source?.type === 'apparel')) {
+        const apparelId = source?.type === 'apparel'
+          ? source.id
+          : this.addNode('apparel', { x: position.x - 520, y: position.y - 220 })
+        const roleId = this.addNode('image', { x: position.x - 520, y: position.y + 120 })
+        const role = this.nodes.find((node) => node.id === roleId)
+        role.data = { ...role.data, title: '角色节点', assetSource: 'upload', resourceType: 'model', inputRole: 'role' }
+        const sceneId = this.addNode('image', { x: position.x - 520, y: position.y + 390 })
+        const scene = this.nodes.find((node) => node.id === sceneId)
+        scene.data = { ...scene.data, title: '场景节点', assetSource: 'upload', resourceType: 'asset', inputRole: 'scene' }
+        const storyboardId = this.addNode(type, position, apparelId, true)
+        const apparelEdge = this.edges.find((edge) => edge.source === apparelId && edge.target === storyboardId)
+        if (apparelEdge) apparelEdge.targetHandle = 'apparel'
+        this.edges.push(
+          createEdge(`edge-${crypto.randomUUID()}`, roleId, storyboardId, 'model'),
+          createEdge(`edge-${crypto.randomUUID()}`, sceneId, storyboardId, 'scene'),
+        )
+        this.selectNodes([storyboardId])
+        return storyboardId
       }
       if (type === 'product' && !sourceId) {
         const imageId = this.addNode('image', { x: position.x - 460, y: position.y + 3 })
@@ -403,7 +423,7 @@ export const useCanvasStore = defineStore('canvas', {
         storyboardDuration: plan.duration,
         storyboardVideoAspectRatio: videoSettings.aspectRatio,
         storyboardShotCount: plan.shotCount,
-        storyboardReferenceOrder: ['服饰参考图', '模特参考图', '场景参考图'],
+        storyboardReferenceOrder: ['服饰参考图', '角色节点', '场景节点'],
         storyboardRequiresRegistration: true,
         videoPrompt: plan.videoPrompt,
         prompt: plan.storyboardPrompt,
@@ -427,7 +447,7 @@ export const useCanvasStore = defineStore('canvas', {
         storyboardTemplateLabel: plan.title,
         storyboardDuration: plan.duration,
         storyboardShotCount: plan.shotCount,
-        storyboardReferenceOrder: ['分镜故事板', '服饰参考图', '模特参考图', '场景参考图'],
+        storyboardReferenceOrder: ['分镜故事板', '服饰参考图', '角色节点', '场景节点'],
         videoPrompt: plan.videoPrompt,
         prompt: plan.videoPrompt,
         promptParts: [{ type: 'text', value: plan.videoPrompt }],

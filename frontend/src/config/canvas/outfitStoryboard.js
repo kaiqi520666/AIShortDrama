@@ -7,7 +7,7 @@ export { videoAspectRatios }
 export const outfitStoryboardTemplate = {
   id: 'apparel-showcase',
   label: '服饰展示',
-  description: '根据服饰、模特与场景参考图生成一张静态故事板和一条视频脚本',
+  description: '根据服饰、角色与场景参考图生成一张静态故事板和一条视频脚本',
 }
 
 export function getApparelVideoSettings(data = {}) {
@@ -26,8 +26,8 @@ export function buildOutfitStoryboardPrompt(apparelContext, data = {}) {
   const settings = getApparelVideoSettings(data)
   const grid = storyboardGrid(settings.duration, settings.aspectRatio)
   const context = apparelContext?.trim() || '以图片1中的服饰为准，准确保持服装类别、颜色、面料、版型和细节。'
-  const prefix = `图片1是服饰参考图，图片2是模特参考图，图片3是场景参考图。三张图片的引用关系固定不变：图片1只用于锁定服饰，图片2只用于锁定模特身份与外观，图片3只用于锁定环境与光线。请为服饰展示生成一条 ${settings.duration} 秒、${settings.aspectRatio} 画幅的 Seedance 2 视频方案。\n服饰资料：\n`
-  const suffix = `${data.prompt?.trim() ? `\n用户补充要求：${data.prompt.trim()}` : ''}\n故事板要求：只输出一张静态 ${grid.columns} 列 × ${grid.rows} 行的分镜故事板，共 ${grid.shots} 个按时间顺序推进的镜头。每格画面要有明确的主体动作、景别、构图、服饰展示重点、场景和光线，格线清晰、间距统一、无任何文字。storyboardPrompt 只描述静态画面，禁止对白、台词、角色说话、口型、声音、音效、环境音、旁白和引号内容。\n视频脚本要求：videoPrompt 必须先写“图片1是分镜故事板，图片2是服饰参考图，图片3是模特参考图，图片4是场景参考图”，再按镜头1至镜头${grid.shots}描述动作、场景、景别、单一运镜、光影和自然衔接。禁止台词、角色说话、口播、旁白、对白、字幕和背景音乐，只保留必要的自然环境音或服装动作音；保持同一服饰、模特身份、发型、体型、颜色、材质、版型和场景一致。\n严格输出一个 JSON 对象，不要 Markdown：{"templateId":"${outfitStoryboardTemplate.id}","title":"${outfitStoryboardTemplate.label}","duration":${settings.duration},"shotCount":${grid.shots},"storyboardPrompt":"镜头1……镜头2……","videoPrompt":"图片1是分镜故事板……镜头1……镜头2……"}`
+  const prefix = `图片1是服饰参考图，图片2是角色（模特）参考图，图片3是场景参考图。三张图片的引用关系固定不变：图片1只用于锁定服饰，图片2只用于锁定角色身份与外观，图片3只用于锁定环境与光线。请为服饰展示生成一条 ${settings.duration} 秒、${settings.aspectRatio} 画幅的 Seedance 2 视频方案。\n服饰资料：\n`
+  const suffix = `${data.prompt?.trim() ? `\n用户补充要求：${data.prompt.trim()}` : ''}\n故事板要求：只输出一张静态 ${grid.columns} 列 × ${grid.rows} 行的分镜故事板，共 ${grid.shots} 个按时间顺序推进的镜头。每格画面要有明确的主体动作、景别、构图、服饰展示重点、场景和光线，格线清晰、间距统一、无任何文字。storyboardPrompt 只描述静态画面，禁止对白、台词、角色说话、口型、声音、音效、环境音、旁白和引号内容。\n视频脚本要求：videoPrompt 必须先写“图片1是分镜故事板，图片2是服饰参考图，图片3是角色（模特）参考图，图片4是场景参考图”，再按镜头1至镜头${grid.shots}描述动作、场景、景别、单一运镜、光影和自然衔接。禁止台词、角色说话、口播、旁白、对白、字幕和背景音乐，只保留必要的自然环境音或服装动作音；保持同一服饰、角色身份、发型、体型、颜色、材质、版型和场景一致。\n严格输出一个 JSON 对象，不要 Markdown：{"templateId":"${outfitStoryboardTemplate.id}","title":"${outfitStoryboardTemplate.label}","duration":${settings.duration},"shotCount":${grid.shots},"storyboardPrompt":"镜头1……镜头2……","videoPrompt":"图片1是分镜故事板……镜头1……镜头2……"}`
   return `${prefix}${context.slice(0, Math.max(0, 3000 - prefix.length - suffix.length))}${suffix}`
 }
 

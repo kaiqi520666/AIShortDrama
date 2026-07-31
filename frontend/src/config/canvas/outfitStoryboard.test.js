@@ -4,7 +4,7 @@ import { buildOutfitStoryboardPrompt, getApparelVideoSettings, outfitStoryboardT
 describe('apparel storyboard prompts', () => {
   it('names the three apparel references and uses the selected video duration', () => {
     const prompt = buildOutfitStoryboardPrompt('服饰类型：整套搭配\n单品1：蕾丝衬衫（颜色：粉色；面料：蕾丝）', { duration: 8, videoAspectRatio: '9:16' })
-    expect(prompt).toContain('图片1是服饰参考图，图片2是模特参考图，图片3是场景参考图')
+    expect(prompt).toContain('图片1是服饰参考图，图片2是角色（模特）参考图，图片3是场景参考图')
     expect(prompt).toContain('单品1：蕾丝衬衫')
     expect(prompt).toContain('一张静态 3 列 × 1 行')
     expect(prompt).toContain('严格输出一个 JSON 对象')

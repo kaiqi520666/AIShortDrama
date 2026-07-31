@@ -75,11 +75,18 @@ const previewOpen = ref(false)
 const downloading = ref(false)
 const registeringStoryboard = ref(false)
 const resourceType = computed(() => props.data.resourceType || 'asset')
-const libraryCopy = computed(() => ({
-  model: { label: '模特', icon: UserRound },
-  garment: { label: '服饰', icon: Shirt },
-}[resourceType.value] || { label: '素材', icon: Images }))
-const libraryToolbarLabel = computed(() => resourceType.value === 'asset' ? '资产库' : `${libraryCopy.value.label}库`)
+const inputRole = computed(() => props.data.inputRole || (
+  props.data.title === '角色节点' ? 'role' : props.data.title === '场景节点' ? 'scene' : ''
+))
+const libraryCopy = computed(() => {
+  if (inputRole.value === 'role') return { label: '角色', icon: UserRound }
+  if (inputRole.value === 'scene') return { label: '场景', icon: Images }
+  return {
+    model: { label: '模特', icon: UserRound },
+    garment: { label: '服饰', icon: Shirt },
+  }[resourceType.value] || { label: '素材', icon: Images }
+})
+const libraryToolbarLabel = computed(() => inputRole.value ? `${libraryCopy.value.label}库` : resourceType.value === 'asset' ? '资产库' : `${libraryCopy.value.label}库`)
 const storyboardAsset = computed(() => props.data.storyboardAsset || {})
 const storyboardRegistrationLabel = computed(() => ({
   active: 'Seedance 虚拟人像素材已可用',
@@ -340,6 +347,7 @@ onBeforeUnmount(() => {
     <AppAssetPickerModal
       v-if="assetPickerOpen"
       :resource-type="resourceType"
+      :input-role="inputRole"
       media-type="image"
       :workspace-id="store.workspaceId"
       :node-id="id"

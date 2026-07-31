@@ -106,6 +106,10 @@
 .storyboard-panel.product-visual-panel {
   height: min(590px, calc(100vh - 32px));
 }
+.storyboard-panel.apparel-storyboard-panel {
+  height: auto;
+  min-height: 0;
+}
 .storyboard-section-header {
   display: flex;
   min-height: 20px;
@@ -145,6 +149,18 @@
   gap: 7px;
   color: var(--color-text-muted);
 }
+.storyboard-reference-index {
+  display: inline-flex;
+  min-width: 38px;
+  height: 20px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: 4px;
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+}
 .storyboard-reference-label > span {
   display: grid;
   min-width: 0;
@@ -166,6 +182,10 @@
   overflow-x: auto;
   padding: 1px 0 3px;
   scrollbar-width: thin;
+}
+.storyboard-reference-empty {
+  color: var(--color-text-muted);
+  font-size: 11px;
 }
 .storyboard-reference-item {
   display: flex;

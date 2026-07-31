@@ -459,6 +459,32 @@ describe('canvas node packs', () => {
     expect(store.nodes.filter((node) => node.selected).map((node) => node.id)).toEqual([outfitId])
   })
 
+  it('creates apparel storyboard inputs for apparel, role, and scene', async () => {
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1',
+      version: 1,
+      workspace_type: 'ecommerce',
+      canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
+    })
+
+    const storyboardId = store.addNode('apparel_storyboard', { x: 900, y: 300 })
+
+    expect(storyboardId).toBe('apparel_storyboard-5')
+    expect(store.nodes).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'apparel-2' }),
+      expect.objectContaining({ id: 'image-3', data: expect.objectContaining({ title: '角色节点', resourceType: 'model', inputRole: 'role' }) }),
+      expect.objectContaining({ id: 'image-4', data: expect.objectContaining({ title: '场景节点', inputRole: 'scene' }) }),
+      expect.objectContaining({ id: storyboardId }),
+    ]))
+    expect(store.edges).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: 'apparel-2', target: storyboardId, targetHandle: 'apparel' }),
+      expect.objectContaining({ source: 'image-3', target: storyboardId, targetHandle: 'model' }),
+      expect.objectContaining({ source: 'image-4', target: storyboardId, targetHandle: 'scene' }),
+    ]))
+    expect(store.nodes.filter((node) => node.selected).map((node) => node.id)).toEqual([storyboardId])
+  })
+
   it('creates planned outfit image nodes with shared references and settings', async () => {
     const store = useCanvasStore()
     await store.loadWorkspace({
@@ -510,7 +536,7 @@ describe('canvas node packs', () => {
     const resultIds = store.addApparelStoryboardNodes(storyboardId, garmentId, modelId, sceneId, {
       templateId: 'apparel-showcase', title: '服饰展示', duration: 5, shotCount: 2,
       storyboardPrompt: '镜头1 正面；镜头2 侧面。',
-      videoPrompt: '图片1是分镜故事板；图片2是服饰参考图；图片3是模特参考图；图片4是场景参考图。镜头1正面；镜头2侧面。',
+      videoPrompt: '图片1是分镜故事板；图片2是服饰参考图；图片3是角色（模特）参考图；图片4是场景参考图。镜头1正面；镜头2侧面。',
       imageSettings: { model: 'gpt-image-2', aspectRatio: '16:9', resolution: '2K' },
       videoSettings: { model: 'seedance-2', duration: 5, aspectRatio: '16:9', resolution: '720p', generateAudio: true },
     })
