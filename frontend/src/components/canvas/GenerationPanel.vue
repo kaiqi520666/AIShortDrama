@@ -295,9 +295,11 @@ function updateModel(model) {
 function updateVideoSetting(key, value) {
   if (key === 'continuityMode' && isStoryboardVideo.value) {
     store.setStoryboardContinuityMode(props.nodeId, value)
+    settingsOpen.value = false
     return
   }
   updateNodeData(props.nodeId, { [key]: value })
+  if (['duration', 'resolution', 'aspectRatio'].includes(key)) settingsOpen.value = false
   if (key === 'aspectRatio') nextTick(() => requestAnimationFrame(updateSettingsPosition))
 }
 
@@ -309,6 +311,7 @@ function confirmStoryboardSegment() {
 
 function updateAudioSetting(key, value) {
   updateNodeData(props.nodeId, { [key]: value })
+  if (['format', 'sampleRate'].includes(key)) settingsOpen.value = false
 }
 
 function getElement(target) {
@@ -353,6 +356,14 @@ function closeSettings(event) {
   if (!event.target.closest('.model-menu, .model-select-trigger')) modelOpen.value = false
 }
 
+function handleKeydown(event) {
+  if (event.key !== 'Escape') return
+  if (!settingsOpen.value && !modelOpen.value) return
+  event.preventDefault()
+  settingsOpen.value = false
+  modelOpen.value = false
+}
+
 watch(() => props.nodeId, () => {
   notice.value = ''
   storyboardPromptView.value = 'image'
@@ -361,9 +372,13 @@ watch(() => props.nodeId, () => {
     updateNodeData(props.nodeId, { model: selectedReverseModel.value.id })
   }
 }, { immediate: true })
-onMounted(() => window.addEventListener('pointerdown', closeSettings))
+onMounted(() => {
+  window.addEventListener('pointerdown', closeSettings)
+  window.addEventListener('keydown', handleKeydown)
+})
 onBeforeUnmount(() => {
   window.removeEventListener('pointerdown', closeSettings)
+  window.removeEventListener('keydown', handleKeydown)
 })
 </script>
 

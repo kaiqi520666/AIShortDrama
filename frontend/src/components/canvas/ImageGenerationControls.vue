@@ -68,6 +68,7 @@ function updateModel(modelId) {
 
 function updateSetting(key, value) {
   emit('update:settings', { [key]: value })
+  if (['resolution', 'aspectRatio'].includes(key)) settingsOpen.value = false
   if (key === 'aspectRatio') nextTick(() => updateMenuPosition(settingsTrigger.value, settingsMenu.value, settingsStyle))
 }
 
@@ -80,14 +81,28 @@ function closeMenus(event) {
   if (!event.target.closest('.model-menu, .model-select-trigger')) modelOpen.value = false
 }
 
+function handleKeydown(event) {
+  if (event.key !== 'Escape') return
+  if (!settingsOpen.value && !modelOpen.value) return
+  event.preventDefault()
+  settingsOpen.value = false
+  modelOpen.value = false
+}
+
 function ratioIconStyle(value) {
   const [width, height] = value.split(':').map(Number)
   const scale = Math.min(16 / width, 16 / height)
   return { width: `${Math.round(width * scale)}px`, height: `${Math.round(height * scale)}px` }
 }
 
-onMounted(() => window.addEventListener('pointerdown', closeMenus))
-onBeforeUnmount(() => window.removeEventListener('pointerdown', closeMenus))
+onMounted(() => {
+  window.addEventListener('pointerdown', closeMenus)
+  window.addEventListener('keydown', handleKeydown)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('pointerdown', closeMenus)
+  window.removeEventListener('keydown', handleKeydown)
+})
 </script>
 
 <template>
