@@ -29,4 +29,6 @@ class ReversePromptRequest(BaseModel):
     def validate_prompt(self):
         if self.response_mode not in {"product_profile", "apparel_profile"} and not self.prompt.strip():
             raise ValueError("提示词不能为空")
+        if self.response_mode == "product_profile" and len(self.media_urls) > 5:
+            raise ValueError("商品创作最多支持 6 张参考图片")
         return self

@@ -1,13 +1,14 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
-import { ArrowUp, Check, ChevronDown, Clapperboard, Coins, FileText, Image, Images, LoaderCircle, Music2, Package, Shirt, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
+import { ArrowUp, Check, ChevronDown, Clapperboard, Coins, FileText, Image, Images, LoaderCircle, Music2, Package, Shirt, Video as VideoIcon, WandSparkles, X } from 'lucide-vue-next'
 import { createAudioGeneration, createImageGeneration, createVideoGeneration } from '../../api/generations'
 import { streamReversePrompt } from '../../api/reversals'
 import { audioFormatOptions, audioModel, audioSampleRateOptions, buildAudioRequest, getAudioReferenceError, maxAudioPromptLength, normalizeAudioSettings } from '../../config/audioModels'
 import { getEffectivePrompt, maxGenerationPromptLength } from '../../config/generationPrompt'
 import { buildImageRequest, normalizeImageSettings } from '../../config/imageModels'
 import { mergeProductProfile, parseProductProfile } from '../../config/canvas/ecommerce'
+import { maxProductReferenceImages } from '../../config/canvas/connectionRules'
 import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { buildVideoRequest, getVideoModelError, getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
@@ -135,6 +136,7 @@ const creditLabel = computed(() => `${props.type === 'audio' ? '冻结' : '本�
 const referenceError = computed(() => {
   if (props.type === 'video') return getVideoReferenceError(props.data, references.value)
   if (props.type === 'audio') return getAudioReferenceError(references.value)
+  if (isProductRecognition.value && imageReferences.value.length > maxProductReferenceImages) return `商品创作最多支持 ${maxProductReferenceImages} 张参考图片`
   return props.type === 'image' && selectedImageModel.value.maxReferences && imageReferences.value.length > selectedImageModel.value.maxReferences
     ? `当前模型最多支持 ${selectedImageModel.value.maxReferences} 张参考图片`
     : ''
@@ -153,7 +155,8 @@ const displayReferences = computed(() => {
   const counts = {}
   return references.value.map((node) => {
     counts[node.type] = (counts[node.type] || 0) + 1
-    return { key: node.id, node, number: counts[node.type], label: `${nodeDefinitions[node.type].label}${counts[node.type]}` }
+    const removable = node.type === 'image' && store.edges.some((edge) => edge.target === props.nodeId && edge.source === node.id)
+    return { key: node.id, node, number: counts[node.type], label: `${nodeDefinitions[node.type].label}${counts[node.type]}`, removable }
   })
 })
 const canSubmit = computed(() => {
@@ -182,6 +185,15 @@ function updateTextPrompt(event) {
   updateNodeData(props.nodeId, { prompt: event.target.value })
 }
 
+function removeReference(reference) {
+  if (!reference.removable) return
+  const edge = store.edges.find((item) => item.target === props.nodeId && item.source === reference.node.id)
+  if (!edge) return
+  store.deleteEdge(edge.id)
+  notice.value = ''
+  updateNodeData(props.nodeId, { generationError: '' })
+}
+
 async function submitTask() {
   if (!canSubmit.value) return
   if (isStoryboardSegment.value && props.data.status === 'ready' && !await confirm({
@@ -196,7 +208,7 @@ async function submitTask() {
     notice.value = ''
     updateNodeData(nodeId, { status: 'generating', ...(isReverseTask.value ? { content: '' } : {}), generationError: '' })
     try {
-      const productImageReferences = isProductRecognition.value ? imageReferences.value.slice(0, 9) : []
+      const productImageReferences = isProductRecognition.value ? imageReferences.value.slice(0, maxProductReferenceImages) : []
       const primaryReference = productImageReferences[0] || reverseReference.value
       await streamReversePrompt({
         workspace_id: store.workspaceId,
@@ -403,6 +415,19 @@ onBeforeUnmount(() => {
         <Shirt v-else-if="reference.node.type === 'outfit'" :size="20" />
         <WandSparkles v-else :size="20" />
         <b>{{ reference.number }}</b>
+        <AppButton
+          v-if="reference.removable"
+          class="reference-remove"
+          icon-only
+          size="sm"
+          variant="danger"
+          :title="`移除${reference.label}`"
+          :aria-label="`移除${reference.label}`"
+          @pointerdown.stop
+          @click.stop="removeReference(reference)"
+        >
+          <X :size="12" />
+        </AppButton>
       </div>
     </div>
 

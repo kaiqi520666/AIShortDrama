@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { ArrowUp, BadgeCheck, Box, Coins, FileText, Images, LoaderCircle, Package, ScanSearch } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
+import { maxProductReferenceImages } from '../../config/canvas/connectionRules'
 import { productPromptContext } from '../../config/canvas/ecommerce'
 import { buildProductVisualPrompt, parseProductVisualPlan, productVisualGroups } from '../../config/canvas/productVisual'
 import { imageModels, normalizeImageSettings } from '../../config/imageModels'
@@ -30,7 +31,7 @@ const productNode = computed(() => props.productNodeId
   ? store.nodes.find((node) => node.id === props.productNodeId)
   : store.incomingNodes(props.nodeId).find((node) => node.type === 'product'))
 const referenceImages = computed(() => productNode.value
-  ? store.incomingNodes(productNode.value.id).filter((node) => node.type === 'image' && node.data.asset).slice(0, 9)
+  ? store.incomingNodes(productNode.value.id).filter((node) => node.type === 'image' && node.data.asset).slice(0, maxProductReferenceImages)
   : [])
 const referenceImage = computed(() => referenceImages.value[0])
 const productContext = computed(() => productPromptContext(productNode.value?.data.product))

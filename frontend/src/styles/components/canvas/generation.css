@@ -797,6 +797,27 @@
   background: var(--color-surface-base);
   font-size: 9px;
 }
+.reference-strip .reference-item .reference-remove.ui-button {
+  position: absolute;
+  z-index: 2;
+  top: 1px;
+  right: 1px;
+  width: 18px;
+  min-width: 18px;
+  height: 18px;
+  min-height: 18px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: var(--color-backdrop);
+  color: var(--color-text-primary);
+  opacity: 1;
+  transition: background-color 0.16s ease;
+}
+.reference-remove.ui-button:hover {
+  background: var(--color-danger);
+  color: var(--color-brand-ink);
+}
 .prompt-reference-editor {
   position: relative;
   margin: 11px 0 8px;

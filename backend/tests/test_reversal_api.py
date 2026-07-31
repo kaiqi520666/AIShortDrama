@@ -56,6 +56,28 @@ def test_reverse_prompt_accepts_additional_media_urls():
     assert [str(url) for url in payload.media_urls] == ["https://example.com/model.png"]
 
 
+def test_product_profile_limits_reference_images():
+    payload = {
+        "workspace_id": DEFAULT_WORKSPACE_ID,
+        "node_id": "product-1",
+        "model": "qwen3.7-plus",
+        "media_type": "image",
+        "media_url": "https://example.com/product-0.png",
+        "prompt": "",
+        "response_mode": "product_profile",
+    }
+    accepted = ReversePromptRequest(**{
+        **payload,
+        "media_urls": [f"https://example.com/product-{index}.png" for index in range(1, 6)],
+    })
+    assert len(accepted.media_urls) == 5
+    with pytest.raises(ValidationError, match="商品创作最多支持 6 张参考图片"):
+        ReversePromptRequest(**{
+            **payload,
+            "media_urls": [f"https://example.com/product-{index}.png" for index in range(1, 7)],
+        })
+
+
 def test_reverse_prompt_accepts_character_response_modes():
     payload = {
         "workspace_id": DEFAULT_WORKSPACE_ID,
