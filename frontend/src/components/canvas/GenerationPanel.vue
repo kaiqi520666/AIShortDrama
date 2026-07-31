@@ -139,9 +139,11 @@ const referenceError = computed(() => {
     ? `当前模型最多支持 ${selectedImageModel.value.maxReferences} 张参考图片`
     : ''
 })
-const panelMessage = computed(() => storyboardLocked.value
-  ? `等待第 ${props.data.storyboardSegmentIndex - 1} 段确认后解锁`
-  : notice.value || props.data.generationError || referenceError.value || promptError.value || (insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
+const panelMessage = computed(() => {
+  if (storyboardLocked.value) return `等待第 ${props.data.storyboardSegmentIndex - 1} 段确认后解锁`
+  if (running.value) return ''
+  return notice.value || props.data.generationError || referenceError.value || promptError.value || (insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : '')
+})
 const settingLabel = computed(() => {
   if (props.type === 'video') return `${selectedAspectRatio.value} · ${selectedResolution.value} · ${selectedDuration.value}s`
   if (props.type === 'audio') return `${audioFormatOptions.find(({ value }) => value === selectedAudioSettings.value.format)?.label} · ${selectedAudioSettings.value.sampleRate / 1000} kHz`
