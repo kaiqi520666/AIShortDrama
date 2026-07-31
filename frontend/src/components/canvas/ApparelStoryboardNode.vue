@@ -1,7 +1,9 @@
 <script setup>
 import { computed } from 'vue'
-import { Clapperboard, Images } from 'lucide-vue-next'
+import { Clapperboard, Images, Shirt, UserRound } from 'lucide-vue-next'
 import { useCanvasStore } from '../../stores/canvas'
+import { getApparelVideoSettings } from '../../config/canvas/outfitStoryboard'
+import { buildOssImageUrl } from '../../utils/ossImage'
 import StructuredNodeShell from './StructuredNodeShell.vue'
 
 const props = defineProps({
@@ -12,24 +14,48 @@ const props = defineProps({
 })
 
 const store = useCanvasStore()
-const outfitNode = computed(() => store.incomingNodes(props.id).find((node) => node.type === 'outfit'))
+const targetHandles = [
+  { id: 'apparel', top: '38%' },
+  { id: 'model', top: '61%' },
+  { id: 'scene', top: '84%' },
+]
+
+function inputNode(handle) {
+  const edge = store.edges.find((item) => item.target === props.id && item.targetHandle === handle)
+  return store.nodes.find((node) => node.id === edge?.source)
+}
+
+const apparelNode = computed(() => inputNode('apparel'))
+const garmentNode = computed(() => apparelNode.value && store.incomingNodes(apparelNode.value.id).find((node) => node.type === 'image'))
+const modelNode = computed(() => inputNode('model'))
+const sceneNode = computed(() => inputNode('scene'))
 const generatedCount = computed(() => (props.data.generatedNodeIds || []).filter((id) => store.nodes.some((node) => node.id === id)).length)
-const segmentCount = computed(() => Math.max(1, Number(props.data.duration || 15) / 15))
+const settings = computed(() => getApparelVideoSettings(props.data))
+const inputs = computed(() => [
+  { label: '服饰资料', icon: Shirt, node: apparelNode.value, asset: garmentNode.value?.data.asset, detail: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件已启用` : '等待连接' },
+  { label: '模特图片', icon: UserRound, node: modelNode.value, asset: modelNode.value?.data.asset, detail: modelNode.value?.data.title || '等待连接' },
+  { label: '场景图片', icon: Images, node: sceneNode.value, asset: sceneNode.value?.data.asset, detail: sceneNode.value?.data.title || '等待连接' },
+])
 </script>
 
 <template>
-  <StructuredNodeShell :id="id" :type="type" :data="data" :icon="Clapperboard" :selected="selected" :target-handles="[{ id: 'outfit', top: '50%' }]">
+  <StructuredNodeShell :id="id" :type="type" :data="data" :icon="Clapperboard" :selected="selected" :target-handles="targetHandles">
     <div class="product-visual-node-content storyboard-node-content apparel-storyboard-node-content nowheel">
       <div class="structured-node-summary">
         <span><Clapperboard :size="15" />服饰分镜</span>
-        <small>{{ segmentCount }} 段 · {{ generatedCount }} 个节点</small>
+        <small>{{ generatedCount ? '故事板 + 视频已创建' : '等待生成方案' }}</small>
       </div>
-      <div class="product-visual-source" :class="{ empty: !outfitNode?.data.outfitBoardAsset }">
-        <Images :size="15" />
-        <span>{{ outfitNode?.data.outfitBoardAsset ? '2K · 9:16 服饰总览图' : '等待服饰总览图' }}</span>
+      <div class="apparel-storyboard-inputs">
+        <div v-for="item in inputs" :key="item.label" class="product-visual-source" :class="{ empty: !item.asset }">
+          <span class="outfit-source-preview">
+            <img v-if="item.asset" :src="buildOssImageUrl(item.asset, { width: 120, quality: 78 })" :alt="item.label" referrerpolicy="no-referrer" />
+            <component :is="item.icon" v-else :size="16" />
+          </span>
+          <span><strong>{{ item.label }}</strong><small>{{ item.detail }}</small></span>
+        </div>
       </div>
       <div class="product-creation-settings-summary storyboard-node-summary apparel-storyboard-node-summary">
-        <span>单模板</span><span>{{ data.duration }} 秒</span><span>每段 6 格</span><span>{{ data.videoAspectRatio }}</span>
+        <span>单模板</span><span>{{ settings.duration }} 秒</span><span>{{ data.storyboardShotCount || '按时长' }} 格</span><span>{{ settings.aspectRatio }}</span>
       </div>
     </div>
   </StructuredNodeShell>

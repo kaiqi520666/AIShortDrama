@@ -16,7 +16,7 @@ import AppInput from '../../components/ui/AppInput.vue'
 import AppMenu from '../../components/ui/AppMenu.vue'
 import AppTooltip from '../../components/ui/AppTooltip.vue'
 import { uploadMedia } from '../../api/uploads'
-import { canConnect, getConnectionError } from '../../config/canvas/connectionRules'
+import { canConnect, getConnectionError, inferTargetHandle } from '../../config/canvas/connectionRules'
 import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
 import { nodeRegistry } from '../../config/canvas/nodeRegistry'
 import { getNodeTypes } from '../../config/canvas/nodePacks'
@@ -173,9 +173,14 @@ function handleConnectStart({ nodeId, handleType }) {
 function handleConnect(connection) {
   const source = nodes.value.find((node) => node.id === connection.source)
   const target = nodes.value.find((node) => node.id === connection.target)
-  const error = source && target ? getConnectionError(source.type, target.type, store.incomingNodes(target.id).map((node) => node.type), store.workspaceType) : '节点不存在'
+  const incomingConnections = store.edges
+    .filter((edge) => edge.target === target?.id)
+    .map((edge) => ({ targetHandle: edge.targetHandle, type: nodes.value.find((node) => node.id === edge.source)?.type }))
+  const targetHandle = connection.targetHandle || inferTargetHandle(source, target?.type, incomingConnections)
+  const normalizedConnection = targetHandle ? { ...connection, targetHandle } : connection
+  const error = source && target ? getConnectionError(source.type, target.type, incomingConnections.map(({ type }) => type).filter(Boolean), store.workspaceType, targetHandle, incomingConnections) : '节点不存在'
   if (error) toast.warning(error)
-  else if (!store.addEdge(connection)) toast.warning('节点已经连接')
+  else if (!store.addEdge(normalizedConnection)) toast.warning('节点已经连接')
   connectionSource.value = null
 }
 
@@ -183,9 +188,13 @@ function connectSelected() {
   if (selectedNodes.value.length !== 2) return toast.warning('请选择两个节点后连接')
   let [source, target] = [...selectedNodes.value].sort((a, b) => a.position.x - b.position.x)
   if (!canConnect(source.type, target.type, store.workspaceType) && canConnect(target.type, source.type, store.workspaceType)) [source, target] = [target, source]
-  const error = getConnectionError(source.type, target.type, store.incomingNodes(target.id).map((node) => node.type), store.workspaceType)
+  const incomingConnections = store.edges
+    .filter((edge) => edge.target === target.id)
+    .map((edge) => ({ targetHandle: edge.targetHandle, type: nodes.value.find((node) => node.id === edge.source)?.type }))
+  const targetHandle = inferTargetHandle(source, target.type, incomingConnections)
+  const error = getConnectionError(source.type, target.type, incomingConnections.map(({ type }) => type).filter(Boolean), store.workspaceType, targetHandle, incomingConnections)
   if (error) return toast.warning(error)
-  if (!store.addEdge({ source: source.id, target: target.id })) toast.warning('节点已经连接')
+  if (!store.addEdge({ source: source.id, target: target.id, ...(targetHandle ? { targetHandle } : {}) })) toast.warning('节点已经连接')
 }
 
 function handleConnectEnd(event) {

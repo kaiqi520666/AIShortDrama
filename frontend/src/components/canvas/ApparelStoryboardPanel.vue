@@ -1,12 +1,12 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { ArrowUp, Clapperboard, Coins, FileText, Images, LoaderCircle } from 'lucide-vue-next'
+import { ArrowUp, Clapperboard, Coins, FileText, Images, LoaderCircle, Shirt, UserRound } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
 import { apparelPromptContext } from '../../config/canvas/apparel'
-import { buildOutfitStoryboardPrompt, outfitStoryboardTemplate, parseOutfitStoryboardPlan, storyboardDurations, videoAspectRatios } from '../../config/canvas/outfitStoryboard'
-import { defaultImageModel } from '../../config/imageModels'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
+import { videoModels } from '../../config/videoModels'
+import { buildOutfitStoryboardPrompt, getApparelVideoSettings, outfitStoryboardTemplate, parseOutfitStoryboardPlan } from '../../config/canvas/outfitStoryboard'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
@@ -26,35 +26,73 @@ const authStore = useAuthStore()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
 const notice = ref('')
-const outfitNode = computed(() => store.incomingNodes(props.nodeId).find((node) => node.type === 'outfit'))
-const boardUrl = computed(() => outfitNode.value?.data.outfitBoardAsset || '')
-const apparelNode = computed(() => outfitNode.value && store.incomingNodes(outfitNode.value.id).find((node) => node.type === 'apparel'))
+
+function inputNode(handle) {
+  const edge = store.edges.find((item) => item.target === props.nodeId && item.targetHandle === handle)
+  return store.nodes.find((node) => node.id === edge?.source)
+}
+
+const apparelNode = computed(() => inputNode('apparel'))
+const garmentNode = computed(() => apparelNode.value && store.incomingNodes(apparelNode.value.id).find((node) => node.type === 'image'))
+const modelNode = computed(() => inputNode('model'))
+const sceneNode = computed(() => inputNode('scene'))
 const apparelContext = computed(() => apparelPromptContext(apparelNode.value?.data))
 const selectedTextModel = computed(() => reverseModels.find((model) => model.id === props.data.textModel) || defaultReverseModel)
+const selectedVideoSettings = computed(() => getApparelVideoSettings(props.data))
+const selectedVideoModel = computed(() => selectedVideoSettings.value.model)
 const textModelOptions = reverseModels.map(({ id, label }) => ({ value: id, label }))
-const ratioOptions = videoAspectRatios.map((value) => ({ value, label: value }))
+const videoModelOptions = videoModels.map(({ id, label }) => ({ value: id, label }))
+const durationOptions = computed(() => {
+  const values = selectedVideoModel.value.durationOptions || Array.from({ length: selectedVideoModel.value.durationMax - selectedVideoModel.value.durationMin + 1 }, (_, index) => selectedVideoModel.value.durationMin + index)
+  return values.map((value) => ({ value, label: `${value} 秒` }))
+})
+const resolutionOptions = computed(() => selectedVideoModel.value.resolutions.map((value) => ({ value, label: value === '4k' ? '4K' : value })))
+const ratioOptions = computed(() => selectedVideoModel.value.aspectRatios.map((value) => ({ value, label: value })))
 const running = computed(() => props.data.status === 'generating')
 const existingGeneratedNodes = computed(() => (props.data.generatedNodeIds || []).filter((id) => store.nodes.some((node) => node.id === id)))
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedTextModel.value.id))
 const insufficientCredits = computed(() => estimatedCredits.value !== null && (authStore.user?.credit_balance || 0) < estimatedCredits.value)
-const segmentCount = computed(() => Math.max(1, Number(props.data.duration || 15) / 15))
-const message = computed(() => notice.value || props.data.generationError || (!outfitNode.value
-  ? '请先连接服饰穿搭节点'
-  : !boardUrl.value
-    ? '请先完成服饰穿搭总览图'
-    : insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
-const canSubmit = computed(() => !running.value && Boolean(boardUrl.value) && !insufficientCredits.value)
+const sourceItems = computed(() => [
+  { label: '服饰参考图', icon: Shirt, asset: garmentNode.value?.data.asset, detail: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件已启用` : '等待服饰资料' },
+  { label: '模特参考图', icon: UserRound, asset: modelNode.value?.data.asset, detail: modelNode.value?.data.title || '等待模特图片' },
+  { label: '场景参考图', icon: Images, asset: sceneNode.value?.data.asset, detail: sceneNode.value?.data.title || '等待场景图片' },
+])
+const message = computed(() => {
+  if (notice.value || props.data.generationError) return notice.value || props.data.generationError
+  if (!apparelNode.value) return '请先连接服饰资料节点'
+  if (!apparelContext.value) return '请先完成服饰资料识别并启用至少一件单品'
+  if (!garmentNode.value?.data.asset) return '请先完成服饰资料的参考图上传'
+  if (!modelNode.value?.data.asset) return '请先连接并上传模特图片'
+  if (!sceneNode.value?.data.asset) return '请先连接并上传场景图片'
+  return insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''
+})
+const canSubmit = computed(() => !running.value && Boolean(apparelContext.value && garmentNode.value?.data.asset && modelNode.value?.data.asset && sceneNode.value?.data.asset) && !insufficientCredits.value)
 
 function updateData(value) {
   notice.value = ''
   updateNodeData(props.nodeId, { ...value, generationError: '' })
 }
 
+function updateVideoModel(modelId) {
+  const next = getApparelVideoSettings({ ...props.data, videoModel: modelId })
+  updateData({ videoModel: modelId, duration: next.duration, videoAspectRatio: next.aspectRatio, videoResolution: next.resolution, generateAudio: true })
+}
+
+function updateVideoSetting(key, value) {
+  const next = getApparelVideoSettings({ ...props.data, [key]: value })
+  updateData({
+    duration: next.duration,
+    videoAspectRatio: next.aspectRatio,
+    videoResolution: next.resolution,
+    generateAudio: true,
+  })
+}
+
 async function submitTask() {
   if (!canSubmit.value) return
   if (existingGeneratedNodes.value.length && !await confirm({
-    title: '重新生成服饰分镜方案',
-    message: '将替换当前服饰分镜节点链，已有节点会被移除。',
+    title: '重新生成服饰分镜',
+    message: '将删除当前故事板图片和视频节点，重新创建一组结果。',
     confirmText: '继续生成',
   })) return
   if (existingGeneratedNodes.value.length) store.deleteNodes(existingGeneratedNodes.value)
@@ -68,23 +106,26 @@ async function submitTask() {
       node_id: props.nodeId,
       model: selectedTextModel.value.id,
       media_type: 'image',
-      media_url: boardUrl.value,
-      media_urls: [],
+      media_url: garmentNode.value.data.asset,
+      media_urls: [modelNode.value.data.asset, sceneNode.value.data.asset],
       prompt: buildOutfitStoryboardPrompt(apparelContext.value, props.data),
-      response_mode: 'product_storyboard_plan',
+      response_mode: 'apparel_storyboard_plan',
     }, (delta) => { content += delta }, (taskId) => {
       updateNodeData(props.nodeId, { generationTaskId: taskId, generationStatus: 'running' })
     })
-    const plan = parseOutfitStoryboardPlan(content, props.data.duration)
-    const generatedNodeIds = store.addOutfitStoryboardNodes(
+    const plan = parseOutfitStoryboardPlan(content, props.data.duration, props.data)
+    const generatedNodeIds = store.addApparelStoryboardNodes(
       props.nodeId,
-      outfitNode.value.id,
+      garmentNode.value.id,
+      modelNode.value.id,
+      sceneNode.value.id,
       plan,
-      { model: defaultImageModel.id, aspectRatio: props.data.videoAspectRatio, resolution: '2K' },
+      { imageSettings: plan.imageSettings, videoSettings: plan.videoSettings },
     )
+    if (generatedNodeIds.length !== 2) throw new Error('故事板节点创建失败')
     updateNodeData(props.nodeId, { status: 'ready', generationStatus: 'succeeded', generatedNodeIds })
   } catch (error) {
-    const messageText = error.message || '服饰分镜方案生成失败'
+    const messageText = error.response?.data?.message || error.message || '服饰分镜方案生成失败'
     notice.value = messageText
     updateNodeData(props.nodeId, { status: 'failed', generationError: messageText })
   } finally {
@@ -96,51 +137,49 @@ defineExpose({ submitTask })
 </script>
 
 <template>
-  <section class="generation-panel product-visual-panel storyboard-panel nodrag nowheel" @pointerdown.stop>
+  <section class="generation-panel product-visual-panel storyboard-panel apparel-storyboard-panel nodrag nowheel" @pointerdown.stop>
     <header class="product-visual-panel-header">
       <span><Clapperboard :size="16" />服饰分镜</span>
-      <small>{{ segmentCount }} 段 · 每段 6 格</small>
+      <small>生成 1 张故事板 + 1 个视频节点</small>
     </header>
 
     <section class="storyboard-reference-section">
-      <header class="storyboard-section-header"><span><Images :size="14" />参考素材</span><small>自动读取</small></header>
-      <div class="storyboard-reference-row">
-        <div class="storyboard-reference-label"><Images :size="14" /><span><strong>服饰总览图</strong><small>必选 · 1/1</small></span></div>
+      <header class="storyboard-section-header"><span><Images :size="14" />参考素材</span><small>图片1 · 图片2 · 图片3</small></header>
+      <div v-for="item in sourceItems" :key="item.label" class="storyboard-reference-row">
+        <div class="storyboard-reference-label"><component :is="item.icon" :size="14" /><span><strong>{{ item.label }}</strong><small>必选 · {{ item.asset ? '已就绪' : '待连接' }}</small></span></div>
         <div class="storyboard-reference-list">
-          <div v-if="boardUrl" class="storyboard-reference-item">
-            <div class="storyboard-reference-main">
-              <AppImageHoverPreview :src="boardUrl" :preview-src="buildOssImageUrl(boardUrl, { width: 1200, quality: 90 })" alt="服饰穿搭参考总览">
-                <img :src="buildOssImageUrl(boardUrl, { width: 120, quality: 80 })" alt="服饰穿搭参考总览" referrerpolicy="no-referrer" />
-              </AppImageHoverPreview>
-              <strong>服饰参考总览</strong>
-            </div>
+          <div v-if="item.asset" class="storyboard-reference-item">
+            <AppImageHoverPreview :src="item.asset" :preview-src="buildOssImageUrl(item.asset, { width: 1200, quality: 90 })" :alt="item.label">
+              <img :src="buildOssImageUrl(item.asset, { width: 120, quality: 80 })" :alt="item.label" referrerpolicy="no-referrer" />
+            </AppImageHoverPreview>
+            <strong>{{ item.detail }}</strong>
           </div>
-          <span v-else class="panel-notice">等待服饰穿搭节点完成总览图</span>
+          <span v-else class="panel-notice">等待连接</span>
         </div>
       </div>
     </section>
 
-    <section class="storyboard-template-section">
+    <section class="storyboard-template-section apparel-storyboard-template-section">
       <header class="storyboard-section-header"><span><Clapperboard :size="14" />脚本模板</span><small>固定</small></header>
-      <div class="storyboard-template-grid apparel-storyboard-template-grid">
-        <div class="storyboard-template-option apparel-storyboard-template-option active"><span><strong>{{ outfitStoryboardTemplate.label }}</strong><small>{{ outfitStoryboardTemplate.description }}</small></span></div>
-      </div>
+      <div class="storyboard-template-option apparel-storyboard-template-option active"><span><strong>{{ outfitStoryboardTemplate.label }}</strong><small>{{ outfitStoryboardTemplate.description }}</small></span></div>
     </section>
 
-    <div class="storyboard-settings">
-      <label><span>视频总时长</span><AppSelect :model-value="data.duration" :options="storyboardDurations.map((value) => ({ value, label: `${value} 秒` }))" aria-label="视频总时长" @update:model-value="updateData({ duration: $event })" /></label>
-      <label><span>视频比例</span><AppSelect :model-value="data.videoAspectRatio" :options="ratioOptions" aria-label="视频比例" @update:model-value="updateData({ videoAspectRatio: $event })" /></label>
-      <div class="storyboard-recommendation"><Clapperboard :size="14" />{{ segmentCount }} 段 · 每段 6 格 · 2K</div>
+    <div class="storyboard-settings apparel-storyboard-settings">
+      <label><span>视频模型</span><AppSelect :model-value="selectedVideoModel.id" :options="videoModelOptions" aria-label="视频模型" @update:model-value="updateVideoModel" /></label>
+      <label><span>视频时长</span><AppSelect :model-value="selectedVideoSettings.duration" :options="durationOptions" aria-label="视频时长" @update:model-value="updateVideoSetting('duration', $event)" /></label>
+      <label><span>视频比例</span><AppSelect :model-value="selectedVideoSettings.aspectRatio" :options="ratioOptions" aria-label="视频比例" @update:model-value="updateVideoSetting('videoAspectRatio', $event)" /></label>
+      <label><span>视频清晰度</span><AppSelect :model-value="selectedVideoSettings.resolution" :options="resolutionOptions" aria-label="视频清晰度" @update:model-value="updateVideoSetting('videoResolution', $event)" /></label>
+      <div class="storyboard-recommendation"><Clapperboard :size="14" />故事板按 {{ selectedVideoSettings.duration }} 秒生成，无台词、无角色说话、保留自然环境音</div>
     </div>
 
-    <AppTextarea :model-value="data.prompt" maxlength="600" placeholder="可选：补充走动节奏、场景氛围或展示重点…" @input="updateData({ prompt: $event.target.value })" />
+    <AppTextarea :model-value="data.prompt" maxlength="600" placeholder="可选：补充动作节奏、场景氛围或展示重点…" @input="updateData({ prompt: $event.target.value })" />
     <p v-if="message" class="panel-notice">{{ message }}</p>
     <footer class="product-visual-panel-footer">
       <FileText :size="16" />
       <AppSelect :model-value="selectedTextModel.id" :options="textModelOptions" aria-label="文本模型" @update:model-value="updateData({ textModel: $event })" />
       <span class="panel-divider"></span>
       <span class="task-credit-cost"><Coins :size="14" />本次 {{ estimatedCredits }} 积分</span>
-      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '生成中' : '生成服饰分镜方案'" @click="submitTask">
+      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '生成中' : '生成服饰分镜'" @click="submitTask">
         <LoaderCircle v-if="running" class="run-task-spinner" :size="18" />
         <ArrowUp v-else :size="18" />
       </AppButton>

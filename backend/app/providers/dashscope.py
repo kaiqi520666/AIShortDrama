@@ -71,6 +71,7 @@ class DashScopeProvider:
             "apparel_profile": "你是专业的中文服饰视觉识别助手。严格按用户指定的 JSON 结构输出，不解释，不使用 Markdown。",
             "product_visual_plan": "你是专业的中文电商视觉策划师。严格按用户指定的 JSON 数组输出，不解释，不使用 Markdown。",
             "product_storyboard_plan": "你是专业的中文电商短视频分镜策划师。严格按用户指定的 JSON 数组输出，不解释，不使用 Markdown。",
+            "apparel_storyboard_plan": "你是专业的中文服饰短视频分镜策划师。严格按用户指定的 JSON 对象输出，不解释，不使用 Markdown。",
             "character_profile": "你是专业的中文短剧角色设定师。严格按用户指定的 JSON 结构输出，不解释，不使用 Markdown。",
             "character_visual_plan": "你是专业的中文短剧角色视觉策划师。严格按用户指定的 JSON 数组输出，不解释，不使用 Markdown。",
             "prompt": "你是专业的中文视觉提示词反推助手。仅输出最终中文提示词，不解释，不使用 Markdown。",

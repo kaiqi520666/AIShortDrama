@@ -329,6 +329,27 @@
 .apparel-storyboard-node-content .product-visual-source {
   margin-bottom: 10px;
 }
+.apparel-storyboard-inputs {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.apparel-storyboard-inputs .product-visual-source {
+  min-height: 36px;
+  margin-bottom: 0;
+  padding: 6px 8px;
+}
+.apparel-storyboard-inputs .product-visual-source > span:last-child {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.apparel-storyboard-inputs .product-visual-source strong,
+.apparel-storyboard-inputs .product-visual-source small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .apparel-storyboard-node-summary {
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;

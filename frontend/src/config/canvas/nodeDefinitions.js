@@ -36,14 +36,14 @@ export const nodeDefinitions = {
   image: {
     type: 'image', label: '图片', model: 'Moon Image', hint: '商品图与视觉生成',
     placeholder: '描述你想生成的商品画面，@ 引用素材…', setting: '16:9 · 2K', icon: Image,
-    generationPanel: true, inputs: ['text', 'image', 'product', 'product_visual', 'product_storyboard', 'outfit', 'apparel_storyboard', 'character'], outputs: ['text', 'image', 'video', 'audio', 'product', 'apparel', 'outfit', 'character'],
+    generationPanel: true, inputs: ['text', 'image', 'product', 'product_visual', 'product_storyboard', 'outfit', 'apparel_storyboard', 'character'], outputs: ['text', 'image', 'video', 'audio', 'product', 'apparel', 'outfit', 'apparel_storyboard', 'character'],
     createData: ({ number }) => ({ model: defaultImageModel.id, title: `图片节点 ${number}`, status: 'empty', prompt: '' }),
   },
   video: {
     type: 'video', label: '视频', model: 'Seedance 2.0', hint: '商品展示与广告视频',
     placeholder: '描述商品动作、运镜和节奏…', setting: '16:9 · 720P · 5s', icon: Video,
     generationPanel: true, inputs: ['text', 'image', 'video', 'audio', 'product'], outputs: ['text', 'video'],
-    createData: ({ number }) => ({ model: defaultVideoModel.id, title: `视频节点 ${number}`, status: 'empty', prompt: '' }),
+    createData: ({ number }) => ({ model: defaultVideoModel.id, title: `视频节点 ${number}`, status: 'empty', prompt: '', generateAudio: true }),
   },
   audio: {
     type: 'audio', label: '音频', model: 'seed-audio-1.0-multilingual', hint: '广告旁白与商品讲解',
@@ -107,7 +107,7 @@ export const nodeDefinitions = {
   apparel: {
     type: 'apparel', label: '服饰资料', model: defaultReverseModel.id, hint: '识别并编辑单品与整套搭配资料',
     placeholder: '补充识别重点，例如重点区分配饰、鞋履或面料…', setting: '服饰图 + AI 识别', icon: Shirt,
-    inputs: ['image'], outputs: ['outfit'],
+    inputs: ['image'], outputs: ['outfit', 'apparel_storyboard'],
     createData: ({ number }) => ({
       title: `服饰资料 ${number}`,
       status: 'empty',
@@ -135,15 +135,18 @@ export const nodeDefinitions = {
     }),
   },
   apparel_storyboard: {
-    type: 'apparel_storyboard', label: '服饰分镜', model: defaultReverseModel.id, hint: '使用服饰穿搭总览图生成连续分镜',
-    setting: '总览图 · 单模板 · 15/30/45/60 秒', icon: Clapperboard,
-    inputs: ['outfit'], outputs: ['image'],
+    type: 'apparel_storyboard', label: '服饰分镜', model: defaultReverseModel.id, hint: '连接服饰、模特与场景，生成故事板和视频脚本',
+    setting: '服饰 + 模特 + 场景 · 故事板', icon: Clapperboard,
+    inputs: ['apparel', 'image'], outputs: ['image'],
     createData: ({ number }) => ({
       title: `服饰分镜 ${number}`,
       status: 'empty',
       textModel: defaultReverseModel.id,
-      duration: 15,
-      videoAspectRatio: '9:16',
+      videoModel: defaultVideoModel.id,
+      duration: defaultVideoModel.defaultDuration,
+      videoAspectRatio: defaultVideoModel.defaultAspectRatio,
+      videoResolution: defaultVideoModel.defaultResolution,
+      generateAudio: true,
       prompt: '',
       generatedNodeIds: [],
     }),

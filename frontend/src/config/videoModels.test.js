@@ -11,6 +11,11 @@ describe('buildVideoRequest', () => {
     expect(normalizeVideoSettings({ model: 'seedance-2-fast', duration: 0 }).duration).toBe(5)
   })
 
+  it('keeps synchronized audio enabled by default', () => {
+    expect(normalizeVideoSettings({ model: 'seedance-2' }).generateAudio).toBe(true)
+    expect(normalizeVideoSettings({ model: 'seedance-2', generateAudio: false }).generateAudio).toBe(false)
+  })
+
   it('uses six fixed video ratios without adaptive billing', () => {
     expect(videoAspectRatios).toEqual(['21:9', '16:9', '4:3', '1:1', '3:4', '9:16'])
     expect(videoModels.filter((model) => model.id.startsWith('seedance')).every((model) => !model.aspectRatios.includes('adaptive'))).toBe(true)

@@ -92,6 +92,8 @@ def test_reverse_prompt_accepts_product_storyboard_mode():
         response_mode="product_storyboard_plan",
     )
     assert payload.response_mode == "product_storyboard_plan"
+    apparel_payload = ReversePromptRequest(**{**payload.model_dump(), "node_id": "apparel-storyboard-1", "response_mode": "apparel_storyboard_plan"})
+    assert apparel_payload.response_mode == "apparel_storyboard_plan"
 
 
 @pytest.mark.asyncio

@@ -488,7 +488,7 @@ describe('canvas node packs', () => {
     expect(store.nodes.filter((node) => node.selected).map((node) => node.id)).toEqual([resultIds[0]])
   })
 
-  it('creates outfit storyboard image and video nodes from the reference board', async () => {
+  it('creates one apparel storyboard image and one standard video node', async () => {
     const store = useCanvasStore()
     await store.loadWorkspace({
       id: 'workspace-1',
@@ -496,30 +496,36 @@ describe('canvas node packs', () => {
       workspace_type: 'ecommerce',
       canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
     })
-    const outfitId = store.addNode('outfit', { x: 500, y: 300 })
-    const storyboardId = store.addNode('apparel_storyboard', { x: 1000, y: 300 }, outfitId)
-    const outfit = store.nodes.find((node) => node.id === outfitId)
-    const modelId = store.edges.find((edge) => edge.target === outfitId && edge.targetHandle === 'model')?.source
-    store.nodes.find((node) => node.id === modelId).data.asset = 'https://example.com/model.png'
-    outfit.data.outfitBoardAsset = 'https://example.com/outfit-board.jpg'
-    outfit.data.outfitBoardAssetId = 'board-1'
+    const apparelId = store.addNode('apparel', { x: 500, y: 300 })
+    const garmentId = store.edges.find((edge) => edge.target === apparelId)?.source
+    const modelId = store.addNode('image', { x: 700, y: 260 })
+    const sceneId = store.addNode('image', { x: 700, y: 420 })
+    store.nodes.find((node) => node.id === modelId).data = { title: '模特参考图', resourceType: 'model', asset: 'https://example.com/model.png' }
+    store.nodes.find((node) => node.id === sceneId).data = { title: '场景参考图', resourceType: 'asset', asset: 'https://example.com/scene.png' }
+    const storyboardId = store.addNode('apparel_storyboard', { x: 1000, y: 300 })
+    store.addEdge({ source: apparelId, target: storyboardId, targetHandle: 'apparel' })
+    store.addEdge({ source: modelId, target: storyboardId, targetHandle: 'model' })
+    store.addEdge({ source: sceneId, target: storyboardId, targetHandle: 'scene' })
 
-    const resultIds = store.addOutfitStoryboardNodes(storyboardId, outfitId, {
-      templateId: 'outfit-showcase', title: '服饰展示', globalScript: '连续展示', segments: [{
-        segmentIndex: 1, duration: 15, shotCount: 6, continuityMode: 'cut', plotGoal: '展示版型', openingState: '正面站立', endingState: '场景定格',
-        prompt: '镜头1 正面；镜头2 侧面；镜头3 背面；镜头4 转身；镜头5 面料；镜头6 场景。',
-        videoPrompt: '镜头1 正面；镜头2 侧面；镜头3 背面；镜头4 转身；镜头5 面料；镜头6 场景。',
-      }],
-    }, { model: 'gpt-image-2', aspectRatio: '9:16', resolution: '2K' })
+    const resultIds = store.addApparelStoryboardNodes(storyboardId, garmentId, modelId, sceneId, {
+      templateId: 'apparel-showcase', title: '服饰展示', duration: 5, shotCount: 2,
+      storyboardPrompt: '镜头1 正面；镜头2 侧面。',
+      videoPrompt: '图片1是分镜故事板；图片2是服饰参考图；图片3是模特参考图；图片4是场景参考图。镜头1正面；镜头2侧面。',
+      imageSettings: { model: 'gpt-image-2', aspectRatio: '16:9', resolution: '2K' },
+      videoSettings: { model: 'seedance-2', duration: 5, aspectRatio: '16:9', resolution: '720p', generateAudio: true },
+    })
 
     expect(resultIds).toHaveLength(2)
     const image = store.nodes.find((node) => node.id === resultIds[0])
-    expect(image.data).toEqual(expect.objectContaining({ storyboardOutfitBoard: { url: 'https://example.com/outfit-board.jpg', assetId: 'board-1' }, storyboardSegmentIndex: 1, storyboardRequiresRegistration: true }))
+    expect(image.data).toEqual(expect.objectContaining({ storyboardTemplateId: 'apparel-showcase', storyboardShotCount: 2, storyboardRequiresRegistration: true, prompt: '镜头1 正面；镜头2 侧面。' }))
     expect(store.edges.filter((edge) => edge.target === resultIds[0])).toEqual(expect.arrayContaining([
       expect.objectContaining({ source: storyboardId }),
-      expect.objectContaining({ source: outfitId }),
+      expect.objectContaining({ source: garmentId }),
+      expect.objectContaining({ source: modelId }),
+      expect.objectContaining({ source: sceneId }),
     ]))
-    expect(store.edges).toEqual(expect.arrayContaining([expect.objectContaining({ source: resultIds[0], target: resultIds[1] })]))
+    expect(store.nodes.find((node) => node.id === resultIds[1]).data).toEqual(expect.objectContaining({ model: 'seedance-2', duration: 5, generateAudio: true, prompt: expect.stringContaining('图片1是分镜故事板') }))
+    expect(store.edges).toEqual(expect.arrayContaining([expect.objectContaining({ source: resultIds[0], target: resultIds[1] }), expect.objectContaining({ source: modelId, target: resultIds[1] })]))
   })
 
   it('creates planned image nodes from product creation with shared settings and references', async () => {

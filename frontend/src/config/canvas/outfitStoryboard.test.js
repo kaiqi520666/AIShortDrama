@@ -1,34 +1,28 @@
 import { describe, expect, it } from 'vitest'
-import { buildOutfitStoryboardPrompt, parseOutfitStoryboardPlan } from './outfitStoryboard'
+import { buildOutfitStoryboardPrompt, getApparelVideoSettings, outfitStoryboardTemplate, parseOutfitStoryboardPlan } from './outfitStoryboard'
 
-describe('outfit storyboard prompts', () => {
-  it('includes structured apparel data in the Qwen prompt', () => {
-    const prompt = buildOutfitStoryboardPrompt('服饰类型：整套搭配\n单品1：蕾丝衬衫（颜色：粉色；面料：蕾丝）', { duration: 15, videoAspectRatio: '9:16' })
+describe('apparel storyboard prompts', () => {
+  it('names the three apparel references and uses the selected video duration', () => {
+    const prompt = buildOutfitStoryboardPrompt('服饰类型：整套搭配\n单品1：蕾丝衬衫（颜色：粉色；面料：蕾丝）', { duration: 8, videoAspectRatio: '9:16' })
+    expect(prompt).toContain('图片1是服饰参考图，图片2是模特参考图，图片3是场景参考图')
     expect(prompt).toContain('单品1：蕾丝衬衫')
-    expect(prompt).toContain('颜色：粉色')
-    expect(prompt).toContain('参考图片1是一张服饰穿搭参考总览图，仅用于锁定模特身份')
-    expect(prompt).toContain('镜头1动态吸引注意的开场')
-    expect(prompt).toContain('禁止复制参考图的六格布局')
+    expect(prompt).toContain('一张静态 3 列 × 1 行')
+    expect(prompt).toContain('严格输出一个 JSON 对象')
   })
 
-  it('keeps image prompts static and requires character speech in video prompts', () => {
+  it('parses one static storyboard prompt and one speech-free video prompt', () => {
     const plan = parseOutfitStoryboardPlan(JSON.stringify({
-      templateId: 'outfit-showcase',
+      templateId: outfitStoryboardTemplate.id,
       title: '服饰展示',
-      globalScript: '连续展示服饰',
-      segments: [{
-        segmentIndex: 1,
-        duration: 15,
-        shotCount: 6,
-        continuityMode: 'cut',
-        plotGoal: '展示服饰细节',
-        openingState: '正面站立',
-        endingState: '场景定格',
-        prompt: '镜头1正面；镜头2侧面；镜头3背面；镜头4转身；镜头5面料；镜头6场景。',
-        videoPrompt: '镜头1正面，模特看向镜头说道：“版型很显气质。”；镜头2侧面，模特回答：“侧面线条也很顺。”；镜头3背面；镜头4转身；镜头5面料；镜头6场景。',
-      }],
-    }), 15)
-    expect(plan.segments[0].prompt).toContain('无文字水印')
-    expect(plan.segments[0].videoPrompt).toContain('不生成背景音乐')
+      duration: 5,
+      shotCount: 2,
+      storyboardPrompt: '镜头1正面站姿，展示版型；镜头2侧面走动，展示垂坠。',
+      videoPrompt: '图片1是分镜故事板，图片2是服饰参考图，图片3是模特参考图，图片4是场景参考图。镜头1固定镜头展示正面版型，镜头2缓慢跟拍展示走动效果，保留脚步声。',
+    }), 5)
+    expect(plan.duration).toBe(5)
+    expect(plan.shotCount).toBe(2)
+    expect(plan.storyboardPrompt).toContain('无文字')
+    expect(plan.videoPrompt).toContain('不生成台词')
+    expect(getApparelVideoSettings({ duration: 5 }).duration).toBe(5)
   })
 })

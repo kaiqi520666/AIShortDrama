@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { canConnect, getConnectionError } from '../config/canvas/connectionRules'
+import { canConnect, getConnectionError, inferTargetHandle } from '../config/canvas/connectionRules'
 import { createNodeData, getNodeDefinition, getReversePrompt } from '../config/canvas/nodeDefinitions'
 import { isNodeTypeAvailable } from '../config/canvas/nodePacks'
 import { storyboardShotCount } from '../config/canvas/productStoryboard'
@@ -185,7 +185,14 @@ export const useCanvasStore = defineStore('canvas', {
         this.selectNodes([characterId])
         return characterId
       }
-      if (sourceId && (!source || !canConnect(source.type, type, this.workspaceType))) return
+      const incomingConnections = this.edges
+        .filter((edge) => edge.target === source?.id)
+        .map((edge) => ({ targetHandle: edge.targetHandle, type: this.nodes.find((node) => node.id === edge.source)?.type }))
+      const targetHandle = source ? inferTargetHandle(source, type, incomingConnections) : undefined
+      const connectionError = source && targetHandle
+        ? getConnectionError(source.type, type, incomingConnections.map(({ type: sourceType }) => sourceType).filter(Boolean), this.workspaceType, targetHandle, incomingConnections)
+        : ''
+      if (sourceId && (!source || !canConnect(source.type, type, this.workspaceType) || connectionError || (type === 'apparel_storyboard' && source.type === 'image' && !targetHandle))) return
       const number = this.sequence++
       const id = `${type}-${number}`
       this.nodes.forEach((node) => { node.selected = false })
@@ -198,7 +205,10 @@ export const useCanvasStore = defineStore('canvas', {
         selected: true,
         data,
       })
-      if (sourceId) this.edges.push(createEdge(`edge-${crypto.randomUUID()}`, sourceId, id, type === 'character' && source.type === 'image' ? 'reference' : undefined))
+      if (sourceId) {
+        const defaultHandle = type === 'character' && source.type === 'image' ? 'reference' : targetHandle
+        this.edges.push(createEdge(`edge-${crypto.randomUUID()}`, sourceId, id, defaultHandle))
+      }
       return id
     },
     addEdge(connection) {
@@ -206,12 +216,14 @@ export const useCanvasStore = defineStore('canvas', {
       const source = this.nodes.find((node) => node.id === connection.source)
       const target = this.nodes.find((node) => node.id === connection.target)
       if (!source || !target || source.id === target.id || !canConnect(source.type, target.type, this.workspaceType)) return false
-      const incomingTypes = this.edges
+      const incomingConnections = this.edges
         .filter((edge) => edge.target === target.id)
-        .map((edge) => this.nodes.find((node) => node.id === edge.source)?.type)
-        .filter(Boolean)
-      if (getConnectionError(source.type, target.type, incomingTypes, this.workspaceType)) return false
-      this.edges.push({ id: `edge-${crypto.randomUUID()}`, ...connection, type: 'cinematic' })
+        .map((edge) => ({ targetHandle: edge.targetHandle, type: this.nodes.find((node) => node.id === edge.source)?.type }))
+        .filter(({ type }) => type)
+      const targetHandle = connection.targetHandle || inferTargetHandle(source, target.type, incomingConnections)
+      const incomingTypes = incomingConnections.map(({ type }) => type)
+      if (getConnectionError(source.type, target.type, incomingTypes, this.workspaceType, targetHandle, incomingConnections)) return false
+      this.edges.push({ id: `edge-${crypto.randomUUID()}`, ...connection, ...(targetHandle ? { targetHandle } : {}), type: 'cinematic' })
       if (target.type === 'video' && !target.data.prompt?.trim()) Object.assign(target.data, storyboardVideoData(source) || {})
       return true
     },
@@ -360,6 +372,85 @@ export const useCanvasStore = defineStore('canvas', {
       })
       this.selectNodes(ids.slice(0, 1))
       return ids
+    },
+    addApparelStoryboardNodes(plannerId, garmentId, modelId, sceneId, plan, settings = {}) {
+      const planner = this.nodes.find((node) => node.id === plannerId)
+      if (!planner || !plan?.storyboardPrompt?.trim() || !plan.videoPrompt?.trim()) return []
+
+      const imageSettings = settings.imageSettings || {
+        model: 'gpt-image-2',
+        aspectRatio: planner.data.videoAspectRatio,
+        resolution: '2K',
+      }
+      const videoSettings = settings.videoSettings || {
+        model: planner.data.videoModel || defaultVideoModel.id,
+        duration: planner.data.duration || defaultVideoModel.defaultDuration,
+        aspectRatio: planner.data.videoAspectRatio || defaultVideoModel.defaultAspectRatio,
+        resolution: planner.data.videoResolution || defaultVideoModel.defaultResolution,
+        generateAudio: true,
+      }
+      const imageId = this.addNode('image', {
+        x: planner.position.x + 560,
+        y: planner.position.y,
+      })
+      const image = this.nodes.find((node) => node.id === imageId)
+      image.data = {
+        ...image.data,
+        title: `${plan.title || '服饰展示'} · 故事板`,
+        storyboardSourceId: plannerId,
+        storyboardTemplateId: plan.templateId,
+        storyboardTemplateLabel: plan.title,
+        storyboardDuration: plan.duration,
+        storyboardVideoAspectRatio: videoSettings.aspectRatio,
+        storyboardShotCount: plan.shotCount,
+        storyboardReferenceOrder: ['服饰参考图', '模特参考图', '场景参考图'],
+        storyboardRequiresRegistration: true,
+        videoPrompt: plan.videoPrompt,
+        prompt: plan.storyboardPrompt,
+        promptParts: [{ type: 'text', value: plan.storyboardPrompt }],
+        ...imageSettings,
+      }
+      this.addEdge({ source: plannerId, target: imageId })
+      ;[garmentId, modelId, sceneId].filter(Boolean).forEach((source) => this.addEdge({ source, target: imageId }))
+
+      const videoId = this.addNode('video', {
+        x: planner.position.x + 980,
+        y: planner.position.y,
+      }, imageId)
+      const video = this.nodes.find((node) => node.id === videoId)
+      video.data = {
+        ...video.data,
+        title: `${plan.title || '服饰展示'} · 视频`,
+        storyboardSourceId: plannerId,
+        storyboardImageId: imageId,
+        storyboardTemplateId: plan.templateId,
+        storyboardTemplateLabel: plan.title,
+        storyboardDuration: plan.duration,
+        storyboardShotCount: plan.shotCount,
+        storyboardReferenceOrder: ['分镜故事板', '服饰参考图', '模特参考图', '场景参考图'],
+        videoPrompt: plan.videoPrompt,
+        prompt: plan.videoPrompt,
+        promptParts: [{ type: 'text', value: plan.videoPrompt }],
+        ...videoSettings,
+      }
+      ;[garmentId, modelId, sceneId].filter(Boolean).forEach((source) => this.addEdge({ source, target: videoId }))
+
+      planner.data = {
+        ...planner.data,
+        generatedNodeIds: [imageId, videoId],
+        storyboardImageId: imageId,
+        storyboardVideoId: videoId,
+        storyboardShotCount: plan.shotCount,
+        storyboardPrompt: plan.storyboardPrompt,
+        videoPrompt: plan.videoPrompt,
+        videoModel: videoSettings.model,
+        duration: videoSettings.duration,
+        videoAspectRatio: videoSettings.aspectRatio,
+        videoResolution: videoSettings.resolution,
+        generateAudio: videoSettings.generateAudio,
+      }
+      this.selectNodes([imageId])
+      return [imageId, videoId]
     },
     addOutfitStoryboardNodes(plannerId, outfitId, plans, settings) {
       const planner = this.nodes.find((node) => node.id === plannerId)
