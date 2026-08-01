@@ -62,11 +62,6 @@ const connectedReferences = computed(() => store.incomingNodes(props.nodeId).map
     : node
 )))
 const references = computed(() => {
-  const continuityReference = props.type === 'image' && props.data.continuityLastFrameUrl ? [{
-    id: 'storyboard-last-frame',
-    type: 'image',
-    data: { title: '上一段尾帧', asset: props.data.continuityLastFrameUrl },
-  }] : []
   const character = props.data.storyboardCharacter
   const productReferences = (props.data.storyboardProductReferences || []).map((reference) => ({
     id: `storyboard-product-${reference.id}`,
@@ -87,7 +82,7 @@ const references = computed(() => {
     type: 'image',
     data: { title: '服饰穿搭参考总览', asset: props.data.storyboardOutfitBoard.url },
   }] : []
-  if (isStoryboardImage.value) return [...continuityReference, ...connectedReferences.value, ...outfitBoard, ...productReferences, ...characterReference]
+  if (isStoryboardImage.value) return [...connectedReferences.value, ...outfitBoard, ...productReferences, ...characterReference]
   return [...connectedReferences.value, ...characterReference, ...productReferences]
 })
 const disabledReferenceIds = computed(() => new Set(props.data.disabledReferenceIds || []))
@@ -338,8 +333,7 @@ function updateVideoSetting(key, value) {
 
 function confirmStoryboardSegment() {
   const result = store.confirmStoryboardSegment(props.nodeId)
-  if (result === 'missing_last_frame') toast.warning('上游未返回当前视频尾帧，请重新生成当前视频后再确认')
-  else if (result !== true) toast.warning('请先完成当前视频生成')
+  if (result !== true) toast.warning('请先完成当前视频生成')
 }
 
 function updateAudioSetting(key, value) {

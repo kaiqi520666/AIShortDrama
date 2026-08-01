@@ -385,10 +385,9 @@ describe('canvas node packs', () => {
     store.unlockStoryboardVideo(image1.id)
     expect(video1.data.segmentLocked).toBe(false)
     video1.data.status = 'ready'
-    video1.data.lastFrameUrl = 'https://image.nodepass.net/last-frame.png'
     expect(store.confirmStoryboardSegment(video1.id)).toBe(true)
     expect(image2.data.segmentLocked).toBe(false)
-    expect(image2.data.continuityLastFrameUrl).toContain('last-frame')
+    expect(image2.data).not.toHaveProperty('continuityLastFrameUrl')
 
     image2.data.asset = 'https://example.com/storyboard-2.png'
     store.invalidateStoryboardFrom(image2.id)

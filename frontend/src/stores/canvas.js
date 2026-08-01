@@ -308,7 +308,6 @@ export const useCanvasStore = defineStore('canvas', {
             storyboardPlotGoal: segment.plotGoal,
             storyboardOpeningState: segment.openingState,
             storyboardEndingState: segment.endingState,
-            continuityLastFrameUrl: null,
             videoPrompt: segment.videoPrompt,
             prompt: segment.prompt,
             promptParts: [{ type: 'text', value: segment.prompt }],
@@ -344,7 +343,6 @@ export const useCanvasStore = defineStore('canvas', {
             prompt: segment.videoPrompt,
             promptParts: [{ type: 'text', value: segment.videoPrompt }],
             segmentLocked: true,
-            returnLastFrame: true,
           }
           if (segment.continuityMode === 'extend' && previousVideoId) {
             this.addEdge({ source: previousVideoId, target: videoId })
@@ -522,7 +520,6 @@ export const useCanvasStore = defineStore('canvas', {
           storyboardPlotGoal: segment.plotGoal,
           storyboardOpeningState: segment.openingState,
           storyboardEndingState: segment.endingState,
-          continuityLastFrameUrl: null,
           videoPrompt: segment.videoPrompt,
           prompt: segment.prompt,
           promptParts: [{ type: 'text', value: segment.prompt }],
@@ -558,7 +555,6 @@ export const useCanvasStore = defineStore('canvas', {
           prompt: segment.videoPrompt,
           promptParts: [{ type: 'text', value: segment.videoPrompt }],
           segmentLocked: true,
-          returnLastFrame: true,
         }
         if (segment.continuityMode === 'extend' && previousVideoId) this.addEdge({ source: previousVideoId, target: videoId })
         segmentNodeIds.push({ segmentIndex, imageId, videoId })
@@ -710,9 +706,6 @@ export const useCanvasStore = defineStore('canvas', {
         && node.data.storyboardSourceId === video.data.storyboardSourceId
         && node.data.storyboardSegmentIndex === video.data.storyboardSegmentIndex + 1)
       if (!nextImage) return true
-      const nextMode = nextImage.data.storyboardContinuityMode
-      if (nextMode === 'extend' && !video.data.lastFrameUrl) return 'missing_last_frame'
-      nextImage.data.continuityLastFrameUrl = nextMode === 'extend' ? video.data.lastFrameUrl : null
       nextImage.data.segmentLocked = false
       video.data.segmentConfirmed = true
       return true
@@ -741,7 +734,6 @@ export const useCanvasStore = defineStore('canvas', {
           node.data.generationProgress = 0
           node.data.generationError = ''
           node.data.segmentConfirmed = false
-          node.data.continuityLastFrameUrl = null
           node.data.segmentLocked = node.type === 'image'
             ? node.data.storyboardSegmentIndex > segmentIndex
             : !(isTargetVideo || (node.data.storyboardSegmentIndex === segmentIndex && keepCurrentImage))
