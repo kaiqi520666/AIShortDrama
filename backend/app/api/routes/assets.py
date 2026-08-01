@@ -80,6 +80,8 @@ def private_avatar_metadata(data: dict[str, Any]) -> dict[str, Any]:
 async def list_assets(
     media_type: Literal["image", "video", "audio"] | None = Query(default=None, alias="type"),
     workspace_id: uuid.UUID | None = None,
+    limit: int | None = Query(default=None, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
     db: AsyncSession = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
@@ -88,7 +90,10 @@ async def list_assets(
         query = query.where(Asset.media_type == media_type)
     if workspace_id:
         query = query.where(Asset.workspace_id == workspace_id)
-    assets = (await db.scalars(query.order_by(Asset.created_at.desc()))).all()
+    query = query.order_by(Asset.created_at.desc(), Asset.id.desc()).offset(offset)
+    if limit is not None:
+        query = query.limit(limit)
+    assets = (await db.scalars(query)).all()
     return success([asset_payload(item) for item in assets])
 
 

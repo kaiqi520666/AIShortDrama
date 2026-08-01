@@ -1,7 +1,9 @@
+from datetime import datetime, timezone
+from io import BytesIO
+
 import httpx
 import pytest
 from httpx import ASGITransport, AsyncClient
-from io import BytesIO
 from PIL import Image
 from sqlalchemy import select
 
@@ -34,6 +36,51 @@ class FakePrivateAvatarProvider:
 class FakeBoardStorage:
     async def store_upload(self, _object_key, _stream, _content_type):
         return "https://example.com/outfit-board.jpg"
+
+
+@pytest.mark.asyncio
+async def test_list_assets_supports_pagination(override_business_user):
+    asset_ids = []
+    async with SessionLocal() as db:
+        for index in range(3):
+            asset = Asset(
+                user_id=override_business_user,
+                workspace_id=DEFAULT_WORKSPACE_ID,
+                media_type="audio",
+                source_type="upload",
+                name=f"分页资产 {index + 1}",
+                url=f"https://example.com/page-{index + 1}.mp3",
+                created_at=datetime(2099, 1, 3 - index, tzinfo=timezone.utc),
+            )
+            db.add(asset)
+            await db.flush()
+            asset_ids.append(asset.id)
+        await db.commit()
+
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get(
+                "/api/assets",
+                params={
+                    "workspace_id": str(DEFAULT_WORKSPACE_ID),
+                    "type": "audio",
+                    "limit": 2,
+                    "offset": 1,
+                },
+            )
+
+        assert response.status_code == 200
+        assert [item["id"] for item in response.json()["data"]] == [
+            str(asset_ids[1]),
+            str(asset_ids[2]),
+        ]
+    finally:
+        async with SessionLocal() as db:
+            for asset_id in asset_ids:
+                asset = await db.get(Asset, asset_id)
+                if asset:
+                    await db.delete(asset)
+            await db.commit()
 
 
 @pytest.mark.asyncio

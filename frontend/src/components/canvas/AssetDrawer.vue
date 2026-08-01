@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref } from 'vue'
 import { ChevronDown, ChevronRight, FileText, Folder, Image, LayoutGrid, Library, Music2, Package, Pencil, RefreshCw, Trash2, Video, Workflow, X } from 'lucide-vue-next'
 import { deleteAsset, listAssets, renameAsset } from '../../api/assets'
 import { useGlobalConfirm, useGlobalPrompt, useGlobalToast } from '../../composables/useGlobalUI'
@@ -23,11 +23,16 @@ const assetTypeOptions = [
   { value: 'video', label: '视频', icon: Video },
   { value: 'audio', label: '音频', icon: Music2 },
 ]
+const PAGE_SIZE = 30
 const activeTab = ref('nodes')
 const assetType = ref('')
 const assets = ref([])
 const loadingAssets = ref(false)
 const assetError = ref('')
+const assetHasMore = ref(true)
+const assetLoaded = ref(false)
+const assetOffset = ref(0)
+const nodeLimit = ref(PAGE_SIZE)
 const collapsedGroupIds = ref([])
 const editingGroupId = ref(null)
 const draggingItem = ref('')
@@ -42,6 +47,24 @@ const groupItems = computed(() => props.groups.map((group) => ({
   title: group.title || '未命名编组',
   nodes: sortedNodes.value.filter((node) => group.nodeIds.includes(node.id)),
 })))
+const nodeSections = computed(() => {
+  let remaining = nodeLimit.value
+  const ungrouped = ungroupedNodes.value.slice(0, remaining)
+  remaining -= ungrouped.length
+  const groups = groupItems.value.map((group) => {
+    if (collapsedGroupIds.value.includes(group.id)) return { ...group, nodes: [] }
+    const nodes = group.nodes.slice(0, Math.max(0, remaining))
+    remaining -= nodes.length
+    return { ...group, nodes }
+  })
+  return { ungrouped, groups }
+})
+const visibleNodeCount = computed(() => ungroupedNodes.value.length + groupItems.value.reduce(
+  (total, group) => total + (collapsedGroupIds.value.includes(group.id) ? 0 : group.nodes.length),
+  0,
+))
+const nodeHasMore = computed(() => visibleNodeCount.value > nodeLimit.value)
+let assetRequestId = 0
 
 function startRename(id) {
   editingGroupId.value = id
@@ -57,17 +80,33 @@ function startAssetDrag(event, asset) {
   event.dataTransfer.setData('application/x-mooncut-canvas-item', JSON.stringify({ kind: 'asset', asset }))
 }
 
-async function loadAssetItems() {
+async function loadAssetItems({ reset = false } = {}) {
+  if (loadingAssets.value && !reset) return
+  if (!reset && (!assetLoaded.value || !assetHasMore.value)) return
+  const requestId = ++assetRequestId
+  if (reset) {
+    assets.value = []
+    assetOffset.value = 0
+    assetHasMore.value = true
+    assetError.value = ''
+  }
   loadingAssets.value = true
   assetError.value = ''
   try {
-    const result = await listAssets(assetType.value)
+    const result = await listAssets(assetType.value, { limit: PAGE_SIZE, offset: assetOffset.value })
     if (result.code !== 0) throw new Error(result.message)
-    assets.value = result.data
+    if (requestId !== assetRequestId) return
+    const items = result.data
+    const existingIds = new Set(assets.value.map((item) => item.id))
+    assets.value = [...assets.value, ...items.filter((item) => !existingIds.has(item.id))]
+    assetOffset.value += items.length
+    assetHasMore.value = items.length === PAGE_SIZE
+    assetLoaded.value = true
   } catch (error) {
+    if (requestId !== assetRequestId) return
     assetError.value = error.response?.data?.message || error.message || '资产加载失败'
   } finally {
-    loadingAssets.value = false
+    if (requestId === assetRequestId) loadingAssets.value = false
   }
 }
 
@@ -102,6 +141,7 @@ async function deleteAssetItem(asset) {
     const result = await deleteAsset(asset.id)
     if (result.code !== 0) throw new Error(result.message)
     assets.value = assets.value.filter((item) => item.id !== asset.id)
+    assetOffset.value = Math.max(0, assetOffset.value - 1)
     toast.success('资产已删除')
   } catch (error) {
     toast.error(error.response?.data?.message || error.message || '资产删除失败')
@@ -142,32 +182,45 @@ async function deleteGroupItem(group) {
 }
 
 function selectAssetType(type) {
+  if (assetType.value === type && assetLoaded.value) return
   assetType.value = type
-  loadAssetItems()
+  loadAssetItems({ reset: true })
 }
 
 function selectTab(tab) {
   activeTab.value = tab
-  if (tab === 'assets') loadAssetItems()
+  if (tab === 'assets' && !assetLoaded.value) loadAssetItems({ reset: true })
 }
 
-onMounted(loadAssetItems)
+function handleNodeScroll(event) {
+  const target = event.currentTarget
+  if (nodeHasMore.value && target.scrollHeight - target.scrollTop - target.clientHeight < 120) {
+    nodeLimit.value += PAGE_SIZE
+  }
+}
+
+function handleAssetScroll(event) {
+  const target = event.currentTarget
+  if (assetHasMore.value && target.scrollHeight - target.scrollTop - target.clientHeight < 120) {
+    loadAssetItems()
+  }
+}
 </script>
 
 <template>
   <aside class="asset-drawer">
     <header>
       <strong>资产</strong>
-      <span>{{ activeTab === 'nodes' ? nodes.length : assets.length }}</span>
-      <AppButton v-if="activeTab === 'assets'" icon-only size="sm" title="刷新资产" @click="loadAssetItems"><RefreshCw :size="15" /></AppButton>
+      <span>{{ activeTab === 'nodes' ? nodes.length : `${assets.length}${assetHasMore ? '+' : ''}` }}</span>
+      <AppButton v-if="activeTab === 'assets'" icon-only size="sm" title="刷新资产" @click="loadAssetItems({ reset: true })"><RefreshCw :size="15" /></AppButton>
       <AppButton icon-only size="sm" title="关闭资产" @click="emit('close')"><X :size="17" /></AppButton>
     </header>
 
     <AppTabs class="asset-tabs" :model-value="activeTab" :options="drawerTabs" aria-label="资产面板" @update:model-value="selectTab" />
 
-    <div v-if="activeTab === 'nodes'" class="asset-list">
+    <div v-if="activeTab === 'nodes'" class="asset-list" @scroll.passive="handleNodeScroll">
       <EmptyState v-if="!nodes.length" compact title="暂无节点" description="在画布中创建节点后会显示在这里" />
-      <div v-for="node in ungroupedNodes" :key="node.id" class="asset-node-row">
+      <div v-for="node in nodeSections.ungrouped" :key="node.id" class="asset-node-row">
         <AppButton
           class="asset-item"
           :class="{ active: node.selected }"
@@ -184,7 +237,7 @@ onMounted(loadAssetItems)
         <AppButton class="asset-row-delete" icon-only size="sm" variant="danger" :title="`删除 ${node.data.title}`" :aria-label="`删除 ${node.data.title}`" @click.stop="deleteNodeItem(node)"><Trash2 :size="14" /></AppButton>
       </div>
 
-      <section v-for="group in groupItems" :key="group.id" class="asset-group">
+      <section v-for="group in nodeSections.groups" :key="group.id" class="asset-group">
         <div class="asset-group-header">
           <AppButton class="asset-group-row" :class="{ active: group.active }" @click="emit('focus-group', group.id)">
             <span class="asset-group-toggle" @click.stop="collapsedGroupIds = collapsedGroupIds.includes(group.id) ? collapsedGroupIds.filter((id) => id !== group.id) : [...collapsedGroupIds, group.id]">
@@ -228,14 +281,15 @@ onMounted(loadAssetItems)
           </div>
         </div>
       </section>
+      <div v-if="nodeHasMore" class="asset-list-status">继续滚动加载</div>
     </div>
 
     <div v-else class="asset-library">
       <AppTabs class="asset-filters" :model-value="assetType" :options="assetTypeOptions" aria-label="资产类型" @update:model-value="selectAssetType" />
-      <EmptyState v-if="loadingAssets" compact title="正在加载资产" loading />
-      <EmptyState v-else-if="assetError" compact title="资产加载失败" :description="assetError" tone="error" />
+      <EmptyState v-if="loadingAssets && !assets.length" compact title="正在加载资产" loading />
+      <EmptyState v-else-if="assetError && !assets.length" compact title="资产加载失败" :description="assetError" tone="error" />
       <EmptyState v-else-if="!assets.length" compact title="暂无资产" description="上传或生成的媒体会显示在这里" />
-      <div v-else class="asset-list asset-library-list">
+      <div v-else class="asset-list asset-library-list" @scroll.passive="handleAssetScroll">
         <div v-for="asset in assets" :key="asset.id" class="asset-library-row">
           <AppButton class="asset-item" :class="{ dragging: draggingItem === `asset:${asset.id}` }" :title="`拖动 ${asset.name}`" draggable="true" @dragstart="startAssetDrag($event, asset)" @dragend="draggingItem = ''">
             <span class="asset-preview">
@@ -249,6 +303,9 @@ onMounted(loadAssetItems)
             <AppButton icon-only size="sm" variant="danger" :title="`删除 ${asset.name}`" @click="deleteAssetItem(asset)"><Trash2 :size="13" /></AppButton>
           </span>
         </div>
+        <div v-if="loadingAssets" class="asset-list-status">正在加载</div>
+        <div v-else-if="assetError" class="asset-list-status error">{{ assetError }}</div>
+        <div v-else-if="assetHasMore" class="asset-list-status">继续滚动加载</div>
       </div>
     </div>
   </aside>
