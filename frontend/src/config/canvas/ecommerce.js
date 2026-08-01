@@ -46,3 +46,21 @@ export function productPromptContext(product = {}) {
   ].filter(([, value]) => value?.trim())
   return fields.map(([label, value]) => `${label}：${value.trim()}`).join('\n')
 }
+
+export function productVideoPromptContext(product = {}) {
+  const hasPackaging = ['带包装', '套装'].includes(product.packagingType)
+  const fields = [
+    ['商品名称', product.name],
+    ['品牌', product.brand],
+    ['品类', product.category],
+    ['规格 / SKU', product.specifications],
+    ['商品形态', product.packagingType],
+    ['主体尺寸', product.productDimensions],
+    ['外包装尺寸', hasPackaging ? product.packageDimensions : ''],
+    ['包装关系', hasPackaging ? product.packageRelation : ''],
+    ['尺度参照', product.scaleReference],
+    ['核心卖点', product.sellingPoints],
+    ['外观信息', product.additionalInfo],
+  ].filter(([, value]) => value?.trim())
+  return fields.map(([label, value]) => `${label}：${value.trim()}`).join('\n')
+}
