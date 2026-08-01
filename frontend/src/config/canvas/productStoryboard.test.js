@@ -34,6 +34,7 @@ describe('product storyboard planning', () => {
     expect(storyboardSegmentCount(30)).toBe(2)
     expect(plan.segments.map((segment) => segment.continuityMode)).toEqual(['cut', 'extend'])
     expect(plan.segments.map((segment) => segment.shotCount)).toEqual([6, 6])
+    expect(plan.segments[0].prompt).toContain('图片1是商品参考图。')
     expect(plan.segments[0].videoPrompt).toContain('图片1是分镜图，图片2是商品参考图。')
     expect(plan.segments[1].videoPrompt).toContain('向后延长视频1')
   })
@@ -106,7 +107,7 @@ describe('product storyboard planning', () => {
     expect(prompt).toContain('shotCount=6')
     expect(prompt).toContain('镜头1、镜头2、镜头3、镜头4、镜头5、镜头6')
     expect(prompt).toContain('六个镜头分别对应分镜板的六个格子')
-    expect(prompt).toContain('图片1是分镜图，图片2是商品参考图。')
+    expect(prompt).toContain('实际参考关系由程序补充')
     expect(prompt).toContain('开箱镜头使用外包装尺寸')
     expect(prompt).toContain('禁止因特写、透视或运镜改变商品实际大小')
   })
@@ -114,8 +115,8 @@ describe('product storyboard planning', () => {
   it('orders parsed prompts by selected template order', () => {
     const plans = parseProductStoryboardPlan('[{"type":"sales-drama","prompt":"短剧分镜","videoPrompt":"短剧视频"},{"type":"ugc-seeding","prompt":"种草分镜","videoPrompt":"种草视频"}]', storyboardTemplates.slice(0, 2))
     expect(plans.map((item) => item.prompt)).toEqual([
-      '种草分镜\n禁止出现人脸、正脸、侧脸及面部局部，人物仅可出现手部、背影或肩部以下。\n无文字水印。',
-      '短剧分镜\n禁止出现人脸、正脸、侧脸及面部局部，人物仅可出现手部、背影或肩部以下。\n无文字水印。',
+      '图片1是商品参考图。\n种草分镜\n禁止出现人脸、正脸、侧脸及面部局部，人物仅可出现手部、背影或肩部以下。\n无文字水印。',
+      '图片1是商品参考图。\n短剧分镜\n禁止出现人脸、正脸、侧脸及面部局部，人物仅可出现手部、背影或肩部以下。\n无文字水印。',
     ])
     expect(plans.map((item) => item.videoPrompt)).toEqual([
       '种草视频\n全程禁止出现人脸及面部局部；参考图片2为商品参考图。\n不生成背景音乐。',
@@ -133,7 +134,7 @@ describe('product storyboard planning', () => {
     expect(prompt).toContain('她说道')
     expect(prompt).toContain('口型与声音同步')
     expect(prompt).toContain('禁止写成“台词：”')
-    expect(plans[0].prompt).toContain('参考图2为指定出镜角色')
+    expect(plans[0].prompt).toContain('图片1是商品参考图，图片2是指定出镜角色。')
     expect(plans[0].videoPrompt).toContain('参考图片2为指定出镜角色')
   })
 
@@ -144,7 +145,8 @@ describe('product storyboard planning', () => {
       productReferences: [{ id: 'product-1', url: 'https://example.com/product.png' }],
       characterReference: character,
     })
-    expect(prompt).toContain('图片1是分镜图，图片2是指定出镜角色，图片3是商品参考图。')
+    expect(prompt).toContain('实际参考关系由程序补充')
+    expect(prompt).not.toContain('图片1是分镜图')
 
     const plan = parseProductStoryboardPlan(JSON.stringify({
       templateId: 'ugc-seeding',
@@ -177,6 +179,29 @@ describe('product storyboard planning', () => {
     const plans = parseProductStoryboardPlan('[{"type":"ugc-seeding","prompt":"分镜","videoPrompt":"视频"}]', storyboardTemplates.slice(0, 1), { url: 'https://example.com/character.png', assetUrl: 'asset://character' }, 2)
     expect(plans[0].videoPrompt).toContain('参考图片2为指定出镜角色')
     expect(plans[0].videoPrompt).toContain('参考图片3、参考图片4为商品参考图')
+  })
+
+  it('replaces model-written character numbering with the actual image-stage order', () => {
+    const character = { url: 'https://example.com/character.png', assetUrl: 'asset://character' }
+    const plan = parseProductStoryboardPlan(JSON.stringify({
+      templateId: 'ugc-seeding',
+      totalDuration: 15,
+      segments: [{
+        segmentIndex: 1,
+        duration: 15,
+        shotCount: 6,
+        plotGoal: '开场',
+        openingState: '未使用',
+        endingState: '展示商品',
+        continuityMode: 'cut',
+        prompt: '镜头1：图片2是指定出镜角色。镜头2 镜头3 镜头4 镜头5 镜头6',
+        videoPrompt: '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6',
+      }],
+    }), [storyboardTemplates[0]], character, 3)
+
+    expect(plan.segments[0].prompt).toContain('图片1、图片2、图片3是商品参考图，图片4是指定出镜角色。')
+    expect(plan.segments[0].prompt).toContain('镜头1：指定出镜角色。')
+    expect(plan.segments[0].prompt).not.toContain('图片2是指定出镜角色')
   })
 
   it('remaps planning reference labels to video-stage labels', () => {

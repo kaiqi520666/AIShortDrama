@@ -78,7 +78,6 @@ export function buildProductStoryboardPrompt(productContext, templates, data = {
     const productCount = Math.max(1, data.productReferences?.length || 1)
     const characterLabel = character?.url ? `参考图${productCount + 1}` : ''
     const productLabels = Array.from({ length: productCount }, (_, index) => `图片${index + 1}`).join('、')
-    const videoReferenceRule = buildVideoReferenceRule(character, productCount)
     const characterRule = character?.url
       ? `出镜角色使用${characterLabel}，保持身份、人脸、发型、体型、服装一致。`
       : '禁止出现人脸、正脸、侧脸及面部局部；人物只允许出现手部、背影或肩部以下。'
@@ -93,10 +92,8 @@ export function buildProductStoryboardPrompt(productContext, templates, data = {
       ? '有人物出镜时必须自然说一句话，使用“她说道："……"”“他说道："……"”或“他回答："……"”，说明口型与声音同步，禁止写“台词：”。'
       : '没有注册角色时不得出现人脸，使用画外音或现场音。'
     const scaleRule = '如商品资料包含主体尺寸、外包装尺寸、包装关系或尺度参照，每条 prompt 和 videoPrompt 必须明确保持真实物理尺寸及其与人物、手部和环境的比例；开箱镜头使用外包装尺寸，拿取、使用和展示镜头使用主体尺寸，禁止因特写、透视或运镜改变商品实际大小。'
-    const referenceMappingRule = character?.url
-      ? `规划阶段输入编号中${characterLabel}是角色，但视频阶段固定改为图片2；视频阶段图片1是分镜图，图片3-${productCount + 2}是商品图。videoPrompt镜头正文不得沿用规划阶段的“参考图${productCount + 1}”编号。`
-      : `规划阶段输入编号中的商品图1-${productCount}在视频阶段固定改为图片2-${productCount + 1}；视频阶段图片1是分镜图。`
-    const suffix = `${extra}\n严格输出一个 JSON 对象，不要 Markdown：{"templateId":"${selectedTemplate.id}","title":"${selectedTemplate.label}","globalScript":"全局脚本","segments":[{"segmentIndex":1,"duration":15,"shotCount":6,"plotGoal":"剧情目标","openingState":"开场状态","endingState":"结束状态","continuityMode":"cut","prompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……","videoPrompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……"}]}。segments 必须恰好 ${segments} 条且按顺序。每条 prompt 和 videoPrompt 必须严格包含且只按时间顺序描述镜头1至镜头6，六个镜头分别对应分镜板的六个格子，不能用“ montage ”或一句话概括多个镜头。${imagePromptRule}${scaleRule}每条 videoPrompt 必须以“${videoReferenceRule}”开头。${referenceMappingRule}每个 videoPrompt 镜头写主体动作、场景、景别、单一运镜、光影、角色说话和音效。${speechRule}每条 videoPrompt 必须包含现场音或商品操作音，禁止背景音乐、字幕、价格、二维码、水印、乱码和额外 Logo。${characterRule}${productLabels}中的商品外观、颜色、材质和包装保持一致。`
+    const referenceMappingRule = 'prompt 和 videoPrompt 的镜头正文不得自行声明或推算图片编号，只使用“指定出镜角色”和“主体商品”，实际参考关系由程序补充。'
+    const suffix = `${extra}\n严格输出一个 JSON 对象，不要 Markdown：{"templateId":"${selectedTemplate.id}","title":"${selectedTemplate.label}","globalScript":"全局脚本","segments":[{"segmentIndex":1,"duration":15,"shotCount":6,"plotGoal":"剧情目标","openingState":"开场状态","endingState":"结束状态","continuityMode":"cut","prompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……","videoPrompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……"}]}。segments 必须恰好 ${segments} 条且按顺序。每条 prompt 和 videoPrompt 必须严格包含且只按时间顺序描述镜头1至镜头6，六个镜头分别对应分镜板的六个格子，不能用“ montage ”或一句话概括多个镜头。${imagePromptRule}${scaleRule}${referenceMappingRule}每个 videoPrompt 镜头写主体动作、场景、景别、单一运镜、光影、角色说话和音效。${speechRule}每条 videoPrompt 必须包含现场音或商品操作音，禁止背景音乐、字幕、价格、二维码、水印、乱码和额外 Logo。${characterRule}${productLabels}中的商品外观、颜色、材质和包装保持一致。`
     return `${prefix}${productContext.slice(0, Math.max(0, 3000 - prefix.length - suffix.length))}${suffix}`
   }
   const duration = Math.min(15, Math.max(4, Number(data.duration) || 4))
@@ -109,17 +106,16 @@ export function buildProductStoryboardPrompt(productContext, templates, data = {
     : [{}]
   const productImageLabels = productReferences.map((_, index) => `图片${index + 1}`).join('、')
   const characterImageIndex = productReferences.length + 1
-  const videoProductImageLabels = productReferences.map((_, index) => `参考图片${index + (data.characterReference?.url ? 3 : 2)}`).join('、')
   const character = data.characterReference
   const speechRule = character?.url
     ? '每条 videoPrompt 至少安排指定角色自然说一句与当前动作直接相关的话，根据角色写成“她说道：\"……\"”“他说道：\"……\"”或“他回答：\"……\"”，同时说明口型与声音同步；禁止写成“台词：”或“角色说话：”。'
     : '每条 videoPrompt 至少安排一句与当前画面直接相关的画外音，写成“画外音说道：\"……\"”。'
   const characterRule = character?.url
-    ? `当前输入的参考图 ${characterImageIndex} 是指定出镜角色“${character.name}”。每个有人物的镜头必须保持其身份、人脸、发型、体型和服装一致；videoPrompt 必须说明视频生成阶段的参考图片2用于锁定出镜角色。`
+    ? `当前输入的参考图 ${characterImageIndex} 是指定出镜角色“${character.name}”。每个有人物的镜头必须保持其身份、人脸、发型、体型和服装一致。`
     : '所有镜头禁止出现人脸、正脸、侧脸或面部局部；人物只允许出现手部、背影或肩部以下，口播与反应改为画外音、手部动作或商品特写。'
   const imagePromptRule = 'prompt 只描述静态画面：主体动作、商品状态、场景、景别、构图和光线；禁止对白、台词、说话、口型、声音、音效、环境音、旁白和引号内容。'
   const prefix = `${productImageLabels}是商品参考图。${character?.url ? `参考图 ${characterImageIndex} 是指定出镜角色。` : ''}请为以下每种商品短视频模板同时生成“多格分镜板图片提示词”和“Seedance 2 视频提示词”：\n${types}\n总时长：${duration} 秒；每个模板 ${grid.shots} 个镜头；分镜板采用 ${grid.columns} 列 × ${grid.rows} 行；每个小格保持 ${ratio} 视频画幅。\n商品资料：\n`
-  const suffix = `${extra}\n严格输出 JSON 数组，格式为 [{"type":"模板ID","title":"模板名称","prompt":"分镜板图片提示词","videoPrompt":"Seedance 2 视频提示词"}]。每个模板必须且只能出现一次，title 必须使用请求中的模板名称，顺序与请求一致。prompt 必须描述 ${grid.shots} 个按时间顺序推进且内容不同的镜头，明确每格的主体动作、景别、场景、构图和光线，整张图是边界清楚、间距统一的专业分镜板。${imagePromptRule}videoPrompt 不超过 500 个中文字符，必须以“参考图片1中的分镜图”开头；视频生成阶段${character?.url ? '参考图片2是指定出镜角色，' : ''}${videoProductImageLabels}是商品参考图；使用“镜头1、镜头2……”依次描述，每个镜头只使用一种运镜，并写明主体动作、场景、景别、光影和自然衔接。${speechRule}每条 videoPrompt 至少用尖括号写一个现场音或商品操作音，例如<包装撕开声>；禁止生成背景音乐。${characterRule}同一商品的外观、颜色、材质、包装和品牌标识必须保持一致；不生成标题、编号、字幕、价格、二维码、水印、乱码或额外 Logo，不虚构商品功能，不解释，不使用 Markdown。`
+  const suffix = `${extra}\n严格输出 JSON 数组，格式为 [{"type":"模板ID","title":"模板名称","prompt":"分镜板图片提示词","videoPrompt":"Seedance 2 视频提示词"}]。每个模板必须且只能出现一次，title 必须使用请求中的模板名称，顺序与请求一致。prompt 必须描述 ${grid.shots} 个按时间顺序推进且内容不同的镜头，明确每格的主体动作、景别、场景、构图和光线，整张图是边界清楚、间距统一的专业分镜板。${imagePromptRule}prompt 和 videoPrompt 的镜头正文不得自行声明或推算图片编号，只使用“指定出镜角色”和“主体商品”，实际参考关系由程序补充。videoPrompt 不超过 500 个中文字符；使用“镜头1、镜头2……”依次描述，每个镜头只使用一种运镜，并写明主体动作、场景、景别、光影和自然衔接。${speechRule}每条 videoPrompt 至少用尖括号写一个现场音或商品操作音，例如<包装撕开声>；禁止生成背景音乐。${characterRule}同一商品的外观、颜色、材质、包装和品牌标识必须保持一致；不生成标题、编号、字幕、价格、二维码、水印、乱码或额外 Logo，不虚构商品功能，不解释，不使用 Markdown。`
   return `${prefix}${productContext.slice(0, Math.max(0, 3000 - prefix.length - suffix.length))}${suffix}`
 }
 
@@ -155,7 +151,7 @@ export function parseProductStoryboardPlan(content, templates, characterReferenc
         openingState: segment.openingState.trim(),
         endingState: segment.endingState.trim(),
         continuityMode: index === 0 ? 'cut' : segment.continuityMode,
-        prompt: `${segment.prompt.trim()}\n${characterReference?.url ? '保持指定角色身份与外观一致。' : '禁止出现人脸、正脸、侧脸及面部局部。'}\n无文字水印。`,
+        prompt: `${ensureImageReferenceRule(segment.prompt, characterReference, productReferenceCount)}\n${characterReference?.url ? '保持指定角色身份与外观一致。' : '禁止出现人脸、正脸、侧脸及面部局部。'}\n无文字水印。`,
         videoPrompt: `${ensureVideoReferenceRule(normalizeVideoReferenceLabels(segment.videoPrompt, characterReference, productReferenceCount), characterReference, productReferenceCount)}\n${index > 0 && segment.continuityMode === 'extend' ? `向后延长视频${index}，延续上一段的主体、场景、光影和运镜。` : ''}\n不生成背景音乐。`,
       }
     })
@@ -178,18 +174,17 @@ export function parseProductStoryboardPlan(content, templates, characterReferenc
   const results = new Map(parsed.map((item) => [item?.type, item]))
   const plans = templates.map((item) => {
     const result = results.get(item.id)
-    const characterImageIndex = Math.max(1, Number(productReferenceCount) || 1) + 1
     const videoProductImageLabels = Array.from(
       { length: Math.max(1, Number(productReferenceCount) || 1) },
       (_, index) => `参考图片${index + (characterReference?.url ? 3 : 2)}`,
     ).join('、')
     const imageRule = characterReference?.url
-      ? `参考图${characterImageIndex}为指定出镜角色，所有镜头保持其身份、人脸、发型、体型和服装一致。`
+      ? '所有镜头保持指定出镜角色的身份、人脸、发型、体型和服装一致。'
       : '禁止出现人脸、正脸、侧脸及面部局部，人物仅可出现手部、背影或肩部以下。'
     const videoRule = characterReference?.assetUrl
       ? `参考图片2为指定出镜角色，必须保持人物身份与外貌一致；${videoProductImageLabels}为商品参考图。`
       : `全程禁止出现人脸及面部局部；${videoProductImageLabels}为商品参考图。`
-    const prompt = typeof result?.prompt === 'string' ? `${result.prompt.trim()}\n${imageRule}\n无文字水印。` : ''
+    const prompt = typeof result?.prompt === 'string' ? `${ensureImageReferenceRule(result.prompt, characterReference, productReferenceCount)}\n${imageRule}\n无文字水印。` : ''
     if (prompt && hasImagePromptAudio(prompt)) throw new Error(`${item.label}图片提示词不得包含对白或音效`)
     return {
       ...item,
@@ -214,6 +209,23 @@ function hasStoryboardShotLabels(value) {
 
 function hasImagePromptAudio(value) {
   return /(说道|说：|说“|台词|对白|口型|声音|音效|环境音|现场音|旁白)/.test(value)
+}
+
+function buildImageReferenceRule(characterReference, productReferenceCount) {
+  const productCount = Math.max(1, Number(productReferenceCount) || 1)
+  const productLabels = Array.from({ length: productCount }, (_, index) => `图片${index + 1}`).join('、')
+  return characterReference?.url
+    ? `${productLabels}是商品参考图，图片${productCount + 1}是指定出镜角色。`
+    : `${productLabels}是商品参考图。`
+}
+
+function ensureImageReferenceRule(value, characterReference, productReferenceCount) {
+  const prompt = value.trim()
+    .replace(/(?:参考)?(?:图片|图)\s*\d+\s*(?:是|为)\s*(?:指定)?(?:出镜)?角色/g, '指定出镜角色')
+    .replace(/参考(?:图片|图)\s*\d+(?=\s*(?:女性|男性|角色|人物|模特))/g, '指定出镜角色')
+    .replace(/(?:参考)?(?:图片|图)\s*\d+(?:\s*[、，]\s*(?:(?:参考)?(?:图片|图)\s*)?\d+)*\s*(?:是|为)\s*商品参考图/g, '商品参考图')
+    .replace(/参考(?:图片|图)\s*\d+(?=\s*(?:商品|产品|包装|瓶身|礼盒))/g, '商品参考图')
+  return `${buildImageReferenceRule(characterReference, productReferenceCount)}\n${prompt}`
 }
 
 function buildVideoReferenceRule(characterReference, productReferenceCount) {
