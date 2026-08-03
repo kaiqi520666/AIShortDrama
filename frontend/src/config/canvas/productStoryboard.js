@@ -419,6 +419,7 @@ function stripImagePromptAudio(value) {
     )
     .replace(/(?:禁止|不)生成背景音乐[。；;]?/g, "")
     .replace(/<[^>]*(?:声|音)[^>]*>/g, "")
+    .replace(/(^|[，,；;])\s*(?:她|他|角色|人物)(?=[。；;])/g, "$1")
     .replace(/[，、；;]\s*[。；;]/g, "。")
     .replace(/\s{2,}/g, " ")
     .trim();

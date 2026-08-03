@@ -75,6 +75,7 @@ describe('product storyboard planning', () => {
       }],
     }), [storyboardTemplates[0]])
     expect(plan.segments[0].prompt).not.toContain('她说道')
+    expect(plan.segments[0].prompt).not.toContain('她。')
     expect(plan.segments[0].prompt).not.toContain('脚步声')
     expect(plan.segments[0].prompt).toContain('镜头1：女性看向镜头')
     expect(plan.segments[0].prompt).toContain('镜头6：女性准备试吃')
