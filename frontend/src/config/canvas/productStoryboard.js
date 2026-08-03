@@ -128,7 +128,7 @@ export function buildProductStoryboardPrompt(
     const segmentRule = Array.from({ length: segments }, (_, index) => {
       const number = index + 1;
       const defaultMode = number === 1 ? "cut" : "extend";
-      return `第${number}段（15秒）：输出 segmentIndex=${number}、duration=15、shotCount=${storyboardSegmentShotCount}、continuityMode="${defaultMode}"、plotGoal、openingState、endingState、prompt、videoPrompt。prompt 和 videoPrompt 都必须严格写出镜头1、镜头2、镜头3、镜头4、镜头5、镜头6，六个镜头不能合并或省略。${number === 1 ? "第一段独立开场。" : "默认向后延长上一段；如果剧情明确换场则使用 cut。"}`;
+      return `第${number}段（15秒）：输出 segmentIndex=${number}、duration=15、shotCount=${storyboardSegmentShotCount}、continuityMode="${defaultMode}"、plotGoal、openingState、endingState、prompt、videoPrompt。prompt 和 videoPrompt 都必须严格写出镜头1、镜头2、镜头3、镜头4、镜头5、镜头6，六个镜头不能合并或省略；每个镜头标签后必须有至少一句具体的人物动作、地点或商品状态，禁止空镜头或只输出“镜头N：”。${number === 1 ? "第一段独立开场。" : "默认向后延长上一段；如果剧情明确换场则使用 cut。"}`;
     }).join("\n");
     const prefix = `${productLabels}是商品参考图。${character?.url ? `${characterLabel}是指定出镜角色。` : ""}请为“${selectedTemplate.label}”生成总时长 ${totalDuration} 秒的连续商品短视频方案，拆成 ${segments} 个连续的15秒段落。\n模板要求：${storyboardTemplateRules[selectedTemplate.id]}\n${segmentRule}\n商品资料：\n`;
     const isUgc = selectedTemplate.id === "ugc-seeding";
@@ -402,15 +402,11 @@ function hasStoryboardShotLabels(value) {
 function stripImagePromptAudio(value) {
   return value
     .replace(
-      /(?:她|他|角色|人物|女性|男性|画外音|旁白)[^。；;\n]{0,30}(?:说道|说|回答|问道|表示|提到)[：:，,]?\s*[“"「][^”"」\n]*[”"」]?/g,
-      "",
-    )
-    .replace(
       /(?:说道|说|回答|问道|表示|提到)[：:]?\s*[“"「][^”"」\n]*[”"」]?/g,
       "",
     )
     .replace(
-      /(?:她|他|角色|人物|女性|男性|画外音|旁白)[^。；;\n]{0,30}(?:说道|说|回答|问道|表示|提到)[：:，,]?[^。；;\n]*/g,
+      /(?:说道|回答|问道|表示|提到|说)(?:[：:，,]\s*|\s+)[^。；;\n]*/g,
       "",
     )
     .replace(

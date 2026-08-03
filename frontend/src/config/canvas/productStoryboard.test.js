@@ -58,7 +58,7 @@ describe('product storyboard planning', () => {
   })
 
   it('strips dialogue or audio from an image prompt', () => {
-    const shots = '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6'
+    const shots = '镜头1：女性看向镜头，她说道："测试"；现场音：脚步声。镜头2：女性沿步道行走。镜头3：女性停下开盖。镜头4：第一视角搅拌。镜头5：女性坐下舀取。镜头6：女性准备试吃。'
     const plan = parseProductStoryboardPlan(JSON.stringify({
       templateId: 'ugc-seeding',
       totalDuration: 15,
@@ -70,13 +70,14 @@ describe('product storyboard planning', () => {
         openingState: '未使用',
         endingState: '拿起商品',
         continuityMode: 'cut',
-        prompt: `${shots}，她说道："测试"；现场音：脚步声。`,
+        prompt: shots,
         videoPrompt: shots,
       }],
     }), [storyboardTemplates[0]])
     expect(plan.segments[0].prompt).not.toContain('她说道')
     expect(plan.segments[0].prompt).not.toContain('脚步声')
-    expect(plan.segments[0].prompt).toContain('镜头1')
+    expect(plan.segments[0].prompt).toContain('镜头1：女性看向镜头')
+    expect(plan.segments[0].prompt).toContain('镜头6：女性准备试吃')
   })
 
   it('recommends editable image settings from duration and video ratio', () => {
@@ -109,6 +110,7 @@ describe('product storyboard planning', () => {
     const prompt = buildProductStoryboardPrompt('商品资料', [storyboardTemplates[0]], { duration: 15 })
     expect(prompt).toContain('shotCount=6')
     expect(prompt).toContain('镜头1、镜头2、镜头3、镜头4、镜头5、镜头6')
+    expect(prompt).toContain('禁止空镜头或只输出“镜头N：”')
     expect(prompt).toContain('六个镜头分别对应分镜板的六个格子')
     expect(prompt).toContain('实际参考关系由程序补充')
     expect(prompt).toContain('开箱镜头使用外包装尺寸')
