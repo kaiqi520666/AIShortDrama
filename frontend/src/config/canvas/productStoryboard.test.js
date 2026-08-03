@@ -81,6 +81,27 @@ describe('product storyboard planning', () => {
     expect(plan.segments[0].prompt).toContain('镜头6：女性准备试吃')
   })
 
+  it('quotes unquoted character dialogue in video prompts', () => {
+    const plan = parseProductStoryboardPlan(JSON.stringify({
+      templateId: 'ugc-seeding',
+      totalDuration: 15,
+      segments: [{
+        segmentIndex: 1,
+        duration: 15,
+        shotCount: 6,
+        plotGoal: '开场',
+        openingState: '未使用',
+        endingState: '拿起商品',
+        continuityMode: 'cut',
+        prompt: '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6',
+        videoPrompt: '镜头1：她说道：周末去公园。镜头2：她回答：这瓶很方便。镜头3 镜头4 镜头5 镜头6',
+      }],
+    }), [storyboardTemplates[0]])
+    expect(plan.segments[0].videoPrompt).toContain('她说道：“周末去公园。”')
+    expect(plan.segments[0].videoPrompt).toContain('她回答：“这瓶很方便。”')
+    expect(plan.segments[0].videoPrompt).not.toContain('她说道：周末去公园')
+  })
+
   it('recommends editable image settings from duration and video ratio', () => {
     expect(recommendStoryboardSettings(9, '9:16')).toEqual(expect.objectContaining({ shots: 4, aspectRatio: '9:16', resolution: '2K' }))
     expect(recommendStoryboardSettings(15, '9:16')).toEqual(expect.objectContaining({ shots: 6, aspectRatio: '4:5', resolution: '4K' }))
@@ -147,6 +168,7 @@ describe('product storyboard planning', () => {
     expect(fullPrompt.length).toBeLessThanOrEqual(3000)
     expect(prompt).toContain('参考图 2 是指定出镜角色')
     expect(prompt).toContain('她说道')
+    expect(prompt).toContain('对白必须用中文双引号包裹')
     expect(prompt).toContain('口型与声音同步')
     expect(prompt).toContain('禁止写成“台词：”')
     expect(plans[0].prompt).toContain('图片1是商品参考图，图片2是指定出镜角色。')

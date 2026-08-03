@@ -137,7 +137,7 @@ export function buildProductStoryboardPrompt(
       : "图片 prompt 只描述静态画面：主体动作、商品状态、场景、景别、构图和光线；禁止对白、台词、说话、口型、声音、音效、环境音、旁白和引号内容。";
     const speechRule = character?.url
       ? isUgc
-        ? "UGC种草全程以指定角色连续、真实的第一人称分享为主线，不安排完全无对白的镜头。每个镜头都必须包含一句与当前动作、场景或商品体验直接相关的自然口语；人物未露脸或画面为手部、商品特写时，使用同一角色的连续画外音。15秒六个镜头至少安排六句对白，每句简短、口语化、内容不重复，开头镜头立即开口。使用“她说道：……” “他说道：……”或“他回答：……”，禁止写“台词：”。”。"
+        ? "UGC种草全程以指定角色连续、真实的第一人称分享为主线，不安排完全无对白的镜头。每个镜头都必须包含一句与当前动作、场景或商品体验直接相关的自然口语；人物未露脸或画面为手部、商品特写时，使用同一角色的连续画外音。15秒六个镜头至少安排六句对白，每句简短、口语化、内容不重复，开头镜头立即开口。对白必须使用中文双引号包裹，严格使用格式：她说道：“内容。”、他说道：“内容。”或他回答：“内容。”，禁止写成她说道：内容，也禁止写“台词：”。"
         : '有人物出镜时必须自然说一句话，使用“她说道："……””“他说道："……””或“他回答："……””，说明口型与声音同步，禁止写“台词：”。'
       : isUgc
         ? "没有注册角色时不得出现人脸；UGC不强制对白，只使用画外音或现场音。"
@@ -181,7 +181,7 @@ UGC覆盖规则：${ugcPromptOwnershipRule} 图片和视频镜头正文只写人
   const character = data.characterReference;
   const hasUgcTemplate = templates.some((item) => item.id === "ugc-seeding");
   const speechRule = character?.url
-    ? '每条 videoPrompt 至少安排指定角色自然说一句与当前动作直接相关的话，根据角色写成“她说道：\"……\"”“他说道：\"……\"”或“他回答：\"……\"”，同时说明口型与声音同步；禁止写成“台词：”或“角色说话：”。'
+    ? '每条 videoPrompt 至少安排指定角色自然说一句与当前动作直接相关的话；对白必须用中文双引号包裹，严格使用格式“她说道：\"内容。\"”“他说道：\"内容。\"”或“他回答：\"内容。\"”，同时说明口型与声音同步；禁止写成“台词：”或“角色说话：”，也禁止写成她说道：内容。'
     : '每条 videoPrompt 至少安排一句与当前画面直接相关的画外音，写成“画外音说道：\"……\"”。';
   const characterRule = character?.url
     ? `当前输入的参考图 ${characterImageIndex} 是指定出镜角色“${character.name}”。每个有人物的镜头必须保持其身份、人脸、发型、体型和服装一致。`
@@ -277,7 +277,7 @@ export function parseProductStoryboardPlan(
               characterReference,
               productReferenceCount,
             );
-      const videoPrompt =
+      const videoPrompt = ensureQuotedDialogue(
         template.id === "ugc-seeding"
           ? ensureUgcVideoReferenceRule(
               normalizeVideoReferenceLabels(
@@ -296,7 +296,8 @@ export function parseProductStoryboardPlan(
               ),
               characterReference,
               productReferenceCount,
-            );
+            ),
+      );
       return {
         segmentIndex,
         duration: 15,
@@ -373,7 +374,7 @@ export function parseProductStoryboardPlan(
       prompt,
       videoPrompt:
         typeof result?.videoPrompt === "string"
-          ? `${isUgc ? ensureUgcVideoReferenceRule(normalizeVideoReferenceLabels(result.videoPrompt, characterReference, productReferenceCount), characterReference, productReferenceCount) : ensureVideoReferenceRule(normalizeVideoReferenceLabels(result.videoPrompt, characterReference, productReferenceCount), characterReference, productReferenceCount)}\n${videoRule}\n不生成背景音乐。`
+          ? `${ensureQuotedDialogue(isUgc ? ensureUgcVideoReferenceRule(normalizeVideoReferenceLabels(result.videoPrompt, characterReference, productReferenceCount), characterReference, productReferenceCount) : ensureVideoReferenceRule(normalizeVideoReferenceLabels(result.videoPrompt, characterReference, productReferenceCount), characterReference, productReferenceCount))}\n${videoRule}\n不生成背景音乐。`
           : "",
     };
   });
@@ -423,6 +424,13 @@ function stripImagePromptAudio(value) {
     .replace(/[，、；;]\s*[。；;]/g, "。")
     .replace(/\s{2,}/g, " ")
     .trim();
+}
+
+function ensureQuotedDialogue(value) {
+  return value.replace(
+    /((?:她|他|角色|人物|女性|男性|画外音)(?:说道|说|回答|问道|表示|提到)[：:])\s*(?![“"「])([^。！？!?；;\n]+[。！？!?；;]?)/g,
+    (_, prefix, content) => `${prefix}“${content.trim()}”`,
+  );
 }
 
 const ugcCameraReplacements = [
