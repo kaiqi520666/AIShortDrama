@@ -110,18 +110,27 @@ describe('product storyboard planning', () => {
     expect(prompt).toContain('实际参考关系由程序补充')
     expect(prompt).toContain('开箱镜头使用外包装尺寸')
     expect(prompt).toContain('禁止因特写、透视或运镜改变商品实际大小')
+    expect(prompt).toContain('UGC videoPrompt 每个镜头只描述人物动作、地点、商品状态、自然对白和现场音')
+    expect(prompt).not.toContain('每个 videoPrompt 镜头写主体动作、场景、景别、单一运镜、光影、角色说话和音效')
   })
 
   it('orders parsed prompts by selected template order', () => {
     const plans = parseProductStoryboardPlan('[{"type":"sales-drama","prompt":"短剧分镜","videoPrompt":"短剧视频"},{"type":"ugc-seeding","prompt":"种草分镜","videoPrompt":"种草视频"}]', storyboardTemplates.slice(0, 2))
-    expect(plans.map((item) => item.prompt)).toEqual([
-      '图片1是商品参考图。\n种草分镜\n禁止出现人脸、正脸、侧脸及面部局部，人物仅可出现手部、背影或肩部以下。\n无文字水印。',
-      '图片1是商品参考图。\n短剧分镜\n禁止出现人脸、正脸、侧脸及面部局部，人物仅可出现手部、背影或肩部以下。\n无文字水印。',
-    ])
-    expect(plans.map((item) => item.videoPrompt)).toEqual([
-      '种草视频\n全程禁止出现人脸及面部局部；参考图片2为商品参考图。\n不生成背景音乐。',
-      '短剧视频\n全程禁止出现人脸及面部局部；参考图片2为商品参考图。\n不生成背景音乐。',
-    ])
+    expect(plans.map((item) => item.id)).toEqual(['ugc-seeding', 'sales-drama'])
+    expect(plans[0].prompt).toContain('种草分镜')
+    expect(plans[0].prompt).toContain('UGC固定画面规则')
+    expect(plans[0].videoPrompt).toContain('UGC固定拍摄规则')
+    expect(plans[1].prompt).toBe('图片1是商品参考图。\n短剧分镜\n禁止出现人脸、正脸、侧脸及面部局部，人物仅可出现手部、背影或肩部以下。\n无文字水印。')
+    expect(plans[1].videoPrompt).toBe('图片1是分镜图，图片2是商品参考图。\n短剧视频\n全程禁止出现人脸及面部局部；参考图片2为商品参考图。\n不生成背景音乐。')
+  })
+
+  it('normalizes conflicting UGC camera language before applying fixed style rules', () => {
+    const plan = parseProductStoryboardPlan('[{"type":"ugc-seeding","prompt":"镜头1背景虚化，镜头2缓慢推近，镜头3微距特写，镜头4镜头固定，镜头5电影感，镜头6自然动作","videoPrompt":"镜头1背景虚化，镜头2缓慢推近，镜头3微距特写，镜头4镜头固定，镜头5商业产品摄影，镜头6自然动作"}]', storyboardTemplates.slice(0, 1))
+    expect(plan[0].prompt).toContain('背景清晰可辨')
+    expect(plan[0].prompt).toContain('拍摄者自然靠近')
+    expect(plan[0].prompt).not.toContain('背景虚化，镜头2缓慢推近')
+    expect(plan[0].videoPrompt).toContain('全程由人物本人或同行者真实手持手机拍摄')
+    expect(plan[0].videoPrompt).toContain('iPhone原相机直出')
   })
 
   it('locks a selected character in image and video prompts', () => {
