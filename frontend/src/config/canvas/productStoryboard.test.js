@@ -57,9 +57,9 @@ describe('product storyboard planning', () => {
     }), [storyboardTemplates[0]])).toThrow('必须包含镜头1至镜头6')
   })
 
-  it('rejects dialogue or audio in an image prompt', () => {
+  it('strips dialogue or audio from an image prompt', () => {
     const shots = '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6'
-    expect(() => parseProductStoryboardPlan(JSON.stringify({
+    const plan = parseProductStoryboardPlan(JSON.stringify({
       templateId: 'ugc-seeding',
       totalDuration: 15,
       segments: [{
@@ -70,10 +70,13 @@ describe('product storyboard planning', () => {
         openingState: '未使用',
         endingState: '拿起商品',
         continuityMode: 'cut',
-        prompt: `${shots}，她说道："测试"`,
+        prompt: `${shots}，她说道："测试"；现场音：脚步声。`,
         videoPrompt: shots,
       }],
-    }), [storyboardTemplates[0]])).toThrow('图片提示词不得包含对白或音效')
+    }), [storyboardTemplates[0]])
+    expect(plan.segments[0].prompt).not.toContain('她说道')
+    expect(plan.segments[0].prompt).not.toContain('脚步声')
+    expect(plan.segments[0].prompt).toContain('镜头1')
   })
 
   it('recommends editable image settings from duration and video ratio', () => {
@@ -118,8 +121,8 @@ describe('product storyboard planning', () => {
     const plans = parseProductStoryboardPlan('[{"type":"sales-drama","prompt":"短剧分镜","videoPrompt":"短剧视频"},{"type":"ugc-seeding","prompt":"种草分镜","videoPrompt":"种草视频"}]', storyboardTemplates.slice(0, 2))
     expect(plans.map((item) => item.id)).toEqual(['ugc-seeding', 'sales-drama'])
     expect(plans[0].prompt).toContain('种草分镜')
-    expect(plans[0].prompt).toContain('UGC固定画面规则')
-    expect(plans[0].videoPrompt).toContain('UGC固定拍摄规则')
+    expect(plans[0].prompt).toContain('UGC种草固定画面规则')
+    expect(plans[0].videoPrompt).toContain('UGC种草固定拍摄规则')
     expect(plans[1].prompt).toBe('图片1是商品参考图。\n短剧分镜\n禁止出现人脸、正脸、侧脸及面部局部，人物仅可出现手部、背影或肩部以下。\n无文字水印。')
     expect(plans[1].videoPrompt).toBe('图片1是分镜图，图片2是商品参考图。\n短剧视频\n全程禁止出现人脸及面部局部；参考图片2为商品参考图。\n不生成背景音乐。')
   })
