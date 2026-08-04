@@ -19,7 +19,7 @@ VideoModel = Literal[
 ]
 
 AudioModel = Literal["seed-audio-1.0-multilingual"]
-TextModel = Literal["qwen3.7-plus", "qwen3.6-flash"]
+TextModel = Literal["gpt-5.6-sol"]
 
 SEEDANCE_RATIOS = {"21:9", "16:9", "4:3", "1:1", "3:4", "9:16", "adaptive"}
 VIDEO_MODEL_RULES: dict[str, dict[str, Any]] = {

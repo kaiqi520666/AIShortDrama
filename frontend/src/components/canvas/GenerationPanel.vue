@@ -102,7 +102,7 @@ const mentionReferences = computed(() => {
   if (props.type === 'video') return activeReferences.value.filter((node) => ['image', 'video', 'audio'].includes(node.type) && node.data.asset)
   return props.type === 'audio' ? audioReferences.value : imageReferences.value
 })
-const isReverseTask = computed(() => props.type === 'text' && ['image', 'video'].includes(props.data.reverseType))
+const isReverseTask = computed(() => props.type === 'text' && props.data.reverseType === 'image')
 const isProductRecognition = computed(() => props.type === 'product')
 const isVisionTextTask = computed(() => isReverseTask.value || isProductRecognition.value)
 const reverseReference = computed(() => activeReferences.value.find((node) => node.type === (isProductRecognition.value ? 'image' : props.data.reverseType) && node.data.asset))

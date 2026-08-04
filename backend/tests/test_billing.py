@@ -56,8 +56,7 @@ async def test_model_price_calculation():
             assert (await build_price_snapshot(db, "video", model, duration=1))[
                 "frozen_credits"
             ] == expected
-        for model in ("qwen3.7-plus", "qwen3.6-flash"):
-            assert (await build_price_snapshot(db, "text", model))["frozen_credits"] == 1
+        assert (await build_price_snapshot(db, "text", "gpt-5.6-sol"))["frozen_credits"] == 1
         assert (await build_price_snapshot(db, "audio", "seed-audio-1.0-multilingual"))[
             "frozen_credits"
         ] == 60

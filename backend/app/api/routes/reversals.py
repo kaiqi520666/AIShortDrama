@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.identity import get_current_user_id
 from app.models import GenerationTask, Workspace
-from app.providers.dashscope import DashScopeProvider
+from app.providers.openai_responses import OpenAIResponsesProvider
 from app.schemas.response import fail
 from app.schemas.reversal import ReversePromptRequest
 from app.services.billing import BillingError, freeze_task_credits
@@ -40,7 +40,7 @@ async def stream_reverse_prompt(
         workspace_id=payload.workspace_id,
         node_id=payload.node_id,
         task_type=f"{payload.media_type}_reverse",
-        provider="dashscope",
+        provider="aijws",
         model=payload.model,
         status="running",
         prompt=payload.prompt,
@@ -51,7 +51,7 @@ async def stream_reverse_prompt(
     try:
         await freeze_task_credits(db, task, "text")
         await db.commit()
-        provider = DashScopeProvider()
+        provider = OpenAIResponsesProvider()
     except BillingError as exc:
         await db.rollback()
         return JSONResponse(status_code=402, content=fail(str(exc)))

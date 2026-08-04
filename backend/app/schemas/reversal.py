@@ -9,8 +9,8 @@ class ReversePromptRequest(BaseModel):
 
     workspace_id: uuid.UUID
     node_id: str = Field(min_length=1, max_length=64)
-    model: Literal["qwen3.7-plus", "qwen3.6-flash"]
-    media_type: Literal["image", "video"]
+    model: Literal["gpt-5.6-sol"]
+    media_type: Literal["image"]
     media_url: AnyHttpUrl
     media_urls: list[AnyHttpUrl] = Field(default_factory=list, max_length=9)
     prompt: str = Field(default="", max_length=3000)

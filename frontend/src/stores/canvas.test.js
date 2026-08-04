@@ -287,7 +287,7 @@ describe('canvas node packs', () => {
     expect(store.nodes[1].data).toEqual(expect.objectContaining({
       workflowStep: 'recognition',
       product: expect.objectContaining({ name: '', sellingPoints: '', additionalInfo: '' }),
-      textModel: 'qwen3.7-plus',
+      textModel: 'gpt-5.6-sol',
       imageModel: 'gpt-image-2',
       items: expect.arrayContaining([expect.objectContaining({ id: 'white-bg', enabled: true })]),
       prompt: '',
@@ -475,7 +475,7 @@ describe('canvas node packs', () => {
       expect.objectContaining({ id: 'image-1', data: expect.objectContaining({ title: '服饰参考图', assetSource: 'upload', resourceType: 'garment' }) }),
       expect.objectContaining({ id: 'apparel-2', type: 'apparel', data: expect.objectContaining({ title: '服饰资料 2', items: [] }) }),
       expect.objectContaining({ id: 'image-3', data: expect.objectContaining({ title: '模特参考图', assetSource: 'upload', resourceType: 'model' }) }),
-      expect.objectContaining({ id: outfitId, type: 'outfit', data: expect.objectContaining({ title: '服饰穿搭 4', textModel: 'qwen3.7-plus', imageModel: 'gpt-image-2', aspectRatio: '9:16', resolution: '1K', moduleIds: ['front', 'three-quarter', 'back', 'turn', 'fabric', 'lifestyle'], customRequirement: '', generatedNodeIds: [] }) }),
+      expect.objectContaining({ id: outfitId, type: 'outfit', data: expect.objectContaining({ title: '服饰穿搭 4', textModel: 'gpt-5.6-sol', imageModel: 'gpt-image-2', aspectRatio: '9:16', resolution: '1K', moduleIds: ['front', 'three-quarter', 'back', 'turn', 'fabric', 'lifestyle'], customRequirement: '', generatedNodeIds: [] }) }),
     ]))
     expect(store.edges).toEqual(expect.arrayContaining([
       expect.objectContaining({ source: 'image-1', target: 'apparel-2' }),

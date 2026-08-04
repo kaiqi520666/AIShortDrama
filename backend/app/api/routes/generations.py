@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.identity import get_current_user_id
 from app.models import GenerationTask, Workspace
-from app.providers.dashscope import DashScopeProvider
+from app.providers.openai_responses import OpenAIResponsesProvider
 from app.schemas.generation import (
     AudioGenerationRequest,
     ImageGenerationRequest,
@@ -51,7 +51,7 @@ async def create_text_generation(
         workspace_id=payload.workspace_id,
         node_id=payload.node_id,
         task_type="text",
-        provider="dashscope",
+        provider="aijws",
         model=payload.model,
         status="running",
         prompt=payload.prompt,
@@ -62,7 +62,7 @@ async def create_text_generation(
     try:
         await freeze_task_credits(db, task, "text")
         await db.commit()
-        provider = DashScopeProvider()
+        provider = OpenAIResponsesProvider()
     except BillingError as exc:
         await db.rollback()
         return JSONResponse(status_code=402, content=fail(str(exc)))

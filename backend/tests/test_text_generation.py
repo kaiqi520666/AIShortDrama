@@ -25,14 +25,14 @@ class FakeProvider:
 
 @pytest.mark.asyncio
 async def test_stream_text_generation(monkeypatch):
-    monkeypatch.setattr(generations_route, "DashScopeProvider", FakeProvider)
+    monkeypatch.setattr(generations_route, "OpenAIResponsesProvider", FakeProvider)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/generations/texts",
             json={
                 "workspace_id": str(DEFAULT_WORKSPACE_ID),
                 "node_id": "selling-copy-test",
-                "model": "qwen3.7-plus",
+                "model": "gpt-5.6-sol",
                 "prompt": "为轻量冲锋衣生成核心卖点",
             },
         )
@@ -61,7 +61,7 @@ async def test_text_generation_rejects_blank_prompt():
             json={
                 "workspace_id": str(DEFAULT_WORKSPACE_ID),
                 "node_id": "selling-copy-test",
-                "model": "qwen3.7-plus",
+                "model": "gpt-5.6-sol",
                 "prompt": "   ",
             },
         )

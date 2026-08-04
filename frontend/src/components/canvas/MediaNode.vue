@@ -291,7 +291,6 @@ onBeforeUnmount(() => {
         <p>选择文本节点用途</p>
         <AppButton class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'manual')"><FileText :size="18" /><span><strong>自己编写内容</strong><small>记录任意文本内容</small></span></AppButton>
         <AppButton class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'imageReverse')"><ImageIcon :size="18" /><span><strong>反推图片提示词</strong><small>创建图片上传与 AI 文本任务</small></span></AppButton>
-        <AppButton class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'videoReverse')"><Video :size="18" /><span><strong>反推视频提示词</strong><small>创建视频上传与 AI 文本任务</small></span></AppButton>
       </div>
 
       <AppTextarea

@@ -32,7 +32,7 @@ def test_product_visual_plan_requires_prompt():
     payload = {
         "workspace_id": str(DEFAULT_WORKSPACE_ID),
         "node_id": "product-visual-1",
-        "model": "qwen3.7-plus",
+        "model": "gpt-5.6-sol",
         "media_type": "image",
         "media_url": "https://example.com/product.png",
         "response_mode": "product_visual_plan",
@@ -46,7 +46,7 @@ def test_reverse_prompt_accepts_additional_media_urls():
     payload = ReversePromptRequest(
         workspace_id=DEFAULT_WORKSPACE_ID,
         node_id="outfit-1",
-        model="qwen3.7-plus",
+        model="gpt-5.6-sol",
         media_type="image",
         media_url="https://example.com/garment.png",
         media_urls=["https://example.com/model.png"],
@@ -56,11 +56,23 @@ def test_reverse_prompt_accepts_additional_media_urls():
     assert [str(url) for url in payload.media_urls] == ["https://example.com/model.png"]
 
 
+def test_reverse_prompt_rejects_video_media():
+    with pytest.raises(ValidationError):
+        ReversePromptRequest(
+            workspace_id=DEFAULT_WORKSPACE_ID,
+            node_id="video-reverse-1",
+            model="gpt-5.6-sol",
+            media_type="video",
+            media_url="https://example.com/video.mp4",
+            prompt="分析视频",
+        )
+
+
 def test_product_profile_limits_reference_images():
     payload = {
         "workspace_id": DEFAULT_WORKSPACE_ID,
         "node_id": "product-1",
-        "model": "qwen3.7-plus",
+        "model": "gpt-5.6-sol",
         "media_type": "image",
         "media_url": "https://example.com/product-0.png",
         "prompt": "",
@@ -82,7 +94,7 @@ def test_reverse_prompt_accepts_character_response_modes():
     payload = {
         "workspace_id": DEFAULT_WORKSPACE_ID,
         "node_id": "character-1",
-        "model": "qwen3.7-plus",
+        "model": "gpt-5.6-sol",
         "media_type": "image",
         "media_url": "https://example.com/character.png",
         "prompt": "生成角色档案",
@@ -95,7 +107,7 @@ def test_reverse_prompt_accepts_apparel_profile_without_prompt():
     payload = ReversePromptRequest(
         workspace_id=DEFAULT_WORKSPACE_ID,
         node_id="apparel-1",
-        model="qwen3.7-plus",
+        model="gpt-5.6-sol",
         media_type="image",
         media_url="https://example.com/apparel.png",
         response_mode="apparel_profile",
@@ -107,7 +119,7 @@ def test_reverse_prompt_accepts_product_storyboard_mode():
     payload = ReversePromptRequest(
         workspace_id=DEFAULT_WORKSPACE_ID,
         node_id="product-storyboard-1",
-        model="qwen3.7-plus",
+        model="gpt-5.6-sol",
         media_type="image",
         media_url="https://example.com/product.png",
         prompt="生成商品分镜",
@@ -122,7 +134,7 @@ def test_product_storyboard_limits_total_reference_images():
     payload = {
         "workspace_id": DEFAULT_WORKSPACE_ID,
         "node_id": "product-storyboard-limit",
-        "model": "qwen3.7-plus",
+        "model": "gpt-5.6-sol",
         "media_type": "image",
         "media_url": "https://example.com/reference-0.png",
         "prompt": "生成商品分镜",
@@ -142,14 +154,14 @@ def test_product_storyboard_limits_total_reference_images():
 
 @pytest.mark.asyncio
 async def test_stream_reverse_prompt(monkeypatch):
-    monkeypatch.setattr(reversals_route, "DashScopeProvider", FakeProvider)
+    monkeypatch.setattr(reversals_route, "OpenAIResponsesProvider", FakeProvider)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/reversals/stream",
             json={
                 "workspace_id": str(DEFAULT_WORKSPACE_ID),
                 "node_id": "text-reverse-test",
-                "model": "qwen3.7-plus",
+                "model": "gpt-5.6-sol",
                 "media_type": "image",
                 "media_url": "https://example.com/image.png",
                 "prompt": "",

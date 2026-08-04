@@ -1,6 +1,5 @@
 export const reverseModels = [
-  { id: 'qwen3.7-plus', label: 'Qwen3.7 Plus' },
-  { id: 'qwen3.6-flash', label: 'Qwen3.6 Flash' },
+  { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol' },
 ]
 
 export const defaultReverseModel = reverseModels[0]

@@ -676,7 +676,8 @@ export const useCanvasStore = defineStore('canvas', {
         node.data = { ...node.data, textMode: 'manual', status: 'ready' }
         return
       }
-      const mediaType = mode === 'videoReverse' ? 'video' : 'image'
+      if (mode !== 'imageReverse') return
+      const mediaType = 'image'
       const mediaId = this.addNode(mediaType, { x: node.position.x - 460, y: node.position.y + 3 })
       const media = this.nodes.find((item) => item.id === mediaId)
       const mediaLabel = getNodeDefinition(mediaType).label

@@ -1,6 +1,7 @@
 import codecs
 import json
 from collections.abc import AsyncIterable, AsyncIterator
+from typing import Any
 
 import httpx
 
@@ -16,21 +17,20 @@ APPAREL_PROFILE_PROMPT = """识别图片中所有可独立穿戴的服饰与配�
 单件服饰使用 single，多件搭配使用 set；每件独立服饰各占一项，一双鞋只算一项，西装外套与西裤分别计项，领带等配饰单独计项。只识别图片中可见内容，不猜测品牌、材质或被遮挡细节。"""
 
 
-class DashScopeError(RuntimeError):
+class OpenAIResponsesError(RuntimeError):
     pass
 
 
-class DashScopeProvider:
+class OpenAIResponsesProvider:
     def __init__(self, transport: httpx.AsyncBaseTransport | None = None):
         settings = get_settings()
-        if not settings.dashscope_api_key:
-            raise DashScopeError("DASHSCOPE_API_KEY 未配置")
-        base_url = settings.dashscope_url.rstrip("/")
-        self.endpoint = (
-            base_url if base_url.endswith("/chat/completions") else f"{base_url}/chat/completions"
-        )
+        if not settings.aijws_api_key:
+            raise OpenAIResponsesError("AIJWS_API_KEY 未配置")
+        base_url = settings.aijws_base_url.rstrip("/")
+        self.endpoint = base_url if base_url.endswith("/responses") else f"{base_url}/responses"
+        self.reasoning_effort = settings.aijws_reasoning_effort
         self.client = httpx.AsyncClient(
-            headers={"Authorization": f"Bearer {settings.dashscope_api_key}"},
+            headers={"Authorization": f"Bearer {settings.aijws_api_key}"},
             timeout=180,
             transport=transport,
         )
@@ -51,6 +51,8 @@ class DashScopeProvider:
         media_urls: list[str] | None = None,
         response_mode: str = "prompt",
     ) -> AsyncIterator[str]:
+        if media_type != "image":
+            raise OpenAIResponsesError("GPT-5.6 Sol 当前仅支持图片识别，不支持视频或音频识别")
         user_prompt = prompt
         if response_mode in {"product_profile", "apparel_profile"}:
             user_prompt = PRODUCT_PROFILE_PROMPT if response_mode == "product_profile" else APPAREL_PROFILE_PROMPT
@@ -59,13 +61,12 @@ class DashScopeProvider:
                     "\n\n用户补充识别要求（只影响识别重点，不得改变上述输出格式）：\n"
                     f"{prompt.strip()}"
                 )
-        media_urls = [media_url, *(media_urls or [])]
-        media = [
-            {"type": "image_url", "image_url": {"url": url}}
-            if media_type == "image"
-            else {"type": "video_url", "video_url": {"url": url}, "fps": 2}
-            for url in media_urls
+        image_urls = [media_url, *(media_urls or [])]
+        content: list[dict[str, Any]] = [
+            {"type": "input_image", "image_url": url, "detail": "original"}
+            for url in image_urls
         ]
+        content.append({"type": "input_text", "text": user_prompt})
         system_prompts = {
             "product_profile": "你是专业的中文商品视觉识别助手。严格按用户指定的 JSON 结构输出，不解释，不使用 Markdown。",
             "apparel_profile": "你是专业的中文服饰视觉识别助手。严格按用户指定的 JSON 结构输出，不解释，不使用 Markdown。",
@@ -79,40 +80,33 @@ class DashScopeProvider:
         payload = {
             "model": model,
             "stream": True,
-            "enable_thinking": False,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": system_prompts[response_mode],
-                },
-                {"role": "user", "content": [*media, {"type": "text", "text": user_prompt}]},
-            ],
+            "reasoning": {"effort": self.reasoning_effort},
+            "instructions": system_prompts[response_mode],
+            "input": [{"role": "user", "content": content}],
         }
-        async for content in self._stream_content(payload):
-            yield content
+        async for text in self._stream_content(payload):
+            yield text
 
     async def stream_text(self, *, model: str, prompt: str) -> AsyncIterator[str]:
         payload = {
             "model": model,
             "stream": True,
-            "enable_thinking": False,
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "你是专业的中文内容创作助手。严格按用户要求输出可直接使用的最终内容。",
-                },
-                {"role": "user", "content": prompt},
-            ],
+            "reasoning": {"effort": self.reasoning_effort},
+            "instructions": "你是专业的中文内容创作助手。严格按用户要求输出可直接使用的最终内容。",
+            "input": prompt,
         }
-        async for content in self._stream_content(payload):
-            yield content
+        async for text in self._stream_content(payload):
+            yield text
 
-    async def _stream_content(self, payload: dict) -> AsyncIterator[str]:
+    async def _stream_content(self, payload: dict[str, Any]) -> AsyncIterator[str]:
         received_content = False
         received_done = False
         async with self.client.stream("POST", self.endpoint, json=payload) as response:
             if response.status_code >= 400:
-                raise DashScopeError(f"DashScope 请求失败（{response.status_code}）")
+                detail = (await response.aread()).decode("utf-8", errors="replace")[:500]
+                raise OpenAIResponsesError(
+                    f"Responses 请求失败（{response.status_code}）{': ' + detail if detail else ''}"
+                )
             events = self._iter_sse_data(response.aiter_bytes())
             try:
                 async for data in events:
@@ -121,28 +115,43 @@ class DashScopeProvider:
                         break
                     try:
                         event = json.loads(data)
-                        choices = event["choices"]
-                        if choices == [] and isinstance(event.get("usage"), dict):
-                            continue
-                        content = choices[0]["delta"].get("content")
-                    except (json.JSONDecodeError, KeyError, IndexError, TypeError) as exc:
-                        raise DashScopeError("DashScope 流式响应格式异常") from exc
-                    if isinstance(content, str) and content:
-                        received_content = True
-                        yield content
+                    except json.JSONDecodeError as exc:
+                        raise OpenAIResponsesError("Responses 流式响应格式异常") from exc
+                    event_type = event.get("type")
+                    if event_type == "response.output_text.delta":
+                        content = event.get("delta")
+                        if isinstance(content, str) and content:
+                            received_content = True
+                            yield content
+                    elif event_type == "response.output_text.done" and not received_content:
+                        content = event.get("text")
+                        if isinstance(content, str) and content:
+                            received_content = True
+                            yield content
+                    elif event_type in {"response.failed", "response.incomplete", "error"}:
+                        error = event.get("error") or {}
+                        message = error.get("message") if isinstance(error, dict) else str(error)
+                        raise OpenAIResponsesError(message or "Responses 生成失败")
+                    elif event_type == "response.completed":
+                        response_data = event.get("response") or {}
+                        if response_data.get("error"):
+                            error = response_data["error"]
+                            message = error.get("message") if isinstance(error, dict) else str(error)
+                            raise OpenAIResponsesError(message or "Responses 生成失败")
+                        received_done = True
             finally:
                 await events.aclose()
 
         if not received_content:
-            raise DashScopeError("DashScope 未返回有效内容")
+            raise OpenAIResponsesError("Responses 未返回有效内容")
         if not received_done:
-            raise DashScopeError("DashScope 流式响应未正常结束")
+            raise OpenAIResponsesError("Responses 流式响应未正常结束")
 
     @staticmethod
     async def _iter_sse_data(chunks: AsyncIterable[bytes]) -> AsyncIterator[str]:
         decoder = codecs.getincrementaldecoder("utf-8")()
         buffer = ""
-        data_lines = []
+        data_lines: list[str] = []
         iterator = chunks.__aiter__()
         try:
             async for chunk in iterator:

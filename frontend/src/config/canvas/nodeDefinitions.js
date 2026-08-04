@@ -9,14 +9,13 @@ import { emptyCharacterProfile } from './character'
 
 const reversePrompts = {
   image: '根据图片生成结构化中文提示词，包括主体描述、环境、光影、镜头语言、风格关键词。',
-  video: '根据视频生成结构化中文提示词，包括主体与场景、动作、运镜、景别、光影色彩、节奏转场、声音氛围和风格关键词，并按时间顺序描述关键画面。',
 }
 
 function createTextData(number, source) {
-  const reverseType = ['image', 'video'].includes(source?.type) ? source.type : null
+  const reverseType = source?.type === 'image' ? 'image' : null
   const textTask = Boolean(source)
   return {
-    model: reverseType ? defaultReverseModel.id : 'Qwen3-VL-Flash',
+    model: defaultReverseModel.id,
     title: reverseType ? `${nodeDefinitions[reverseType].label}反推提示词` : textTask ? `AI 文本任务 ${number}` : `文本节点 ${number}`,
     status: 'empty',
     prompt: reverseType ? reversePrompts[reverseType] : '',
@@ -28,9 +27,9 @@ function createTextData(number, source) {
 
 export const nodeDefinitions = {
   text: {
-    type: 'text', label: '文本', model: 'Qwen3-VL-Flash', hint: '商品资料与生成要求',
+    type: 'text', label: '文本', model: defaultReverseModel.id, hint: '商品资料与生成要求',
     placeholder: '输入商品信息、卖点或生成要求…', setting: '多模态文本 · 中文', icon: FileText,
-    generationPanel: true, inputs: ['text', 'image', 'video'], outputs: ['text', 'image', 'video', 'audio'],
+    generationPanel: true, inputs: ['text', 'image'], outputs: ['text', 'image', 'video', 'audio'],
     createData: ({ number, source }) => createTextData(number, source),
   },
   image: {
