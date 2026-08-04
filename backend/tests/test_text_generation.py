@@ -12,6 +12,8 @@ from app.models import GenerationTask
 
 
 class FakeProvider:
+    chunks = ("轻盈防风，", "自在出发。")
+
     async def __aenter__(self):
         return self
 
@@ -19,8 +21,8 @@ class FakeProvider:
         pass
 
     async def stream_text(self, **_kwargs):
-        yield "轻盈防风，"
-        yield "自在出发。"
+        for chunk in self.chunks:
+            yield chunk
 
 
 @pytest.mark.asyncio
@@ -67,3 +69,29 @@ async def test_text_generation_rejects_blank_prompt():
         )
 
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_stream_text_generation_keeps_content_over_3000_characters(monkeypatch):
+    chunks = ("甲" * 2000, "乙" * 2000)
+    monkeypatch.setattr(FakeProvider, "chunks", chunks)
+    monkeypatch.setattr(generations_route, "OpenAIResponsesProvider", FakeProvider)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/generations/texts",
+            json={
+                "workspace_id": str(DEFAULT_WORKSPACE_ID),
+                "node_id": "long-text-test",
+                "model": "gpt-5.6-sol",
+                "prompt": "生成完整长文本",
+            },
+        )
+
+    events = [json.loads(line) for line in response.text.splitlines()]
+    task_id = uuid.UUID(events[0]["task_id"])
+    assert "".join(event["content"] for event in events if event["type"] == "delta") == "".join(chunks)
+    async with SessionLocal() as db:
+        task = await db.get(GenerationTask, task_id)
+        assert task.result["content"] == "".join(chunks)
+        await db.delete(task)
+        await db.commit()

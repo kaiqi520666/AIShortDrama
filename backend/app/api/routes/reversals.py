@@ -72,9 +72,6 @@ async def stream_reverse_prompt(
                     prompt=payload.prompt,
                     response_mode=payload.response_mode,
                 ):
-                    content_chunk = content_chunk[: 3000 - len(content)]
-                    if not content_chunk:
-                        break
                     content += content_chunk
                     yield (
                         json.dumps({"type": "delta", "content": content_chunk}, ensure_ascii=False)

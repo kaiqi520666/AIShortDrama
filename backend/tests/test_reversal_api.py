@@ -15,6 +15,7 @@ from app.schemas.reversal import ReversePromptRequest
 
 class FakeProvider:
     last_kwargs = None
+    chunks = ("第一段", "第二段")
 
     async def __aenter__(self):
         return self
@@ -24,8 +25,8 @@ class FakeProvider:
 
     async def stream_reverse_prompt(self, **_kwargs):
         self.__class__.last_kwargs = _kwargs
-        yield "第一段"
-        yield "第二段"
+        for chunk in self.chunks:
+            yield chunk
 
 
 def test_product_visual_plan_requires_prompt():
@@ -184,5 +185,34 @@ async def test_stream_reverse_prompt(monkeypatch):
         task = await db.get(GenerationTask, task_id)
         assert task.status == "succeeded"
         assert task.result["content"] == "第一段第二段"
+        await db.delete(task)
+        await db.commit()
+
+
+@pytest.mark.asyncio
+async def test_stream_reverse_prompt_keeps_content_over_3000_characters(monkeypatch):
+    chunks = ("甲" * 2000, "乙" * 2000)
+    monkeypatch.setattr(FakeProvider, "chunks", chunks)
+    monkeypatch.setattr(reversals_route, "OpenAIResponsesProvider", FakeProvider)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/reversals/stream",
+            json={
+                "workspace_id": str(DEFAULT_WORKSPACE_ID),
+                "node_id": "long-reverse-test",
+                "model": "gpt-5.6-sol",
+                "media_type": "image",
+                "media_url": "https://example.com/image.png",
+                "prompt": "生成完整分镜",
+                "response_mode": "product_storyboard_plan",
+            },
+        )
+
+    events = [json.loads(line) for line in response.text.splitlines()]
+    task_id = uuid.UUID(events[0]["task_id"])
+    assert "".join(event["content"] for event in events if event["type"] == "delta") == "".join(chunks)
+    async with SessionLocal() as db:
+        task = await db.get(GenerationTask, task_id)
+        assert task.result["content"] == "".join(chunks)
         await db.delete(task)
         await db.commit()

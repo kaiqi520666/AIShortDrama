@@ -76,9 +76,6 @@ async def create_text_generation(
         try:
             async with provider:
                 async for chunk in provider.stream_text(model=payload.model, prompt=payload.prompt):
-                    chunk = chunk[: 3000 - len(content)]
-                    if not chunk:
-                        break
                     content += chunk
                     yield json.dumps(
                         {"type": "delta", "content": chunk}, ensure_ascii=False
