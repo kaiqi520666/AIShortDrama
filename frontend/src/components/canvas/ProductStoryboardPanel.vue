@@ -238,10 +238,10 @@ async function submitTask() {
       </div>
     </section>
 
-    <section class="storyboard-template-section">
+    <section class="storyboard-template-section storyboard-template-section--fixed">
       <header class="storyboard-section-header"><span><Clapperboard :size="14" />内容类型</span><small>固定</small></header>
-      <div class="storyboard-template-grid">
-        <div class="storyboard-template-option active">
+      <div class="storyboard-template-grid storyboard-template-grid--fixed">
+        <div class="storyboard-template-option storyboard-template-option--fixed active">
           <span><strong>UGC 种草</strong><small>iPhone 原相机、手持手机、真实体验分享</small></span>
         </div>
       </div>

@@ -104,7 +104,8 @@
   padding: 16px 18px 14px;
 }
 .storyboard-panel.product-visual-panel {
-  height: min(590px, calc(100vh - 32px));
+  height: auto;
+  min-height: 0;
 }
 .storyboard-panel.apparel-storyboard-panel {
   height: auto;
@@ -324,6 +325,27 @@
   font-size: 9px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.storyboard-template-section--fixed {
+  flex: none;
+  grid-template-rows: auto auto;
+}
+.storyboard-template-grid--fixed {
+  grid-template-columns: minmax(0, 1fr);
+  overflow: visible;
+  padding: 0;
+}
+.storyboard-template-option--fixed {
+  min-height: 0;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 9px 11px;
+  cursor: default;
+}
+.storyboard-template-option--fixed small {
+  overflow: visible;
+  line-height: 1.4;
+  text-overflow: clip;
+  white-space: normal;
 }
 .apparel-storyboard-template-grid {
   grid-template-columns: minmax(0, 1fr);
