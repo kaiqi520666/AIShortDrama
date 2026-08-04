@@ -62,7 +62,8 @@ async def test_stream_reverse_prompt_uses_responses_image_format(monkeypatch):
     assert requests[0].url.path == "/v1/responses"
     assert payload["stream"] is True
     assert payload["reasoning"] == {"effort": "high"}
-    assert "电商短视频分镜策划师" in payload["instructions"]
+    assert "电商UGC种草分镜策划师" in payload["instructions"]
+    assert "JSON 数组" not in payload["instructions"]
     assert [item["type"] for item in message["content"]] == [
         "input_image",
         "input_image",

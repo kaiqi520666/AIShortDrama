@@ -86,8 +86,8 @@ export const nodeDefinitions = {
     }),
   },
   product_storyboard: {
-    type: 'product_storyboard', label: '商品分镜', model: defaultReverseModel.id, hint: '按脚本模板生成多格商品分镜板',
-    setting: '单模板 · 15/30/45/60 秒', icon: Clapperboard,
+    type: 'product_storyboard', label: '商品分镜', model: defaultReverseModel.id, hint: '生成 UGC 种草多格分镜板与视频脚本',
+    setting: 'UGC 种草 · 15/30/45/60 秒', icon: Clapperboard,
     inputs: ['product'], outputs: ['image'],
     createData: ({ number }) => ({
       title: `商品分镜 ${number}`,

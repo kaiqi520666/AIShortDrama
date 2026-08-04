@@ -5,7 +5,7 @@ import { ArrowUp, Check, ChevronDown, Clapperboard, Coins, Eye, EyeOff, FileText
 import { createAudioGeneration, createImageGeneration, createVideoGeneration } from '../../api/generations'
 import { streamReversePrompt } from '../../api/reversals'
 import { audioFormatOptions, audioModel, audioSampleRateOptions, buildAudioRequest, getAudioReferenceError, maxAudioPromptLength, normalizeAudioSettings } from '../../config/audioModels'
-import { buildStoryboardProductVideoContext, getEffectivePrompt, maxGenerationPromptLength } from '../../config/generationPrompt'
+import { getEffectivePrompt, maxGenerationPromptLength } from '../../config/generationPrompt'
 import { MAX_STORYBOARD_REFERENCES } from '../../config/canvas/productStoryboard'
 import { buildImageRequest, normalizeImageSettings } from '../../config/imageModels'
 import { mergeProductProfile, parseProductProfile } from '../../config/canvas/ecommerce'
@@ -87,14 +87,6 @@ const references = computed(() => {
 })
 const disabledReferenceIds = computed(() => new Set(props.data.disabledReferenceIds || []))
 const activeReferences = computed(() => references.value.filter((node) => !disabledReferenceIds.value.has(node.id)))
-const storyboardProductNode = computed(() => isStoryboardVideo.value
-  ? store.incomingNodes(props.data.storyboardSourceId).find((node) => node.type === 'product')
-  : null)
-const storyboardProductContext = computed(() => buildStoryboardProductVideoContext(
-  storyboardProductNode.value?.data.product,
-  activeReferences.value,
-  props.data.storyboardPlotGoal,
-))
 const allImageReferences = computed(() => references.value.filter((node) => node.type === 'image' && node.data.asset))
 const imageReferences = computed(() => activeReferences.value.filter((node) => node.type === 'image' && node.data.asset))
 const audioReferences = computed(() => activeReferences.value.filter((node) => node.type === 'audio' && node.data.asset))
@@ -111,10 +103,7 @@ const effectivePrompt = computed(() => ['image', 'video', 'audio'].includes(prop
   ? getEffectivePrompt(props.data, activeReferences.value)
   : legacyProductPrompt.value ? '' : props.data.prompt?.trim() || '')
 const videoGenerationPrompt = computed(() => {
-  if (!isStoryboardVideo.value) return effectivePrompt.value
-  const prompt = [storyboardProductContext.value, effectivePrompt.value].filter(Boolean).join('\n\n')
-  if (props.data.storyboardSegmentIndex <= 1) return prompt
-  return `${props.data.storyboardContinuityMode === 'extend' ? `向后延长视频${props.data.storyboardSegmentIndex - 1}，延续上一段视频的主体、场景、光影和运镜。` : '本段为独立换场，不继承上一段视频。'}\n${prompt}`
+  return effectivePrompt.value
 })
 const promptLimit = computed(() => isVisionTextTask.value ? 3000 : props.type === 'audio' ? maxAudioPromptLength : maxGenerationPromptLength)
 const promptError = computed(() => (props.type === 'video' ? videoGenerationPrompt.value : effectivePrompt.value).length > promptLimit.value ? `提示词不能超过 ${promptLimit.value} 个字符` : '')

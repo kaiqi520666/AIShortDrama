@@ -15,6 +15,7 @@ import {
   storyboardDurations,
   storyboardSegmentCount,
   storyboardShotCount,
+  storyboardTemplates,
   videoAspectRatios,
 } from '../../config/canvas/productStoryboard'
 import { defaultImageModel } from '../../config/imageModels'
@@ -47,8 +48,7 @@ const productNode = computed(() => store.incomingNodes(props.nodeId).find((node)
 const referenceManifest = computed(() => buildStoryboardReferenceManifest(props.data.characterReferences, props.data.productReferences))
 const productReferences = computed(() => referenceManifest.value.products)
 const productContext = computed(() => productPromptContext(productNode.value?.data.product))
-const selectedTemplates = computed(() => (props.data.templates || []).filter((item) => item.enabled))
-const selectedTemplate = computed(() => selectedTemplates.value[0] || null)
+const ugcTemplate = storyboardTemplates[0]
 const selectedTextModel = computed(() => reverseModels.find((model) => model.id === props.data.textModel) || defaultReverseModel)
 const segmentCount = computed(() => storyboardSegmentCount(props.data.duration))
 const shots = computed(() => storyboardShotCount(15))
@@ -68,10 +68,8 @@ const message = computed(() => notice.value || props.data.generationError || (!p
     ? '请先选择商品参考图'
     : !productContext.value
       ? '请先完成商品识别'
-      : !selectedTemplate.value
-        ? '请选择一个脚本模板'
-        : insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
-const canSubmit = computed(() => !running.value && productNode.value && productReferences.value.length && productContext.value && selectedTemplate.value && !insufficientCredits.value)
+      : insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
+const canSubmit = computed(() => !running.value && productNode.value && productReferences.value.length && productContext.value && !insufficientCredits.value)
 
 function updateData(value) {
   notice.value = ''
@@ -94,13 +92,6 @@ function updateData(value) {
       manifest.characters,
     )
   }
-}
-
-function updateTemplate(id) {
-  updateData({
-    templateId: id,
-    templates: props.data.templates.map((item) => ({ ...item, enabled: item.id === id })),
-  })
 }
 
 function selectCharacter(item) {
@@ -179,12 +170,12 @@ async function submitTask() {
       media_type: 'image',
       media_url: references[0]?.url,
       media_urls: references.slice(1).map((reference) => reference.url),
-      prompt: buildProductStoryboardPrompt(productContext.value, [selectedTemplate.value], props.data),
+      prompt: buildProductStoryboardPrompt(productContext.value, [ugcTemplate], props.data),
       response_mode: 'product_storyboard_plan',
     }, (delta) => { content += delta }, (taskId) => {
       updateNodeData(props.nodeId, { generationTaskId: taskId, generationStatus: 'running' })
     })
-    const plan = parseProductStoryboardPlan(content, [selectedTemplate.value], characterReferences.value, productReferences.value.length)
+    const plan = parseProductStoryboardPlan(content, [ugcTemplate], characterReferences.value, productReferences.value.length)
     const generatedNodeIds = store.addProductStoryboardNodes(
       props.nodeId,
       productNode.value.id,
@@ -248,12 +239,11 @@ async function submitTask() {
     </section>
 
     <section class="storyboard-template-section">
-      <header class="storyboard-section-header"><span><Clapperboard :size="14" />脚本模板</span><small>单选</small></header>
+      <header class="storyboard-section-header"><span><Clapperboard :size="14" />内容类型</span><small>固定</small></header>
       <div class="storyboard-template-grid">
-        <label v-for="item in data.templates" :key="item.id" class="storyboard-template-option" :class="{ active: item.enabled }">
-          <input type="radio" name="storyboard-template" :checked="item.enabled" @change="updateTemplate(item.id)" />
-          <span><strong>{{ item.label }}</strong><small>{{ item.description }}</small></span>
-        </label>
+        <div class="storyboard-template-option active">
+          <span><strong>UGC 种草</strong><small>iPhone 原相机、手持手机、真实体验分享</small></span>
+        </div>
       </div>
     </section>
 

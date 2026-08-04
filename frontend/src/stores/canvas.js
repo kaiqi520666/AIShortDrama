@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { canConnect, getConnectionError, inferTargetHandle } from '../config/canvas/connectionRules'
 import { createNodeData, getNodeDefinition, getReversePrompt } from '../config/canvas/nodeDefinitions'
 import { isNodeTypeAvailable } from '../config/canvas/nodePacks'
-import { buildStoryboardReferenceManifest, normalizeStoryboardCharacters, refreshStoryboardReferencePrompt, storyboardShotCount } from '../config/canvas/productStoryboard'
+import { buildStoryboardReferenceManifest, createStoryboardTemplates, normalizeStoryboardCharacters, storyboardShotCount } from '../config/canvas/productStoryboard'
 import { defaultReverseModel } from '../config/reverseModels'
 import { defaultVideoModel } from '../config/videoModels'
 import { saveWorkspaceCanvas } from '../api/workspaces'
@@ -78,7 +78,17 @@ export const useCanvasStore = defineStore('canvas', {
         this.legacyImportPending = true
       }
       const persistent = stripTransientNodes(canvas.nodes, canvas.edges, canvas.groups)
-      this.nodes = JSON.parse(JSON.stringify(persistent.nodes))
+      this.nodes = JSON.parse(JSON.stringify(persistent.nodes)).map((node) => node.type === 'product_storyboard'
+        ? {
+            ...node,
+            data: {
+              ...node.data,
+              textModel: defaultReverseModel.id,
+              templateId: 'ugc-seeding',
+              templates: createStoryboardTemplates(),
+            },
+          }
+        : node)
       this.edges = JSON.parse(JSON.stringify(persistent.edges))
       this.groups = JSON.parse(JSON.stringify(persistent.groups))
       this.sequence = canvas.sequence || 1
@@ -295,7 +305,7 @@ export const useCanvasStore = defineStore('canvas', {
             ...image.data,
             title: `${plans.title || '商品分镜'} ${segmentIndex} · 分镜`,
             storyboardSourceId: plannerId,
-            storyboardTemplateId: plans.templateId,
+            storyboardTemplateId: 'ugc-seeding',
             storyboardTemplateLabel: plans.title,
             storyboardGlobalScript: plans.globalScript,
             storyboardSegmentIndex: segmentIndex,
@@ -328,7 +338,7 @@ export const useCanvasStore = defineStore('canvas', {
             title: `${plans.title || '商品分镜'} ${segmentIndex} · 视频`,
             storyboardSourceId: plannerId,
             storyboardImageId: imageId,
-            storyboardTemplateId: plans.templateId,
+            storyboardTemplateId: 'ugc-seeding',
             storyboardTemplateLabel: plans.title,
             storyboardGlobalScript: plans.globalScript,
             storyboardSegmentIndex: segmentIndex,
@@ -374,7 +384,7 @@ export const useCanvasStore = defineStore('canvas', {
           ...node.data,
           title: `${plan.label}分镜板`,
           storyboardSourceId: plannerId,
-          storyboardTemplateId: plan.id,
+          storyboardTemplateId: 'ugc-seeding',
           storyboardTemplateLabel: plan.label,
           storyboardDuration: planner.data.duration,
           storyboardVideoAspectRatio: planner.data.videoAspectRatio,
@@ -406,17 +416,6 @@ export const useCanvasStore = defineStore('canvas', {
         .forEach((node) => {
           node.data.storyboardProductReferences = references.map((reference) => ({ ...reference }))
           node.data.storyboardCharacterReferences = characters.map((reference) => ({ ...reference }))
-          const prompt = refreshStoryboardReferencePrompt(node.data.prompt, 'image', characters, references.length)
-          const videoPrompt = refreshStoryboardReferencePrompt(node.data.videoPrompt, 'video', characters, references.length)
-          if (prompt !== node.data.prompt) {
-            node.data.prompt = prompt
-            node.data.promptParts = [{ type: 'text', value: prompt }]
-          }
-          if (videoPrompt !== node.data.videoPrompt) {
-            node.data.videoPrompt = videoPrompt
-            node.data.prompt = videoPrompt
-            node.data.promptParts = [{ type: 'text', value: videoPrompt }]
-          }
         })
     },
     addApparelStoryboardNodes(plannerId, garmentId, modelId, sceneId, plan, settings = {}) {

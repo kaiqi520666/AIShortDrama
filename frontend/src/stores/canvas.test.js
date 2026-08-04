@@ -297,7 +297,7 @@ describe('canvas node packs', () => {
     ])
   })
 
-  it('creates one editable storyboard image node for every selected template', async () => {
+  it('creates one editable UGC storyboard image node', async () => {
     const store = useCanvasStore()
     await store.loadWorkspace({
       id: 'workspace-1',
@@ -316,10 +316,9 @@ describe('canvas node packs', () => {
     ]
     const ids = store.addProductStoryboardNodes(storyboardId, productId, [
       { id: 'ugc-seeding', label: 'UGC 种草', prompt: '四格种草分镜板', videoPrompt: '参考图片1生成种草视频' },
-      { id: 'unboxing', label: '开箱种草', prompt: '四格开箱分镜板', videoPrompt: '参考图片1生成开箱视频' },
     ], { model: 'gpt-image-2', aspectRatio: '9:16', resolution: '2K' })
 
-    expect(ids).toEqual(['image-4', 'image-5'])
+    expect(ids).toEqual(['image-4'])
     expect(store.nodes.find((node) => node.id === ids[0]).data).toEqual(expect.objectContaining({
       title: 'UGC 种草分镜板',
       storyboardSourceId: storyboardId,
@@ -333,7 +332,7 @@ describe('canvas node packs', () => {
       aspectRatio: '9:16',
       resolution: '2K',
     }))
-    expect(store.edges.filter((edge) => ids.includes(edge.target))).toHaveLength(4)
+    expect(store.edges.filter((edge) => ids.includes(edge.target))).toHaveLength(2)
     expect(store.nodes.find((node) => node.id === ids[0]).data.storyboardProductReferences).toEqual([
       { id: 'asset-1', name: '商品正面', url: 'https://example.com/product.png' },
     ])
@@ -341,7 +340,7 @@ describe('canvas node packs', () => {
     const storyboardImage = store.nodes.find((node) => node.id === ids[0])
     storyboardImage.data = { ...storyboardImage.data, asset: 'https://example.com/storyboard.png', status: 'ready' }
     const videoId = store.addStoryboardVideoNode(ids[0])
-    expect(videoId).toBe('video-6')
+    expect(videoId).toBe('video-5')
     expect(store.nodes.find((node) => node.id === videoId).data).toEqual(expect.objectContaining({
       title: 'UGC 种草视频',
       storyboardImageId: ids[0],
@@ -354,6 +353,36 @@ describe('canvas node packs', () => {
     }))
     expect(store.edges).toContainEqual(expect.objectContaining({ source: ids[0], target: videoId }))
     expect(store.addStoryboardVideoNode(ids[0])).toBe(videoId)
+  })
+
+  it('normalizes legacy product storyboard templates to UGC', async () => {
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1',
+      version: 1,
+      workspace_type: 'ecommerce',
+      canvas: {
+        nodes: [{
+          id: 'product_storyboard-1',
+          type: 'product_storyboard',
+          position: { x: 0, y: 0 },
+          data: {
+            textModel: 'qwen3.7',
+            templateId: 'tvc',
+            templates: [{ id: 'tvc', label: 'TVC 广告', enabled: true }],
+          },
+        }],
+        edges: [],
+        groups: [],
+        sequence: 2,
+      },
+    })
+
+    expect(store.nodes[0].data).toEqual(expect.objectContaining({
+      textModel: 'gpt-5.6-sol',
+      templateId: 'ugc-seeding',
+      templates: [{ id: 'ugc-seeding', label: 'UGC 种草', description: '用户视角真实分享体验', enabled: true }],
+    }))
   })
 
   it('creates locked storyboard and video segments that unlock in sequence', async () => {
