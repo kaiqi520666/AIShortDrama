@@ -27,7 +27,41 @@ const columns = [
 ]
 async function load(page = 1) { loading.value = true; try { const params = { ...filters, page, page_size: data.page_size }; if (!params.start_at) delete params.start_at; if (!params.end_at) delete params.end_at; const result = await getAdminTasks(params); if (result.code !== 0) throw new Error(result.message); Object.assign(data, result.data) } catch (error) { toast.error(error.response?.data?.message || error.message || '任务加载失败') } finally { loading.value = false } }
 function formatDate(value) { return value ? new Date(value).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '—' }
-function pretty(value) { return JSON.stringify(value ?? {}, null, 2) }
+function parseEmbeddedJson(value) {
+  if (typeof value !== 'string') return value
+  const source = value.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
+  const opening = source[0]
+  const closing = opening === '{' ? '}' : opening === '[' ? ']' : ''
+  if (!closing) return value
+  const end = source.lastIndexOf(closing)
+  try { return JSON.parse(source.slice(0, end + 1)) } catch { return value }
+}
+function formatSnapshot(value) {
+  const lines = []
+  function append(input, depth = 0, key = '') {
+    const current = parseEmbeddedJson(input)
+    const indent = '  '.repeat(depth)
+    if (Array.isArray(current)) {
+      if (!current.length && !key) return lines.push(`${indent}[]`)
+      if (key) lines.push(`${indent}${key}:${current.length ? '' : ' []'}`)
+      current.forEach((item, index) => append(item, depth + Number(Boolean(key)), `[${index}]`))
+      return
+    }
+    if (current && typeof current === 'object') {
+      const entries = Object.entries(current)
+      if (!entries.length && !key) return lines.push(`${indent}{}`)
+      if (key) lines.push(`${indent}${key}:${entries.length ? '' : ' {}'}`)
+      entries.forEach(([childKey, child]) => append(child, depth + Number(Boolean(key)), childKey))
+      return
+    }
+    const text = current == null ? 'null' : String(current)
+    if (!key || !text.includes('\n')) return lines.push(`${indent}${key ? `${key}: ` : ''}${text}`)
+    lines.push(`${indent}${key}:`)
+    text.split('\n').forEach((line) => lines.push(`${indent}  ${line}`))
+  }
+  append(value ?? {})
+  return lines.join('\n')
+}
 onMounted(load)
 </script>
 
@@ -42,6 +76,6 @@ onMounted(load)
       <template #cell-created_at="{ value }">{{ formatDate(value) }}</template>
       <template #cell-actions="{ item: task }"><AppButton size="sm" variant="soft" @click="detail = task"><Eye :size="14" />查看</AppButton></template>
     </AppDataTable>
-    <AdminDialog v-if="detail" title="任务详情" :description="detail.id" :reason-required="false" confirm-text="关闭" @close="detail = null" @submit="detail = null"><dl class="admin-detail-list"><div><dt>状态</dt><dd>{{ detail.status }} · {{ detail.progress }}%</dd></div><div><dt>错误</dt><dd>{{ detail.error_message || '—' }}</dd></div></dl><h3 class="admin-detail-title">请求快照</h3><pre class="admin-json">{{ pretty(detail.request_snapshot) }}</pre><h3 class="admin-detail-title">计费快照</h3><pre class="admin-json">{{ pretty(detail.pricing_snapshot) }}</pre><h3 class="admin-detail-title">结果快照</h3><pre class="admin-json">{{ pretty(detail.result) }}</pre></AdminDialog>
+    <AdminDialog v-if="detail" title="任务详情" :description="detail.id" :reason-required="false" confirm-text="关闭" @close="detail = null" @submit="detail = null"><dl class="admin-detail-list"><div><dt>状态</dt><dd>{{ detail.status }} · {{ detail.progress }}%</dd></div><div><dt>错误</dt><dd>{{ detail.error_message || '—' }}</dd></div></dl><h3 class="admin-detail-title">请求快照</h3><pre class="admin-json">{{ formatSnapshot(detail.request_snapshot) }}</pre><h3 class="admin-detail-title">计费快照</h3><pre class="admin-json">{{ formatSnapshot(detail.pricing_snapshot) }}</pre><h3 class="admin-detail-title">结果快照</h3><pre class="admin-json">{{ formatSnapshot(detail.result) }}</pre></AdminDialog>
   </section>
 </template>
