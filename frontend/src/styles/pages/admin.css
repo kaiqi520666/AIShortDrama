@@ -25,7 +25,7 @@
 .admin-dialog footer { display: flex; justify-content: flex-end; gap: 9px; margin-top: 20px; }
 .admin-field { display: grid; gap: 7px; color: var(--color-text-secondary); font-size: 12px; }
 .admin-form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
-.admin-json { max-height: 220px; overflow: auto; margin: 7px 0 14px; padding: 12px; border-radius: 7px; background: var(--color-surface-sunken); color: var(--color-text-secondary); font: 11px/1.6 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
+.admin-json { max-height: 220px; overflow: auto; margin: 7px 0 14px; padding: 12px; border-radius: 7px; background: var(--color-surface-sunken); color: var(--color-text-secondary); font: 12px/1.6 ui-monospace, Consolas, monospace; white-space: pre-wrap; }
 .admin-detail-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 0 0 16px; }
 .admin-detail-list div { padding: 10px; border: 1px solid var(--color-border-subtle); border-radius: 6px; }
 .admin-detail-list dt { color: var(--color-text-muted); font-size: 11px; }.admin-detail-list dd { margin: 4px 0 0; }
