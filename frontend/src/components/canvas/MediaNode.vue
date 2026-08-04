@@ -180,7 +180,7 @@ async function registerStoryboardAsset() {
   if (!props.data.assetId || registeringStoryboard.value) return
   registeringStoryboard.value = true
   try {
-    const result = await registerAssetPrivateAvatar(props.data.assetId, props.data.storyboardCharacter?.groupId || null)
+    const result = await registerAssetPrivateAvatar(props.data.assetId, props.data.storyboardCharacterReferences?.[0]?.groupId || null)
     const seedance = result.data?.metadata?.seedance
     if (seedance) updateNodeData(props.id, { storyboardAsset: seedance })
     if (result.code !== 0) throw new Error(result.message)

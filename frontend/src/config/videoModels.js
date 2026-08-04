@@ -74,7 +74,7 @@ function normalizeReferences(references, usePrivateAssets = false) {
     type: reference?.type,
     url: typeof reference === 'string' ? reference : reference?.url || (usePrivateAssets ? reference?.data?.providerAsset : null) || reference?.data?.asset,
     providerAsset: typeof reference === 'string' ? '' : reference?.data?.providerAsset || '',
-    storyboardCharacter: typeof reference === 'string' ? null : reference?.data?.storyboardCharacter,
+    storyboardCharacterReferences: typeof reference === 'string' ? [] : reference?.data?.storyboardCharacterReferences || [],
     storyboard: typeof reference === 'string' ? false : Boolean(reference?.data?.storyboardSourceId),
     storyboardRequiresRegistration: typeof reference === 'string' ? false : Boolean(reference?.data?.storyboardRequiresRegistration),
     storyboardOutfitBoard: typeof reference === 'string' ? null : reference?.data?.storyboardOutfitBoard,
@@ -101,7 +101,7 @@ export function getVideoReferenceError(data, references = []) {
   const normalized = normalizeReferences(references, model.requiresPrivateAsset)
   const modelError = getVideoModelError(data, references)
   if (modelError) return modelError
-  if (model.requiresPrivateAsset && normalized.some((reference) => reference.type === 'image' && reference.storyboard && (reference.storyboardCharacter?.assetUrl || reference.storyboardRequiresRegistration || reference.storyboardOutfitBoard) && !reference.providerAsset)) {
+  if (model.requiresPrivateAsset && normalized.some((reference) => reference.type === 'image' && reference.storyboard && (reference.storyboardCharacterReferences?.some((character) => character.assetUrl) || reference.storyboardRequiresRegistration || reference.storyboardOutfitBoard) && !reference.providerAsset)) {
     return '请先在分镜图工具栏注册虚拟人像素材'
   }
   const types = normalized.map((reference) => reference.type)

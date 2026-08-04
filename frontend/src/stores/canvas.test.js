@@ -308,9 +308,9 @@ describe('canvas node packs', () => {
     const productId = store.addNode('product', { x: 0, y: 0 })
     const storyboardId = store.addNode('product_storyboard', { x: 500, y: 0 }, productId)
     store.nodes.find((node) => node.id === storyboardId).data.duration = 8
-    store.nodes.find((node) => node.id === storyboardId).data.characterReference = {
+    store.nodes.find((node) => node.id === storyboardId).data.characterReferences = [{
       id: 'character-1', name: '虚拟角色', url: 'https://example.com/character.png', assetUrl: 'asset://pa_test',
-    }
+    }]
     store.nodes.find((node) => node.id === storyboardId).data.productReferences = [
       { id: 'asset-1', name: '商品正面', url: 'https://example.com/product.png' },
     ]
@@ -327,7 +327,7 @@ describe('canvas node packs', () => {
       storyboardDuration: 8,
       storyboardVideoAspectRatio: '9:16',
       storyboardShotCount: 3,
-      storyboardCharacter: expect.objectContaining({ id: 'character-1', assetUrl: 'asset://pa_test' }),
+      storyboardCharacterReferences: [expect.objectContaining({ id: 'character-1', assetUrl: 'asset://pa_test' })],
       videoPrompt: '参考图片1生成种草视频',
       prompt: '四格种草分镜板',
       aspectRatio: '9:16',
@@ -349,7 +349,7 @@ describe('canvas node packs', () => {
       duration: 8,
       aspectRatio: '9:16',
       resolution: '720p',
-      storyboardCharacter: expect.objectContaining({ id: 'character-1', assetUrl: 'asset://pa_test' }),
+      storyboardCharacterReferences: [expect.objectContaining({ id: 'character-1', assetUrl: 'asset://pa_test' })],
       storyboardProductReferences: [{ id: 'asset-1', name: '商品正面', url: 'https://example.com/product.png' }],
     }))
     expect(store.edges).toContainEqual(expect.objectContaining({ source: ids[0], target: videoId }))
@@ -406,7 +406,7 @@ describe('canvas node packs', () => {
     const storyboardId = store.addNode('product_storyboard', { x: 500, y: 0 }, productId)
     const planner = store.nodes.find((node) => node.id === storyboardId)
     planner.data.productReferences = [{ id: 'old-product', name: '旧商品图', url: 'https://example.com/old-product.png' }]
-    planner.data.characterReference = { id: 'old-character', name: '旧角色', url: 'https://example.com/old-character.png' }
+    planner.data.characterReferences = [{ id: 'old-character', name: '旧角色', url: 'https://example.com/old-character.png' }]
     const [imageId] = store.addProductStoryboardNodes(storyboardId, productId, [
       { id: 'ugc-seeding', label: 'UGC 种草', prompt: '分镜板', videoPrompt: '视频提示词' },
     ], { model: 'gpt-image-2', aspectRatio: '9:16', resolution: '2K' })
@@ -414,13 +414,13 @@ describe('canvas node packs', () => {
     image.data.asset = 'https://example.com/storyboard.png'
     const videoId = store.addStoryboardVideoNode(imageId)
     const nextReferences = [{ id: 'new-product', name: '新商品图', url: 'https://example.com/new-product.png' }]
-    const nextCharacter = { id: 'new-character', name: '新角色', url: 'https://example.com/new-character.png', assetUrl: 'asset://new-character' }
+    const nextCharacters = [{ id: 'new-character', name: '新角色', url: 'https://example.com/new-character.png', assetUrl: 'asset://new-character' }]
 
-    store.syncProductStoryboardReferences(storyboardId, nextReferences, nextCharacter)
+    store.syncProductStoryboardReferences(storyboardId, nextReferences, nextCharacters)
 
     expect(store.nodes.filter((node) => [imageId, videoId].includes(node.id)).map((node) => node.data)).toEqual([
-      expect.objectContaining({ storyboardProductReferences: nextReferences, storyboardCharacter: nextCharacter }),
-      expect.objectContaining({ storyboardProductReferences: nextReferences, storyboardCharacter: nextCharacter }),
+      expect.objectContaining({ storyboardProductReferences: nextReferences, storyboardCharacterReferences: nextCharacters }),
+      expect.objectContaining({ storyboardProductReferences: nextReferences, storyboardCharacterReferences: nextCharacters }),
     ])
   })
 

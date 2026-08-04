@@ -78,6 +78,7 @@ IMAGE_MODEL_RULES: dict[str, dict[str, Any]] = {
             "9:21",
         },
         "resolutions": {"1K", "2K", "4K"},
+        "max_references": 6,
     },
     "doubao-seedream-5-0-pro": {
         "sizes": {"1:1", "4:3", "3:4", "16:9", "9:16", "3:2", "2:3", "21:9", "9:21"},

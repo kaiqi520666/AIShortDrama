@@ -6,6 +6,7 @@ import { createAudioGeneration, createImageGeneration, createVideoGeneration } f
 import { streamReversePrompt } from '../../api/reversals'
 import { audioFormatOptions, audioModel, audioSampleRateOptions, buildAudioRequest, getAudioReferenceError, maxAudioPromptLength, normalizeAudioSettings } from '../../config/audioModels'
 import { buildStoryboardProductVideoContext, getEffectivePrompt, maxGenerationPromptLength } from '../../config/generationPrompt'
+import { MAX_STORYBOARD_REFERENCES } from '../../config/canvas/productStoryboard'
 import { buildImageRequest, normalizeImageSettings } from '../../config/imageModels'
 import { mergeProductProfile, parseProductProfile } from '../../config/canvas/ecommerce'
 import { maxProductReferenceImages } from '../../config/canvas/connectionRules'
@@ -62,28 +63,27 @@ const connectedReferences = computed(() => store.incomingNodes(props.nodeId).map
     : node
 )))
 const references = computed(() => {
-  const character = props.data.storyboardCharacter
+  const characters = (props.data.storyboardCharacterReferences || []).map((character, index) => ({
+    id: `storyboard-character-${character.id}`,
+    type: 'image',
+    data: {
+      title: `角色${index + 1} · ${character.name}`,
+      asset: character.url,
+      ...(props.type === 'video' ? { providerAsset: character.assetUrl } : {}),
+    },
+  }))
   const productReferences = (props.data.storyboardProductReferences || []).map((reference) => ({
     id: `storyboard-product-${reference.id}`,
     type: 'image',
     data: { title: reference.name, asset: reference.url },
   }))
-  const characterReference = character?.url ? [{
-    id: `storyboard-character-${character.id}`,
-    type: 'image',
-    data: {
-      title: character.name,
-      asset: character.url,
-      ...(props.type === 'video' ? { providerAsset: character.assetUrl } : {}),
-    },
-  }] : []
   const outfitBoard = props.data.storyboardOutfitBoard?.url ? [{
     id: 'storyboard-outfit-board',
     type: 'image',
     data: { title: '服饰穿搭参考总览', asset: props.data.storyboardOutfitBoard.url },
   }] : []
-  if (isStoryboardImage.value) return [...connectedReferences.value, ...outfitBoard, ...productReferences, ...characterReference]
-  return [...connectedReferences.value, ...characterReference, ...productReferences]
+  if (isStoryboardImage.value) return [...connectedReferences.value, ...outfitBoard, ...characters, ...productReferences]
+  return [...connectedReferences.value, ...characters, ...productReferences]
 })
 const disabledReferenceIds = computed(() => new Set(props.data.disabledReferenceIds || []))
 const activeReferences = computed(() => references.value.filter((node) => !disabledReferenceIds.value.has(node.id)))
@@ -147,6 +147,7 @@ const referenceError = computed(() => {
   if (isProductRecognition.value && !allImageReferences.value.length) return '请先上传商品参考图'
   if (isProductRecognition.value && !imageReferences.value.length) return '请至少启用一张商品参考图片'
   if (isProductRecognition.value && imageReferences.value.length > maxProductReferenceImages) return `商品创作最多支持 ${maxProductReferenceImages} 张参考图片`
+  if (isStoryboardImage.value && imageReferences.value.length > MAX_STORYBOARD_REFERENCES) return `商品分镜生图最多支持 ${MAX_STORYBOARD_REFERENCES} 张参考图片`
   return props.type === 'image' && selectedImageModel.value.maxReferences && imageReferences.value.length > selectedImageModel.value.maxReferences
     ? `当前模型最多支持 ${selectedImageModel.value.maxReferences} 张参考图片`
     : ''

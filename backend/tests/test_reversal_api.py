@@ -118,6 +118,28 @@ def test_reverse_prompt_accepts_product_storyboard_mode():
     assert apparel_payload.response_mode == "apparel_storyboard_plan"
 
 
+def test_product_storyboard_limits_total_reference_images():
+    payload = {
+        "workspace_id": DEFAULT_WORKSPACE_ID,
+        "node_id": "product-storyboard-limit",
+        "model": "qwen3.7-plus",
+        "media_type": "image",
+        "media_url": "https://example.com/reference-0.png",
+        "prompt": "生成商品分镜",
+        "response_mode": "product_storyboard_plan",
+    }
+    accepted = ReversePromptRequest(**{
+        **payload,
+        "media_urls": [f"https://example.com/reference-{index}.png" for index in range(1, 6)],
+    })
+    assert len(accepted.media_urls) == 5
+    with pytest.raises(ValidationError, match="商品创作最多支持 6 张参考图片"):
+        ReversePromptRequest(**{
+            **payload,
+            "media_urls": [f"https://example.com/reference-{index}.png" for index in range(1, 7)],
+        })
+
+
 @pytest.mark.asyncio
 async def test_stream_reverse_prompt(monkeypatch):
     monkeypatch.setattr(reversals_route, "DashScopeProvider", FakeProvider)

@@ -24,6 +24,45 @@ export const storyboardTemplates = [
 
 export const storyboardDurations = [15, 30, 45, 60];
 export const storyboardSegmentShotCount = 6;
+export const MAX_STORYBOARD_REFERENCES = 6;
+export const MAX_STORYBOARD_CHARACTERS = 3;
+
+export function normalizeStoryboardCharacters(value) {
+  return (Array.isArray(value) ? value : value ? [value] : [])
+    .filter((reference) => reference && (reference.url || reference.assetUrl))
+    .slice(0, MAX_STORYBOARD_CHARACTERS);
+}
+
+export function buildStoryboardReferenceManifest(characterReferences = [], productReferences = []) {
+  const characters = normalizeStoryboardCharacters(characterReferences);
+  const products = (Array.isArray(productReferences) ? productReferences : [])
+    .filter((reference) => reference && reference.url)
+    .slice(0, Math.max(0, MAX_STORYBOARD_REFERENCES - characters.length));
+  return {
+    characters,
+    products,
+    references: [...characters, ...products],
+  };
+}
+
+export function getStoryboardProductLimit(characterCount = 0) {
+  const count = Math.min(MAX_STORYBOARD_CHARACTERS, Math.max(0, Number(characterCount) || 0));
+  return Math.max(0, MAX_STORYBOARD_REFERENCES - count);
+}
+
+function buildCharacterSpeechRule(characterCount, isUgc, segmented = false) {
+  if (!characterCount) return isUgc
+    ? "没有注册角色时不得出现人脸；UGC不强制对白，只使用画外音或现场音，必要时写成“画外音说道：\"内容。\"”。"
+    : "没有注册角色时不得出现人脸，使用画外音或现场音，写成“画外音说道：\"内容。\"”。";
+  const speakers = characterCount === 1
+    ? "她说道：“内容。”、他说道：“内容。”或他回答：“内容。”"
+    : "角色1说道：“内容。”、角色2回答：“内容。”或角色3说道：“内容。”";
+  const multiRoleRule = characterCount > 1
+    ? `共有${characterCount}个角色，必须用角色1至角色${characterCount}明确区分说话人，每个角色至少参与一处对白，不得新增人物。`
+    : "";
+  if (!isUgc) return `每条 videoPrompt 至少安排一个指定角色自然说一句与当前动作直接相关的话；${multiRoleRule}对白必须用中文双引号包裹，使用${speakers}，同时说明口型与声音同步；禁止写成“台词：”或未加引号的对白。`;
+  return `UGC种草由${characterCount === 1 ? "指定角色" : `角色1至角色${characterCount}`}围绕当前动作、场景和商品体验连续、真实地分享，不安排完全无对白的镜头。每个镜头至少包含一句自然口语；${multiRoleRule}人物未露脸或画面为手部、商品特写时，使用对应角色的连续画外音。${segmented ? "15秒六个镜头至少安排六句对白，每句简短、口语化、内容不重复，开头镜头立即开口。" : ""}对白必须用中文双引号包裹，使用${speakers}，口型与声音同步，禁止写成“台词：”或未加引号的对白。`;
+}
 
 export const ugcStoryboardImageStyleRule = `【UGC种草固定画面规则，程序统一控制，优先级高于镜头正文】
 每格分镜必须像真实iPhone生活视频中截取的未调色原始帧。镜头1和镜头5使用手臂长度的前置广角自拍视频；镜头2和镜头4使用后置1倍主摄第一视角；镜头3使用同行者后置1倍主摄侧面手持跟拍；镜头6使用后置1倍主摄背面手持跟拍，少于六个镜头时按顺序取前面的拍法。
@@ -115,41 +154,47 @@ export function buildProductStoryboardPrompt(
     const extra = data.prompt?.trim()
       ? `\n用户补充要求：${data.prompt.trim()}`
       : "";
-    const character = data.characterReference;
-    const productCount = Math.max(1, data.productReferences?.length || 1);
-    const characterLabel = character?.url ? `参考图${productCount + 1}` : "";
-    const productLabels = Array.from(
-      { length: productCount },
-      (_, index) => `图片${index + 1}`,
-    ).join("、");
-    const characterRule = character?.url
-      ? `出镜角色使用${characterLabel}，保持身份、人脸、发型、体型、服装一致。`
+    const characterReferences = normalizeStoryboardCharacters(data.characterReferences);
+    const productCount = Math.max(
+      1,
+      Math.min(
+        MAX_STORYBOARD_REFERENCES - characterReferences.length,
+        data.productReferences?.length || 1,
+      ),
+    );
+    const referenceRule = buildImageReferenceRule(characterReferences, productCount);
+    const characterRule = characterReferences.length
+      ? `${characterReferences.map((_, index) => `角色${index + 1}使用图片${index + 1}`).join("；")}。每个角色保持对应参考图中的身份、人脸、发型、体型和服装一致。`
       : "禁止出现人脸、正脸、侧脸及面部局部；人物只允许出现手部、背影或肩部以下。";
     const segmentRule = Array.from({ length: segments }, (_, index) => {
       const number = index + 1;
       const defaultMode = number === 1 ? "cut" : "extend";
       return `第${number}段（15秒）：输出 segmentIndex=${number}、duration=15、shotCount=${storyboardSegmentShotCount}、continuityMode="${defaultMode}"、plotGoal、openingState、endingState、prompt、videoPrompt。prompt 和 videoPrompt 都必须严格写出镜头1、镜头2、镜头3、镜头4、镜头5、镜头6，六个镜头不能合并或省略；每个镜头标签后必须有至少一句具体的人物动作、地点或商品状态，禁止空镜头或只输出“镜头N：”。${number === 1 ? "第一段独立开场。" : "默认向后延长上一段；如果剧情明确换场则使用 cut。"}`;
     }).join("\n");
-    const prefix = `${productLabels}是商品参考图。${character?.url ? `${characterLabel}是指定出镜角色。` : ""}请为“${selectedTemplate.label}”生成总时长 ${totalDuration} 秒的连续商品短视频方案，拆成 ${segments} 个连续的15秒段落。\n模板要求：${storyboardTemplateRules[selectedTemplate.id]}\n${segmentRule}\n商品资料：\n`;
+    const prefix = `${referenceRule}请为“${selectedTemplate.label}”生成总时长 ${totalDuration} 秒的连续商品短视频方案，拆成 ${segments} 个连续的15秒段落。\n模板要求：${storyboardTemplateRules[selectedTemplate.id]}\n${segmentRule}\n商品资料：\n`;
     const isUgc = selectedTemplate.id === "ugc-seeding";
     const imagePromptRule = isUgc
       ? `图片 prompt 只描述静态画面中的人物动作、商品状态和地点，不要写镜头、景别、构图、运镜、焦点、景深、灯光、调色或广告风格；${ugcPromptOwnershipRule}`
       : "图片 prompt 只描述静态画面：主体动作、商品状态、场景、景别、构图和光线；禁止对白、台词、说话、口型、声音、音效、环境音、旁白和引号内容。";
-    const speechRule = character?.url
+    const legacySpeechRule = characterReferences.length
       ? isUgc
-        ? "UGC种草全程以指定角色连续、真实的第一人称分享为主线，不安排完全无对白的镜头。每个镜头都必须包含一句与当前动作、场景或商品体验直接相关的自然口语；人物未露脸或画面为手部、商品特写时，使用同一角色的连续画外音。15秒六个镜头至少安排六句对白，每句简短、口语化、内容不重复，开头镜头立即开口。对白必须使用中文双引号包裹，严格使用格式：她说道：“内容。”、他说道：“内容。”或他回答：“内容。”，禁止写成她说道：内容，也禁止写“台词：”。"
-        : '有人物出镜时必须自然说一句话，使用“她说道："……””“他说道："……””或“他回答："……””，说明口型与声音同步，禁止写“台词：”。'
+        ? `UGC种草全程由${characterReferences.length === 1 ? "指定角色" : `角色1至角色${characterReferences.length}`}围绕当前动作、场景和商品体验进行连续、真实的分享，不安排完全无对白的镜头。每个镜头至少包含一句自然口语；多人时明确区分说话人，角色1、角色2、角色3只能对应各自参考图，不得新增人物。人物未露脸或画面为手部、商品特写时，使用对应角色的连续画外音。15秒六个镜头至少安排六句对白，每句简短、口语化、内容不重复，开头镜头立即开口。对白必须使用中文双引号包裹，严格使用格式：${characterReferences.length === 1 ? "她说道：\"内容。\"、他说道：\"内容。\"或他回答：\"内容。\"" : "角色1说道：\"内容。\"、角色2回答：\"内容。\"或角色3说道：\"内容。\""}，禁止写成未加引号的对白，也禁止写“台词：”。`
+        : `有人物出镜时必须自然说一句话，使用${characterReferences.length === 1 ? "“她说道：\\\"内容。\\\"”“他说道：\\\"内容。\\\"”或“他回答：\\\"内容。\\\"”" : "“角色1说道：\\\"内容。\\\"”“角色2回答：\\\"内容。\\\"”或“角色3说道：\\\"内容。\\\"”"}，说明口型与声音同步，禁止写“台词：”。`
       : isUgc
         ? "没有注册角色时不得出现人脸；UGC不强制对白，只使用画外音或现场音。"
         : "没有注册角色时不得出现人脸，使用画外音或现场音。";
+    const speechRule = buildCharacterSpeechRule(characterReferences.length, isUgc, true);
     const scaleRule =
       "如商品资料包含主体尺寸、外包装尺寸、包装关系或尺度参照，每条 prompt 和 videoPrompt 必须明确保持真实物理尺寸及其与人物、手部和环境的比例；开箱镜头使用外包装尺寸，拿取、使用和展示镜头使用主体尺寸，禁止因特写、透视或运镜改变商品实际大小。";
+    const characterTerms = characterReferences.length > 1
+      ? `角色1至角色${characterReferences.length}`
+      : "指定出镜角色";
     const referenceMappingRule =
-      "prompt 和 videoPrompt 的镜头正文不得自行声明或推算图片编号，只使用“指定出镜角色”和“主体商品”，实际参考关系由程序补充。";
+      `prompt 和 videoPrompt 的镜头正文不得自行声明或推算图片编号，只使用“${characterTerms}”和“主体商品”，实际参考关系由程序补充。`;
     const videoPromptRule = isUgc
       ? "UGC videoPrompt 每个镜头只描述人物动作、地点、商品状态、自然对白和现场音，不要自行写镜头、景别、运镜、焦点、景深、灯光、调色或广告风格，这些由程序统一追加。"
       : "每个 videoPrompt 镜头写主体动作、场景、景别、单一运镜、光影、角色说话和音效。";
-    const suffix = `${extra}\n严格输出一个 JSON 对象，不要 Markdown：{"templateId":"${selectedTemplate.id}","title":"${selectedTemplate.label}","globalScript":"全局脚本","segments":[{"segmentIndex":1,"duration":15,"shotCount":6,"plotGoal":"剧情目标","openingState":"开场状态","endingState":"结束状态","continuityMode":"cut","prompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……","videoPrompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……"}]}。segments 必须恰好 ${segments} 条且按顺序。每条 prompt 和 videoPrompt 必须严格包含且只按时间顺序描述镜头1至镜头6，六个镜头分别对应分镜板的六个格子，不能用“ montage ”或一句话概括多个镜头。${imagePromptRule}${scaleRule}${referenceMappingRule}每个 videoPrompt 镜头写主体动作、场景、景别、单一运镜、光影、角色说话和音效。${speechRule}每条 videoPrompt 必须包含现场音或商品操作音，禁止背景音乐、字幕、价格、二维码、水印、乱码和额外 Logo。${characterRule}${productLabels}中的商品外观、颜色、材质和包装保持一致。`;
+    const suffix = `${extra}\n严格输出一个 JSON 对象，不要 Markdown：{"templateId":"${selectedTemplate.id}","title":"${selectedTemplate.label}","globalScript":"全局脚本","segments":[{"segmentIndex":1,"duration":15,"shotCount":6,"plotGoal":"剧情目标","openingState":"开场状态","endingState":"结束状态","continuityMode":"cut","prompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……","videoPrompt":"镜头1……镜头2……镜头3……镜头4……镜头5……镜头6……"}]}。segments 必须恰好 ${segments} 条且按顺序。每条 prompt 和 videoPrompt 必须严格包含且只按时间顺序描述镜头1至镜头6，六个镜头分别对应分镜板的六个格子，不能用“ montage ”或一句话概括多个镜头。${imagePromptRule}${scaleRule}${referenceMappingRule}每个 videoPrompt 镜头写主体动作、场景、景别、单一运镜、光影、角色说话和音效。${speechRule}每条 videoPrompt 必须包含现场音或商品操作音，禁止背景音乐、字幕、价格、二维码、水印、乱码和额外 Logo。${characterRule}商品参考图中的商品外观、颜色、材质和包装保持一致。`;
     const controlledSuffix = isUgc
       ? `${suffix.replace("每个 videoPrompt 镜头写主体动作、场景、景别、单一运镜、光影、角色说话和音效。", videoPromptRule)}
 UGC覆盖规则：${ugcPromptOwnershipRule} 图片和视频镜头正文只写人物动作、地点、商品状态、自然对白和现场音；不要自行决定镜头、景别、运镜、焦点、景深、灯光、调色或广告风格，以上内容由程序固定控制。`
@@ -170,27 +215,31 @@ UGC覆盖规则：${ugcPromptOwnershipRule} 图片和视频镜头正文只写人
   const extra = data.prompt?.trim()
     ? `\n用户补充要求：${data.prompt.trim()}`
     : "";
-  const productReferences =
-    Array.isArray(data.productReferences) && data.productReferences.length
-      ? data.productReferences
-      : [{}];
-  const productImageLabels = productReferences
-    .map((_, index) => `图片${index + 1}`)
-    .join("、");
-  const characterImageIndex = productReferences.length + 1;
-  const character = data.characterReference;
+  const characterReferences = normalizeStoryboardCharacters(data.characterReferences);
+  const productCount = Math.max(
+    1,
+    Math.min(
+      getStoryboardProductLimit(characterReferences.length),
+      data.productReferences?.length || 1,
+    ),
+  );
+  const referenceRule = buildImageReferenceRule(characterReferences, productCount);
   const hasUgcTemplate = templates.some((item) => item.id === "ugc-seeding");
-  const speechRule = character?.url
+  const legacySpeechRule = characterReferences.length
     ? '每条 videoPrompt 至少安排指定角色自然说一句与当前动作直接相关的话；对白必须用中文双引号包裹，严格使用格式“她说道：\"内容。\"”“他说道：\"内容。\"”或“他回答：\"内容。\"”，同时说明口型与声音同步；禁止写成“台词：”或“角色说话：”，也禁止写成她说道：内容。'
     : '每条 videoPrompt 至少安排一句与当前画面直接相关的画外音，写成“画外音说道：\"……\"”。';
-  const characterRule = character?.url
-    ? `当前输入的参考图 ${characterImageIndex} 是指定出镜角色“${character.name}”。每个有人物的镜头必须保持其身份、人脸、发型、体型和服装一致。`
+  const speechRule = buildCharacterSpeechRule(characterReferences.length, hasUgcTemplate);
+  const characterRule = characterReferences.length
+    ? `${characterReferences.map((_, index) => `图片${index + 1}是角色${index + 1}参考图`).join("，")}。每个有人物的镜头必须保持对应角色的身份、人脸、发型、体型和服装一致。`
     : "所有镜头禁止出现人脸、正脸、侧脸或面部局部；人物只允许出现手部、背影或肩部以下，口播与反应改为画外音、手部动作或商品特写。";
   const imagePromptRule = hasUgcTemplate
     ? `UGC模板的图片 prompt 只描述静态画面中的人物动作、商品状态和地点；${ugcPromptOwnershipRule}`
     : "prompt 只描述静态画面：主体动作、商品状态、场景、景别、构图和光线；禁止对白、台词、说话、口型、声音、音效、环境音、旁白和引号内容。";
-  const prefix = `${productImageLabels}是商品参考图。${character?.url ? `参考图 ${characterImageIndex} 是指定出镜角色。` : ""}请为以下每种商品短视频模板同时生成“多格分镜板图片提示词”和“Seedance 2 视频提示词”：\n${types}\n总时长：${duration} 秒；每个模板 ${grid.shots} 个镜头；分镜板采用 ${grid.columns} 列 × ${grid.rows} 行；每个小格保持 ${ratio} 视频画幅。\n商品资料：\n`;
-  const suffix = `${extra}\n严格输出 JSON 数组，格式为 [{"type":"模板ID","title":"模板名称","prompt":"分镜板图片提示词","videoPrompt":"Seedance 2 视频提示词"}]。每个模板必须且只能出现一次，title 必须使用请求中的模板名称，顺序与请求一致。prompt 必须描述 ${grid.shots} 个按时间顺序推进且内容不同的镜头，明确每格的主体动作、景别、场景、构图和光线，整张图是边界清楚、间距统一的专业分镜板。${imagePromptRule}prompt 和 videoPrompt 的镜头正文不得自行声明或推算图片编号，只使用“指定出镜角色”和“主体商品”，实际参考关系由程序补充。videoPrompt 不超过 500 个中文字符；使用“镜头1、镜头2……”依次描述，每个镜头只使用一种运镜，并写明主体动作、场景、景别、光影和自然衔接。${speechRule}每条 videoPrompt 至少用尖括号写一个现场音或商品操作音，例如<包装撕开声>；禁止生成背景音乐。${characterRule}同一商品的外观、颜色、材质、包装和品牌标识必须保持一致；不生成标题、编号、字幕、价格、二维码、水印、乱码或额外 Logo，不虚构商品功能，不解释，不使用 Markdown。`;
+  const prefix = `${referenceRule}请为以下每种商品短视频模板同时生成“多格分镜板图片提示词”和“Seedance 2 视频提示词”：\n${types}\n总时长：${duration} 秒；每个模板 ${grid.shots} 个镜头；分镜板采用 ${grid.columns} 列 × ${grid.rows} 行；每个小格保持 ${ratio} 视频画幅。\n商品资料：\n`;
+  const characterTerms = characterReferences.length > 1
+    ? `角色1至角色${characterReferences.length}`
+    : "指定出镜角色";
+  const suffix = `${extra}\n严格输出 JSON 数组，格式为 [{"type":"模板ID","title":"模板名称","prompt":"分镜板图片提示词","videoPrompt":"Seedance 2 视频提示词"}]。每个模板必须且只能出现一次，title 必须使用请求中的模板名称，顺序与请求一致。prompt 必须描述 ${grid.shots} 个按时间顺序推进且内容不同的镜头，明确每格的主体动作、景别、场景、构图和光线，整张图是边界清楚、间距统一的专业分镜板。${imagePromptRule}prompt 和 videoPrompt 的镜头正文不得自行声明或推算图片编号，只使用“${characterTerms}”和“主体商品”，实际参考关系由程序补充。videoPrompt 不超过 500 个中文字符；使用“镜头1、镜头2……”依次描述，每个镜头只使用一种运镜，并写明主体动作、场景、景别、光影和自然衔接。${speechRule}每条 videoPrompt 至少用尖括号写一个现场音或商品操作音，例如<包装撕开声>；禁止生成背景音乐。${characterRule}同一商品的外观、颜色、材质、包装和品牌标识必须保持一致；不生成标题、编号、字幕、价格、二维码、水印、乱码或额外 Logo，不虚构商品功能，不解释，不使用 Markdown。`;
   const genericImageRule = `prompt 必须描述 ${grid.shots} 个按时间顺序推进且内容不同的镜头，明确每格的主体动作、景别、场景、构图和光线，整张图是边界清楚、间距统一的专业分镜板。`;
   const genericUgcImageRule = `prompt 必须描述 ${grid.shots} 个按时间顺序推进且内容不同的镜头，只写每格的主体动作、商品状态和地点，整张图是边界清楚、间距统一的专业分镜板。`;
   const genericVideoRule =
@@ -207,9 +256,14 @@ UGC覆盖规则：${ugcPromptOwnershipRule} 图片和视频镜头正文只写人
 export function parseProductStoryboardPlan(
   content,
   templates,
-  characterReference = null,
+  characterReferences = [],
   productReferenceCount = 1,
 ) {
+  const normalizedCharacters = normalizeStoryboardCharacters(characterReferences);
+  const normalizedProductCount = Math.max(
+    1,
+    Math.min(getStoryboardProductLimit(normalizedCharacters.length), Number(productReferenceCount) || 1),
+  );
   const source = content
     .trim()
     .replace(/^```(?:json)?\s*/i, "")
@@ -269,33 +323,33 @@ export function parseProductStoryboardPlan(
         template.id === "ugc-seeding"
           ? ensureUgcImageReferenceRule(
               imagePromptSource,
-              characterReference,
-              productReferenceCount,
+              normalizedCharacters,
+              normalizedProductCount,
             )
           : ensureImageReferenceRule(
               imagePromptSource,
-              characterReference,
-              productReferenceCount,
+              normalizedCharacters,
+              normalizedProductCount,
             );
       const videoPrompt = ensureQuotedDialogue(
         template.id === "ugc-seeding"
           ? ensureUgcVideoReferenceRule(
               normalizeVideoReferenceLabels(
                 segment.videoPrompt,
-                characterReference,
-                productReferenceCount,
+                normalizedCharacters,
+                normalizedProductCount,
               ),
-              characterReference,
-              productReferenceCount,
+              normalizedCharacters,
+              normalizedProductCount,
             )
           : ensureVideoReferenceRule(
               normalizeVideoReferenceLabels(
                 segment.videoPrompt,
-                characterReference,
-                productReferenceCount,
+                normalizedCharacters,
+                normalizedProductCount,
               ),
-              characterReference,
-              productReferenceCount,
+              normalizedCharacters,
+              normalizedProductCount,
             ),
       );
       return {
@@ -306,7 +360,7 @@ export function parseProductStoryboardPlan(
         openingState: segment.openingState.trim(),
         endingState: segment.endingState.trim(),
         continuityMode: index === 0 ? "cut" : segment.continuityMode,
-        prompt: `${imagePrompt}\n${characterReference?.url ? "保持指定角色身份与外观一致。" : "禁止出现人脸、正脸、侧脸及面部局部。"}\n无文字水印。`,
+        prompt: `${imagePrompt}\n${normalizedCharacters.length ? "保持所有指定角色身份与外观一致。" : "禁止出现人脸、正脸、侧脸及面部局部。"}\n无文字水印。`,
         videoPrompt: `${videoPrompt}\n${index > 0 && segment.continuityMode === "extend" ? `向后延长视频${index}，延续上一段的主体、场景、光影和运镜。` : ""}\n不生成背景音乐。`,
       };
     });
@@ -351,30 +405,30 @@ export function parseProductStoryboardPlan(
   const results = new Map(parsed.map((item) => [item?.type, item]));
   const plans = templates.map((item) => {
     const result = results.get(item.id);
-    const videoProductImageLabels = Array.from(
-      { length: Math.max(1, Number(productReferenceCount) || 1) },
-      (_, index) => `参考图片${index + (characterReference?.url ? 3 : 2)}`,
-    ).join("、");
-    const imageRule = characterReference?.url
-      ? "所有镜头保持指定出镜角色的身份、人脸、发型、体型和服装一致。"
+    const videoProductImageLabels = buildVideoProductReferenceLabels(
+      normalizedCharacters,
+      normalizedProductCount,
+    );
+    const imageRule = normalizedCharacters.length
+      ? "所有镜头保持指定角色的身份、人脸、发型、体型和服装一致。"
       : "禁止出现人脸、正脸、侧脸及面部局部，人物仅可出现手部、背影或肩部以下。";
     const isUgc = item.id === "ugc-seeding";
-    const videoRule = characterReference?.assetUrl
-      ? `参考图片2为指定出镜角色，必须保持人物身份与外貌一致；${videoProductImageLabels}为商品参考图。`
+    const videoRule = normalizedCharacters.length
+      ? `${buildVideoCharacterReferenceLabels(normalizedCharacters)}必须保持人物身份与外貌一致；${videoProductImageLabels}为商品参考图。`
       : `全程禁止出现人脸及面部局部；${videoProductImageLabels}为商品参考图。`;
     const promptSource =
       typeof result?.prompt === "string"
         ? stripImagePromptAudio(result.prompt)
         : "";
     const prompt = promptSource
-      ? `${isUgc ? ensureUgcImageReferenceRule(promptSource, characterReference, productReferenceCount) : ensureImageReferenceRule(promptSource, characterReference, productReferenceCount)}\n${imageRule}\n无文字水印。`
+          ? `${isUgc ? ensureUgcImageReferenceRule(promptSource, normalizedCharacters, normalizedProductCount) : ensureImageReferenceRule(promptSource, normalizedCharacters, normalizedProductCount)}\n${imageRule}\n无文字水印。`
       : "";
     return {
       ...item,
       prompt,
       videoPrompt:
         typeof result?.videoPrompt === "string"
-          ? `${ensureQuotedDialogue(isUgc ? ensureUgcVideoReferenceRule(normalizeVideoReferenceLabels(result.videoPrompt, characterReference, productReferenceCount), characterReference, productReferenceCount) : ensureVideoReferenceRule(normalizeVideoReferenceLabels(result.videoPrompt, characterReference, productReferenceCount), characterReference, productReferenceCount))}\n${videoRule}\n不生成背景音乐。`
+          ? `${ensureQuotedDialogue(isUgc ? ensureUgcVideoReferenceRule(normalizeVideoReferenceLabels(result.videoPrompt, normalizedCharacters, normalizedProductCount), normalizedCharacters, normalizedProductCount) : ensureVideoReferenceRule(normalizeVideoReferenceLabels(result.videoPrompt, normalizedCharacters, normalizedProductCount), normalizedCharacters, normalizedProductCount))}\n${videoRule}\n不生成背景音乐。`
           : "",
     };
   });
@@ -420,7 +474,7 @@ function stripImagePromptAudio(value) {
     )
     .replace(/(?:禁止|不)生成背景音乐[。；;]?/g, "")
     .replace(/<[^>]*(?:声|音)[^>]*>/g, "")
-    .replace(/(^|[，,；;])\s*(?:她|他|角色|人物)(?=[。；;])/g, "$1")
+    .replace(/(^|[，,；;])\s*(?:她|他|角色\s*\d*|人物)(?=[。；;])/g, "$1")
     .replace(/[，、；;]\s*[。；;]/g, "。")
     .replace(/\s{2,}/g, " ")
     .trim();
@@ -428,7 +482,7 @@ function stripImagePromptAudio(value) {
 
 function ensureQuotedDialogue(value) {
   return value.replace(
-    /((?:她|他|角色|人物|女性|男性|画外音)(?:说道|说|回答|问道|表示|提到)[：:])\s*(?![“"「])([^。！？!?；;\n]+[。！？!?；;]?)/g,
+    /((?:她|他|角色\s*\d*|人物|女性|男性|画外音)(?:说道|说|回答|问道|表示|提到)[：:])\s*(?![“"「])([^。！？!?；;\n]+[。！？!?；;]?)/g,
     (_, prefix, content) => `${prefix}“${content.trim()}”`,
   );
 }
@@ -451,44 +505,49 @@ function normalizeUgcCameraTerms(value) {
   );
 }
 
-function buildImageReferenceRule(characterReference, productReferenceCount) {
+function buildImageReferenceRule(characterReferences, productReferenceCount) {
+  const characters = normalizeStoryboardCharacters(characterReferences);
   const productCount = Math.max(1, Number(productReferenceCount) || 1);
+  const characterLabels = characters
+    .map((_, index) => `图片${index + 1}是角色${index + 1}参考图`)
+    .join("，");
   const productLabels = Array.from(
     { length: productCount },
-    (_, index) => `图片${index + 1}`,
+    (_, index) => `图片${characters.length + index + 1}`,
   ).join("、");
-  return characterReference?.url
-    ? `${productLabels}是商品参考图，图片${productCount + 1}是指定出镜角色。`
-    : `${productLabels}是商品参考图。`;
+  return [
+    characterLabels ? `${characterLabels}。` : "",
+    `${productLabels}是商品参考图。`,
+  ].join("");
 }
 
 function ensureImageReferenceRule(
   value,
-  characterReference,
+  characterReferences,
   productReferenceCount,
 ) {
   const prompt = normalizeImageReferenceLabels(value);
-  return `${buildImageReferenceRule(characterReference, productReferenceCount)}\n${prompt}`;
+  return `${buildImageReferenceRule(characterReferences, productReferenceCount)}\n${prompt}`;
 }
 
 function ensureUgcImageReferenceRule(
   value,
-  characterReference,
+  characterReferences,
   productReferenceCount,
 ) {
   const prompt = normalizeImageReferenceLabels(normalizeUgcCameraTerms(value));
-  return `${buildImageReferenceRule(characterReference, productReferenceCount)}\n${ugcStoryboardImageStyleRule}\n${prompt}`;
+  return `${buildImageReferenceRule(characterReferences, productReferenceCount)}\n${ugcStoryboardImageStyleRule}\n${prompt}`;
 }
 
 function normalizeImageReferenceLabels(value) {
   return value
     .trim()
     .replace(
-      /(?:参考)?(?:图片|图)\s*\d+\s*(?:是|为)\s*(?:指定)?(?:出镜)?角色/g,
+      /(?:参考)?(?:图片|图)\s*\d+\s*(?:是|为)\s*(?:指定)?(?:出镜)?(?:角色\s*\d*|人物)/g,
       "指定出镜角色",
     )
     .replace(
-      /参考(?:图片|图)\s*\d+(?=\s*(?:女性|男性|角色|人物|模特))/g,
+      /参考(?:图片|图)\s*\d+(?=\s*(?:女性|男性|角色\s*\d*|人物|模特))/g,
       "指定出镜角色",
     )
     .replace(
@@ -501,28 +560,40 @@ function normalizeImageReferenceLabels(value) {
     );
 }
 
-function buildVideoReferenceRule(characterReference, productReferenceCount) {
+function buildVideoCharacterReferenceLabels(characterReferences) {
+  return normalizeStoryboardCharacters(characterReferences)
+    .map((_, index) => `图片${index + 2}是角色${index + 1}参考图`)
+    .join("，");
+}
+
+function buildVideoProductReferenceLabels(characterReferences, productReferenceCount) {
+  const characterCount = normalizeStoryboardCharacters(characterReferences).length;
   const productCount = Math.max(1, Number(productReferenceCount) || 1);
-  const hasCharacter = Boolean(
-    characterReference?.url || characterReference?.assetUrl,
-  );
-  const productLabels = Array.from(
+  return Array.from(
     { length: productCount },
-    (_, index) => `图片${index + (hasCharacter ? 3 : 2)}`,
+    (_, index) => `图片${index + characterCount + 2}`,
   ).join("、");
-  return hasCharacter
-    ? `图片1是分镜图，图片2是指定出镜角色，${productLabels}是商品参考图。`
-    : `图片1是分镜图，${productLabels}是商品参考图。`;
+}
+
+function buildVideoReferenceRule(characterReferences, productReferenceCount) {
+  const characters = normalizeStoryboardCharacters(characterReferences);
+  const productLabels = buildVideoProductReferenceLabels(characters, productReferenceCount);
+  const characterLabels = buildVideoCharacterReferenceLabels(characters);
+  return [
+    "图片1是分镜图",
+    characterLabels,
+    `${productLabels}是商品参考图`,
+  ].filter(Boolean).join("，") + "。";
 }
 
 function ensureVideoReferenceRule(
   value,
-  characterReference,
+  characterReferences,
   productReferenceCount,
 ) {
   const prompt = value.trim();
   const rule = buildVideoReferenceRule(
-    characterReference,
+    characterReferences,
     productReferenceCount,
   );
   return prompt.startsWith(rule) ? prompt : `${rule}\n${prompt}`;
@@ -530,12 +601,12 @@ function ensureVideoReferenceRule(
 
 function ensureUgcVideoReferenceRule(
   value,
-  characterReference,
+  characterReferences,
   productReferenceCount,
 ) {
   const prompt = normalizeUgcCameraTerms(value);
   const rule = buildVideoReferenceRule(
-    characterReference,
+    characterReferences,
     productReferenceCount,
   );
   return `${rule}\n${ugcStoryboardVideoStyleRule}\n${prompt.startsWith(rule) ? prompt.slice(rule.length).trim() : prompt}`;
@@ -543,30 +614,47 @@ function ensureUgcVideoReferenceRule(
 
 function normalizeVideoReferenceLabels(
   value,
-  characterReference,
+  characterReferences,
   productReferenceCount,
 ) {
+  const characterCount = normalizeStoryboardCharacters(characterReferences).length;
   const productCount = Math.max(1, Number(productReferenceCount) || 1);
-  const hasCharacter = Boolean(
-    characterReference?.url || characterReference?.assetUrl,
-  );
-  const characterInputIndex = productCount + 1;
-  const hasFinalCharacterReference =
-    hasCharacter && /参考图片\s*2(?!\s*[-－~至])/.test(value);
-  const referencePattern = hasFinalCharacterReference
-    ? /参考图(?!片)\s*(\d+)(?!\s*[-－~至])/g
-    : /参考(?:图片|图)\s*(\d+)(?!\s*[-－~至])/g;
-  return value.replace(referencePattern, (match, rawIndex) => {
+  const total = characterCount + productCount;
+  const rolePattern = /(?:参考)?(?:图片|图)\s*(\d+)\s*(?:女性|男性|角色|人物|模特)/g;
+  const productPattern = /(?:参考)?(?:图片|图)\s*\d+\s*(?:商品|产品|包装|瓶身|礼盒)/g;
+  const semanticValue = value
+    .replace(rolePattern, (_, rawIndex) => {
+      const inputIndex = Number(rawIndex);
+      const roleIndex = inputIndex <= characterCount
+        ? inputIndex
+        : inputIndex > productCount
+          ? inputIndex - productCount
+          : 1;
+      return `角色${Math.min(characterCount || 1, Math.max(1, roleIndex))}`;
+    })
+    .replace(productPattern, "商品");
+  const hasStoryboardReference = /(?:参考)?图片\s*1\s*(?:是|为)\s*分镜图/.test(semanticValue);
+  const offset = hasStoryboardReference ? 0 : 1;
+  const referencePattern = /(?:参考)?(?:图片|图)\s*(\d+)(?!\s*[-－~至])/g;
+  return semanticValue.replace(referencePattern, (match, rawIndex) => {
     const inputIndex = Number(rawIndex);
-    const outputIndex = hasCharacter
-      ? inputIndex === characterInputIndex
-        ? 2
-        : inputIndex >= 1 && inputIndex <= productCount
-          ? inputIndex + 2
-          : inputIndex
-      : inputIndex >= 1 && inputIndex <= productCount
-        ? inputIndex + 1
-        : inputIndex;
-    return `参考图片${outputIndex}`;
+    const outputIndex = inputIndex >= 1 && inputIndex <= total
+      ? inputIndex + offset
+      : inputIndex;
+    return `图片${outputIndex}`;
   });
+}
+
+export function refreshStoryboardReferencePrompt(value, kind, characterReferences, productReferenceCount) {
+  if (typeof value !== "string" || !value.trim()) return value;
+  const lines = value.split("\n");
+  const firstLine = lines[0] || "";
+  const isReferenceRule = kind === "video"
+    ? /(?:参考)?图片\s*1\s*(?:是|为)\s*分镜图/.test(firstLine)
+    : /商品参考图/.test(firstLine);
+  if (!isReferenceRule) return value;
+  const rule = kind === "video"
+    ? buildVideoReferenceRule(characterReferences, productReferenceCount)
+    : buildImageReferenceRule(characterReferences, productReferenceCount);
+  return [rule, ...lines.slice(1)].join("\n");
 }

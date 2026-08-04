@@ -99,7 +99,7 @@ export const nodeDefinitions = {
       templateId: 'ugc-seeding',
       templates: createStoryboardTemplates(),
       productReferences: [],
-      characterReference: null,
+      characterReferences: [],
       prompt: '',
       generatedNodeIds: [],
     }),

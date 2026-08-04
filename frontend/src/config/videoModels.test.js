@@ -73,7 +73,7 @@ describe('buildVideoRequest', () => {
       data: {
         asset: 'https://example.com/storyboard.png',
         storyboardSourceId: 'planner',
-        storyboardCharacter: { assetUrl: 'asset://pa_character' },
+        storyboardCharacterReferences: [{ assetUrl: 'asset://pa_character' }],
       },
     }
     expect(getVideoReferenceError({ model: 'seedance-2' }, [storyboard])).toContain('注册虚拟人像素材')
@@ -112,7 +112,7 @@ describe('buildVideoRequest', () => {
       data: {
         asset: 'https://example.com/previous.mp4',
         storyboardSourceId: 'planner',
-        storyboardCharacter: { assetUrl: 'asset://pa_character' },
+        storyboardCharacterReferences: [{ assetUrl: 'asset://pa_character' }],
       },
     }
     expect(getVideoReferenceError({ model: 'seedance-2' }, [previousVideo])).toBe('')

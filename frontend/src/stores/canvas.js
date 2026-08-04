@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { canConnect, getConnectionError, inferTargetHandle } from '../config/canvas/connectionRules'
 import { createNodeData, getNodeDefinition, getReversePrompt } from '../config/canvas/nodeDefinitions'
 import { isNodeTypeAvailable } from '../config/canvas/nodePacks'
-import { storyboardShotCount } from '../config/canvas/productStoryboard'
+import { buildStoryboardReferenceManifest, normalizeStoryboardCharacters, refreshStoryboardReferencePrompt, storyboardShotCount } from '../config/canvas/productStoryboard'
 import { defaultReverseModel } from '../config/reverseModels'
 import { defaultVideoModel } from '../config/videoModels'
 import { saveWorkspaceCanvas } from '../api/workspaces'
@@ -24,7 +24,7 @@ function storyboardVideoData(source) {
     aspectRatio: source.data.storyboardVideoAspectRatio || defaultVideoModel.defaultAspectRatio,
     resolution: defaultVideoModel.defaultResolution,
     generateAudio: true,
-    storyboardCharacter: source.data.storyboardCharacter || null,
+    storyboardCharacterReferences: normalizeStoryboardCharacters(source.data.storyboardCharacterReferences),
     storyboardProductReferences: source.data.storyboardProductReferences || [],
   }
 }
@@ -279,6 +279,7 @@ export const useCanvasStore = defineStore('canvas', {
     addProductStoryboardNodes(plannerId, productId, plans, settings) {
       const planner = this.nodes.find((node) => node.id === plannerId)
       if (!planner) return []
+      const referenceManifest = buildStoryboardReferenceManifest(planner.data.characterReferences, planner.data.productReferences)
 
       if (plans?.segments?.length) {
         const segmentNodeIds = []
@@ -302,8 +303,8 @@ export const useCanvasStore = defineStore('canvas', {
             storyboardDuration: 15,
             storyboardVideoAspectRatio: planner.data.videoAspectRatio,
             storyboardShotCount: 6,
-            storyboardProductReferences: planner.data.productReferences || [],
-            storyboardCharacter: planner.data.characterReference || null,
+            storyboardProductReferences: referenceManifest.products,
+            storyboardCharacterReferences: referenceManifest.characters,
             storyboardContinuityMode: segment.continuityMode,
             storyboardPlotGoal: segment.plotGoal,
             storyboardOpeningState: segment.openingState,
@@ -336,8 +337,8 @@ export const useCanvasStore = defineStore('canvas', {
             storyboardPlotGoal: segment.plotGoal,
             storyboardOpeningState: segment.openingState,
             storyboardEndingState: segment.endingState,
-            storyboardCharacter: planner.data.characterReference || null,
-            storyboardProductReferences: planner.data.productReferences || [],
+            storyboardCharacterReferences: referenceManifest.characters,
+            storyboardProductReferences: referenceManifest.products,
             storyboardDuration: 15,
             videoPrompt: segment.videoPrompt,
             prompt: segment.videoPrompt,
@@ -378,8 +379,8 @@ export const useCanvasStore = defineStore('canvas', {
           storyboardDuration: planner.data.duration,
           storyboardVideoAspectRatio: planner.data.videoAspectRatio,
           storyboardShotCount: storyboardShotCount(planner.data.duration),
-          storyboardProductReferences: planner.data.productReferences || [],
-          storyboardCharacter: planner.data.characterReference || null,
+          storyboardProductReferences: referenceManifest.products,
+          storyboardCharacterReferences: referenceManifest.characters,
           videoPrompt: plan.videoPrompt,
           prompt: plan.prompt,
           promptParts: [{ type: 'text', value: plan.prompt }],
@@ -392,11 +393,10 @@ export const useCanvasStore = defineStore('canvas', {
       this.selectNodes(ids.slice(0, 1))
       return ids
     },
-    syncProductStoryboardReferences(plannerId, productReferences = [], characterReference = null) {
-      const references = Array.isArray(productReferences)
-        ? productReferences.map((reference) => ({ ...reference }))
-        : []
-      const character = characterReference ? { ...characterReference } : null
+    syncProductStoryboardReferences(plannerId, productReferences = [], characterReferences = []) {
+      const manifest = buildStoryboardReferenceManifest(characterReferences, productReferences)
+      const references = manifest.products.map((reference) => ({ ...reference }))
+      const characters = manifest.characters.map((reference) => ({ ...reference }))
       const storyboardImageIds = new Set(this.nodes
         .filter((node) => node.type === 'image' && node.data.storyboardSourceId === plannerId)
         .map((node) => node.id))
@@ -405,7 +405,18 @@ export const useCanvasStore = defineStore('canvas', {
           && (node.data.storyboardSourceId === plannerId || storyboardImageIds.has(node.data.storyboardImageId)))
         .forEach((node) => {
           node.data.storyboardProductReferences = references.map((reference) => ({ ...reference }))
-          node.data.storyboardCharacter = character ? { ...character } : null
+          node.data.storyboardCharacterReferences = characters.map((reference) => ({ ...reference }))
+          const prompt = refreshStoryboardReferencePrompt(node.data.prompt, 'image', characters, references.length)
+          const videoPrompt = refreshStoryboardReferencePrompt(node.data.videoPrompt, 'video', characters, references.length)
+          if (prompt !== node.data.prompt) {
+            node.data.prompt = prompt
+            node.data.promptParts = [{ type: 'text', value: prompt }]
+          }
+          if (videoPrompt !== node.data.videoPrompt) {
+            node.data.videoPrompt = videoPrompt
+            node.data.prompt = videoPrompt
+            node.data.promptParts = [{ type: 'text', value: videoPrompt }]
+          }
         })
     },
     addApparelStoryboardNodes(plannerId, garmentId, modelId, sceneId, plan, settings = {}) {

@@ -11,6 +11,7 @@ export const imageModels = [
     aspectRatios: gptImageRatios,
     defaultResolution: '1K',
     defaultAspectRatio: '1:1',
+    maxReferences: 6,
   },
   {
     id: 'doubao-seedream-5-0-pro',

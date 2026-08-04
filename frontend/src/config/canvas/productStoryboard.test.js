@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
+  buildStoryboardReferenceManifest,
   buildProductStoryboardPrompt,
+  getStoryboardProductLimit,
+  MAX_STORYBOARD_REFERENCES,
   parseProductStoryboardPlan,
   recommendStoryboardSettings,
   storyboardGrid,
@@ -148,7 +151,7 @@ describe('product storyboard planning', () => {
     expect(plans[0].prompt).toContain('UGC种草固定画面规则')
     expect(plans[0].videoPrompt).toContain('UGC种草固定拍摄规则')
     expect(plans[1].prompt).toBe('图片1是商品参考图。\n短剧分镜\n禁止出现人脸、正脸、侧脸及面部局部，人物仅可出现手部、背影或肩部以下。\n无文字水印。')
-    expect(plans[1].videoPrompt).toBe('图片1是分镜图，图片2是商品参考图。\n短剧视频\n全程禁止出现人脸及面部局部；参考图片2为商品参考图。\n不生成背景音乐。')
+    expect(plans[1].videoPrompt).toBe('图片1是分镜图，图片2是商品参考图。\n短剧视频\n全程禁止出现人脸及面部局部；图片2为商品参考图。\n不生成背景音乐。')
   })
 
   it('normalizes conflicting UGC camera language before applying fixed style rules', () => {
@@ -162,17 +165,40 @@ describe('product storyboard planning', () => {
 
   it('locks a selected character in image and video prompts', () => {
     const character = { name: '测试角色', url: 'https://example.com/character.png', assetUrl: 'asset://pa_test' }
-    const prompt = buildProductStoryboardPrompt('测试商品', storyboardTemplates.slice(0, 1), { characterReference: character })
-    const fullPrompt = buildProductStoryboardPrompt('商品资料'.repeat(1000), storyboardTemplates, { productReferences: [{}, {}, {}], characterReference: character })
-    const plans = parseProductStoryboardPlan('[{"type":"ugc-seeding","prompt":"人物分镜","videoPrompt":"人物视频"}]', storyboardTemplates.slice(0, 1), character)
+    const prompt = buildProductStoryboardPrompt('测试商品', storyboardTemplates.slice(0, 1), { characterReferences: [character] })
+    const fullPrompt = buildProductStoryboardPrompt('商品资料'.repeat(1000), storyboardTemplates, { productReferences: [{}, {}, {}], characterReferences: [character] })
+    const plans = parseProductStoryboardPlan('[{"type":"ugc-seeding","prompt":"人物分镜","videoPrompt":"人物视频"}]', storyboardTemplates.slice(0, 1), [character])
     expect(fullPrompt.length).toBeLessThanOrEqual(3000)
-    expect(prompt).toContain('参考图 2 是指定出镜角色')
+    expect(prompt).toContain('图片1是角色1参考图')
     expect(prompt).toContain('她说道')
     expect(prompt).toContain('对白必须用中文双引号包裹')
     expect(prompt).toContain('口型与声音同步')
     expect(prompt).toContain('禁止写成“台词：”')
-    expect(plans[0].prompt).toContain('图片1是商品参考图，图片2是指定出镜角色。')
-    expect(plans[0].videoPrompt).toContain('参考图片2为指定出镜角色')
+    expect(plans[0].prompt).toContain('图片1是角色1参考图。图片2是商品参考图。')
+    expect(plans[0].videoPrompt).toContain('图片2是角色1参考图')
+  })
+
+  it('maps each character sheet to one role and caps references at six', () => {
+    const characters = [1, 2, 3].map((index) => ({ id: `character-${index}`, url: `https://example.com/character-${index}.png`, assetUrl: `asset://pa-${index}` }))
+    const products = [1, 2, 3, 4, 5].map((index) => ({ id: `product-${index}`, url: `https://example.com/product-${index}.png` }))
+    const manifest = buildStoryboardReferenceManifest(characters, products)
+    expect(MAX_STORYBOARD_REFERENCES).toBe(6)
+    expect(manifest.references).toHaveLength(6)
+    expect(manifest.references.slice(0, 3)).toEqual(characters)
+    expect(manifest.products).toHaveLength(3)
+    expect(getStoryboardProductLimit(1)).toBe(5)
+    expect(getStoryboardProductLimit(3)).toBe(3)
+
+    const prompt = buildProductStoryboardPrompt('商品资料', [storyboardTemplates[0]], {
+      duration: 15,
+      characterReferences: characters,
+      productReferences: products,
+    })
+    expect(prompt).toContain('图片1是角色1参考图')
+    expect(prompt).toContain('图片2是角色2参考图')
+    expect(prompt).toContain('图片3是角色3参考图')
+    expect(prompt).toContain('角色1说道')
+    expect(prompt).toContain('角色2回答')
   })
 
   it('labels storyboard, character, and product references in segmented video prompts', () => {
@@ -180,7 +206,7 @@ describe('product storyboard planning', () => {
     const prompt = buildProductStoryboardPrompt('测试商品', storyboardTemplates.slice(0, 1), {
       duration: 15,
       productReferences: [{ id: 'product-1', url: 'https://example.com/product.png' }],
-      characterReference: character,
+      characterReferences: [character],
     })
     expect(prompt).toContain('实际参考关系由程序补充')
     expect(prompt).not.toContain('图片1是分镜图')
@@ -199,8 +225,8 @@ describe('product storyboard planning', () => {
         prompt: '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6',
         videoPrompt: '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6',
       }],
-    }), [storyboardTemplates[0]], character, 1)
-    expect(plan.segments[0].videoPrompt).toContain('图片1是分镜图，图片2是指定出镜角色，图片3是商品参考图。')
+    }), [storyboardTemplates[0]], [character], 1)
+    expect(plan.segments[0].videoPrompt).toContain('图片1是分镜图，图片2是角色1参考图，图片3是商品参考图。')
   })
 
   it('labels independent product references before the character reference', () => {
@@ -209,13 +235,13 @@ describe('product storyboard planning', () => {
         { id: 'product-1', name: '正面图', url: 'https://example.com/product-1.png' },
         { id: 'product-2', name: '细节图', url: 'https://example.com/product-2.png' },
       ],
-      characterReference: { name: '测试角色', url: 'https://example.com/character.png' },
+      characterReferences: [{ name: '测试角色', url: 'https://example.com/character.png' }],
     })
-    expect(prompt).toContain('图片1、图片2是商品参考图')
-    expect(prompt).toContain('参考图 3 是指定出镜角色')
-    const plans = parseProductStoryboardPlan('[{"type":"ugc-seeding","prompt":"分镜","videoPrompt":"视频"}]', storyboardTemplates.slice(0, 1), { url: 'https://example.com/character.png', assetUrl: 'asset://character' }, 2)
-    expect(plans[0].videoPrompt).toContain('参考图片2为指定出镜角色')
-    expect(plans[0].videoPrompt).toContain('参考图片3、参考图片4为商品参考图')
+    expect(prompt).toContain('图片1是角色1参考图')
+    expect(prompt).toContain('图片2、图片3是商品参考图')
+    const plans = parseProductStoryboardPlan('[{"type":"ugc-seeding","prompt":"分镜","videoPrompt":"视频"}]', storyboardTemplates.slice(0, 1), [{ url: 'https://example.com/character.png', assetUrl: 'asset://character' }], 2)
+    expect(plans[0].videoPrompt).toContain('图片2是角色1参考图')
+    expect(plans[0].videoPrompt).toContain('图片3、图片4为商品参考图')
   })
 
   it('replaces model-written character numbering with the actual image-stage order', () => {
@@ -234,9 +260,9 @@ describe('product storyboard planning', () => {
         prompt: '镜头1：图片2是指定出镜角色。镜头2 镜头3 镜头4 镜头5 镜头6',
         videoPrompt: '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6',
       }],
-    }), [storyboardTemplates[0]], character, 3)
+    }), [storyboardTemplates[0]], [character], 3)
 
-    expect(plan.segments[0].prompt).toContain('图片1、图片2、图片3是商品参考图，图片4是指定出镜角色。')
+    expect(plan.segments[0].prompt).toContain('图片1是角色1参考图。图片2、图片3、图片4是商品参考图。')
     expect(plan.segments[0].prompt).toContain('镜头1：指定出镜角色。')
     expect(plan.segments[0].prompt).not.toContain('图片2是指定出镜角色')
   })
@@ -257,11 +283,11 @@ describe('product storyboard planning', () => {
         prompt: '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6',
         videoPrompt: '图片1是分镜图，图片2是指定出镜角色，图片3、图片4、图片5是商品参考图。镜头1参考图4女性展示参考图1商品。镜头2 镜头3 镜头4 镜头5 镜头6',
       }],
-    }), [storyboardTemplates[0]], character, 3)
+    }), [storyboardTemplates[0]], [character], 3)
 
-    expect(plan.segments[0].videoPrompt).toContain('镜头1参考图片2女性展示参考图片3商品')
+    expect(plan.segments[0].videoPrompt).toContain('镜头1角色1展示商品')
     expect(plan.segments[0].videoPrompt).not.toContain('参考图4女性')
-    expect(plan.segments[0].videoPrompt).toContain('图片1是分镜图，图片2是指定出镜角色，图片3、图片4、图片5是商品参考图。')
+    expect(plan.segments[0].videoPrompt).toContain('图片1是分镜图，图片2是角色1参考图，图片3、图片4、图片5是商品参考图。')
 
     const finalPlan = parseProductStoryboardPlan(JSON.stringify({
       templateId: 'ugc-seeding',
@@ -277,9 +303,9 @@ describe('product storyboard planning', () => {
         prompt: '镜头1 镜头2 镜头3 镜头4 镜头5 镜头6',
         videoPrompt: '图片1是分镜图，图片2是指定出镜角色，图片3、图片4、图片5是商品参考图。镜头1参考图片2女性展示参考图片3商品。镜头2 镜头3 镜头4 镜头5 镜头6',
       }],
-    }), [storyboardTemplates[0]], character, 3)
+    }), [storyboardTemplates[0]], [character], 3)
 
-    expect(finalPlan.segments[0].videoPrompt).toContain('镜头1参考图片2女性展示参考图片3商品')
+    expect(finalPlan.segments[0].videoPrompt).toContain('镜头1角色1展示商品')
   })
 
   it('rejects incomplete template plans', () => {

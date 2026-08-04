@@ -6,6 +6,10 @@ import { streamReversePrompt } from '../../api/reversals'
 import { productPromptContext } from '../../config/canvas/ecommerce'
 import {
   buildProductStoryboardPrompt,
+  buildStoryboardReferenceManifest,
+  getStoryboardProductLimit,
+  MAX_STORYBOARD_CHARACTERS,
+  MAX_STORYBOARD_REFERENCES,
   parseProductStoryboardPlan,
   recommendStoryboardSettings,
   storyboardDurations,
@@ -36,10 +40,12 @@ const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
 const notice = ref('')
 const characterPickerOpen = ref(false)
+const editingCharacterReferenceId = ref('')
 const productPickerOpen = ref(false)
 const editingProductReferenceId = ref('')
 const productNode = computed(() => store.incomingNodes(props.nodeId).find((node) => node.type === 'product'))
-const productReferences = computed(() => Array.isArray(props.data.productReferences) ? props.data.productReferences : [])
+const referenceManifest = computed(() => buildStoryboardReferenceManifest(props.data.characterReferences, props.data.productReferences))
+const productReferences = computed(() => referenceManifest.value.products)
 const productContext = computed(() => productPromptContext(productNode.value?.data.product))
 const selectedTemplates = computed(() => (props.data.templates || []).filter((item) => item.enabled))
 const selectedTemplate = computed(() => selectedTemplates.value[0] || null)
@@ -53,7 +59,9 @@ const insufficientCredits = computed(() => estimatedCredits.value !== null && (a
 const existingGeneratedNodes = computed(() => (props.data.generatedNodeIds || []).filter((id) => store.nodes.some((node) => node.id === id)))
 const textModelOptions = reverseModels.map(({ id, label }) => ({ value: id, label }))
 const ratioOptions = videoAspectRatios.map((value) => ({ value, label: value }))
-const character = computed(() => props.data.characterReference || null)
+const characterReferences = computed(() => referenceManifest.value.characters)
+const totalReferenceCount = computed(() => characterReferences.value.length + productReferences.value.length)
+const productLimit = computed(() => getStoryboardProductLimit(characterReferences.value.length))
 const message = computed(() => notice.value || props.data.generationError || (!productNode.value
   ? '请先连接商品创作节点'
   : !productReferences.value.length
@@ -67,12 +75,23 @@ const canSubmit = computed(() => !running.value && productNode.value && productR
 
 function updateData(value) {
   notice.value = ''
-  updateNodeData(props.nodeId, { ...value, generationError: '' })
-  if (Object.prototype.hasOwnProperty.call(value, 'productReferences') || Object.prototype.hasOwnProperty.call(value, 'characterReference')) {
+  const hasProducts = Object.prototype.hasOwnProperty.call(value, 'productReferences')
+  const hasCharacters = Object.prototype.hasOwnProperty.call(value, 'characterReferences')
+  const manifest = hasProducts || hasCharacters
+    ? buildStoryboardReferenceManifest(
+      hasCharacters ? value.characterReferences : characterReferences.value,
+      hasProducts ? value.productReferences : productReferences.value,
+    )
+    : null
+  const normalizedValue = manifest
+    ? { ...value, productReferences: manifest.products, characterReferences: manifest.characters }
+    : value
+  updateNodeData(props.nodeId, { ...normalizedValue, generationError: '' })
+  if (manifest) {
     store.syncProductStoryboardReferences(
       props.nodeId,
-      Object.prototype.hasOwnProperty.call(value, 'productReferences') ? value.productReferences : productReferences.value,
-      Object.prototype.hasOwnProperty.call(value, 'characterReference') ? value.characterReference : character.value,
+      manifest.products,
+      manifest.characters,
     )
   }
 }
@@ -85,26 +104,32 @@ function updateTemplate(id) {
 }
 
 function selectCharacter(item) {
+  if (!editingCharacterReferenceId.value && totalReferenceCount.value >= MAX_STORYBOARD_REFERENCES) return closeCharacterPicker()
+  if (characterReferences.value.some((reference) => reference.id === item.id && reference.id !== editingCharacterReferenceId.value)) return closeCharacterPicker()
+  const selected = {
+    id: item.id,
+    name: item.name,
+    url: item.url,
+    assetUrl: item.seedanceAssetUrl,
+    groupId: item.seedanceGroupId,
+  }
   updateData({
-    characterReference: {
-      id: item.id,
-      name: item.name,
-      url: item.url,
-      assetUrl: item.seedanceAssetUrl,
-      groupId: item.seedanceGroupId,
-    },
+    characterReferences: editingCharacterReferenceId.value
+      ? characterReferences.value.map((reference) => reference.id === editingCharacterReferenceId.value ? selected : reference)
+      : [...characterReferences.value, selected],
   })
-  characterPickerOpen.value = false
+  closeCharacterPicker()
 }
 
 function selectProductReference(item) {
+  if (!editingProductReferenceId.value && totalReferenceCount.value >= MAX_STORYBOARD_REFERENCES) return closeProductPicker()
   const remaining = productReferences.value.filter((reference) => reference.id !== editingProductReferenceId.value)
   if (remaining.some((reference) => reference.id === item.id)) return closeProductPicker()
   const selected = { id: item.id, name: item.name, url: item.url }
   updateData({
     productReferences: editingProductReferenceId.value
       ? productReferences.value.map((reference) => reference.id === editingProductReferenceId.value ? selected : reference)
-      : [...productReferences.value, selected].slice(0, 3),
+      : [...productReferences.value, selected].slice(0, productLimit.value),
   })
   closeProductPicker()
 }
@@ -116,6 +141,16 @@ function removeProductReference(id) {
 function openProductPicker(id = '') {
   editingProductReferenceId.value = id
   productPickerOpen.value = true
+}
+
+function openCharacterPicker(id = '') {
+  editingCharacterReferenceId.value = id
+  characterPickerOpen.value = true
+}
+
+function closeCharacterPicker() {
+  editingCharacterReferenceId.value = ''
+  characterPickerOpen.value = false
 }
 
 function closeProductPicker() {
@@ -136,22 +171,20 @@ async function submitTask() {
   notice.value = ''
   updateNodeData(props.nodeId, { status: 'generating', generationError: '' })
   try {
+    const references = referenceManifest.value.references
     await streamReversePrompt({
       workspace_id: store.workspaceId,
       node_id: props.nodeId,
       model: selectedTextModel.value.id,
       media_type: 'image',
-      media_url: productReferences.value[0].url,
-      media_urls: [
-        ...productReferences.value.slice(1).map((reference) => reference.url),
-        ...(character.value?.url ? [character.value.url] : []),
-      ],
+      media_url: references[0]?.url,
+      media_urls: references.slice(1).map((reference) => reference.url),
       prompt: buildProductStoryboardPrompt(productContext.value, [selectedTemplate.value], props.data),
       response_mode: 'product_storyboard_plan',
     }, (delta) => { content += delta }, (taskId) => {
       updateNodeData(props.nodeId, { generationTaskId: taskId, generationStatus: 'running' })
     })
-    const plan = parseProductStoryboardPlan(content, [selectedTemplate.value], character.value, productReferences.value.length)
+    const plan = parseProductStoryboardPlan(content, [selectedTemplate.value], characterReferences.value, productReferences.value.length)
     const generatedNodeIds = store.addProductStoryboardNodes(
       props.nodeId,
       productNode.value.id,
@@ -183,22 +216,22 @@ async function submitTask() {
     <section class="storyboard-reference-section">
       <header class="storyboard-section-header"><span><Images :size="14" />参考素材</span></header>
       <div class="storyboard-reference-row">
-        <div class="storyboard-reference-label"><UserRound :size="14" /><span><strong>出镜角色</strong><small>可选 · {{ character ? 1 : 0 }}/1</small></span></div>
+        <div class="storyboard-reference-label"><UserRound :size="14" /><span><strong>出镜角色</strong><small>可选 · {{ characterReferences.length }}/{{ MAX_STORYBOARD_CHARACTERS }} · 共 {{ totalReferenceCount }}/{{ MAX_STORYBOARD_REFERENCES }}</small></span></div>
         <div class="storyboard-reference-list">
-          <div v-if="character" class="storyboard-reference-item">
-            <AppButton class="storyboard-reference-main" :title="`更换${character.name}`" @click="characterPickerOpen = true">
+          <div v-for="(character, index) in characterReferences" :key="character.id" class="storyboard-reference-item">
+            <AppButton class="storyboard-reference-main" :title="`更换角色${index + 1}：${character.name}`" @click="openCharacterPicker(character.id)">
               <AppImageHoverPreview :src="character.url" :preview-src="buildOssImageUrl(character.url, { width: 1200, quality: 90 })" :alt="character.name">
                 <img :src="buildOssImageUrl(character.url, { width: 120, quality: 80 })" :alt="character.name" referrerpolicy="no-referrer" />
               </AppImageHoverPreview>
-              <strong>{{ character.name }}</strong>
+              <strong>角色{{ index + 1 }} · {{ character.name }}</strong>
             </AppButton>
-            <AppButton class="storyboard-reference-remove" icon-only size="sm" title="移除出镜角色" @click="updateData({ characterReference: null })"><X :size="13" /></AppButton>
+            <AppButton class="storyboard-reference-remove" icon-only size="sm" :title="`移除角色${index + 1}`" @click="updateData({ characterReferences: characterReferences.filter((reference) => reference.id !== character.id) })"><X :size="13" /></AppButton>
           </div>
-          <AppButton v-else class="storyboard-reference-add" variant="soft" @click="characterPickerOpen = true"><UserRound :size="14" />选择角色</AppButton>
+          <AppButton v-if="characterReferences.length < MAX_STORYBOARD_CHARACTERS && totalReferenceCount < MAX_STORYBOARD_REFERENCES" class="storyboard-reference-add" variant="soft" @click="openCharacterPicker()"><UserRound :size="14" />添加角色</AppButton>
         </div>
       </div>
       <div class="storyboard-reference-row">
-        <div class="storyboard-reference-label"><Package :size="14" /><span><strong>商品参考图</strong><small>必选 · {{ productReferences.length }}/3</small></span></div>
+        <div class="storyboard-reference-label"><Package :size="14" /><span><strong>商品参考图</strong><small>必选 · {{ productReferences.length }}/{{ productLimit }} · 总计 {{ totalReferenceCount }}/{{ MAX_STORYBOARD_REFERENCES }}</small></span></div>
         <div class="storyboard-reference-list">
           <div v-for="reference in productReferences" :key="reference.id" class="storyboard-reference-item">
             <AppButton class="storyboard-reference-main" :title="`更换${reference.name}`" @click="openProductPicker(reference.id)">
@@ -209,7 +242,7 @@ async function submitTask() {
             </AppButton>
             <AppButton class="storyboard-reference-remove" icon-only size="sm" :title="`移除${reference.name}`" @click="removeProductReference(reference.id)"><X :size="13" /></AppButton>
           </div>
-          <AppButton v-if="productReferences.length < 3" class="storyboard-reference-add" variant="soft" @click="openProductPicker()"><ImagePlus :size="14" />添加商品图</AppButton>
+          <AppButton v-if="productReferences.length < productLimit && totalReferenceCount < MAX_STORYBOARD_REFERENCES" class="storyboard-reference-add" variant="soft" @click="openProductPicker()"><ImagePlus :size="14" />添加商品图</AppButton>
         </div>
       </div>
     </section>
@@ -264,8 +297,8 @@ async function submitTask() {
       resource-type="character"
       :workspace-id="store.workspaceId"
       :node-id="nodeId"
-      :selected-url="character?.url || ''"
-      @close="characterPickerOpen = false"
+      :selected-url="characterReferences.find((reference) => reference.id === editingCharacterReferenceId)?.url || ''"
+      @close="closeCharacterPicker"
       @select="selectCharacter"
     />
   </section>
