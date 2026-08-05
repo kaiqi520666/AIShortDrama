@@ -135,7 +135,7 @@
 .storyboard-reference-row {
   display: grid;
   min-width: 0;
-  grid-template-columns: 94px minmax(0, 1fr);
+  grid-template-columns: 124px minmax(0, 1fr);
   align-items: center;
   gap: 10px;
   padding: 6px 0;
@@ -190,9 +190,9 @@
 }
 .storyboard-reference-item {
   display: flex;
-  width: 130px;
+  width: 70px;
   height: 40px;
-  min-width: 110px;
+  min-width: 70px;
   align-items: center;
   border: 1px solid var(--color-border-subtle);
   border-radius: 6px;
@@ -247,14 +247,6 @@
   flex: none;
   border-radius: 3px;
   object-fit: contain;
-}
-.storyboard-reference-main strong {
-  min-width: 0;
-  overflow: hidden;
-  color: var(--color-text-primary);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 .storyboard-reference-remove.ui-button {
   width: 26px;

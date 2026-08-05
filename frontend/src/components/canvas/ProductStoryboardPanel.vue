@@ -231,11 +231,10 @@ async function submitTask() {
         <div class="storyboard-reference-label"><UserRound :size="14" /><span><strong>出镜角色</strong><small>可选 · {{ characterReferences.length }}/{{ MAX_STORYBOARD_CHARACTERS }} · 共 {{ totalReferenceCount }}/{{ MAX_STORYBOARD_REFERENCES }}</small></span></div>
         <div class="storyboard-reference-list">
           <div v-for="(character, index) in characterReferences" :key="character.id" class="storyboard-reference-item">
-            <AppButton class="storyboard-reference-main" :title="`更换角色${index + 1}：${character.name}`" @click="openCharacterPicker(character.id)">
+            <AppButton class="storyboard-reference-main" :title="`更换角色${index + 1}：${character.name}`" :aria-label="`更换角色${index + 1}：${character.name}`" @click="openCharacterPicker(character.id)">
               <AppImageHoverPreview :src="character.url" :preview-src="buildOssImageUrl(character.url, { width: 1200, quality: 90 })" :alt="character.name">
                 <img :src="buildOssImageUrl(character.url, { width: 120, quality: 80 })" :alt="character.name" referrerpolicy="no-referrer" />
               </AppImageHoverPreview>
-              <strong>角色{{ index + 1 }} · {{ character.name }}</strong>
             </AppButton>
             <AppButton class="storyboard-reference-remove" icon-only size="sm" :title="`移除角色${index + 1}`" @click="updateData({ characterReferences: characterReferences.filter((reference) => reference.id !== character.id) })"><X :size="13" /></AppButton>
           </div>
@@ -246,11 +245,10 @@ async function submitTask() {
         <div class="storyboard-reference-label"><Package :size="14" /><span><strong>商品参考图</strong><small>必选 · {{ productReferences.length }}/{{ productLimit }} · 总计 {{ totalReferenceCount }}/{{ MAX_STORYBOARD_REFERENCES }}</small></span></div>
         <div class="storyboard-reference-list">
           <div v-for="reference in productReferences" :key="reference.id" class="storyboard-reference-item">
-            <AppButton class="storyboard-reference-main" :title="`更换${reference.name}`" @click="openProductPicker(reference.id)">
+            <AppButton class="storyboard-reference-main" :title="`更换${reference.name}`" :aria-label="`更换${reference.name}`" @click="openProductPicker(reference.id)">
               <AppImageHoverPreview :src="reference.url" :preview-src="buildOssImageUrl(reference.url, { width: 1200, quality: 90 })" :alt="reference.name">
                 <img :src="buildOssImageUrl(reference.url, { width: 120, quality: 80 })" :alt="reference.name" referrerpolicy="no-referrer" />
               </AppImageHoverPreview>
-              <strong>{{ reference.name }}</strong>
             </AppButton>
             <AppButton class="storyboard-reference-remove" icon-only size="sm" :title="`移除${reference.name}`" @click="removeProductReference(reference.id)"><X :size="13" /></AppButton>
           </div>
