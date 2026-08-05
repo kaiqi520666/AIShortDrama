@@ -326,7 +326,7 @@ onBeforeUnmount(() => {
         <img class="node-image" :src="buildOssImageUrl(data.asset)" :alt="data.title" title="双击预览原图" draggable="false" referrerpolicy="no-referrer" @dblclick.stop="openImagePreview" />
       </template>
 
-      <video v-else-if="data.assetId && type === 'video'" class="node-video nodrag nopan nowheel" :src="`/api/assets/${data.assetId}/content`" :poster="data.poster" controls playsinline preload="none"></video>
+      <video v-else-if="data.assetId && type === 'video'" class="node-video nodrag nopan nowheel" :src="`/api/assets/${data.assetId}/content`" :poster="data.poster || data.lastFrameUrl" controls playsinline preload="none"></video>
 
       <div v-else-if="['image', 'video'].includes(type) && data.assetSource === 'upload'" class="media-upload-state">
         <div class="media-upload-actions">
