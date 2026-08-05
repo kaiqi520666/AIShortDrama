@@ -37,6 +37,7 @@ describe('buildVideoRequest', () => {
       resolution: '720p',
       aspect_ratio: '16:9',
       generate_audio: false,
+      return_last_frame: true,
       reference_images: ['https://example.com/one.png'],
       reference_videos: ['https://example.com/two.mp4'],
       reference_audios: ['https://example.com/three.mp3'],

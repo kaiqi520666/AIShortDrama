@@ -126,7 +126,7 @@ export function buildVideoRequest(data, references = []) {
     aspect_ratio: settings.aspectRatio,
     resolution: settings.resolution,
     ...(settings.model.generateAudio ? { generate_audio: settings.generateAudio } : {}),
-    ...(data.returnLastFrame ? { return_last_frame: true } : {}),
+    ...(data.returnLastFrame !== false ? { return_last_frame: true } : {}),
     reference_images: referenceUrls('image'),
     reference_videos: referenceUrls('video'),
     reference_audios: referenceUrls('audio'),

@@ -42,7 +42,7 @@ export const nodeDefinitions = {
     type: 'video', label: '视频', model: 'Seedance 2.0', hint: '商品展示与广告视频',
     placeholder: '描述商品动作、运镜和节奏…', setting: '16:9 · 720P · 5s', icon: Video,
     generationPanel: true, inputs: ['text', 'image', 'video', 'audio', 'product'], outputs: ['text', 'video'],
-    createData: ({ number }) => ({ model: defaultVideoModel.id, title: `视频节点 ${number}`, status: 'empty', prompt: '', generateAudio: true }),
+    createData: ({ number }) => ({ model: defaultVideoModel.id, title: `视频节点 ${number}`, status: 'empty', prompt: '', generateAudio: true, returnLastFrame: true }),
   },
   audio: {
     type: 'audio', label: '音频', model: 'seed-audio-1.0-multilingual', hint: '广告旁白与商品讲解',
