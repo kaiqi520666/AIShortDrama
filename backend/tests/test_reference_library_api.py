@@ -8,7 +8,7 @@ from PIL import Image
 from app.api.routes import reference_library as reference_library_route
 from app.core.database import SessionLocal
 from app.main import app
-from app.models import Character, Garment, OutfitModel
+from app.models import Asset, Character, Garment, OutfitModel
 
 
 class FakeStorage:
@@ -131,3 +131,59 @@ async def test_reference_libraries_separate_system_and_user_content(
 
 async def async_value(value):
     return value
+
+
+@pytest.mark.asyncio
+async def test_create_character_from_existing_asset(monkeypatch, override_business_user):
+    monkeypatch.setattr(
+        reference_library_route,
+        "register_virtual_character",
+        lambda *_: async_value({
+            "provider": "toapis",
+            "type": "private-avatar",
+            "group_id": "pg_asset",
+            "asset_id": "pa_asset",
+            "asset_url": "asset://pa_asset",
+            "status": "active",
+        }),
+    )
+    async with SessionLocal() as db:
+        asset = Asset(
+            user_id=override_business_user,
+            media_type="image",
+            source_type="upload",
+            name="素材角色.png",
+            object_key="assets/character.png",
+            url="https://cdn.example.com/assets/character.png",
+            width=600,
+            height=800,
+        )
+        db.add(asset)
+        await db.commit()
+        await db.refresh(asset)
+        asset_id = asset.id
+
+    character_id = None
+    try:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(f"/api/characters/from-asset/{asset_id}")
+        payload = response.json()["data"]
+        character_id = uuid.UUID(payload["id"])
+
+        assert payload["resource_type"] == "character"
+        assert payload["name"] == "素材角色"
+        assert payload["metadata"]["source_asset_id"] == str(asset_id)
+        assert payload["metadata"]["seedance"]["status"] == "active"
+        async with SessionLocal() as db:
+            character = await db.get(Character, character_id)
+            assert character.user_id == override_business_user
+            assert character.image_url == "https://cdn.example.com/assets/character.png"
+    finally:
+        async with SessionLocal() as db:
+            character = await db.get(Character, character_id) if character_id else None
+            asset = await db.get(Asset, asset_id)
+            if character:
+                await db.delete(character)
+            if asset:
+                await db.delete(asset)
+            await db.commit()

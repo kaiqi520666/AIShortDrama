@@ -14,6 +14,10 @@ export async function uploadReferenceItem(resourceType, file, onProgress) {
   })).data
 }
 
+export async function createCharacterFromAsset(id) {
+  return (await apiClient.post(`/characters/from-asset/${id}`)).data
+}
+
 export async function registerCharacter(id) {
   return (await apiClient.post(`/characters/${id}/register`)).data
 }

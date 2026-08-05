@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.identity import get_current_user_id
-from app.models import Character, Garment, OutfitModel
+from app.models import Asset, Character, Garment, OutfitModel
 from app.providers.toapis import ToApisError, ToApisProvider
 from app.schemas.response import fail, success
 from app.services.image_processing import normalize_image
@@ -101,6 +101,47 @@ async def store_reference_image(file: UploadFile, folder: str) -> dict[str, Any]
         await file.close()
 
 
+async def create_character_item(
+    *,
+    name: str,
+    image_url: str,
+    object_key: str | None,
+    width: int | None,
+    height: int | None,
+    user_id: uuid.UUID,
+    db: AsyncSession,
+    source_asset_id: uuid.UUID | None = None,
+    existing_seedance: dict[str, Any] | None = None,
+) -> Character:
+    seedance = existing_seedance or {}
+    if seedance.get("status") not in {"active", "processing"}:
+        try:
+            seedance = await register_virtual_character(name, image_url)
+        except Exception as exc:
+            seedance = {
+                "provider": "toapis",
+                "type": "private-avatar",
+                "status": "failed",
+                "error": str(exc)[:500],
+            }
+    item = Character(
+        user_id=user_id,
+        name=name,
+        image_url=image_url,
+        object_key=object_key,
+        width=width,
+        height=height,
+        character_metadata={
+            **({"source_asset_id": str(source_asset_id)} if source_asset_id else {}),
+            "seedance": seedance,
+        },
+    )
+    db.add(item)
+    await db.commit()
+    await db.refresh(item)
+    return item
+
+
 @router.get("/outfit-models")
 async def list_outfit_models(
     db: AsyncSession = Depends(get_db),
@@ -180,22 +221,47 @@ async def upload_character(
     except Exception as exc:
         return fail(f"角色上传失败：{exc}")
     character_name = ((name or file.filename or "我的角色").rsplit(".", 1)[0].strip() or "我的角色")[:100]
-    try:
-        seedance = await register_virtual_character(character_name, stored["url"])
-    except Exception as exc:
-        seedance = {"provider": "toapis", "type": "private-avatar", "status": "failed", "error": str(exc)[:500]}
-    item = Character(
-        user_id=user_id,
+    item = await create_character_item(
         name=character_name,
         image_url=stored["url"],
         object_key=stored["object_key"],
         width=stored["width"],
         height=stored["height"],
-        character_metadata={"seedance": seedance},
+        user_id=user_id,
+        db=db,
     )
-    db.add(item)
-    await db.commit()
-    await db.refresh(item)
+    return success(reference_payload(item, "character"))
+
+
+@router.post("/characters/from-asset/{asset_id}")
+async def create_character_from_asset(
+    asset_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    asset = await db.scalar(
+        select(Asset).where(
+            Asset.id == asset_id,
+            Asset.user_id == user_id,
+            Asset.deleted_at.is_(None),
+        )
+    )
+    if not asset:
+        return fail("素材不存在")
+    if asset.media_type != "image":
+        return fail("仅图片素材可注册为角色")
+    name = ((asset.name or "我的角色").rsplit(".", 1)[0].strip() or "我的角色")[:100]
+    item = await create_character_item(
+        name=name,
+        image_url=asset.url,
+        object_key=asset.object_key,
+        width=asset.width,
+        height=asset.height,
+        user_id=user_id,
+        db=db,
+        source_asset_id=asset.id,
+        existing_seedance=(asset.asset_metadata or {}).get("seedance"),
+    )
     return success(reference_payload(item, "character"))
 
 

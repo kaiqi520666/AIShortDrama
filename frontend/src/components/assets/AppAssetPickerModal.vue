@@ -1,8 +1,8 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { ImagePlus, Images, LoaderCircle, Music2, Search, Video } from 'lucide-vue-next'
-import { listAssets, registerAssetPrivateAvatar } from '../../api/assets'
-import { listReferenceItems, registerCharacter, uploadReferenceItem } from '../../api/referenceLibrary'
+import { listAssets } from '../../api/assets'
+import { createCharacterFromAsset, listReferenceItems, registerCharacter, uploadReferenceItem } from '../../api/referenceLibrary'
 import { uploadMedia } from '../../api/uploads'
 import { normalizeLibraryItem } from '../../config/assetLibrary'
 import { useGlobalToast } from '../../composables/useGlobalUI'
@@ -42,7 +42,7 @@ const copy = computed(() => ({
   scene: { title: '选择场景', description: '选择系统场景或已上传的场景', upload: '上传场景' },
   asset: { title: `选择${props.mediaType === 'video' ? '视频' : props.mediaType === 'audio' ? '音频' : '图片'}素材`, description: '从资产库选择，或上传新的素材', upload: `上传${props.mediaType === 'video' ? '视频' : props.mediaType === 'audio' ? '音频' : '图片'}` },
   model: { title: '选择模特', description: '选择系统模特或已上传的模特', upload: '上传模特' },
-  character: { title: '选择虚拟角色', description: '选择已注册的虚拟角色，或从资产库选择普通图片', upload: '上传虚拟角色' },
+  character: { title: '选择虚拟角色', description: '选择已注册的虚拟角色，或从资产库选择普通图片', upload: '上传' },
   garment: { title: '选择服饰', description: '选择系统服饰或已上传的服饰', upload: '上传服饰' },
 }[props.inputRole || props.resourceType]))
 const visibleItems = computed(() => items.value.filter((item) => {
@@ -97,7 +97,7 @@ async function handleUpload(event) {
 
 async function selectItem(item) {
   if (registeringId.value) return
-  if (props.resourceType !== 'character' || item.seedanceStatus === 'active') {
+  if (props.resourceType !== 'character' || (item.pickerKind !== 'asset' && item.seedanceStatus === 'active')) {
     selected.value = item
     return
   }
@@ -105,11 +105,10 @@ async function selectItem(item) {
   registeringId.value = item.id
   try {
     const result = item.pickerKind === 'asset'
-      ? await registerAssetPrivateAvatar(item.assetId || item.id)
+      ? await createCharacterFromAsset(item.assetId || item.id)
       : await registerCharacter(item.id)
     if (result.code !== 0) throw new Error(result.message)
-    const resourceType = item.pickerKind === 'asset' ? 'asset' : 'character'
-    const refreshed = { ...normalizeLibraryItem(result.data || item, resourceType), pickerKind: item.pickerKind }
+    const refreshed = { ...normalizeLibraryItem(result.data || item, 'character'), pickerKind: 'character' }
     items.value = items.value.map((value) => value.id === item.id ? refreshed : value)
     if (refreshed.seedanceStatus === 'active') selected.value = refreshed
     else toast.info('角色正在处理中，请稍后点击刷新')
@@ -146,11 +145,11 @@ watch(() => props.extraItem, (extraItem) => {
         <AppButton class="asset-picker-action" :disabled="uploading" @click="fileInput?.click()">
           <LoaderCircle v-if="uploading" class="asset-picker-spinner" :size="22" />
           <ImagePlus v-else :size="22" />
-          <span>{{ uploading ? `上传中 ${uploadProgress}%` : '上传虚拟角色' }}</span>
+          <span>{{ uploading ? `上传中 ${uploadProgress}%` : '上传' }}</span>
         </AppButton>
         <AppButton class="asset-picker-action" @click="emit('open-asset-library')">
           <Images :size="22" />
-          <span>选择素材</span>
+          <span>素材</span>
         </AppButton>
       </div>
       <AppButton v-else class="asset-picker-upload" :disabled="uploading" @click="fileInput?.click()">
@@ -172,7 +171,7 @@ watch(() => props.extraItem, (extraItem) => {
         <AppImageHoverPreview :src="item.url" :preview-src="buildOssImageUrl(item.url, { width: 1200, quality: 90 })" :alt="item.name">
           <img :src="buildOssImageUrl(item.url, { width: 480, quality: 80 })" :alt="item.name" loading="lazy" referrerpolicy="no-referrer" />
         </AppImageHoverPreview>
-        <span class="asset-picker-item-label"><strong>{{ item.name }}</strong><small v-if="resourceType === 'character'">{{ registeringId === item.id ? '注册中' : ({ active: 'Seedance 可用', processing: '处理中，点击刷新', failed: '失败，点击重试', unregistered: '点击注册' })[item.seedanceStatus] || (item.pickerKind === 'asset' ? '点击注册' : '') }}</small></span>
+        <span class="asset-picker-item-label"><strong>{{ item.name }}</strong><small v-if="resourceType === 'character'">{{ registeringId === item.id ? '注册中' : item.pickerKind === 'asset' ? '点击注册' : ({ active: 'Seedance 可用', processing: '处理中，点击刷新', failed: '失败，点击重试', unregistered: '点击注册' })[item.seedanceStatus] || '' }}</small></span>
       </AppButton>
       <EmptyState v-if="!visibleItems.length" compact title="暂无匹配素材" />
     </div>
