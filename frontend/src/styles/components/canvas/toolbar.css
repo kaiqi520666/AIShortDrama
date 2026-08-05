@@ -102,7 +102,7 @@
 }
 .canvas-tool-menu kbd {
   color: var(--color-text-muted);
-  font: 11px/1 inherit;
+  font: 12px/1 inherit;
   text-align: right;
 }
 .canvas-bottom-divider {
@@ -212,12 +212,12 @@
   border-radius: 5px;
   background: var(--color-surface-hover);
   color: var(--color-text-primary);
-  font: 11px/1 inherit;
+  font: 12px/1 inherit;
   text-align: center;
 }
 .shortcut-row i {
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
   font-style: normal;
 }
 @media (max-width: 760px) {
@@ -293,7 +293,7 @@
 }
 .selection-toolbar > span {
   color: var(--color-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
 }
 .selection-group-title {
   width: 124px;
@@ -319,7 +319,7 @@
   border-radius: 5px;
   background: transparent;
   color: var(--color-text-primary);
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
 }
 .selection-toolbar button:hover {

@@ -14,7 +14,7 @@
   display: block;
   margin-bottom: 7px;
   color: var(--color-brand);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 750;
 }
 .workspace-title-row h1 {
@@ -30,7 +30,7 @@
 }
 .workspace-filters > span {
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .workspace-grid {
   grid-template-columns: repeat(auto-fill, minmax(270px, 1fr));
@@ -70,7 +70,7 @@
 }
 .workspace-create-card small {
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .workspace-card {
   height: 232px;
@@ -172,7 +172,7 @@
   border-radius: 4px;
   background: var(--color-media-cover);
   color: var(--color-media-cover-text);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
 }
 .workspace-cover.has-image i {
@@ -201,7 +201,7 @@
   display: block;
   margin: 5px 4px 0;
   color: var(--color-text-muted);
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 700;
 }
 .workspace-card footer {
@@ -277,7 +277,7 @@
   color: var(--color-brand);
 }
 .workspace-type-option strong { font-size: 14px; }
-.workspace-type-option small { color: var(--color-text-muted); font-size: 11px; line-height: 1.55; white-space: normal; }
+.workspace-type-option small { color: var(--color-text-muted); font-size: 12px; line-height: 1.55; white-space: normal; }
 @media (max-width: 760px) {
   .workspace-content {
     width: 100%;

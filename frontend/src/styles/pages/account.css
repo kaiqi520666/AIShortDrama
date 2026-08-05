@@ -90,7 +90,7 @@
 .account-stats small {
   align-self: end;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .account-stats strong {
   align-self: start;
@@ -279,7 +279,7 @@
   border-radius: 999px;
   background: var(--color-surface-sunken);
   color: var(--color-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
 }
 .generation-media-type.is-text { color: var(--color-brand); }
 .generation-media-type.is-image { color: var(--color-success); }
@@ -376,7 +376,7 @@
   display: block;
   margin-top: 4px;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 @media (max-width: 1100px) {
   .account-stats {

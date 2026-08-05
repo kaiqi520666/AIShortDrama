@@ -56,7 +56,7 @@
 .node-create-menu small {
   margin-top: 2px;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .context-menu {
   position: fixed;
@@ -114,14 +114,14 @@
   gap: 7px;
   margin: 4px 8px 3px;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .context-menu .context-menu-divider {
   margin: 5px 7px;
 }
 .context-menu kbd {
   color: var(--color-text-muted);
-  font: 10px/1.2 inherit;
+  font: 12px/1.2 inherit;
 }
 .context-menu-chevron {
   margin-left: auto;
@@ -213,7 +213,7 @@
   overflow: hidden;
   margin-top: 2px;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

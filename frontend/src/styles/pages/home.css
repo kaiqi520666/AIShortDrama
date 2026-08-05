@@ -90,7 +90,7 @@
   align-items: center;
   gap: 8px;
   color: var(--color-brand);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
 }
 .home-content h1 {
@@ -136,7 +136,7 @@
   align-items: center;
   gap: 10px;
   color: var(--color-hero-muted);
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
 }
 .home-meta i {

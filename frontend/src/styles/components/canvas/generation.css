@@ -117,7 +117,7 @@
   align-items: center;
   justify-content: space-between;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .storyboard-section-header > span {
   display: flex;
@@ -159,7 +159,7 @@
   border: 1px solid var(--color-border-subtle);
   border-radius: 4px;
   color: var(--color-text-secondary);
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 .storyboard-reference-label > span {
@@ -169,10 +169,10 @@
 }
 .storyboard-reference-label strong {
   color: var(--color-text-primary);
-  font-size: 10px;
+  font-size: 12px;
 }
 .storyboard-reference-label small {
-  font-size: 9px;
+  font-size: 12px;
   white-space: nowrap;
 }
 .storyboard-reference-list {
@@ -186,7 +186,7 @@
 }
 .storyboard-reference-empty {
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .storyboard-reference-item {
   display: flex;
@@ -252,7 +252,7 @@
   min-width: 0;
   overflow: hidden;
   color: var(--color-text-primary);
-  font-size: 10px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -317,12 +317,12 @@
 }
 .storyboard-template-option strong {
   color: var(--color-text-primary);
-  font-size: 11px;
+  font-size: 12px;
 }
 .storyboard-template-option small {
   overflow: hidden;
   color: var(--color-text-muted);
-  font-size: 9px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -373,7 +373,7 @@
   min-width: 0;
   gap: 5px;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .storyboard-settings label > span {
   display: flex;
@@ -402,7 +402,7 @@
   align-items: center;
   gap: 6px;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .storyboard-extra-input.ui-textarea {
   width: 100%;
@@ -455,7 +455,7 @@
   display: grid;
   min-width: 0;
   gap: 5px;
-  font-size: 10px;
+  font-size: 12px;
 }
 .apparel-profile-head .ui-select,
 .apparel-profile-head .ui-select-trigger,
@@ -475,14 +475,14 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
 }
 .apparel-section-title .ui-button {
   height: 28px;
   gap: 5px;
   padding: 0 8px;
-  font-size: 10px;
+  font-size: 12px;
 }
 .apparel-items {
   display: grid;
@@ -513,7 +513,7 @@
   accent-color: var(--node-accent);
 }
 .apparel-item-head > span {
-  font-size: 10px;
+  font-size: 12px;
 }
 .apparel-item-head .ui-input,
 .apparel-item-fields .ui-input {
@@ -534,7 +534,7 @@
 .apparel-empty {
   margin: 38px 0;
   text-align: center;
-  font-size: 11px;
+  font-size: 12px;
 }
 .apparel-extra.ui-textarea {
   width: 100%;
@@ -585,11 +585,11 @@
   white-space: nowrap;
 }
 .outfit-panel-reference strong {
-  font-size: 11px;
+  font-size: 12px;
 }
 .outfit-panel-reference small {
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .outfit-material-section {
   display: grid;
@@ -606,7 +606,7 @@
   gap: 6px;
   margin: 0;
   color: var(--color-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
 }
 .outfit-material-group {
@@ -617,7 +617,7 @@
 }
 .outfit-material-group > span {
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .outfit-material-options {
   display: grid;
@@ -636,7 +636,7 @@
 .outfit-reference-board-config > p {
   margin: -2px 0 2px;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .outfit-reference-plan-list {
   display: grid;
@@ -652,7 +652,7 @@
   border: 1px solid var(--color-border-subtle);
   border-radius: 5px;
   color: var(--color-text-secondary);
-  font-size: 10px;
+  font-size: 12px;
 }
 .outfit-reference-plan-list b {
   display: grid;
@@ -663,7 +663,7 @@
   border-radius: 50%;
   background: var(--color-surface-raised);
   color: var(--node-accent);
-  font-size: 9px;
+  font-size: 12px;
 }
 .outfit-fixed-settings {
   display: grid;
@@ -678,7 +678,7 @@
   border: 1px solid var(--color-border-subtle);
   border-radius: 5px;
   color: var(--color-text-secondary);
-  font-size: 10px;
+  font-size: 12px;
   text-align: center;
 }
 .product-visual-panel-header {
@@ -702,7 +702,7 @@
 .product-visual-panel-header small {
   overflow: hidden;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -719,7 +719,7 @@
   min-width: 0;
   gap: 5px;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .product-visual-settings .ui-select,
 .product-visual-settings .ui-select-trigger.ui-button {
@@ -748,7 +748,7 @@
   gap: 6px;
   margin: 0 0 6px;
   color: var(--color-text-secondary);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 650;
 }
 .product-visual-options {
@@ -763,7 +763,7 @@
   padding: 4px 8px;
   border: 1px solid var(--color-border-subtle);
   border-radius: 6px;
-  font-size: 11px;
+  font-size: 12px;
   cursor: pointer;
 }
 .product-visual-option input {
@@ -817,7 +817,7 @@
   height: 14px;
   border-radius: 50%;
   background: var(--color-surface-base);
-  font-size: 9px;
+  font-size: 12px;
 }
 .reference-item.is-disabled {
   opacity: 0.48;
@@ -987,7 +987,7 @@
 .storyboard-prompt-tabs > span {
   margin-left: auto;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .storyboard-prompt-tabs + .prompt-reference-editor,
 .generation-panel .storyboard-video-prompt {
@@ -1001,7 +1001,7 @@
 .panel-notice {
   margin: 0 2px 7px;
   color: var(--color-danger);
-  font-size: 11px;
+  font-size: 12px;
 }
 .generation-panel footer {
   display: flex;
@@ -1085,7 +1085,7 @@
   align-items: center;
   gap: 5px;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 12px;
   white-space: nowrap;
 }
 .task-credit-cost svg {
@@ -1124,7 +1124,7 @@
   padding: 0 8px;
   gap: 6px;
   color: var(--color-text-primary) !important;
-  font-size: 11px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }

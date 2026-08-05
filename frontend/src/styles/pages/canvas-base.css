@@ -249,7 +249,7 @@
   border-radius: 4px;
   background: var(--color-surface-base);
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.2;
   pointer-events: none;
   transform: translateY(-50%);
@@ -281,7 +281,7 @@
   padding: 0 6px;
   border: 0;
   border-radius: 0;
-  font-size: 11px;
+  font-size: 12px;
 }
 .product-workflow-steps > .ui-button::after {
   position: absolute;
@@ -300,7 +300,7 @@
   place-items: center;
   border: 1px solid var(--color-border-strong);
   border-radius: 50%;
-  font-size: 9px;
+  font-size: 12px;
 }
 .product-workflow-step-arrow {
   justify-self: center;
@@ -327,7 +327,7 @@
   padding: 8px;
   border: 1px solid var(--color-border-subtle);
   border-radius: 5px;
-  font-size: 10px;
+  font-size: 12px;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -407,12 +407,12 @@
   gap: 3px;
   padding: 0 8px;
   border-radius: 5px;
-  font-size: 10px;
+  font-size: 12px;
 }
 .product-visual-tags small {
   align-self: center;
   margin: auto;
-  font-size: 11px;
+  font-size: 12px;
 }
 .apparel-node-items {
   min-height: 50px;
@@ -458,7 +458,7 @@
   border-radius: 3px;
   background: rgb(0 0 0 / 55%);
   color: #fff;
-  font-size: 8px;
+  font-size: 12px;
   text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -487,14 +487,14 @@
   border-radius: 4px;
   background: rgb(0 0 0 / 58%);
   color: #fff;
-  font-size: 10px;
+  font-size: 12px;
   text-align: center;
 }
 .outfit-board-status {
   display: block;
   margin-top: 6px;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.4;
 }
 .outfit-board-status.error {
@@ -535,10 +535,10 @@
   white-space: nowrap;
 }
 .outfit-source strong {
-  font-size: 11px;
+  font-size: 12px;
 }
 .outfit-source small {
-  font-size: 10px;
+  font-size: 12px;
 }
 .structured-node-summary,
 .structured-node-foot {
@@ -562,7 +562,7 @@
 }
 .structured-node-summary small,
 .structured-node-foot {
-  font-size: 10px;
+  font-size: 12px;
 }
 .product-fields {
   display: grid;
@@ -577,7 +577,7 @@
   min-width: 0;
   gap: 5px;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .product-field-wide {
   margin-top: 10px;
@@ -614,7 +614,7 @@
   min-width: 0;
   gap: 5px;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .world-result-fields .ui-textarea {
   height: 78px;
@@ -662,7 +662,7 @@
   min-width: 0;
   gap: 5px;
   color: var(--color-text-muted);
-  font-size: 10px;
+  font-size: 12px;
 }
 .character-profile-fields .ui-textarea {
   height: 68px;
@@ -692,7 +692,7 @@
 }
 .structured-node-error {
   padding: 12px;
-  font-size: 11px;
+  font-size: 12px;
   line-height: 1.5;
 }
 .node-image {
@@ -775,7 +775,7 @@
 .text-mode-chooser small {
   margin-top: 3px;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .node-drag-handle {
   position: absolute;
@@ -883,7 +883,7 @@
 .media-upload-state p {
   margin: 9px 0 0;
   color: var(--color-text-muted);
-  font-size: 11px;
+  font-size: 12px;
 }
 .empty-preview {
   display: flex;
