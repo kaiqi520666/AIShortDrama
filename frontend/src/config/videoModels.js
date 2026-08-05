@@ -45,7 +45,7 @@ export const videoModels = [
   },
 ]
 
-export const defaultVideoModel = videoModels[0]
+export const defaultVideoModel = videoModels.find((model) => model.id === 'seedance-2-mini')
 
 export function getVideoModel(modelId) {
   return videoModels.find((model) => model.id === modelId) || defaultVideoModel

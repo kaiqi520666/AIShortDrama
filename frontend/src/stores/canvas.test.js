@@ -307,6 +307,7 @@ describe('canvas node packs', () => {
     })
     const productId = store.addNode('product', { x: 0, y: 0 })
     const storyboardId = store.addNode('product_storyboard', { x: 500, y: 0 }, productId)
+    expect(store.nodes.find((node) => node.id === storyboardId).data.duration).toBe(30)
     store.nodes.find((node) => node.id === storyboardId).data.duration = 8
     store.nodes.find((node) => node.id === storyboardId).data.characterReferences = [{
       id: 'character-1', name: '虚拟角色', url: 'https://example.com/character.png', assetUrl: 'asset://pa_test',
@@ -589,23 +590,23 @@ describe('canvas node packs', () => {
     store.addEdge({ source: sceneId, target: storyboardId, targetHandle: 'scene' })
 
     const resultIds = store.addApparelStoryboardNodes(storyboardId, garmentId, modelId, sceneId, {
-      templateId: 'apparel-showcase', title: '服饰展示', duration: 5, shotCount: 2,
-      storyboardPrompt: '镜头1 正面；镜头2 侧面。',
-      videoPrompt: '图片1是分镜故事板；图片2是服饰参考图；图片3是角色（模特）参考图；图片4是场景参考图。镜头1正面；镜头2侧面。',
+      templateId: 'apparel-showcase', title: '服饰展示', duration: 10, shotCount: 4,
+      storyboardPrompt: '镜头1 正面；镜头2 侧面；镜头3 背面；镜头4 袖口。',
+      videoPrompt: '图片1是分镜故事板；图片2是服饰参考图；图片3是角色（模特）参考图；图片4是场景参考图。镜头1正面；镜头2侧面；镜头3背面；镜头4袖口。',
       imageSettings: { model: 'gpt-image-2', aspectRatio: '16:9', resolution: '2K' },
-      videoSettings: { model: 'seedance-2', duration: 5, aspectRatio: '16:9', resolution: '720p', generateAudio: true },
+      videoSettings: { model: 'seedance-2-mini', duration: 10, aspectRatio: '16:9', resolution: '720p', generateAudio: true },
     })
 
     expect(resultIds).toHaveLength(2)
     const image = store.nodes.find((node) => node.id === resultIds[0])
-    expect(image.data).toEqual(expect.objectContaining({ storyboardTemplateId: 'apparel-showcase', storyboardShotCount: 2, storyboardRequiresRegistration: true, prompt: '镜头1 正面；镜头2 侧面。' }))
+    expect(image.data).toEqual(expect.objectContaining({ storyboardTemplateId: 'apparel-showcase', storyboardShotCount: 4, storyboardRequiresRegistration: true, prompt: '镜头1 正面；镜头2 侧面；镜头3 背面；镜头4 袖口。' }))
     expect(store.edges.filter((edge) => edge.target === resultIds[0])).toEqual(expect.arrayContaining([
       expect.objectContaining({ source: storyboardId }),
       expect.objectContaining({ source: garmentId }),
       expect.objectContaining({ source: modelId }),
       expect.objectContaining({ source: sceneId }),
     ]))
-    expect(store.nodes.find((node) => node.id === resultIds[1]).data).toEqual(expect.objectContaining({ model: 'seedance-2', duration: 5, generateAudio: true, prompt: expect.stringContaining('图片1是分镜故事板') }))
+    expect(store.nodes.find((node) => node.id === resultIds[1]).data).toEqual(expect.objectContaining({ model: 'seedance-2-mini', duration: 10, generateAudio: true, prompt: expect.stringContaining('图片1是分镜故事板') }))
     expect(store.edges).toEqual(expect.arrayContaining([expect.objectContaining({ source: resultIds[0], target: resultIds[1] }), expect.objectContaining({ source: modelId, target: resultIds[1] })]))
   })
 

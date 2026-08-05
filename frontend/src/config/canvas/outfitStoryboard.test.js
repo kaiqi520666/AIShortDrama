@@ -14,15 +14,15 @@ describe('apparel storyboard prompts', () => {
     const plan = parseOutfitStoryboardPlan(JSON.stringify({
       templateId: outfitStoryboardTemplate.id,
       title: '服饰展示',
-      duration: 5,
-      shotCount: 2,
-      storyboardPrompt: '镜头1正面站姿，展示版型；镜头2侧面走动，展示垂坠。',
-      videoPrompt: '图片1是分镜故事板，图片2是服饰参考图，图片3是模特参考图，图片4是场景参考图。镜头1固定镜头展示正面版型，镜头2缓慢跟拍展示走动效果，保留脚步声。',
-    }), 5)
-    expect(plan.duration).toBe(5)
-    expect(plan.shotCount).toBe(2)
+      duration: 10,
+      shotCount: 4,
+      storyboardPrompt: '镜头1正面站姿，展示版型；镜头2侧面走动，展示垂坠；镜头3转身展示背面；镜头4抬手展示袖口。',
+      videoPrompt: '图片1是分镜故事板，图片2是服饰参考图，图片3是模特参考图，图片4是场景参考图。镜头1固定镜头展示正面版型，镜头2缓慢跟拍展示走动效果，镜头3转身展示背面，镜头4抬手展示袖口，保留脚步声。',
+    }), 10)
+    expect(plan.duration).toBe(10)
+    expect(plan.shotCount).toBe(4)
     expect(plan.storyboardPrompt).toContain('无文字')
     expect(plan.videoPrompt).toContain('不生成台词')
-    expect(getApparelVideoSettings({ duration: 5 }).duration).toBe(5)
+    expect(getApparelVideoSettings({ duration: 10 }).duration).toBe(10)
   })
 })
