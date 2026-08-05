@@ -71,6 +71,7 @@ const fileInput = ref(null)
 const uploading = ref(false)
 const uploadProgress = ref(0)
 const assetPickerOpen = ref(false)
+const characterAssetPickerOpen = ref(false)
 const previewOpen = ref(false)
 const downloading = ref(false)
 const registeringStoryboard = ref(false)
@@ -153,6 +154,12 @@ function selectAsset(item) {
     ...(props.data.storyboardSourceId ? { storyboardAsset: null } : {}),
   })
   assetPickerOpen.value = false
+  characterAssetPickerOpen.value = false
+}
+
+function openCharacterAssetPicker() {
+  assetPickerOpen.value = false
+  characterAssetPickerOpen.value = true
 }
 
 async function downloadImage() {
@@ -346,12 +353,24 @@ onBeforeUnmount(() => {
     <AppAssetPickerModal
       v-if="assetPickerOpen"
       :resource-type="resourceType"
+      :include-asset-library="resourceType === 'character'"
       :input-role="inputRole"
       media-type="image"
       :workspace-id="store.workspaceId"
       :node-id="id"
       :selected-url="data.asset"
       @close="assetPickerOpen = false"
+      @open-asset-library="openCharacterAssetPicker"
+      @select="selectAsset"
+    />
+    <AppAssetPickerModal
+      v-if="characterAssetPickerOpen"
+      resource-type="asset"
+      media-type="image"
+      :workspace-id="store.workspaceId"
+      :node-id="id"
+      :selected-url="data.asset"
+      @close="characterAssetPickerOpen = false"
       @select="selectAsset"
     />
     <AppMediaPreview v-if="previewOpen" :src="data.asset" :title="data.title" :downloading="downloading" @close="previewOpen = false" @download="downloadImage" />

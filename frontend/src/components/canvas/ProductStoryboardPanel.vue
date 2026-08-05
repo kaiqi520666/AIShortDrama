@@ -41,6 +41,7 @@ const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
 const notice = ref('')
 const characterPickerOpen = ref(false)
+const characterAssetPickerOpen = ref(false)
 const editingCharacterReferenceId = ref('')
 const productPickerOpen = ref(false)
 const editingProductReferenceId = ref('')
@@ -142,6 +143,12 @@ function openCharacterPicker(id = '') {
 function closeCharacterPicker() {
   editingCharacterReferenceId.value = ''
   characterPickerOpen.value = false
+  characterAssetPickerOpen.value = false
+}
+
+function openCharacterAssetPicker() {
+  characterPickerOpen.value = false
+  characterAssetPickerOpen.value = true
 }
 
 function closeProductPicker() {
@@ -285,6 +292,18 @@ async function submitTask() {
     <AppAssetPickerModal
       v-if="characterPickerOpen"
       resource-type="character"
+      include-asset-library
+      :workspace-id="store.workspaceId"
+      :node-id="nodeId"
+      :selected-url="characterReferences.find((reference) => reference.id === editingCharacterReferenceId)?.url || ''"
+      @close="closeCharacterPicker"
+      @open-asset-library="openCharacterAssetPicker"
+      @select="selectCharacter"
+    />
+    <AppAssetPickerModal
+      v-if="characterAssetPickerOpen"
+      resource-type="asset"
+      media-type="image"
       :workspace-id="store.workspaceId"
       :node-id="nodeId"
       :selected-url="characterReferences.find((reference) => reference.id === editingCharacterReferenceId)?.url || ''"

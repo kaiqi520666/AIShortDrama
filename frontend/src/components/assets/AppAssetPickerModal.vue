@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
-import { ImagePlus, LoaderCircle, Music2, Search, Video } from 'lucide-vue-next'
+import { ImagePlus, Images, LoaderCircle, Music2, Search, Video } from 'lucide-vue-next'
 import { listAssets } from '../../api/assets'
 import { listReferenceItems, registerCharacter, uploadReferenceItem } from '../../api/referenceLibrary'
 import { uploadMedia } from '../../api/uploads'
@@ -21,8 +21,9 @@ const props = defineProps({
   workspaceId: { type: String, default: '' },
   nodeId: { type: String, default: '' },
   selectedUrl: { type: String, default: '' },
+  includeAssetLibrary: Boolean,
 })
-const emit = defineEmits(['close', 'select'])
+const emit = defineEmits(['close', 'select', 'open-asset-library'])
 const toast = useGlobalToast()
 const query = ref('')
 const items = ref([])
@@ -36,11 +37,11 @@ const effectiveMediaType = computed(() => props.resourceType === 'asset' ? props
 const uploadIcon = computed(() => ({ image: ImagePlus, video: Video, audio: Music2 }[effectiveMediaType.value]))
 const formatHint = computed(() => ({ image: 'JPG、PNG、WebP', video: 'MP4、MOV、WebM', audio: 'MP3、WAV、M4A' }[effectiveMediaType.value]))
 const copy = computed(() => ({
-  role: { title: '选择角色', description: '选择系统角色或已上传的角色', upload: '上传角色' },
+  role: { title: '选择角色', description: props.includeAssetLibrary ? '选择系统角色、已上传的角色或普通图片资产' : '选择系统角色或已上传的角色', upload: '上传角色' },
   scene: { title: '选择场景', description: '选择系统场景或已上传的场景', upload: '上传场景' },
   asset: { title: `选择${props.mediaType === 'video' ? '视频' : props.mediaType === 'audio' ? '音频' : '图片'}素材`, description: '从资产库选择，或上传新的素材', upload: `上传${props.mediaType === 'video' ? '视频' : props.mediaType === 'audio' ? '音频' : '图片'}` },
   model: { title: '选择模特', description: '选择系统模特或已上传的模特', upload: '上传模特' },
-  character: { title: '选择虚拟角色', description: '选择已注册的虚拟角色', upload: '上传虚拟角色' },
+  character: { title: '选择虚拟角色', description: '选择已注册的虚拟角色，或从资产库选择普通图片', upload: '上传虚拟角色' },
   garment: { title: '选择服饰', description: '选择系统服饰或已上传的服饰', upload: '上传服饰' },
 }[props.inputRole || props.resourceType]))
 const visibleItems = computed(() => items.value.filter((item) => {
@@ -127,7 +128,18 @@ onMounted(loadAssets)
 
     <EmptyState v-if="loading" title="正在加载素材" loading />
     <div v-else class="asset-picker-grid">
-      <AppButton class="asset-picker-upload" :disabled="uploading" @click="fileInput?.click()">
+      <div v-if="includeAssetLibrary && resourceType === 'character'" class="asset-picker-upload asset-picker-upload-options">
+        <AppButton class="asset-picker-action" :disabled="uploading" @click="fileInput?.click()">
+          <LoaderCircle v-if="uploading" class="asset-picker-spinner" :size="22" />
+          <ImagePlus v-else :size="22" />
+          <span>{{ uploading ? `上传中 ${uploadProgress}%` : '上传虚拟角色' }}</span>
+        </AppButton>
+        <AppButton class="asset-picker-action" @click="emit('open-asset-library')">
+          <Images :size="22" />
+          <span>选择素材</span>
+        </AppButton>
+      </div>
+      <AppButton v-else class="asset-picker-upload" :disabled="uploading" @click="fileInput?.click()">
         <LoaderCircle v-if="uploading" class="asset-picker-spinner" :size="22" />
         <component :is="uploadIcon" v-else :size="22" />
         <strong>{{ uploading ? `上传中 ${uploadProgress}%` : copy.upload }}</strong>
