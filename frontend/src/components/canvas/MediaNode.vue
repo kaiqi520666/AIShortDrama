@@ -95,6 +95,12 @@ const storyboardRegistrationLabel = computed(() => ({
   processing: '刷新虚拟人像素材审核状态',
   failed: '重新注册虚拟人像素材',
 }[storyboardAsset.value.status] || '注册虚拟人像素材'))
+const imageResolution = computed(() => {
+  if (props.type !== 'image') return ''
+  const width = Number(props.data.sourceWidth)
+  const height = Number(props.data.sourceHeight)
+  return width > 0 && height > 0 ? `${width} × ${height} px` : ''
+})
 const uploadAccept = computed(() => mediaUploadRules[props.type]?.types.join(',') || '')
 const { updateNodeData, viewport } = useVueFlow()
 const toolbarStyle = computed(() => ({ '--toolbar-scale': 1 / viewport.value.zoom }))
@@ -171,6 +177,22 @@ function selectCharacterAsset(item) {
 function openAssetPicker() {
   pendingCharacterAsset.value = null
   assetPickerOpen.value = true
+}
+
+function captureImageDimensions() {
+  if (props.type !== 'image' || imageResolution.value || !/^https?:\/\//i.test(props.data.asset || '')) return
+  const asset = props.data.asset
+  const image = new Image()
+  image.referrerPolicy = 'no-referrer'
+  image.onload = () => {
+    if (props.data.asset !== asset || imageResolution.value || !image.naturalWidth || !image.naturalHeight) return
+    updateNodeData(props.id, {
+      sourceWidth: image.naturalWidth,
+      sourceHeight: image.naturalHeight,
+      sourceAspectRatio: image.naturalWidth / image.naturalHeight,
+    })
+  }
+  image.src = asset
 }
 
 async function downloadImage() {
@@ -285,6 +307,7 @@ onBeforeUnmount(() => {
         @input="updateNodeData(id, { title: $event.target.value })"
         @keydown.stop
       />
+      <span v-if="imageResolution" class="node-resolution">{{ imageResolution }}</span>
     </label>
     <Handle v-if="acceptsInput" id="target" type="target" :position="Position.Left" />
 
@@ -323,7 +346,7 @@ onBeforeUnmount(() => {
       />
 
       <template v-else-if="data.asset && type === 'image'">
-        <img class="node-image" :src="buildOssImageUrl(data.asset)" :alt="data.title" title="双击预览原图" draggable="false" referrerpolicy="no-referrer" @dblclick.stop="openImagePreview" />
+        <img class="node-image" :src="buildOssImageUrl(data.asset)" :alt="data.title" title="双击预览原图" draggable="false" referrerpolicy="no-referrer" @load="captureImageDimensions" @dblclick.stop="openImagePreview" />
       </template>
 
       <video v-else-if="data.assetId && type === 'video'" class="node-video nodrag nopan nowheel" :src="`/api/assets/${data.assetId}/content`" :poster="data.poster || data.lastFrameUrl" controls playsinline preload="none"></video>
