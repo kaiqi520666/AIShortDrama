@@ -50,6 +50,8 @@ const pendingUpload = ref(null)
 const generationPanel = ref(null)
 let saveTimer = null
 let readyEmitted = false
+const dirty = ref(false)
+let suppressInitialAutosave = true
 let pastePoint = null
 let history = []
 const historyIndex = ref(-1)
@@ -404,9 +406,16 @@ function createPaneNode(type) {
 }
 
 function scheduleSave() {
-  if (!store.ready || store.saveConflict) return
+  if (suppressInitialAutosave || !store.ready || store.saveConflict) return
+  dirty.value = true
   window.clearTimeout(saveTimer)
-  saveTimer = window.setTimeout(() => store.saveCanvas().catch(() => {}), 800)
+  saveTimer = window.setTimeout(async () => {
+    try {
+      await store.saveCanvas()
+      if (store.saveConflict || store.saveStatus === 'failed') throw new Error('画布保存失败')
+      dirty.value = false
+    } catch {}
+  }, 800)
 }
 
 function historySnapshot() {
@@ -703,17 +712,32 @@ function handlePaste(event) {
   else pasteText(text, position)
 }
 
-async function goHome() {
+async function saveBeforeLeave() {
   window.clearTimeout(saveTimer)
+  if (!dirty.value) return true
+
   try {
     await store.saveCanvas(viewport.value)
-    emit('back')
-  } catch {}
+    if (store.saveConflict || store.saveStatus === 'failed') throw new Error('画布保存失败')
+    dirty.value = false
+    return true
+  } catch {
+    return confirm({
+      title: '画布保存失败',
+      message: '最新修改尚未保存，仍要离开画布吗？',
+      confirmText: '仍然离开',
+      cancelText: '留在画布',
+      tone: 'danger',
+    })
+  }
+}
+
+async function goHome() {
+  if (await saveBeforeLeave()) emit('back')
 }
 
 async function signOut() {
-  window.clearTimeout(saveTimer)
-  await store.saveCanvas(viewport.value).catch(() => {})
+  if (!(await saveBeforeLeave())) return
   await authStore.logout()
   store.$reset()
   emit('back')
@@ -746,6 +770,8 @@ onMounted(async () => {
   flowMounted.value = true
   await nextTick()
   if (!nodes.value.length) await finishCanvasSetup()
+  suppressInitialAutosave = false
+  dirty.value = false
 })
 onBeforeUnmount(() => {
   window.clearTimeout(saveTimer)

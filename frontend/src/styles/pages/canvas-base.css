@@ -83,7 +83,7 @@
 
 .canvas-header {
   position: fixed;
-  z-index: 30;
+  z-index: 140;
   height: 48px;
   display: flex;
   align-items: center;
