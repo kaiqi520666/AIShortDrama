@@ -307,6 +307,7 @@ async function submitTask() {
       :workspace-id="store.workspaceId"
       :node-id="nodeId"
       :selected-url="characterReferences.find((reference) => reference.id === editingCharacterReferenceId)?.url || ''"
+      register-as-character
       @close="closeCharacterPicker"
       @select="selectCharacter"
     />

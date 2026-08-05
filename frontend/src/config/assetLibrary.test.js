@@ -15,5 +15,8 @@ describe('asset library', () => {
     expect(normalizeLibraryItem({ id: 'character-1', resource_type: 'character', name: '角色', url: 'https://example.com/character.png', metadata: { seedance: { status: 'active', asset_url: 'asset://pa_test' } } })).toMatchObject({
       id: 'character-1', resourceType: 'character', seedanceStatus: 'active', seedanceAssetUrl: 'asset://pa_test',
     })
+    expect(normalizeLibraryItem({ id: 'asset-2', name: '普通图片', url: 'https://example.com/asset.png', metadata: { seedance: { status: 'processing', asset_url: 'asset://pa_asset', group_id: 'group-1' } } })).toMatchObject({
+      id: 'asset-2', resourceType: 'asset', seedanceStatus: 'processing', seedanceAssetUrl: 'asset://pa_asset', seedanceGroupId: 'group-1',
+    })
   })
 })

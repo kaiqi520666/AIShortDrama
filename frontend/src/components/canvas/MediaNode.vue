@@ -370,6 +370,7 @@ onBeforeUnmount(() => {
       :workspace-id="store.workspaceId"
       :node-id="id"
       :selected-url="data.asset"
+      register-as-character
       @close="characterAssetPickerOpen = false"
       @select="selectAsset"
     />

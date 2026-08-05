@@ -13,8 +13,8 @@ export function normalizeLibraryItem(item, resourceType = 'asset') {
     height: item.height || (type === 'model' ? 4 : null),
     byteSize: item.byte_size,
     metadata: item.metadata || {},
-    seedanceStatus: type === 'character' ? seedance.status || 'unregistered' : null,
-    seedanceAssetUrl: type === 'character' ? seedance.asset_url || '' : '',
-    seedanceGroupId: type === 'character' ? seedance.group_id || '' : '',
+    seedanceStatus: type === 'character' ? seedance.status || 'unregistered' : seedance.status || null,
+    seedanceAssetUrl: seedance.asset_url || '',
+    seedanceGroupId: seedance.group_id || '',
   }
 }
