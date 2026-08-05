@@ -42,6 +42,7 @@ const { updateNodeData } = useVueFlow()
 const notice = ref('')
 const characterPickerOpen = ref(false)
 const characterAssetPickerOpen = ref(false)
+const pendingCharacterAsset = ref(null)
 const editingCharacterReferenceId = ref('')
 const productPickerOpen = ref(false)
 const editingProductReferenceId = ref('')
@@ -102,8 +103,12 @@ function selectCharacter(item) {
     id: item.id,
     name: item.name,
     url: item.url,
+    mediaType: item.mediaType || 'image',
     assetUrl: item.seedanceAssetUrl,
     groupId: item.seedanceGroupId,
+    assetId: item.assetId || null,
+    pickerKind: item.pickerKind || 'character',
+    seedanceStatus: item.seedanceStatus || 'unregistered',
   }
   updateData({
     characterReferences: editingCharacterReferenceId.value
@@ -137,6 +142,10 @@ function openProductPicker(id = '') {
 
 function openCharacterPicker(id = '') {
   editingCharacterReferenceId.value = id
+  const reference = characterReferences.value.find((item) => item.id === id)
+  pendingCharacterAsset.value = reference?.pickerKind === 'asset'
+    ? { ...reference, mediaType: reference.mediaType || 'image', assetId: reference.assetId || reference.id, pickerKind: 'asset' }
+    : null
   characterPickerOpen.value = true
 }
 
@@ -144,11 +153,16 @@ function closeCharacterPicker() {
   editingCharacterReferenceId.value = ''
   characterPickerOpen.value = false
   characterAssetPickerOpen.value = false
+  pendingCharacterAsset.value = null
 }
 
 function openCharacterAssetPicker() {
-  characterPickerOpen.value = false
   characterAssetPickerOpen.value = true
+}
+
+function selectCharacterAsset(item) {
+  pendingCharacterAsset.value = { ...item, mediaType: item.mediaType || 'image', pickerKind: 'asset' }
+  characterAssetPickerOpen.value = false
 }
 
 function closeProductPicker() {
@@ -296,6 +310,7 @@ async function submitTask() {
       :workspace-id="store.workspaceId"
       :node-id="nodeId"
       :selected-url="characterReferences.find((reference) => reference.id === editingCharacterReferenceId)?.url || ''"
+      :extra-item="pendingCharacterAsset"
       @close="closeCharacterPicker"
       @open-asset-library="openCharacterAssetPicker"
       @select="selectCharacter"
@@ -307,9 +322,8 @@ async function submitTask() {
       :workspace-id="store.workspaceId"
       :node-id="nodeId"
       :selected-url="characterReferences.find((reference) => reference.id === editingCharacterReferenceId)?.url || ''"
-      register-as-character
-      @close="closeCharacterPicker"
-      @select="selectCharacter"
+      @close="characterAssetPickerOpen = false"
+      @select="selectCharacterAsset"
     />
   </section>
 </template>

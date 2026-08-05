@@ -72,6 +72,7 @@ const uploading = ref(false)
 const uploadProgress = ref(0)
 const assetPickerOpen = ref(false)
 const characterAssetPickerOpen = ref(false)
+const pendingCharacterAsset = ref(null)
 const previewOpen = ref(false)
 const downloading = ref(false)
 const registeringStoryboard = ref(false)
@@ -155,11 +156,21 @@ function selectAsset(item) {
   })
   assetPickerOpen.value = false
   characterAssetPickerOpen.value = false
+  pendingCharacterAsset.value = null
 }
 
 function openCharacterAssetPicker() {
-  assetPickerOpen.value = false
   characterAssetPickerOpen.value = true
+}
+
+function selectCharacterAsset(item) {
+  pendingCharacterAsset.value = { ...item, mediaType: item.mediaType || 'image', pickerKind: 'asset' }
+  characterAssetPickerOpen.value = false
+}
+
+function openAssetPicker() {
+  pendingCharacterAsset.value = null
+  assetPickerOpen.value = true
 }
 
 async function downloadImage() {
@@ -243,7 +254,7 @@ onBeforeUnmount(() => {
   <div class="media-node" :class="[`media-node--${type}`, { selected }]" :style="nodeStyle">
     <div v-if="selected && type === 'image' && data.asset" class="media-node-toolbar nodrag nopan" :style="toolbarStyle" @pointerdown.stop>
       <AppTooltip v-if="data.assetSource" :text="libraryToolbarLabel">
-        <AppButton class="media-node-toolbar-button" icon-only :aria-label="libraryToolbarLabel" @click.stop="assetPickerOpen = true"><component :is="libraryCopy.icon" :size="16" /></AppButton>
+        <AppButton class="media-node-toolbar-button" icon-only :aria-label="libraryToolbarLabel" @click.stop="openAssetPicker"><component :is="libraryCopy.icon" :size="16" /></AppButton>
       </AppTooltip>
       <AppTooltip v-if="data.storyboardSourceId" text="创建视频节点">
         <AppButton class="media-node-toolbar-button" icon-only aria-label="创建视频节点" @click.stop="createStoryboardVideo"><Video :size="16" /></AppButton>
@@ -320,7 +331,7 @@ onBeforeUnmount(() => {
       <div v-else-if="['image', 'video'].includes(type) && data.assetSource === 'upload'" class="media-upload-state">
         <div class="media-upload-actions">
           <AppButton v-if="resourceType === 'asset'" class="nodrag nopan" :disabled="uploading" @pointerdown.stop @click.stop="fileInput?.click()"><component :is="icon" :size="28" stroke-width="1.35" /><span>{{ uploading ? `上传中 ${uploadProgress}%` : `上传${type === 'video' ? '视频' : '图片'}` }}</span></AppButton>
-          <AppButton v-if="type === 'image'" class="nodrag nopan" @pointerdown.stop @click.stop="assetPickerOpen = true"><component :is="libraryCopy.icon" :size="28" stroke-width="1.35" /><span>选择{{ libraryCopy.label }}</span></AppButton>
+          <AppButton v-if="type === 'image'" class="nodrag nopan" @pointerdown.stop @click.stop="openAssetPicker"><component :is="libraryCopy.icon" :size="28" stroke-width="1.35" /><span>选择{{ libraryCopy.label }}</span></AppButton>
         </div>
         <p v-if="uploadNotice">{{ uploadNotice }}</p>
       </div>
@@ -359,6 +370,7 @@ onBeforeUnmount(() => {
       :workspace-id="store.workspaceId"
       :node-id="id"
       :selected-url="data.asset"
+      :extra-item="pendingCharacterAsset"
       @close="assetPickerOpen = false"
       @open-asset-library="openCharacterAssetPicker"
       @select="selectAsset"
@@ -370,9 +382,8 @@ onBeforeUnmount(() => {
       :workspace-id="store.workspaceId"
       :node-id="id"
       :selected-url="data.asset"
-      register-as-character
       @close="characterAssetPickerOpen = false"
-      @select="selectAsset"
+      @select="selectCharacterAsset"
     />
     <AppMediaPreview v-if="previewOpen" :src="data.asset" :title="data.title" :downloading="downloading" @close="previewOpen = false" @download="downloadImage" />
   </div>
