@@ -398,11 +398,12 @@
 }
 .storyboard-extra-input.ui-textarea {
   width: 100%;
-  height: 58px;
-  min-height: 58px;
+  height: 108px;
+  min-height: 76px;
+  max-height: 260px;
   flex: none;
   margin-bottom: 8px;
-  resize: none;
+  resize: vertical;
 }
 .outfit-panel {
   display: flex;
