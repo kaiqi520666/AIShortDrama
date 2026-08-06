@@ -16,7 +16,7 @@ import AppInput from '../../components/ui/AppInput.vue'
 import AppMenu from '../../components/ui/AppMenu.vue'
 import AppTooltip from '../../components/ui/AppTooltip.vue'
 import { canConnect, getConnectionError, inferTargetHandle } from '../../config/canvas/connectionRules'
-import { nodeRegistry } from '../../config/canvas/nodeRegistry'
+import { getNodeRegistry, nodeRegistry } from '../../config/canvas/nodeRegistry'
 import { getNodeTypes } from '../../config/canvas/nodePacks'
 import { useGlobalConfirm, useGlobalToast } from '../../composables/useGlobalUI'
 import { useCanvasAutosave } from '../../composables/useCanvasAutosave'
@@ -38,7 +38,7 @@ const emit = defineEmits(['back', 'ready'])
 const { nodes, edges, groups } = storeToRefs(store)
 const { project, screenToFlowCoordinate, fitView, findNode, setCenter, setViewport, updateNodeData, viewport, zoomIn, zoomOut, removeSelectedElements, addSelectedNodes } = useVueFlow()
 
-const nodeTypes = Object.fromEntries(getNodeTypes(props.workspace.workspace_type).map((type) => [type, markRaw(nodeRegistry[type].component)]))
+const nodeTypes = Object.fromEntries(getNodeTypes(props.workspace.workspace_type).map((type) => [type, getNodeRegistry(type).component]))
 const edgeTypes = { cinematic: markRaw(FlowEdge) }
 const createMenu = ref(null)
 const contextMenu = ref(null)
