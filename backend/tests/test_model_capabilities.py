@@ -1,3 +1,6 @@
+import json
+from pathlib import Path
+
 import pytest
 from httpx import ASGITransport, AsyncClient
 from pydantic import ValidationError
@@ -13,6 +16,9 @@ from app.schemas.generation import (
 )
 
 
+CONTRACT_PATH = Path(__file__).resolve().parents[2] / "contracts" / "generation-capabilities.v1.json"
+
+
 @pytest.mark.asyncio
 async def test_capabilities_endpoint_returns_public_registry():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -25,6 +31,11 @@ async def test_capabilities_endpoint_returns_public_registry():
     assert payload["video"]["default_model"] == "seedance-2-mini"
     assert payload["audio"]["models"][0]["formats"] == ["mp3", "wav", "ogg_opus"]
     assert all(not key.startswith("_") for model in payload["image"]["models"] for key in model)
+
+
+def test_capabilities_registry_matches_cross_platform_contract():
+    contract = json.loads(CONTRACT_PATH.read_text(encoding="utf-8"))
+    assert capabilities_payload() == contract
 
 
 def test_registry_models_are_accepted_by_request_schemas():
