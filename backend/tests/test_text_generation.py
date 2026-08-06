@@ -4,11 +4,11 @@ import uuid
 import pytest
 from httpx import ASGITransport, AsyncClient
 
-from app.api.routes import generations as generations_route
 from app.core.database import SessionLocal
 from app.core.identity import DEFAULT_WORKSPACE_ID
 from app.main import app
 from app.models import GenerationTask
+from app.services import text_generation
 
 
 class FakeProvider:
@@ -27,7 +27,7 @@ class FakeProvider:
 
 @pytest.mark.asyncio
 async def test_stream_text_generation(monkeypatch):
-    monkeypatch.setattr(generations_route, "OpenAIResponsesProvider", FakeProvider)
+    monkeypatch.setattr(text_generation, "OpenAIResponsesProvider", FakeProvider)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/generations/texts",
@@ -75,7 +75,7 @@ async def test_text_generation_rejects_blank_prompt():
 async def test_stream_text_generation_keeps_content_over_3000_characters(monkeypatch):
     chunks = ("甲" * 2000, "乙" * 2000)
     monkeypatch.setattr(FakeProvider, "chunks", chunks)
-    monkeypatch.setattr(generations_route, "OpenAIResponsesProvider", FakeProvider)
+    monkeypatch.setattr(text_generation, "OpenAIResponsesProvider", FakeProvider)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/generations/texts",
