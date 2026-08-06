@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { canConnect, getConnectionError, inferTargetHandle } from '../config/canvas/connectionRules'
-import { createNodeData, getNodeDefinition, getReversePrompt } from '../config/canvas/nodeDefinitions'
+import { createNodeData, getNodeDescriptor, getReversePrompt } from '../config/canvas/nodeCatalog'
 import { isNodeTypeAvailable } from '../config/canvas/nodePacks'
 import { CURRENT_CANVAS_SCHEMA_VERSION, migrateCanvas } from '../config/canvas/migrations'
 import { saveWorkspaceCanvas } from '../api/workspaces'
@@ -266,7 +266,7 @@ export const useCanvasStore = defineStore('canvas', {
       const mediaType = 'image'
       const mediaId = this.addNode(mediaType, { x: node.position.x - 460, y: node.position.y + 3 })
       const media = this.nodes.find((item) => item.id === mediaId)
-      const mediaLabel = getNodeDefinition(mediaType).label
+      const mediaLabel = getNodeDescriptor(mediaType).label
       media.data = { ...media.data, title: `参考${mediaLabel}`, assetSource: 'upload' }
       node.data = { ...node.data, textMode: 'task', title: `${mediaLabel}反推提示词`, model: modelDefaults().text.id, prompt: getReversePrompt(mediaType), reverseType: mediaType }
       this.edges.push(createCanvasEdge(`edge-${crypto.randomUUID()}`, mediaId, id))
@@ -385,7 +385,7 @@ export const useCanvasStore = defineStore('canvas', {
           type: source.type,
           position: positions[source.id] || { x: source.position.x + 56, y: source.position.y + 56 },
           selected: true,
-          data: { ...JSON.parse(JSON.stringify(source.data)), title: `${source.data.title || getNodeDefinition(source.type).label} 副本` },
+          data: { ...JSON.parse(JSON.stringify(source.data)), title: `${source.data.title || getNodeDescriptor(source.type).label} 副本` },
         }
       })
       this.nodes.push(...copies)

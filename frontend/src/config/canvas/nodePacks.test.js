@@ -1,8 +1,30 @@
 import { describe, expect, it } from 'vitest'
 import { canConnect, getConnectionError } from './connectionRules'
-import { getNodeTypes, getWorkspaceType } from './nodePacks'
+import { createNodeData, getNodeDescriptor, nodeCatalog } from './nodeCatalog'
+import { getNodeTypes, getWorkspaceType, isNodeTypeAvailable } from './nodePacks'
 
 describe('canvas node packs', () => {
+  it('derives node metadata and workspace packs from one catalog', () => {
+    expect(Object.values(nodeCatalog).every((node) => node.componentName && node.panelName)).toBe(true)
+    expect(getNodeDescriptor('product').businessCreator).toBe('product')
+    expect(getNodeTypes('ecommerce')).toEqual(Object.values(nodeCatalog)
+      .filter((node) => node.workspaces.includes('ecommerce'))
+      .sort((left, right) => left.order.ecommerce - right.order.ecommerce)
+      .map((node) => node.type))
+  })
+
+  it('creates default data without importing UI components', () => {
+    const models = {
+      text: { id: 'text-model' },
+      image: { id: 'image-model', defaultAspectRatio: '1:1', defaultResolution: '1K' },
+      video: { id: 'video-model', defaultDuration: 5, defaultAspectRatio: '16:9', defaultResolution: '720P' },
+      audio: { model: { id: 'audio-model' } },
+    }
+    expect(createNodeData('image', 2, null, models)).toMatchObject({ title: '图片节点 2', model: 'image-model' })
+    expect(() => getNodeDescriptor('missing')).toThrow('不支持的节点类型')
+    expect(() => isNodeTypeAvailable('general', 'missing')).toThrow('未在 nodeCatalog 注册')
+  })
+
   it('provides core nodes for general canvas', () => {
     expect(getNodeTypes('general')).toEqual(['text', 'image', 'video', 'audio'])
   })
