@@ -1,20 +1,21 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import HomeView from '../views/public/HomeView.vue'
-import AccountView from '../views/dashboard/AccountView.vue'
-import BillingStandardsView from '../views/dashboard/BillingStandardsView.vue'
-import CreditLedgerView from '../views/dashboard/CreditLedgerView.vue'
-import GenerationHistoryView from '../views/dashboard/GenerationHistoryView.vue'
-import RechargeView from '../views/dashboard/RechargeView.vue'
-import DashboardLayout from '../layouts/DashboardLayout.vue'
-import LoginView from '../views/auth/LoginView.vue'
-import RegisterView from '../views/auth/RegisterView.vue'
-import WorkspaceCanvasView from '../views/canvas/WorkspaceCanvasView.vue'
-import WorkspaceHome from '../views/dashboard/WorkspaceHome.vue'
-import AdminUsersView from '../views/admin/AdminUsersView.vue'
-import AdminPricingView from '../views/admin/AdminPricingView.vue'
-import AdminTasksView from '../views/admin/AdminTasksView.vue'
-import AdminAuditsView from '../views/admin/AdminAuditsView.vue'
-import AdminRechargeView from '../views/admin/AdminRechargeView.vue'
+
+const HomeView = () => import('../views/public/HomeView.vue')
+const AccountView = () => import('../views/dashboard/AccountView.vue')
+const BillingStandardsView = () => import('../views/dashboard/BillingStandardsView.vue')
+const CreditLedgerView = () => import('../views/dashboard/CreditLedgerView.vue')
+const GenerationHistoryView = () => import('../views/dashboard/GenerationHistoryView.vue')
+const RechargeView = () => import('../views/dashboard/RechargeView.vue')
+const DashboardLayout = () => import('../layouts/DashboardLayout.vue')
+const LoginView = () => import('../views/auth/LoginView.vue')
+const RegisterView = () => import('../views/auth/RegisterView.vue')
+const WorkspaceCanvasView = () => import('../views/canvas/WorkspaceCanvasView.vue')
+const WorkspaceHome = () => import('../views/dashboard/WorkspaceHome.vue')
+const AdminUsersView = () => import('../views/admin/AdminUsersView.vue')
+const AdminPricingView = () => import('../views/admin/AdminPricingView.vue')
+const AdminTasksView = () => import('../views/admin/AdminTasksView.vue')
+const AdminAuditsView = () => import('../views/admin/AdminAuditsView.vue')
+const AdminRechargeView = () => import('../views/admin/AdminRechargeView.vue')
 
 export function createAppRouter(authStore) {
   const router = createRouter({
