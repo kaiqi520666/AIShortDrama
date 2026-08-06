@@ -22,9 +22,13 @@ import { nodeRegistry } from '../../config/canvas/nodeRegistry'
 import { getNodeTypes } from '../../config/canvas/nodePacks'
 import { useGlobalConfirm, useGlobalToast } from '../../composables/useGlobalUI'
 import { useCanvasAutosave } from '../../composables/useCanvasAutosave'
+import { useCanvasClipboard } from '../../composables/useCanvasClipboard'
+import { useCanvasHistory } from '../../composables/useCanvasHistory'
 import { stopAllGenerationPolling, stopWorkspaceGenerationPolling } from '../../services/generationPolling'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
+import { mediaUploadRules, readMediaMetadata } from '../../utils/mediaFiles'
+import { useCanvasShortcuts } from './useCanvasShortcuts'
 
 const store = useCanvasStore()
 const authStore = useAuthStore()
@@ -51,25 +55,32 @@ const uploadInput = ref(null)
 const pendingUpload = ref(null)
 const generationPanel = ref(null)
 let readyEmitted = false
-let pastePoint = null
-let history = []
-const historyIndex = ref(-1)
-let historyTimer = null
-let historyApplying = false
-let toolBeforeSpace = null
 let nodeDragCopy = null
 
-const pastedImageTypes = ['image/jpeg', 'image/png', 'image/webp']
-const pastedImageMaxSize = 20 * 1024 * 1024
 const uploadRules = {
-  image: { accept: 'image/jpeg,image/png,image/webp', types: ['image/jpeg', 'image/png', 'image/webp'], maxSize: 20 * 1024 * 1024 },
-  video: { accept: 'video/mp4,video/quicktime,video/webm', types: ['video/mp4', 'video/quicktime', 'video/webm'], maxSize: 500 * 1024 * 1024 },
-  audio: { accept: 'audio/mpeg,audio/wav,audio/x-wav,audio/mp4', types: ['audio/mpeg', 'audio/wav', 'audio/x-wav', 'audio/mp4'], maxSize: 100 * 1024 * 1024 },
+  image: { ...mediaUploadRules.image, accept: 'image/jpeg,image/png,image/webp' },
+  video: { ...mediaUploadRules.video, accept: 'video/mp4,video/quicktime,video/webm' },
+  audio: { ...mediaUploadRules.audio, accept: 'audio/mpeg,audio/wav,audio/x-wav,audio/mp4' },
 }
 
 const minimapVisible = ref(false)
 const assetsVisible = ref(false)
 const activeGroupId = ref(null)
+const {
+  canUndo,
+  canRedo,
+  snapshot: historySnapshot,
+  commit: commitHistory,
+  schedule: scheduleHistory,
+  undo,
+  redo,
+  initialize: initializeHistory,
+  dispose: disposeHistory,
+} = useCanvasHistory({ store, activeGroupId, contextMenu })
+const {
+  pasteFromClipboard,
+  trackPastePoint,
+} = useCanvasClipboard({ store, nodes, project, updateNodeData, toast })
 const selectedNodes = computed(() => nodes.value.filter((node) => node.selected))
 const selectedNode = computed(() => selectedNodes.value.length === 1 ? selectedNodes.value[0] : null)
 const selectedNodeDefinition = computed(() => selectedNode.value && nodeDefinitions[selectedNode.value.type])
@@ -404,114 +415,26 @@ function createPaneNode(type) {
   contextMenu.value = null
 }
 
-function historySnapshot() {
-  const payload = store.canvasPayload()
-  return JSON.stringify({
-    nodes: payload.nodes,
-    edges: payload.edges,
-    groups: payload.groups,
-  })
-}
-
-function commitHistory() {
-  window.clearTimeout(historyTimer)
-  if (historyApplying || !store.ready) return
-  const snapshot = historySnapshot()
-  if (snapshot === history[historyIndex.value]) return
-  history = [...history.slice(0, historyIndex.value + 1), snapshot].slice(-50)
-  historyIndex.value = history.length - 1
-}
-
-function scheduleHistory() {
-  if (historyApplying || !store.ready) return
-  window.clearTimeout(historyTimer)
-  historyTimer = window.setTimeout(commitHistory, 200)
-}
-
-function restoreHistory(snapshot) {
-  historyApplying = true
-  const state = JSON.parse(snapshot)
-  store.nodes = state.nodes
-  store.edges = state.edges
-  store.groups = state.groups
-  activeGroupId.value = null
-  contextMenu.value = null
-  nextTick(() => { historyApplying = false })
-}
-
-function undo() {
-  if (historyApplying) return
-  commitHistory()
-  if (historyIndex.value <= 0) return
-  restoreHistory(history[--historyIndex.value])
-}
-
-function redo() {
-  if (historyApplying) return
-  commitHistory()
-  if (historyIndex.value >= history.length - 1) return
-  restoreHistory(history[++historyIndex.value])
-}
-
-const canUndo = computed(() => historyIndex.value > 0)
-const canRedo = computed(() => historyIndex.value < history.length - 1)
 const submenuOpensLeft = computed(() => (contextMenu.value?.x || 0) + 478 > window.innerWidth)
 
-function handleCanvasShortcut(event) {
-  if (event.target instanceof Element && event.target.closest('input, textarea, [contenteditable]:not([contenteditable="false"])')) return
-  const key = event.key.toLowerCase()
-  const command = event.ctrlKey || event.metaKey
-  if (key === 'escape' && shortcutPanelOpen.value) {
-    shortcutPanelOpen.value = false
-    return
-  }
-  if (shortcutPanelOpen.value) return
-  if (event.code === 'Space' && !command && !event.altKey) {
-    event.preventDefault()
-    if (toolBeforeSpace === null) {
-      toolBeforeSpace = canvasTool.value
-      canvasTool.value = 'hand'
-    }
-    return
-  }
-  if (key === 'tab' && !command && !event.altKey) {
-    event.preventDefault()
-    openShortcutCreateMenu()
-    return
-  }
-  if (!(event.ctrlKey || event.metaKey || event.altKey) && (key === 'v' || key === 'h')) {
-    event.preventDefault()
-    selectCanvasTool(key === 'h' ? 'hand' : 'move')
-    return
-  }
-  if (event.altKey && event.shiftKey && key === 'f') {
-    event.preventDefault()
-    fitView({ padding: 0.24, duration: 350 })
-    return
-  }
-  if (!command || event.altKey) return
-  if (['z', 'y', 'g', 'd', 'l', 'enter', '0', '=', '+', '-'].includes(key)) event.preventDefault()
-  if (key === 'z') return event.shiftKey ? redo() : undo()
-  if (key === 'y') return redo()
-  if (key === 'g') return event.shiftKey ? ungroupSelected() : (selectedNodes.value.length > 1 && store.groupSelected())
-  if (key === 'd') return selectedNodes.value.length && store.duplicateSelected()
-  if (key === 'l') return connectSelected()
-  if (key === 'enter') return generationPanel.value?.submitTask?.()
-  if (key === '0') return fitView({ padding: 0.24, duration: 350 })
-  if (key === '=' || key === '+') return zoomIn({ duration: 180 })
-  if (key === '-') zoomOut({ duration: 180 })
-}
-
-function restoreTemporaryHand() {
-  if (toolBeforeSpace === null) return
-  canvasTool.value = toolBeforeSpace
-  toolBeforeSpace = null
-  pointerMode.value = null
-}
-
-function handleCanvasKeyup(event) {
-  if (event.code === 'Space') restoreTemporaryHand()
-}
+useCanvasShortcuts({
+  canvasTool,
+  pointerMode,
+  shortcutPanelOpen,
+  selectedNodes,
+  generationPanel,
+  openCreateMenu: openShortcutCreateMenu,
+  selectTool: selectCanvasTool,
+  fitView,
+  undo,
+  redo,
+  groupSelected: () => store.groupSelected(),
+  ungroupSelected,
+  duplicateSelected: () => store.duplicateSelected(),
+  connectSelected,
+  zoomIn,
+  zoomOut,
+})
 
 function updateViewport(value) {
   store.setViewport(value)
@@ -550,73 +473,6 @@ function handleCanvasDrop(event) {
   } catch {
     toast.error('无法添加拖拽内容')
   }
-}
-
-function trackPastePoint(event) {
-  if (event.target.closest('.creative-flow') && !event.target.closest('.vue-flow__node, .generation-panel, .node-create-menu')) {
-    pastePoint = { x: event.clientX, y: event.clientY }
-  }
-}
-
-function pasteText(text, position) {
-  const id = store.addNode('text', position)
-  const node = nodes.value.find((item) => item.id === id)
-  node.data = { ...node.data, textMode: 'manual', content: text, status: 'ready', pasted: true }
-}
-
-async function pasteImage(file, position) {
-  if (!pastedImageTypes.includes(file.type)) return toast.warning('仅支持粘贴 JPG、PNG 或 WebP 图片')
-  if (file.size > pastedImageMaxSize) return toast.warning('粘贴图片不能超过 20MB')
-
-  const id = store.addNode('image', position)
-  const node = nodes.value.find((item) => item.id === id)
-  node.data = { ...node.data, status: 'uploading', assetSource: 'clipboard', pasted: true }
-  try {
-    const bitmap = await createImageBitmap(file)
-    const metadata = { width: bitmap.width, height: bitmap.height }
-    bitmap.close()
-    const result = await uploadMedia('image', file, { workspaceId: store.workspaceId, nodeId: id, timeout: 60_000, ...metadata })
-    if (result.code !== 0) throw new Error(result.message)
-    const sourceWidth = result.data.width || metadata.width
-    const sourceHeight = result.data.height || metadata.height
-    updateNodeData(id, {
-      asset: result.data.url,
-      assetId: result.data.id,
-      status: 'ready',
-      sourceWidth,
-      sourceHeight,
-      sourceAspectRatio: sourceWidth / sourceHeight,
-    })
-    toast.success('图片已粘贴到画布')
-  } catch (error) {
-    store.deleteNode(id)
-    toast.error(error.code === 'ECONNABORTED' ? '图片上传超时，请重试' : error.response?.data?.message || error.message || '图片粘贴失败')
-  }
-}
-
-function readMediaMetadata(type, file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file)
-    const media = type === 'image' ? new Image() : document.createElement(type)
-    const cleanup = () => URL.revokeObjectURL(url)
-    media.onload = media.onloadedmetadata = () => {
-      if (type === 'audio') {
-        const duration = Number.isFinite(media.duration) ? media.duration : null
-        cleanup()
-        return duration !== null ? resolve({ duration }) : reject(new Error('无法读取音频时长'))
-      }
-      const width = media.naturalWidth || media.videoWidth
-      const height = media.naturalHeight || media.videoHeight
-      cleanup()
-      width && height ? resolve({ width, height, duration: media.duration || null }) : reject(new Error('无法读取媒体尺寸'))
-    }
-    media.onerror = () => {
-      cleanup()
-      reject(new Error('无法读取媒体文件'))
-    }
-    media.preload = 'metadata'
-    media.src = url
-  })
 }
 
 function chooseUpload(type) {
@@ -661,41 +517,7 @@ async function handlePaneUpload(event) {
 async function pasteFromMenu() {
   const position = contextMenu.value.position
   contextMenu.value = null
-  try {
-    if (!navigator.clipboard?.read) {
-      const text = (await navigator.clipboard.readText()).trim()
-      return text ? pasteText(text, position) : toast.warning('剪贴板中没有可粘贴内容')
-    }
-    const items = await navigator.clipboard.read()
-    for (const item of items) {
-      const imageType = item.types.find((type) => type.startsWith('image/'))
-      if (imageType) {
-        const blob = await item.getType(imageType)
-        return pasteImage(new File([blob], 'clipboard-image', { type: imageType }), position)
-      }
-    }
-    const textItem = items.find((item) => item.types.includes('text/plain'))
-    const text = textItem ? (await (await textItem.getType('text/plain')).text()).trim() : ''
-    return text ? pasteText(text, position) : toast.warning('剪贴板中没有可粘贴内容')
-  } catch {
-    toast.error('无法读取剪贴板，请允许浏览器访问剪贴板')
-  }
-}
-
-function handlePaste(event) {
-  const editable = event.target instanceof Element && event.target.closest('input, textarea, [contenteditable]:not([contenteditable="false"])')
-  if (editable || !pastePoint) return
-
-  const imageItem = Array.from(event.clipboardData?.items || []).find((item) => item.kind === 'file' && item.type.startsWith('image/'))
-  const text = event.clipboardData?.getData('text/plain')?.trim()
-  if (!imageItem && !text) return
-
-  event.preventDefault()
-  const position = project(pastePoint)
-  const imageFile = imageItem?.getAsFile()
-  if (imageItem && !imageFile) return toast.error('无法读取剪贴板图片')
-  if (imageFile) pasteImage(imageFile, position)
-  else pasteText(text, position)
+  return pasteFromClipboard(position)
 }
 
 const { enable: enableAutosave, saveBeforeLeave, retrySave, cancelScheduledSave } = useCanvasAutosave({
@@ -732,10 +554,6 @@ watch(() => store.saveConflict, async (conflict) => {
 watch(historySnapshot, scheduleHistory)
 onMounted(async () => {
   await authStore.refreshCredits().catch(() => {})
-  window.addEventListener('paste', handlePaste)
-  window.addEventListener('keydown', handleCanvasShortcut)
-  window.addEventListener('keyup', handleCanvasKeyup)
-  window.addEventListener('blur', restoreTemporaryHand)
   try {
     await store.loadWorkspace(props.workspace)
   } catch (error) {
@@ -743,9 +561,7 @@ onMounted(async () => {
     emit('back')
     return
   }
-  window.clearTimeout(historyTimer)
-  history = [historySnapshot()]
-  historyIndex.value = 0
+  initializeHistory()
   flowMounted.value = true
   await nextTick()
   if (!nodes.value.length) await finishCanvasSetup()
@@ -753,11 +569,7 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => {
   stopWorkspaceGenerationPolling(store.workspaceId)
-  window.clearTimeout(historyTimer)
-  window.removeEventListener('paste', handlePaste)
-  window.removeEventListener('keydown', handleCanvasShortcut)
-  window.removeEventListener('keyup', handleCanvasKeyup)
-  window.removeEventListener('blur', restoreTemporaryHand)
+  disposeHistory()
 })
 </script>
 

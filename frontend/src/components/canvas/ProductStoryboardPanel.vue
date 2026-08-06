@@ -21,6 +21,7 @@ import {
 import { defaultImageModel } from '../../config/imageModels'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
+import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 import { buildOssImageUrl } from '../../utils/ossImage'
@@ -39,7 +40,7 @@ const store = useCanvasStore()
 const authStore = useAuthStore()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
-const notice = ref('')
+const { failure, runTextTask } = useStreamingTextTask(props.nodeId)
 const characterPickerOpen = ref(false)
 const characterAssetPickerOpen = ref(false)
 const pendingCharacterAsset = ref(null)
@@ -64,7 +65,7 @@ const ratioOptions = videoAspectRatios.map((value) => ({ value, label: value }))
 const characterReferences = computed(() => referenceManifest.value.characters)
 const totalReferenceCount = computed(() => characterReferences.value.length + productReferences.value.length)
 const productLimit = computed(() => getStoryboardProductLimit(characterReferences.value.length))
-const message = computed(() => notice.value || props.data.generationError || (!productNode.value
+const message = computed(() => failure.value || props.data.generationError || (!productNode.value
   ? '请先连接商品创作节点'
   : !productReferences.value.length
     ? '请先选择商品参考图'
@@ -74,7 +75,7 @@ const message = computed(() => notice.value || props.data.generationError || (!p
 const canSubmit = computed(() => !running.value && productNode.value && productReferences.value.length && productContext.value && !insufficientCredits.value)
 
 function updateData(value) {
-  notice.value = ''
+  failure.value = ''
   const hasProducts = Object.prototype.hasOwnProperty.call(value, 'productReferences')
   const hasCharacters = Object.prototype.hasOwnProperty.call(value, 'characterReferences')
   const manifest = hasProducts || hasCharacters
@@ -179,42 +180,29 @@ async function submitTask() {
   })) return
   if (existingGeneratedNodes.value.length) store.deleteNodes(existingGeneratedNodes.value)
 
-  let content = ''
-  notice.value = ''
-  updateNodeData(props.nodeId, { status: 'generating', generationError: '' })
-  try {
-    const references = referenceManifest.value.references
-    await streamReversePrompt({
-      workspace_id: store.workspaceId,
-      node_id: props.nodeId,
-      model: selectedTextModel.value.id,
-      media_type: 'image',
-      media_url: references[0]?.url,
-      media_urls: references.slice(1).map((reference) => reference.url),
-      prompt: buildProductStoryboardPrompt(productContext.value, [ugcTemplate], props.data),
-      response_mode: 'product_storyboard_plan',
-    }, (delta) => { content += delta }, (taskId) => {
-      updateNodeData(props.nodeId, { generationTaskId: taskId, generationStatus: 'running' })
-    })
-    const plan = parseProductStoryboardPlan(content, [ugcTemplate], characterReferences.value, productReferences.value.length)
-    const generatedNodeIds = store.addProductStoryboardNodes(
-      props.nodeId,
-      productNode.value.id,
-      plan,
-      { model: defaultImageModel.id, aspectRatio: recommended.value.aspectRatio, resolution: recommended.value.resolution },
-    )
-    updateNodeData(props.nodeId, {
-      status: 'ready',
-      generationStatus: 'succeeded',
-      generatedNodeIds: [...existingGeneratedNodes.value, ...generatedNodeIds],
-    })
-  } catch (error) {
-    const messageText = error.message || '商品分镜方案生成失败'
-    notice.value = messageText
-    updateNodeData(props.nodeId, { status: 'failed', generationError: messageText })
-  } finally {
-    await authStore.refreshCredits().catch(() => {})
-  }
+  const references = referenceManifest.value.references
+  await runTextTask(streamReversePrompt, {
+    workspace_id: store.workspaceId,
+    node_id: props.nodeId,
+    model: selectedTextModel.value.id,
+    media_type: 'image',
+    media_url: references[0]?.url,
+    media_urls: references.slice(1).map((reference) => reference.url),
+    prompt: buildProductStoryboardPrompt(productContext.value, [ugcTemplate], props.data),
+    response_mode: 'product_storyboard_plan',
+  }, {
+    failureMessage: '商品分镜方案生成失败',
+    onSuccess: (content) => {
+      const plan = parseProductStoryboardPlan(content, [ugcTemplate], characterReferences.value, productReferences.value.length)
+      const generatedNodeIds = store.addProductStoryboardNodes(
+        props.nodeId,
+        productNode.value.id,
+        plan,
+        { model: defaultImageModel.id, aspectRatio: recommended.value.aspectRatio, resolution: recommended.value.resolution },
+      )
+      return { generatedNodeIds: [...existingGeneratedNodes.value, ...generatedNodeIds] }
+    },
+  })
 }
 </script>
 

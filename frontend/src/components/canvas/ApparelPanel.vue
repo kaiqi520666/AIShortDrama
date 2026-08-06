@@ -1,11 +1,12 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { ArrowUp, Coins, FileText, Image, LoaderCircle, Plus, Shirt, Trash2 } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
 import { createEmptyApparelItem, parseApparelProfile } from '../../config/canvas/apparel'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
+import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 import { buildOssImageUrl } from '../../utils/ossImage'
@@ -24,7 +25,7 @@ const store = useCanvasStore()
 const authStore = useAuthStore()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
-const notice = ref('')
+const { failure, runTextTask } = useStreamingTextTask(props.nodeId)
 const reference = computed(() => store.incomingNodes(props.nodeId).find((node) => node.type === 'image'))
 const items = computed(() => props.data.items || [])
 const selectedModel = computed(() => reverseModels.find((model) => model.id === props.data.model) || defaultReverseModel)
@@ -33,13 +34,13 @@ const compositionOptions = [{ value: 'single', label: '单件服饰' }, { value:
 const running = computed(() => props.data.status === 'generating')
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedModel.value.id))
 const insufficientCredits = computed(() => (authStore.user?.credit_balance || 0) < estimatedCredits.value)
-const message = computed(() => notice.value || props.data.generationError || (!reference.value?.data.asset
+const message = computed(() => failure.value || props.data.generationError || (!reference.value?.data.asset
   ? '请先上传服饰参考图'
   : insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
 const canSubmit = computed(() => !running.value && reference.value?.data.asset && !insufficientCredits.value)
 
 function updateData(value) {
-  notice.value = ''
+  failure.value = ''
   updateNodeData(props.nodeId, { ...value, status: 'ready', generationError: '' })
 }
 
@@ -64,34 +65,18 @@ async function submitTask() {
     confirmText: '重新识别',
   })) return
 
-  let content = ''
-  notice.value = ''
-  updateNodeData(props.nodeId, { status: 'generating', generationError: '' })
-  try {
-    await streamReversePrompt({
-      workspace_id: store.workspaceId,
-      node_id: props.nodeId,
-      model: selectedModel.value.id,
-      media_type: 'image',
-      media_url: reference.value.data.asset,
-      prompt: props.data.prompt || '',
-      response_mode: 'apparel_profile',
-    }, (delta) => { content += delta }, (taskId) => {
-      updateNodeData(props.nodeId, { generationTaskId: taskId, generationStatus: 'running' })
-    })
-    updateNodeData(props.nodeId, {
-      ...parseApparelProfile(content),
-      status: 'ready',
-      generationStatus: 'succeeded',
-      generationError: '',
-    })
-  } catch (error) {
-    const messageText = error.response?.data?.message || error.message || '服饰资料识别失败'
-    notice.value = messageText
-    updateNodeData(props.nodeId, { status: 'failed', generationError: messageText })
-  } finally {
-    await authStore.refreshCredits().catch(() => {})
-  }
+  await runTextTask(streamReversePrompt, {
+    workspace_id: store.workspaceId,
+    node_id: props.nodeId,
+    model: selectedModel.value.id,
+    media_type: 'image',
+    media_url: reference.value.data.asset,
+    prompt: props.data.prompt || '',
+    response_mode: 'apparel_profile',
+  }, {
+    failureMessage: '服饰资料识别失败',
+    onSuccess: parseApparelProfile,
+  })
 }
 
 defineExpose({ submitTask })

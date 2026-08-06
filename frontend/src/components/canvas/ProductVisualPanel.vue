@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { ArrowUp, BadgeCheck, Box, Coins, FileText, Images, LoaderCircle, Package, ScanSearch } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
@@ -11,6 +11,7 @@ import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
+import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import AppButton from '../ui/AppButton.vue'
 import AppSelect from '../ui/AppSelect.vue'
 
@@ -26,7 +27,7 @@ const store = useCanvasStore()
 const authStore = useAuthStore()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
-const notice = ref('')
+const { failure, runTextTask } = useStreamingTextTask(props.nodeId)
 const productNode = computed(() => props.productNodeId
   ? store.nodes.find((node) => node.id === props.productNodeId)
   : store.incomingNodes(props.nodeId).find((node) => node.type === 'product'))
@@ -53,7 +54,7 @@ const imageModelOptions = imageModels.map(({ id, label }) => ({ value: id, label
 const textModelOptions = reverseModels.map(({ id, label }) => ({ value: id, label }))
 const ratioOptions = computed(() => selectedImageSettings.value.model.aspectRatios.map((value) => ({ value, label: value })))
 const resolutionOptions = computed(() => selectedImageSettings.value.model.resolutions.map((value) => ({ value, label: value })))
-const message = computed(() => notice.value || props.data.generationError || (!productNode.value
+const message = computed(() => failure.value || props.data.generationError || (!productNode.value
   ? '请先连接商品资料节点'
   : !allReferenceImages.value.length
     ? '请先上传商品参考图'
@@ -69,7 +70,7 @@ const message = computed(() => notice.value || props.data.generationError || (!p
 const canSubmit = computed(() => !running.value && productNode.value && referenceImage.value && productContext.value && selectedItems.value.length && !insufficientCredits.value)
 
 function updateItem(id, enabled) {
-  notice.value = ''
+  failure.value = ''
   updateNodeData(props.nodeId, {
     items: props.data.items.map((item) => item.id === id ? { ...item, enabled } : item),
     generationError: '',
@@ -93,45 +94,31 @@ async function submitTask() {
     confirmText: '继续生成',
   })) return
 
-  let content = ''
-  notice.value = ''
-  updateNodeData(props.nodeId, { status: 'generating', generationError: '' })
-  try {
-    await streamReversePrompt({
-      workspace_id: store.workspaceId,
-      node_id: props.nodeId,
-      model: selectedTextModel.value.id,
-      media_type: 'image',
-      media_url: referenceImage.value.data.asset,
-      ...(referenceImages.value.length > 1
-        ? { media_urls: referenceImages.value.slice(1).map((reference) => reference.data.asset) }
-        : {}),
-      prompt: prompt.value,
-      response_mode: 'product_visual_plan',
-    }, (delta) => { content += delta }, (taskId) => {
-      updateNodeData(props.nodeId, { generationTaskId: taskId, generationStatus: 'running' })
-    })
-    const plans = parseProductVisualPlan(content, selectedItems.value)
-    const settings = selectedImageSettings.value
-    const generatedNodeIds = store.addProductVisualNodes(
-      props.nodeId,
-      productNode.value.id,
-      referenceImages.value.map((reference) => reference.id),
-      plans,
-      { model: settings.model.id, aspectRatio: settings.aspectRatio, resolution: settings.resolution },
-    )
-    updateNodeData(props.nodeId, {
-      status: 'ready',
-      generationStatus: 'succeeded',
-      generatedNodeIds: [...existingGeneratedNodes.value, ...generatedNodeIds],
-    })
-  } catch (error) {
-    const messageText = error.message || '商品出图方案生成失败'
-    notice.value = messageText
-    updateNodeData(props.nodeId, { status: 'failed', generationError: messageText })
-  } finally {
-    await authStore.refreshCredits().catch(() => {})
-  }
+  await runTextTask(streamReversePrompt, {
+    workspace_id: store.workspaceId,
+    node_id: props.nodeId,
+    model: selectedTextModel.value.id,
+    media_type: 'image',
+    media_url: referenceImage.value.data.asset,
+    ...(referenceImages.value.length > 1
+      ? { media_urls: referenceImages.value.slice(1).map((reference) => reference.data.asset) }
+      : {}),
+    prompt: prompt.value,
+    response_mode: 'product_visual_plan',
+  }, {
+    failureMessage: '商品出图方案生成失败',
+    onSuccess: (content) => {
+      const settings = selectedImageSettings.value
+      const generatedNodeIds = store.addProductVisualNodes(
+        props.nodeId,
+        productNode.value.id,
+        referenceImages.value.map((reference) => reference.id),
+        parseProductVisualPlan(content, selectedItems.value),
+        { model: settings.model.id, aspectRatio: settings.aspectRatio, resolution: settings.resolution },
+      )
+      return { generatedNodeIds: [...existingGeneratedNodes.value, ...generatedNodeIds] }
+    },
+  })
 }
 
 defineExpose({ submitTask })

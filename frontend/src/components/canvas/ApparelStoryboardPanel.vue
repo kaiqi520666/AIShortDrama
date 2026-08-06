@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { ArrowUp, Clapperboard, Coins, FileText, Images, LoaderCircle, Shirt, UserRound } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
@@ -8,6 +8,7 @@ import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { videoModels } from '../../config/videoModels'
 import { buildOutfitStoryboardPrompt, getApparelVideoSettings, parseOutfitStoryboardPlan } from '../../config/canvas/outfitStoryboard'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
+import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 import { buildOssImageUrl } from '../../utils/ossImage'
@@ -25,7 +26,7 @@ const store = useCanvasStore()
 const authStore = useAuthStore()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
-const notice = ref('')
+const { failure, runTextTask } = useStreamingTextTask(props.nodeId)
 
 function inputNode(handle) {
   const edge = store.edges.find((item) => item.target === props.nodeId && item.targetHandle === handle)
@@ -57,7 +58,7 @@ const sourceItems = computed(() => [
 ])
 const connectedSourceCount = computed(() => sourceItems.value.filter((item) => item.asset).length)
 const message = computed(() => {
-  if (notice.value || props.data.generationError) return notice.value || props.data.generationError
+  if (failure.value || props.data.generationError) return failure.value || props.data.generationError
   if (!apparelNode.value) return '请先连接服饰资料节点'
   if (!apparelContext.value) return '请先完成服饰资料识别并启用至少一件单品'
   if (!garmentNode.value?.data.asset) return '请先完成服饰资料的参考图上传'
@@ -68,7 +69,7 @@ const message = computed(() => {
 const canSubmit = computed(() => !running.value && Boolean(apparelContext.value && garmentNode.value?.data.asset && modelNode.value?.data.asset && sceneNode.value?.data.asset) && !insufficientCredits.value)
 
 function updateData(value) {
-  notice.value = ''
+  failure.value = ''
   updateNodeData(props.nodeId, { ...value, generationError: '' })
 }
 
@@ -96,40 +97,32 @@ async function submitTask() {
   })) return
   if (existingGeneratedNodes.value.length) store.deleteNodes(existingGeneratedNodes.value)
 
-  let content = ''
-  notice.value = ''
   updateNodeData(props.nodeId, { status: 'generating', generationError: '', generatedNodeIds: [] })
-  try {
-    await streamReversePrompt({
-      workspace_id: store.workspaceId,
-      node_id: props.nodeId,
-      model: selectedTextModel.value.id,
-      media_type: 'image',
-      media_url: garmentNode.value.data.asset,
-      media_urls: [modelNode.value.data.asset, sceneNode.value.data.asset],
-      prompt: buildOutfitStoryboardPrompt(apparelContext.value, props.data),
-      response_mode: 'apparel_storyboard_plan',
-    }, (delta) => { content += delta }, (taskId) => {
-      updateNodeData(props.nodeId, { generationTaskId: taskId, generationStatus: 'running' })
-    })
-    const plan = parseOutfitStoryboardPlan(content, props.data.duration, props.data)
-    const generatedNodeIds = store.addApparelStoryboardNodes(
-      props.nodeId,
-      garmentNode.value.id,
-      modelNode.value.id,
-      sceneNode.value.id,
-      plan,
-      { imageSettings: plan.imageSettings, videoSettings: plan.videoSettings },
-    )
-    if (generatedNodeIds.length !== 2) throw new Error('故事板节点创建失败')
-    updateNodeData(props.nodeId, { status: 'ready', generationStatus: 'succeeded', generatedNodeIds })
-  } catch (error) {
-    const messageText = error.response?.data?.message || error.message || '服饰分镜方案生成失败'
-    notice.value = messageText
-    updateNodeData(props.nodeId, { status: 'failed', generationError: messageText })
-  } finally {
-    await authStore.refreshCredits().catch(() => {})
-  }
+  await runTextTask(streamReversePrompt, {
+    workspace_id: store.workspaceId,
+    node_id: props.nodeId,
+    model: selectedTextModel.value.id,
+    media_type: 'image',
+    media_url: garmentNode.value.data.asset,
+    media_urls: [modelNode.value.data.asset, sceneNode.value.data.asset],
+    prompt: buildOutfitStoryboardPrompt(apparelContext.value, props.data),
+    response_mode: 'apparel_storyboard_plan',
+  }, {
+    failureMessage: '服饰分镜方案生成失败',
+    onSuccess: (content) => {
+      const plan = parseOutfitStoryboardPlan(content, props.data.duration, props.data)
+      const generatedNodeIds = store.addApparelStoryboardNodes(
+        props.nodeId,
+        garmentNode.value.id,
+        modelNode.value.id,
+        sceneNode.value.id,
+        plan,
+        { imageSettings: plan.imageSettings, videoSettings: plan.videoSettings },
+      )
+      if (generatedNodeIds.length !== 2) throw new Error('故事板节点创建失败')
+      return { generatedNodeIds }
+    },
+  })
 }
 
 defineExpose({ submitTask })

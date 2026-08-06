@@ -14,6 +14,7 @@ import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { buildVideoRequest, getVideoModelError, getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
 import { useGlobalConfirm, useGlobalToast } from '../../composables/useGlobalUI'
+import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import { useCanvasStore } from '../../stores/canvas'
 import { useAuthStore } from '../../stores/auth'
 import { buildOssImageUrl } from '../../utils/ossImage'
@@ -41,6 +42,7 @@ const authStore = useAuthStore()
 const toast = useGlobalToast()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
+const { failure, runTextTask } = useStreamingTextTask(props.nodeId)
 const settingsTrigger = ref(null)
 const settingsMenu = ref(null)
 const settingsOpen = ref(false)
@@ -144,7 +146,7 @@ const referenceError = computed(() => {
 const panelMessage = computed(() => {
   if (storyboardLocked.value) return `等待第 ${props.data.storyboardSegmentIndex - 1} 段确认后解锁`
   if (running.value) return ''
-  return notice.value || props.data.generationError || referenceError.value || promptError.value || (insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : '')
+  return notice.value || failure.value || props.data.generationError || referenceError.value || promptError.value || (insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : '')
 })
 const settingLabel = computed(() => {
   if (props.type === 'video') return `${selectedAspectRatio.value} · ${selectedResolution.value} · ${selectedDuration.value}s`
@@ -205,39 +207,28 @@ async function submitTask() {
   if (isStoryboardSegment.value && props.data.status === 'ready') store.invalidateStoryboardFrom(props.nodeId)
   if (isVisionTextTask.value) {
     const nodeId = props.nodeId
-    let content = ''
     notice.value = ''
-    updateNodeData(nodeId, { status: 'generating', ...(isReverseTask.value ? { content: '' } : {}), generationError: '' })
-    try {
-      const productImageReferences = isProductRecognition.value ? imageReferences.value.slice(0, maxProductReferenceImages) : []
-      const primaryReference = productImageReferences[0] || reverseReference.value
-      await streamReversePrompt({
-        workspace_id: store.workspaceId,
-        node_id: nodeId,
-        model: selectedReverseModel.value.id,
-        media_type: isProductRecognition.value ? 'image' : props.data.reverseType,
-        media_url: primaryReference.data.asset,
-        prompt: effectivePrompt.value,
-        ...(productImageReferences.length > 1
-          ? { media_urls: productImageReferences.slice(1).map((reference) => reference.data.asset) }
-          : {}),
-        ...(isProductRecognition.value ? { response_mode: 'product_profile' } : {}),
-      }, (delta) => {
-        content += delta
-        if (isReverseTask.value) updateNodeData(nodeId, { content })
-      }, (taskId) => {
-        updateNodeData(nodeId, { generationTaskId: taskId, generationStatus: 'running' })
-      })
-      updateNodeData(nodeId, isProductRecognition.value
-        ? { status: 'ready', product: mergeProductProfile(props.data.product, parseProductProfile(content)), generationStatus: 'succeeded', workflowStep: 'visual' }
-        : { status: 'ready', content })
-    } catch (error) {
-      const message = error.message || (isProductRecognition.value ? '商品识别失败' : '反推生成失败')
-      notice.value = message
-      updateNodeData(nodeId, { status: 'failed', ...(isReverseTask.value ? { content } : {}), generationError: message })
-    } finally {
-      await authStore.refreshCredits().catch(() => {})
-    }
+    if (isReverseTask.value) updateNodeData(nodeId, { content: '' })
+    const productImageReferences = isProductRecognition.value ? imageReferences.value.slice(0, maxProductReferenceImages) : []
+    const primaryReference = productImageReferences[0] || reverseReference.value
+    await runTextTask(streamReversePrompt, {
+      workspace_id: store.workspaceId,
+      node_id: nodeId,
+      model: selectedReverseModel.value.id,
+      media_type: isProductRecognition.value ? 'image' : props.data.reverseType,
+      media_url: primaryReference.data.asset,
+      prompt: effectivePrompt.value,
+      ...(productImageReferences.length > 1
+        ? { media_urls: productImageReferences.slice(1).map((reference) => reference.data.asset) }
+        : {}),
+      ...(isProductRecognition.value ? { response_mode: 'product_profile' } : {}),
+    }, {
+      failureMessage: isProductRecognition.value ? '商品识别失败' : '反推生成失败',
+      preservePartial: isReverseTask.value,
+      onSuccess: (content) => isProductRecognition.value
+        ? { product: mergeProductProfile(props.data.product, parseProductProfile(content)), workflowStep: 'visual' }
+        : { content },
+    })
     return
   }
   if (!['image', 'video', 'audio'].includes(props.type)) {

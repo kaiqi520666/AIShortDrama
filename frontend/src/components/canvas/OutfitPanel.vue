@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { ArrowUp, Coins, FileText, Images, LoaderCircle, Shirt, UserRound } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
@@ -7,6 +7,7 @@ import { apparelPromptContext } from '../../config/canvas/apparel'
 import { buildOutfitPlanPrompt, parseOutfitPlan, resolveOutfitMaterials } from '../../config/canvas/outfit'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
+import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 import { buildOssImageUrl } from '../../utils/ossImage'
@@ -24,7 +25,7 @@ const store = useCanvasStore()
 const authStore = useAuthStore()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
-const notice = ref('')
+const { failure, runTextTask } = useStreamingTextTask(props.nodeId)
 
 function inputNode(handle) {
   const edge = store.edges.find((item) => item.target === props.nodeId && item.targetHandle === handle)
@@ -46,7 +47,7 @@ const insufficientCredits = computed(() => (authStore.user?.credit_balance || 0)
 const existingGeneratedNodes = computed(() => (props.data.generatedNodeIds || []).filter((id) => store.nodes.some((node) => node.id === id)))
 const textModelOptions = reverseModels.map(({ id, label }) => ({ value: id, label }))
 const message = computed(() => {
-  if (notice.value || props.data.generationError) return notice.value || props.data.generationError
+  if (failure.value || props.data.generationError) return failure.value || props.data.generationError
   if (!apparelNode.value) return '请先连接服饰资料节点'
   if (!garmentNode.value?.data.asset) return '请先上传服饰参考图'
   if (!apparelContext.value) return '请先完成服饰资料识别并启用至少一件单品'
@@ -61,7 +62,7 @@ const sourceItems = computed(() => [
 ])
 
 function updateData(value) {
-  notice.value = ''
+  failure.value = ''
   updateNodeData(props.nodeId, { ...value, generationError: '' })
 }
 
@@ -73,8 +74,6 @@ async function submitTask() {
     confirmText: '继续生成',
   })) return
 
-  let content = ''
-  notice.value = ''
   updateNodeData(props.nodeId, {
     status: 'generating',
     generationError: '',
@@ -89,40 +88,29 @@ async function submitTask() {
     outfitBoardStatus: '',
     outfitBoardError: '',
   })
-  try {
-    await streamReversePrompt({
-      workspace_id: store.workspaceId,
-      node_id: props.nodeId,
-      model: selectedTextModel.value.id,
-      media_type: 'image',
-      media_url: garmentNode.value.data.asset,
-      media_urls: [modelNode.value.data.asset],
-      prompt: prompt.value,
-      response_mode: 'product_visual_plan',
-    }, (delta) => { content += delta }, (taskId) => {
-      updateNodeData(props.nodeId, { generationTaskId: taskId, generationStatus: 'running' })
-    })
-    const settings = selectedImageSettings.value
-    const plans = parseOutfitPlan(content, selectedMaterials.value)
-    const generatedNodeIds = store.addOutfitVisualNodes(
-      props.nodeId,
-      garmentNode.value.id,
-      modelNode.value.id,
-      plans,
-      { model: settings.model.id, aspectRatio: settings.aspectRatio, resolution: settings.resolution, outfitApparelId: apparelNode.value.id },
-    )
-    updateNodeData(props.nodeId, {
-      status: 'ready',
-      generationStatus: 'succeeded',
-      generatedNodeIds,
-    })
-  } catch (error) {
-    const messageText = error.response?.data?.message || error.message || '穿搭方案生成失败'
-    notice.value = messageText
-    updateNodeData(props.nodeId, { status: 'failed', generationError: messageText })
-  } finally {
-    await authStore.refreshCredits().catch(() => {})
-  }
+  await runTextTask(streamReversePrompt, {
+    workspace_id: store.workspaceId,
+    node_id: props.nodeId,
+    model: selectedTextModel.value.id,
+    media_type: 'image',
+    media_url: garmentNode.value.data.asset,
+    media_urls: [modelNode.value.data.asset],
+    prompt: prompt.value,
+    response_mode: 'product_visual_plan',
+  }, {
+    failureMessage: '穿搭方案生成失败',
+    onSuccess: (content) => {
+      const settings = selectedImageSettings.value
+      const generatedNodeIds = store.addOutfitVisualNodes(
+        props.nodeId,
+        garmentNode.value.id,
+        modelNode.value.id,
+        parseOutfitPlan(content, selectedMaterials.value),
+        { model: settings.model.id, aspectRatio: settings.aspectRatio, resolution: settings.resolution, outfitApparelId: apparelNode.value.id },
+      )
+      return { generatedNodeIds }
+    },
+  })
 }
 
 defineExpose({ submitTask })

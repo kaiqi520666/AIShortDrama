@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { ArrowUp, Coins, FileText, Globe2, Image, LoaderCircle } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamTextGeneration } from '../../api/generations'
@@ -7,6 +7,7 @@ import { streamReversePrompt } from '../../api/reversals'
 import { buildCharacterProfilePrompt, mergeCharacterProfile, parseCharacterProfile } from '../../config/canvas/character'
 import { worldPromptContext, worldReady } from '../../config/canvas/drama'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
+import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 import { buildOssImageUrl } from '../../utils/ossImage'
@@ -24,7 +25,7 @@ const props = defineProps({
 const store = useCanvasStore()
 const authStore = useAuthStore()
 const { updateNodeData } = useVueFlow()
-const notice = ref('')
+const { failure, runTextTask } = useStreamingTextTask(props.nodeId)
 
 function inputNode(handle) {
   const edge = store.edges.find((item) => item.target === props.nodeId && item.targetHandle === handle)
@@ -38,7 +39,7 @@ const modelOptions = reverseModels.map(({ id, label }) => ({ value: id, label })
 const running = computed(() => props.data.status === 'generating')
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedModel.value.id))
 const insufficientCredits = computed(() => estimatedCredits.value !== null && (authStore.user?.credit_balance || 0) < estimatedCredits.value)
-const message = computed(() => notice.value || props.data.generationError || (!worldNode.value
+const message = computed(() => failure.value || props.data.generationError || (!worldNode.value
   ? '请先连接世界观创作节点'
   : !worldReady(worldNode.value.data.world)
     ? '请先完成世界观创作'
@@ -49,15 +50,11 @@ const canSubmit = computed(() => !running.value && worldReady(worldNode.value?.d
 
 async function submitTask() {
   if (!canSubmit.value) return
-  let content = ''
-  notice.value = ''
-  updateNodeData(props.nodeId, { status: 'generating', generationError: '' })
   const prompt = buildCharacterProfilePrompt(worldPromptContext(worldNode.value.data), props.data, Boolean(referenceImage.value?.data.asset))
-  const onDelta = (delta) => { content += delta }
-  const onMeta = (taskId) => updateNodeData(props.nodeId, { generationTaskId: taskId, generationStatus: 'running' })
-  try {
-    if (referenceImage.value?.data.asset) {
-      await streamReversePrompt({
+  const hasReference = Boolean(referenceImage.value?.data.asset)
+  const streamer = hasReference ? streamReversePrompt : streamTextGeneration
+  await runTextTask(streamer, hasReference
+    ? {
         workspace_id: store.workspaceId,
         node_id: props.nodeId,
         model: selectedModel.value.id,
@@ -65,23 +62,14 @@ async function submitTask() {
         media_url: referenceImage.value.data.asset,
         prompt,
         response_mode: 'character_profile',
-      }, onDelta, onMeta)
-    } else {
-      await streamTextGeneration({ workspace_id: store.workspaceId, node_id: props.nodeId, model: selectedModel.value.id, prompt }, onDelta, onMeta)
-    }
-    updateNodeData(props.nodeId, {
-      status: 'ready',
+      }
+    : { workspace_id: store.workspaceId, node_id: props.nodeId, model: selectedModel.value.id, prompt }, {
+    failureMessage: '角色档案生成失败',
+    onSuccess: (content) => ({
       profile: mergeCharacterProfile(props.data.profile, parseCharacterProfile(content)),
       workflowStep: 'visual',
-      generationStatus: 'succeeded',
-    })
-  } catch (error) {
-    const messageText = error.message || '角色档案生成失败'
-    notice.value = messageText
-    updateNodeData(props.nodeId, { status: 'failed', generationError: messageText })
-  } finally {
-    await authStore.refreshCredits().catch(() => {})
-  }
+    }),
+  })
 }
 </script>
 
@@ -105,7 +93,7 @@ async function submitTask() {
       :model-value="data.prompt"
       maxlength="1200"
       placeholder="输入角色的大概想法，例如：表面冷静、执着追查失踪案的年轻记者……"
-      @input="notice = ''; updateNodeData(nodeId, { prompt: $event.target.value, generationError: '' })"
+      @input="failure = ''; updateNodeData(nodeId, { prompt: $event.target.value, generationError: '' })"
     />
     <p v-if="message" class="panel-notice">{{ message }}</p>
     <footer>

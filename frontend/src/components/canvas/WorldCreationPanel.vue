@@ -1,10 +1,11 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { ArrowUp, Coins, FileText, LoaderCircle } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamTextGeneration } from '../../api/generations'
 import { buildWorldPrompt, parseWorldProfile, worldReady } from '../../config/canvas/drama'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
+import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 import AppButton from '../ui/AppButton.vue'
@@ -20,7 +21,7 @@ const props = defineProps({
 const store = useCanvasStore()
 const authStore = useAuthStore()
 const { updateNodeData } = useVueFlow()
-const notice = ref('')
+const { failure, runTextTask } = useStreamingTextTask(props.nodeId)
 const step = computed(() => props.data.workflowStep || 'setting')
 const completed = computed(() => worldReady(props.data.world))
 const selectedModel = computed(() => reverseModels.find((model) => model.id === props.data.model) || defaultReverseModel)
@@ -28,38 +29,22 @@ const modelOptions = reverseModels.map(({ id, label }) => ({ value: id, label })
 const running = computed(() => props.data.status === 'generating')
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedModel.value.id))
 const insufficientCredits = computed(() => estimatedCredits.value !== null && (authStore.user?.credit_balance || 0) < estimatedCredits.value)
-const message = computed(() => notice.value || props.data.generationError || (!props.data.prompt?.trim()
+const message = computed(() => failure.value || props.data.generationError || (!props.data.prompt?.trim()
   ? '请先输入故事想法'
   : insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
 const canSubmit = computed(() => !running.value && props.data.prompt?.trim() && !insufficientCredits.value)
 
 async function submitTask() {
   if (!canSubmit.value) return
-  let content = ''
-  notice.value = ''
-  updateNodeData(props.nodeId, { status: 'generating', generationError: '' })
-  try {
-    await streamTextGeneration({
-      workspace_id: store.workspaceId,
-      node_id: props.nodeId,
-      model: selectedModel.value.id,
-      prompt: buildWorldPrompt(props.data),
-    }, (delta) => { content += delta }, (taskId) => {
-      updateNodeData(props.nodeId, { generationTaskId: taskId, generationStatus: 'running' })
-    })
-    updateNodeData(props.nodeId, {
-      status: 'ready',
-      world: parseWorldProfile(content),
-      workflowStep: 'result',
-      generationStatus: 'succeeded',
-    })
-  } catch (error) {
-    const messageText = error.message || '世界观生成失败'
-    notice.value = messageText
-    updateNodeData(props.nodeId, { status: 'failed', generationError: messageText })
-  } finally {
-    await authStore.refreshCredits().catch(() => {})
-  }
+  await runTextTask(streamTextGeneration, {
+    workspace_id: store.workspaceId,
+    node_id: props.nodeId,
+    model: selectedModel.value.id,
+    prompt: buildWorldPrompt(props.data),
+  }, {
+    failureMessage: '世界观生成失败',
+    onSuccess: (content) => ({ world: parseWorldProfile(content), workflowStep: 'result' }),
+  })
 }
 </script>
 
@@ -80,7 +65,7 @@ async function submitTask() {
         :model-value="data.prompt"
         maxlength="1200"
         placeholder="输入故事的大概想法，例如：失忆记者调查一座只在雨夜出现的旅馆……"
-        @input="notice = ''; updateNodeData(nodeId, { prompt: $event.target.value, generationError: '' })"
+        @input="failure = ''; updateNodeData(nodeId, { prompt: $event.target.value, generationError: '' })"
       />
       <p v-if="message" class="panel-notice">{{ message }}</p>
       <footer>

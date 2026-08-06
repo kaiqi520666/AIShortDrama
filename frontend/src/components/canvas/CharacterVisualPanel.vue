@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { ArrowUp, Coins, FileText, Globe2, Image, Images, LoaderCircle, UserRound } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamTextGeneration } from '../../api/generations'
@@ -9,6 +9,7 @@ import { worldPromptContext, worldReady } from '../../config/canvas/drama'
 import { imageModels, normalizeImageSettings } from '../../config/imageModels'
 import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
+import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 import { buildOssImageUrl } from '../../utils/ossImage'
@@ -26,7 +27,7 @@ const store = useCanvasStore()
 const authStore = useAuthStore()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
-const notice = ref('')
+const { failure, runTextTask } = useStreamingTextTask(props.nodeId)
 
 function inputNode(handle) {
   const edge = store.edges.find((item) => item.target === props.nodeId && item.targetHandle === handle)
@@ -45,7 +46,7 @@ const imageModelOptions = imageModels.map(({ id, label }) => ({ value: id, label
 const textModelOptions = reverseModels.map(({ id, label }) => ({ value: id, label }))
 const ratioOptions = computed(() => selectedImageSettings.value.model.aspectRatios.map((value) => ({ value, label: value })))
 const resolutionOptions = computed(() => selectedImageSettings.value.model.resolutions.map((value) => ({ value, label: value })))
-const message = computed(() => notice.value || props.data.generationError || (!worldReady(worldNode.value?.data.world)
+const message = computed(() => failure.value || props.data.generationError || (!worldReady(worldNode.value?.data.world)
   ? '请先完成世界观创作'
   : !characterReady(props.data.profile)
     ? '请先完成角色档案'
@@ -53,7 +54,7 @@ const message = computed(() => notice.value || props.data.generationError || (!w
 const canSubmit = computed(() => !running.value && worldReady(worldNode.value?.data.world) && characterReady(props.data.profile) && !insufficientCredits.value)
 
 function updateData(value) {
-  notice.value = ''
+  failure.value = ''
   updateNodeData(props.nodeId, { ...value, generationError: '' })
 }
 
@@ -74,20 +75,16 @@ async function submitTask() {
     confirmText: '继续生成',
   })) return
 
-  let content = ''
-  notice.value = ''
-  updateNodeData(props.nodeId, { status: 'generating', generationError: '' })
   const prompt = buildCharacterVisualPrompt(
     worldPromptContext(worldNode.value.data),
     characterProfileContext(props.data.profile),
     props.data,
     Boolean(referenceImage.value?.data.asset),
   )
-  const onDelta = (delta) => { content += delta }
-  const onMeta = (taskId) => updateNodeData(props.nodeId, { generationTaskId: taskId, generationStatus: 'running' })
-  try {
-    if (referenceImage.value?.data.asset) {
-      await streamReversePrompt({
+  const hasReference = Boolean(referenceImage.value?.data.asset)
+  const streamer = hasReference ? streamReversePrompt : streamTextGeneration
+  await runTextTask(streamer, hasReference
+    ? {
         workspace_id: store.workspaceId,
         node_id: props.nodeId,
         model: selectedTextModel.value.id,
@@ -95,29 +92,20 @@ async function submitTask() {
         media_url: referenceImage.value.data.asset,
         prompt,
         response_mode: 'character_visual_plan',
-      }, onDelta, onMeta)
-    } else {
-      await streamTextGeneration({ workspace_id: store.workspaceId, node_id: props.nodeId, model: selectedTextModel.value.id, prompt }, onDelta, onMeta)
-    }
-    const settings = selectedImageSettings.value
-    const generatedNodeIds = store.addCharacterVisualNodes(
-      props.nodeId,
-      referenceImage.value?.data.asset ? referenceImage.value.id : null,
-      parseCharacterVisualPlan(content),
-      { model: settings.model.id, aspectRatio: settings.aspectRatio, resolution: settings.resolution },
-    )
-    updateNodeData(props.nodeId, {
-      status: 'ready',
-      generationStatus: 'succeeded',
-      generatedNodeIds: [...existingGeneratedNodes.value, ...generatedNodeIds],
-    })
-  } catch (error) {
-    const messageText = error.message || '角色设定图方案生成失败'
-    notice.value = messageText
-    updateNodeData(props.nodeId, { status: 'failed', generationError: messageText })
-  } finally {
-    await authStore.refreshCredits().catch(() => {})
-  }
+      }
+    : { workspace_id: store.workspaceId, node_id: props.nodeId, model: selectedTextModel.value.id, prompt }, {
+    failureMessage: '角色设定图方案生成失败',
+    onSuccess: (content) => {
+      const settings = selectedImageSettings.value
+      const generatedNodeIds = store.addCharacterVisualNodes(
+        props.nodeId,
+        hasReference ? referenceImage.value.id : null,
+        parseCharacterVisualPlan(content),
+        { model: settings.model.id, aspectRatio: settings.aspectRatio, resolution: settings.resolution },
+      )
+      return { generatedNodeIds: [...existingGeneratedNodes.value, ...generatedNodeIds] }
+    },
+  })
 }
 </script>
 
