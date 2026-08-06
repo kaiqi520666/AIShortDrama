@@ -59,6 +59,9 @@ class OssStorage:
         )
         return f"{self.public_base_url}/{object_key}"
 
+    async def delete_object(self, object_key: str) -> None:
+        await asyncio.to_thread(self.bucket.delete_object, object_key)
+
     async def store_remote_images(self, task_id: str, urls: list[str]) -> list[str]:
         return await self._store_remote_media(
             task_id,

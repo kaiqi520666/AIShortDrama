@@ -1,5 +1,7 @@
 from datetime import datetime, timezone
 from io import BytesIO
+from types import SimpleNamespace
+import uuid
 
 import httpx
 import pytest
@@ -10,6 +12,7 @@ from app.core.database import SessionLocal
 from app.core.identity import DEFAULT_WORKSPACE_ID
 from app.main import app
 from app.models import Asset
+from app.schemas.asset import ComposeImageBoardRequest
 
 
 class FakePrivateAvatarProvider:
@@ -32,8 +35,14 @@ class FakePrivateAvatarProvider:
 
 
 class FakeBoardStorage:
+    def __init__(self):
+        self.deleted = []
+
     async def store_upload(self, _object_key, _stream, _content_type):
         return "https://example.com/outfit-board.jpg"
+
+    async def delete_object(self, object_key):
+        self.deleted.append(object_key)
 
 
 @pytest.mark.asyncio
@@ -267,3 +276,66 @@ async def test_compose_outfit_board(monkeypatch, override_business_user):
         "layout": "2x3",
         "aspect_ratio": "9:16",
     }
+
+
+@pytest.mark.asyncio
+async def test_compose_outfit_board_removes_uploaded_object_when_database_commit_fails(monkeypatch):
+    image_buffer = BytesIO()
+    Image.new("RGB", (120, 220), "#d9e7ff").save(image_buffer, "PNG")
+    image_bytes = image_buffer.getvalue()
+    workspace_id = uuid.uuid4()
+    user_id = uuid.uuid4()
+    source_assets = [
+        Asset(
+            id=uuid.uuid4(),
+            user_id=user_id,
+            workspace_id=workspace_id,
+            media_type="image",
+            source_type="generation",
+            name=f"穿搭参考 {index + 1}",
+            url=f"https://example.com/source-{index + 1}.png",
+        )
+        for index in range(6)
+    ]
+    storage = FakeBoardStorage()
+
+    class FailedCommitDb:
+        rolled_back = False
+
+        async def scalars(self, _query):
+            return SimpleNamespace(all=lambda: source_assets)
+
+        def add(self, _board):
+            pass
+
+        async def commit(self):
+            raise RuntimeError("database unavailable")
+
+        async def rollback(self):
+            self.rolled_back = True
+
+    def upstream(_request):
+        return httpx.Response(200, content=image_bytes, headers={"Content-Type": "image/png"})
+
+    original_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        assets_module.httpx,
+        "AsyncClient",
+        lambda **kwargs: original_client(transport=httpx.MockTransport(upstream), **kwargs),
+    )
+    monkeypatch.setattr(assets_module, "OssStorage", lambda: storage)
+    db = FailedCommitDb()
+
+    response = await assets_module.compose_board(
+        ComposeImageBoardRequest(
+            workspace_id=str(workspace_id),
+            node_id="outfit-1",
+            asset_ids=[str(asset.id) for asset in source_assets],
+        ),
+        db,
+        user_id,
+    )
+
+    assert response == {"code": 1, "message": "服饰总览图合成失败", "data": None}
+    assert db.rolled_back
+    assert len(storage.deleted) == 1

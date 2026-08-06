@@ -1,11 +1,10 @@
+import logging
 import uuid
 from datetime import UTC, datetime
-from io import BytesIO
 from typing import Any, Literal
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from PIL import Image
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -15,11 +14,12 @@ from app.core.identity import get_current_user_id
 from app.models import Asset
 from app.providers.toapis import ToApisProvider
 from app.schemas.asset import AssetPrivateAvatarRequest, AssetUpdate, ComposeImageBoardRequest
-from app.services.image_processing import compose_outfit_board
+from app.services.image_processing import compose_outfit_board, download_outfit_board_images
 from app.services.storage import OssStorage
 from app.schemas.response import fail, success
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 async def stream_remote(response: httpx.Response, client: httpx.AsyncClient):
@@ -124,18 +124,20 @@ async def compose_board(
     if len(by_id) != 6 or any(asset_id not in by_id for asset_id in payload.asset_ids):
         return fail("只能合成当前工作台中属于自己的 6 张图片")
 
+    stream = None
+    images = []
+    storage = None
+    object_key = None
+    committed = False
     try:
         async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
-            images = []
-            for asset_id in payload.asset_ids:
-                response = await client.get(by_id[asset_id].url)
-                response.raise_for_status()
-                with Image.open(BytesIO(response.content)) as image:
-                    image.load()
-                    images.append(image.copy())
+            images = await download_outfit_board_images(
+                [by_id[asset_id].url for asset_id in payload.asset_ids], client
+            )
         stream, width, height = compose_outfit_board(images)
         object_key = f"generations/images/outfit-board-{uuid.uuid4()}.jpg"
-        url = await OssStorage().store_upload(object_key, stream, "image/jpeg")
+        storage = OssStorage()
+        url = await storage.store_upload(object_key, stream, "image/jpeg")
         board = Asset(
             user_id=user_id,
             workspace_id=workspace_id,
@@ -158,10 +160,24 @@ async def compose_board(
         )
         db.add(board)
         await db.commit()
+        committed = True
         await db.refresh(board)
         return success(asset_payload(board))
-    except Exception as exc:
-        return fail(f"服饰总览图合成失败：{str(exc)[:300]}")
+    except Exception:
+        if not committed:
+            await db.rollback()
+            if object_key and storage:
+                try:
+                    await storage.delete_object(object_key)
+                except Exception:
+                    logger.exception("Failed to delete orphan outfit board object", extra={"object_key": object_key})
+        logger.exception("Failed to compose outfit board")
+        return fail("服饰总览图合成失败")
+    finally:
+        for image in images:
+            image.close()
+        if stream:
+            stream.close()
 
 
 @router.patch("/{asset_id}")

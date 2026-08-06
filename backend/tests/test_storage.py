@@ -25,9 +25,13 @@ class ChunkStream(httpx.AsyncByteStream):
 class FakeBucket:
     def __init__(self):
         self.uploads = []
+        self.deleted = []
 
     def put_object(self, object_key, stream, headers):
         self.uploads.append((object_key, stream.read(), headers))
+
+    def delete_object(self, object_key):
+        self.deleted.append(object_key)
 
 
 def make_storage():
@@ -125,3 +129,12 @@ async def test_audio_bytes_respects_size_limit(monkeypatch):
         await storage.store_audio_bytes("task", b"123456", "mp3")
 
     assert storage.bucket.uploads == []
+
+
+@pytest.mark.asyncio
+async def test_delete_object_removes_uploaded_key():
+    storage = make_storage()
+
+    await storage.delete_object("generations/images/orphan.jpg")
+
+    assert storage.bucket.deleted == ["generations/images/orphan.jpg"]
