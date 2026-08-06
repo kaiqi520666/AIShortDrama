@@ -2,6 +2,8 @@ import { defineStore } from 'pinia'
 import { createWorkspace, deleteWorkspace, duplicateWorkspace, getWorkspace, listWorkspaces, renameWorkspace } from '../api/workspaces'
 import { getWorkspaceType } from '../config/canvas/nodePacks'
 
+let workspaceRequestSequence = 0
+
 export const useWorkspaceStore = defineStore('workspaces', {
   state: () => ({
     items: [],
@@ -23,12 +25,22 @@ export const useWorkspaceStore = defineStore('workspaces', {
         this.loading = false
       }
     },
-    async open(id) {
-      const result = await getWorkspace(id)
+    async fetch(id, config = {}) {
+      const requestSequence = ++workspaceRequestSequence
+      const result = await getWorkspace(id, config)
       if (result.code !== 0) throw new Error(result.message)
-      this.current = result.data
+      return requestSequence === workspaceRequestSequence ? result.data : null
+    },
+    async open(id, config = {}) {
+      const workspace = await this.fetch(id, config)
+      if (workspace) this.current = workspace
+      return workspace
+    },
+    setCurrent(workspace) {
+      this.current = workspace
     },
     close() {
+      workspaceRequestSequence += 1
       this.current = null
     },
     async create(workspaceType) {

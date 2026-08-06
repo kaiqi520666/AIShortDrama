@@ -294,6 +294,8 @@ async function signOut() {
   emit('back')
 }
 
+defineExpose({ saveBeforeLeave })
+
 watch(() => store.saveConflict, async (conflict) => {
   if (!conflict) return
   cancelScheduledSave()

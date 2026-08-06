@@ -8,8 +8,8 @@ export async function createWorkspace(name, workspaceType) {
   return (await apiClient.post('/workspaces', { name, workspace_type: workspaceType })).data
 }
 
-export async function getWorkspace(id) {
-  return (await apiClient.get(`/workspaces/${id}`)).data
+export async function getWorkspace(id, config = {}) {
+  return (await apiClient.get(`/workspaces/${id}`, config)).data
 }
 
 export async function renameWorkspace(id, name) {

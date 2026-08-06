@@ -1,13 +1,16 @@
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router'
 import CanvasView from './CanvasView.vue'
 import AppButton from '../../components/ui/AppButton.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import { useGlobalLoading } from '../../composables/useGlobalLoading'
+import { useGlobalToast } from '../../composables/useGlobalUI'
 import { useAuthStore } from '../../stores/auth'
 import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
 import { useWorkspaceStore } from '../../stores/workspaces'
+import { stopWorkspaceGenerationPolling } from '../../services/generationPolling'
+import { useWorkspaceCanvasSession } from './useWorkspaceCanvasSession'
 
 const route = useRoute()
 const router = useRouter()
@@ -15,32 +18,45 @@ const authStore = useAuthStore()
 const capabilityStore = useModelCapabilitiesStore()
 const workspaceStore = useWorkspaceStore()
 const loading = useGlobalLoading()
-const errorMessage = ref('')
-let loadingId = null
+const toast = useGlobalToast()
+const canvas = ref(null)
+let pendingWorkspace = null
 workspaceStore.close()
-
-function finishLoading() {
-  if (!loadingId) return
-  loading.hideLoading(loadingId)
-  loadingId = null
-}
+const {
+  loadError: errorMessage,
+  load,
+  finishLoading,
+  dispose,
+} = useWorkspaceCanvasSession({ workspaceStore, capabilityStore, loading, toast })
 
 async function openCanvas() {
-  loadingId = loading.showLoading('正在打开工作台…')
-  errorMessage.value = ''
-  try {
-    await Promise.all([
-      workspaceStore.open(route.params.workspaceId),
-      capabilityStore.load(),
-    ])
-  } catch (error) {
-    errorMessage.value = error.response?.data?.message || error.message || '画布配置加载失败'
-    finishLoading()
-  }
+  await load(route.params.workspaceId, { initial: true })
 }
 
+onBeforeRouteUpdate(async (to) => {
+  const workspaceId = to.params.workspaceId
+  if (workspaceId === workspaceStore.current?.id) return true
+  const canLeave = await canvas.value?.saveBeforeLeave?.()
+  if (canLeave === false) return false
+  const workspace = await load(workspaceId, { commit: false })
+  if (!workspace) return false
+  pendingWorkspace = workspace
+  return true
+})
+
+watch(() => route.params.workspaceId, async (workspaceId) => {
+  if (pendingWorkspace?.id === workspaceId) {
+    const previousWorkspaceId = workspaceStore.current?.id
+    if (previousWorkspaceId) stopWorkspaceGenerationPolling(previousWorkspaceId)
+    workspaceStore.setCurrent(pendingWorkspace)
+    pendingWorkspace = null
+    return
+  }
+  if (workspaceStore.current?.id !== workspaceId) await load(workspaceId)
+})
+
 onMounted(openCanvas)
-onBeforeUnmount(finishLoading)
+onBeforeUnmount(dispose)
 
 function leaveCanvas() {
   if (!authStore.user) workspaceStore.$reset()
@@ -49,7 +65,7 @@ function leaveCanvas() {
 </script>
 
 <template>
-  <CanvasView v-if="workspaceStore.current && capabilityStore.capabilities" :workspace="workspaceStore.current" @back="leaveCanvas" @ready="finishLoading" />
+  <CanvasView v-if="workspaceStore.current && capabilityStore.capabilities" ref="canvas" :key="workspaceStore.current.id" :workspace="workspaceStore.current" @back="leaveCanvas" @ready="finishLoading" />
   <main v-else-if="errorMessage" class="route-state">
     <EmptyState title="画布加载失败" :description="errorMessage" tone="error">
       <AppButton variant="primary" @click="openCanvas">重新加载</AppButton>
