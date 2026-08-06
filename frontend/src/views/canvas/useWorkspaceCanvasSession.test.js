@@ -58,6 +58,28 @@ describe('workspace canvas session', () => {
     await expect(firstLoad).resolves.toBeNull()
   })
 
+  it('aborts the previous request before starting a route update load', async () => {
+    const requests = []
+    const workspaceStore = {
+      open: vi.fn(),
+      fetch: vi.fn((_id, { signal }) => {
+        const request = deferred()
+        requests.push({ signal, ...request })
+        return request.promise
+      }),
+    }
+    const session = setup({ workspaceStore })
+
+    const firstLoad = session.load('workspace-1', { commit: false })
+    const secondLoad = session.load('workspace-2', { commit: false })
+
+    expect(requests[0].signal.aborted).toBe(true)
+    requests[1].resolve({ id: 'workspace-2' })
+    await expect(secondLoad).resolves.toEqual({ id: 'workspace-2' })
+    requests[0].resolve({ id: 'workspace-1' })
+    await expect(firstLoad).resolves.toBeNull()
+  })
+
   it('shows initial errors inline and route update errors as a toast', async () => {
     const error = new Error('offline')
     const initial = setup({ workspaceStore: { open: vi.fn(async () => { throw error }), fetch: vi.fn() } })
