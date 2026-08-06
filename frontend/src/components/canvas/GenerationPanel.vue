@@ -2,18 +2,15 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import { ArrowUp, Check, ChevronDown, Clapperboard, Coins, Eye, EyeOff, FileText, Image, Images, LoaderCircle, Music2, Package, Shirt, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
-import { createAudioGeneration, createImageGeneration, createVideoGeneration } from '../../api/generations'
-import { streamReversePrompt } from '../../api/reversals'
-import { buildAudioRequest, getAudioReferenceError, normalizeAudioSettings } from '../../config/audioModels'
+import { getAudioReferenceError } from '../../config/audioModels'
 import { getEffectivePrompt } from '../../config/generationPrompt'
 import { MAX_STORYBOARD_REFERENCES } from '../../config/canvas/productStoryboard'
-import { buildImageRequest, normalizeImageSettings } from '../../config/imageModels'
-import { mergeProductProfile, parseProductProfile } from '../../config/canvas/ecommerce'
 import { maxProductReferenceImages } from '../../config/canvas/connectionRules'
 import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
-import { buildVideoRequest, getVideoModelError, getVideoReferenceError, normalizeVideoSettings } from '../../config/videoModels'
+import { getVideoModelError, getVideoReferenceError } from '../../config/videoModels'
 import { useGlobalConfirm, useGlobalToast } from '../../composables/useGlobalUI'
 import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
+import { getGenerationAdapter } from '../../services/generationAdapters'
 import { useCanvasStore } from '../../stores/canvas'
 import { useAuthStore } from '../../stores/auth'
 import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
@@ -120,12 +117,24 @@ const audioFormatOptions = computed(() => audioCapability.value.formatOptions)
 const audioSampleRateOptions = computed(() => audioCapability.value.sampleRateOptions)
 const promptError = computed(() => (props.type === 'video' ? videoGenerationPrompt.value : effectivePrompt.value).length > promptLimit.value ? `提示词不能超过 ${promptLimit.value} 个字符` : '')
 const promptParts = computed(() => props.data.promptParts ?? (props.data.prompt ? [{ type: 'text', value: props.data.prompt }] : []))
-const selectedImageSettings = computed(() => normalizeImageSettings(props.data, imageModels.value, defaultImageModel.value))
+const selectedImageSettings = computed(() => getGenerationAdapter('image').normalize({
+  data: props.data,
+  imageModels: imageModels.value,
+  defaultImageModel: defaultImageModel.value,
+}))
 const selectedImageModel = computed(() => selectedImageSettings.value.model)
-const selectedVideoSettings = computed(() => normalizeVideoSettings(props.data, videoModels.value, defaultVideoModel.value))
+const selectedVideoSettings = computed(() => getGenerationAdapter('video').normalize({
+  data: props.data,
+  videoModels: videoModels.value,
+  defaultVideoModel: defaultVideoModel.value,
+}))
 const selectedVideoModel = computed(() => selectedVideoSettings.value.model)
-const selectedAudioSettings = computed(() => normalizeAudioSettings(props.data, audioCapability.value))
-const selectedReverseModel = computed(() => reverseModels.value.find((model) => model.id === props.data.model) || defaultReverseModel.value)
+const selectedAudioSettings = computed(() => getGenerationAdapter('audio').normalize({ data: props.data, audioCapability: audioCapability.value }))
+const selectedReverseModel = computed(() => getGenerationAdapter('text').normalize({
+  data: props.data,
+  textModels: reverseModels.value,
+  defaultTextModel: defaultReverseModel.value,
+}))
 const selectableModels = computed(() => props.type === 'video' ? videoModels.value : reverseModels.value)
 const selectedModel = computed(() => props.type === 'video' ? selectedVideoModel.value : selectedReverseModel.value)
 const promptLimit = computed(() => {
@@ -213,6 +222,29 @@ function toggleReference(reference) {
   updateNodeData(props.nodeId, { disabledReferenceIds: [...disabled], generationError: '' })
 }
 
+function createGenerationContext() {
+  return {
+    nodeId: props.nodeId,
+    workspaceId: store.workspaceId,
+    data: props.data,
+    prompt: props.type === 'video' ? videoGenerationPrompt.value : effectivePrompt.value,
+    validationError: referenceError.value || promptError.value,
+    references: references.value,
+    activeReferences: activeReferences.value,
+    imageReferences: imageReferences.value,
+    primaryReference: reverseReference.value,
+    imageModels: imageModels.value,
+    defaultImageModel: defaultImageModel.value,
+    videoModels: videoModels.value,
+    defaultVideoModel: defaultVideoModel.value,
+    audioCapability: audioCapability.value,
+    textModel: selectedReverseModel.value,
+    mediaType: isProductRecognition.value ? 'image' : props.data.reverseType,
+    operation: isProductRecognition.value ? 'productRecognition' : 'reversePrompt',
+    runTextTask,
+  }
+}
+
 async function submitTask() {
   if (!canSubmit.value) return
   if (isStoryboardSegment.value && props.data.status === 'ready' && !await confirm({
@@ -221,33 +253,19 @@ async function submitTask() {
     confirmText: '继续重做',
   })) return
   if (isStoryboardSegment.value && props.data.status === 'ready') store.invalidateStoryboardFrom(props.nodeId)
-  if (isVisionTextTask.value) {
-    const nodeId = props.nodeId
-    notice.value = ''
-    if (isReverseTask.value) updateNodeData(nodeId, { content: '' })
-    const productImageReferences = isProductRecognition.value ? imageReferences.value.slice(0, maxProductReferenceImages) : []
-    const primaryReference = productImageReferences[0] || reverseReference.value
-    await runTextTask(streamReversePrompt, {
-      workspace_id: store.workspaceId,
-      node_id: nodeId,
-      model: selectedReverseModel.value.id,
-      media_type: isProductRecognition.value ? 'image' : props.data.reverseType,
-      media_url: primaryReference.data.asset,
-      prompt: effectivePrompt.value,
-      ...(productImageReferences.length > 1
-        ? { media_urls: productImageReferences.slice(1).map((reference) => reference.data.asset) }
-        : {}),
-      ...(isProductRecognition.value ? { response_mode: 'product_profile' } : {}),
-    }, {
-      failureMessage: isProductRecognition.value ? '商品识别失败' : '反推生成失败',
-      preservePartial: isReverseTask.value,
-      onSuccess: (content) => isProductRecognition.value
-        ? { product: mergeProductProfile(props.data.product, parseProductProfile(content)), workflowStep: 'visual' }
-        : { content },
-    })
+  const generationType = isVisionTextTask.value ? 'text' : props.type
+  if (!['text', 'image', 'video', 'audio'].includes(generationType) || (generationType === 'text' && !isVisionTextTask.value)) return
+  const adapter = getGenerationAdapter(generationType)
+  const context = createGenerationContext()
+  const validationError = adapter.validate(context)
+  if (validationError) {
+    notice.value = validationError
     return
   }
-  if (!['image', 'video', 'audio'].includes(props.type)) {
+  if (isVisionTextTask.value) {
+    notice.value = ''
+    if (isReverseTask.value) updateNodeData(props.nodeId, { content: '' })
+    await adapter.submit(adapter.buildRequest(context), context)
     return
   }
   const nodeId = props.nodeId
@@ -259,18 +277,7 @@ async function submitTask() {
     ...(isStoryboardImage.value ? { storyboardAsset: null } : {}),
   })
   try {
-    const createGeneration = { image: createImageGeneration, video: createVideoGeneration, audio: createAudioGeneration }[props.type]
-    const requestData = { ...props.data, prompt: props.type === 'video' ? videoGenerationPrompt.value : effectivePrompt.value }
-    const generationRequest = props.type === 'image'
-      ? buildImageRequest(requestData, imageReferences.value, imageModels.value, defaultImageModel.value)
-      : props.type === 'video'
-        ? buildVideoRequest(requestData, activeReferences.value, videoModels.value, defaultVideoModel.value)
-        : buildAudioRequest(requestData, references.value, audioCapability.value)
-    const result = await createGeneration({
-      workspace_id: store.workspaceId,
-      node_id: nodeId,
-      ...generationRequest,
-    })
+    const result = await adapter.submit(adapter.buildRequest(context), context)
     if (result.code !== 0) throw new Error(result.message)
     updateNodeData(nodeId, {
       generationTaskId: result.data.id,
