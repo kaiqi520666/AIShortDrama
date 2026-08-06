@@ -154,41 +154,34 @@ async def test_create_image_generation(monkeypatch, payload, generation_user_id)
 
     data = response.json()
     task_id = uuid.UUID(data["data"]["id"])
-    try:
-        assert response.status_code == 200
-        assert data["code"] == 0
-        assert data["data"]["status"] == "queued"
-        async with SessionLocal() as db:
-            task = await db.get(GenerationTask, task_id)
-            assert task.model == payload["model"]
-            expected_payload = {
-                "model": payload["model"],
-                "prompt": payload["prompt"],
-                "size": payload["size"],
-                "n": 1,
-            }
-            if payload["model"] == "gpt-image-2":
-                expected_payload["resolution"] = payload["resolution"].lower()
-                expected_payload["response_format"] = "url"
-            else:
-                expected_payload["metadata"] = {"resolution": payload["resolution"]}
-                if payload["model"].startswith("doubao-seedream-5-0"):
-                    expected_payload["metadata"]["watermark"] = False
-                if payload.get("google_search"):
-                    expected_payload["metadata"]["google_search"] = True
-                if payload.get("google_image_search"):
-                    expected_payload["metadata"]["google_image_search"] = True
-                if payload.get("reference_images"):
-                    expected_payload["image_urls"] = payload["reference_images"]
-            provider_payload = task.request_snapshot.copy()
-            provider_payload.pop("client_business_id")
-            assert provider_payload == expected_payload
-    finally:
-        async with SessionLocal() as db:
-            task = await db.get(GenerationTask, task_id)
-            if task:
-                await db.delete(task)
-                await db.commit()
+    assert response.status_code == 200
+    assert data["code"] == 0
+    assert data["data"]["status"] == "queued"
+    async with SessionLocal() as db:
+        task = await db.get(GenerationTask, task_id)
+        assert task.model == payload["model"]
+        expected_payload = {
+            "model": payload["model"],
+            "prompt": payload["prompt"],
+            "size": payload["size"],
+            "n": 1,
+        }
+        if payload["model"] == "gpt-image-2":
+            expected_payload["resolution"] = payload["resolution"].lower()
+            expected_payload["response_format"] = "url"
+        else:
+            expected_payload["metadata"] = {"resolution": payload["resolution"]}
+            if payload["model"].startswith("doubao-seedream-5-0"):
+                expected_payload["metadata"]["watermark"] = False
+            if payload.get("google_search"):
+                expected_payload["metadata"]["google_search"] = True
+            if payload.get("google_image_search"):
+                expected_payload["metadata"]["google_image_search"] = True
+            if payload.get("reference_images"):
+                expected_payload["image_urls"] = payload["reference_images"]
+        provider_payload = task.request_snapshot.copy()
+        provider_payload.pop("client_business_id")
+        assert provider_payload == expected_payload
 
 
 @pytest.mark.asyncio
@@ -209,24 +202,17 @@ async def test_create_video_generation(monkeypatch, payload, generation_user_id)
 
     data = response.json()
     task_id = uuid.UUID(data["data"]["id"])
-    try:
-        assert response.status_code == 200
-        assert data["code"] == 0
-        assert data["data"]["task_type"] == "video"
-        async with SessionLocal() as db:
-            task = await db.get(GenerationTask, task_id)
-            assert task.model == payload["model"]
-            expected = [
-                {"url": url, "role": "reference_image"} for url in payload["reference_images"]
-            ]
-            assert task.request_snapshot.get("image_with_roles", []) == expected
-            assert task.request_snapshot["generate_audio"] is payload.get("generate_audio", True)
-    finally:
-        async with SessionLocal() as db:
-            task = await db.get(GenerationTask, task_id)
-            if task:
-                await db.delete(task)
-                await db.commit()
+    assert response.status_code == 200
+    assert data["code"] == 0
+    assert data["data"]["task_type"] == "video"
+    async with SessionLocal() as db:
+        task = await db.get(GenerationTask, task_id)
+        assert task.model == payload["model"]
+        expected = [
+            {"url": url, "role": "reference_image"} for url in payload["reference_images"]
+        ]
+        assert task.request_snapshot.get("image_with_roles", []) == expected
+        assert task.request_snapshot["generate_audio"] is payload.get("generate_audio", True)
 
 
 @pytest.mark.asyncio
@@ -293,8 +279,6 @@ async def test_generation_returns_503_and_refunds_when_enqueue_fails(
         user = await db.get(User, generation_user_id)
         assert (task.status, task.credit_status) == ("failed", "refunded")
         assert user.credit_frozen == 0
-        await db.delete(task)
-        await db.commit()
 
 
 @pytest.mark.asyncio

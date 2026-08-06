@@ -13,7 +13,6 @@ from app.services.billing import (
     InsufficientCredits,
     build_price_snapshot,
     freeze_task_credits,
-    refund_task_credits,
     settle_task_credits,
 )
 from app.services.generation_tasks import create_image_task
@@ -95,8 +94,6 @@ async def test_audio_settlement_refunds_difference_once():
         assert user.credit_balance == initial_balance - 15
         assert user.credit_frozen == 0
         assert [entry.entry_type for entry in entries] == ["freeze", "consume", "refund"]
-        await db.delete(task)
-        await db.commit()
 
 
 @pytest.mark.asyncio
@@ -125,11 +122,6 @@ async def test_insufficient_and_concurrent_freeze():
     async with SessionLocal() as db:
         user = await db.get(User, user_id)
         assert (user.credit_balance, user.credit_frozen) == (0, 3)
-        for task in tasks:
-            if task:
-                await refund_task_credits(db, task, "测试退款")
-                await db.delete(await db.get(GenerationTask, task.id))
-        await db.commit()
 
 
 @pytest.mark.asyncio
@@ -153,8 +145,6 @@ async def test_enqueue_failure_refunds_frozen_credits():
         assert task.status == "failed"
         assert task.credit_status == "refunded"
         assert (user.credit_balance, user.credit_frozen) == (initial_balance, 0)
-        await db.delete(task)
-        await db.commit()
 
 
 @pytest.mark.asyncio
@@ -183,5 +173,3 @@ async def test_stale_task_compensation_refunds_once():
         user = await db.get(User, user_id)
         assert (task.status, task.credit_status) == ("timeout", "refunded")
         assert (user.credit_balance, user.credit_frozen) == (initial_balance, 0)
-        await db.delete(task)
-        await db.commit()

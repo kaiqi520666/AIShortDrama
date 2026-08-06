@@ -65,38 +65,27 @@ async def test_workspace_crud_duplicate_and_canvas_isolation(override_business_u
             await client.get("/api/assets", params={"workspace_id": str(workspace_id)})
         ).json()["data"]
 
-    try:
-        assert saved["code"] == 0
-        assert saved["data"]["version"] == created["version"] + 1
-        assert stale_response.status_code == 409
-        assert stale_response.json()["message"] == "画布已在其他页面更新，请刷新后继续"
-        assert created["thumbnail_url"] is None
-        assert created["workspace_type"] == "ecommerce"
-        assert loaded["canvas"] == {key: value for key, value in canvas.items() if key != "version"}
-        assert loaded["version"] == saved["data"]["version"]
-        listed_workspace = next(
-            item for item in listed_before_delete if item["id"] == str(workspace_id)
-        )
-        assert listed_workspace["thumbnail_url"] == "https://example.com/latest.webp"
-        assert renamed["data"]["name"] == "新名称"
-        assert duplicate["canvas"] == {key: value for key, value in canvas.items() if key != "version"}
-        assert duplicate["thumbnail_url"] == "https://example.com/latest.webp"
-        assert duplicate["workspace_type"] == "ecommerce"
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            listed = (await client.get("/api/workspaces")).json()["data"]
-        assert str(workspace_id) not in {item["id"] for item in listed}
-        assert str(duplicate_id) in {item["id"] for item in listed}
-        assert str(asset_id) in {item["id"] for item in retained_assets}
-    finally:
-        async with SessionLocal() as db:
-            asset = await db.get(Asset, asset_id) if asset_id else None
-            if asset:
-                await db.delete(asset)
-            for item_id in (workspace_id, duplicate_id):
-                item = await db.get(Workspace, item_id)
-                if item:
-                    await db.delete(item)
-            await db.commit()
+    assert saved["code"] == 0
+    assert saved["data"]["version"] == created["version"] + 1
+    assert stale_response.status_code == 409
+    assert stale_response.json()["message"] == "画布已在其他页面更新，请刷新后继续"
+    assert created["thumbnail_url"] is None
+    assert created["workspace_type"] == "ecommerce"
+    assert loaded["canvas"] == {key: value for key, value in canvas.items() if key != "version"}
+    assert loaded["version"] == saved["data"]["version"]
+    listed_workspace = next(
+        item for item in listed_before_delete if item["id"] == str(workspace_id)
+    )
+    assert listed_workspace["thumbnail_url"] == "https://example.com/latest.webp"
+    assert renamed["data"]["name"] == "新名称"
+    assert duplicate["canvas"] == {key: value for key, value in canvas.items() if key != "version"}
+    assert duplicate["thumbnail_url"] == "https://example.com/latest.webp"
+    assert duplicate["workspace_type"] == "ecommerce"
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        listed = (await client.get("/api/workspaces")).json()["data"]
+    assert str(workspace_id) not in {item["id"] for item in listed}
+    assert str(duplicate_id) in {item["id"] for item in listed}
+    assert str(asset_id) in {item["id"] for item in retained_assets}
 
 
 @pytest.mark.asyncio

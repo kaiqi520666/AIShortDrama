@@ -5,8 +5,6 @@ import httpx
 import pytest
 from httpx import ASGITransport, AsyncClient
 from PIL import Image
-from sqlalchemy import select
-
 from app.api.routes import assets as assets_module
 from app.core.database import SessionLocal
 from app.core.identity import DEFAULT_WORKSPACE_ID
@@ -57,30 +55,22 @@ async def test_list_assets_supports_pagination(override_business_user):
             asset_ids.append(asset.id)
         await db.commit()
 
-    try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.get(
-                "/api/assets",
-                params={
-                    "workspace_id": str(DEFAULT_WORKSPACE_ID),
-                    "type": "audio",
-                    "limit": 2,
-                    "offset": 1,
-                },
-            )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get(
+            "/api/assets",
+            params={
+                "workspace_id": str(DEFAULT_WORKSPACE_ID),
+                "type": "audio",
+                "limit": 2,
+                "offset": 1,
+            },
+        )
 
-        assert response.status_code == 200
-        assert [item["id"] for item in response.json()["data"]] == [
-            str(asset_ids[1]),
-            str(asset_ids[2]),
-        ]
-    finally:
-        async with SessionLocal() as db:
-            for asset_id in asset_ids:
-                asset = await db.get(Asset, asset_id)
-                if asset:
-                    await db.delete(asset)
-            await db.commit()
+    assert response.status_code == 200
+    assert [item["id"] for item in response.json()["data"]] == [
+        str(asset_ids[1]),
+        str(asset_ids[2]),
+    ]
 
 
 @pytest.mark.asyncio
@@ -109,31 +99,23 @@ async def test_filter_rename_and_delete_asset(override_business_user):
         await db.refresh(global_asset)
         asset_ids = [scoped.id, global_asset.id]
 
-    try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            listed = (
-                await client.get("/api/assets", params={"workspace_id": str(DEFAULT_WORKSPACE_ID)})
-            ).json()["data"]
-            renamed = (
-                await client.patch(f"/api/assets/{asset_ids[0]}", json={"name": " 新名称 "})
-            ).json()
-            deleted = (await client.delete(f"/api/assets/{asset_ids[0]}")).json()
-            remaining = (
-                await client.get("/api/assets", params={"workspace_id": str(DEFAULT_WORKSPACE_ID)})
-            ).json()["data"]
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        listed = (
+            await client.get("/api/assets", params={"workspace_id": str(DEFAULT_WORKSPACE_ID)})
+        ).json()["data"]
+        renamed = (
+            await client.patch(f"/api/assets/{asset_ids[0]}", json={"name": " 新名称 "})
+        ).json()
+        deleted = (await client.delete(f"/api/assets/{asset_ids[0]}")).json()
+        remaining = (
+            await client.get("/api/assets", params={"workspace_id": str(DEFAULT_WORKSPACE_ID)})
+        ).json()["data"]
 
-        assert str(asset_ids[0]) in {item["id"] for item in listed}
-        assert str(asset_ids[1]) not in {item["id"] for item in listed}
-        assert renamed["data"]["name"] == "新名称"
-        assert deleted["data"]["id"] == str(asset_ids[0])
-        assert str(asset_ids[0]) not in {item["id"] for item in remaining}
-    finally:
-        async with SessionLocal() as db:
-            for asset_id in asset_ids:
-                asset = await db.get(Asset, asset_id)
-                if asset:
-                    await db.delete(asset)
-            await db.commit()
+    assert str(asset_ids[0]) in {item["id"] for item in listed}
+    assert str(asset_ids[1]) not in {item["id"] for item in listed}
+    assert renamed["data"]["name"] == "新名称"
+    assert deleted["data"]["id"] == str(asset_ids[0])
+    assert str(asset_ids[0]) not in {item["id"] for item in remaining}
 
 
 @pytest.mark.asyncio
@@ -173,23 +155,16 @@ async def test_stream_asset_forwards_range(monkeypatch, override_business_user):
         "AsyncClient",
         lambda **kwargs: original_client(transport=httpx.MockTransport(upstream), **kwargs),
     )
-    try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.get(
-                f"/api/assets/{asset_id}/content",
-                headers={"Range": "bytes=0-4"},
-            )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get(
+            f"/api/assets/{asset_id}/content",
+            headers={"Range": "bytes=0-4"},
+        )
 
-        assert response.status_code == 206
-        assert response.content == b"audio"
-        assert response.headers["content-range"] == "bytes 0-4/10"
-        assert response.headers["content-type"].startswith("audio/mpeg")
-    finally:
-        async with SessionLocal() as db:
-            asset = await db.get(Asset, asset_id)
-            if asset:
-                await db.delete(asset)
-                await db.commit()
+    assert response.status_code == 206
+    assert response.content == b"audio"
+    assert response.headers["content-range"] == "bytes 0-4/10"
+    assert response.headers["content-type"].startswith("audio/mpeg")
 
 
 @pytest.mark.asyncio
@@ -237,11 +212,6 @@ async def test_register_and_refresh_storyboard_private_avatar(monkeypatch, overr
         }
     finally:
         FakePrivateAvatarProvider.status = "processing"
-        async with SessionLocal() as db:
-            asset = await db.get(Asset, asset_id)
-            if asset:
-                await db.delete(asset)
-                await db.commit()
 
 
 @pytest.mark.asyncio
@@ -277,34 +247,23 @@ async def test_compose_outfit_board(monkeypatch, override_business_user):
             asset_ids.append(str(asset.id))
         await db.commit()
 
-    try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.post(
-                "/api/assets/compose-board",
-                json={
-                    "workspace_id": str(DEFAULT_WORKSPACE_ID),
-                    "node_id": "outfit-1",
-                    "asset_ids": asset_ids,
-                },
-            )
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/assets/compose-board",
+            json={
+                "workspace_id": str(DEFAULT_WORKSPACE_ID),
+                "node_id": "outfit-1",
+                "asset_ids": asset_ids,
+            },
+        )
 
-        payload = response.json()["data"]
-        assert response.status_code == 200
-        assert payload["width"] == 2048
-        assert payload["height"] == 3640
-        assert payload["metadata"] == {
-            "type": "outfit-board",
-            "source_asset_ids": asset_ids,
-            "layout": "2x3",
-            "aspect_ratio": "9:16",
-        }
-    finally:
-        async with SessionLocal() as db:
-            for asset_id in asset_ids:
-                asset = await db.get(Asset, asset_id)
-                if asset:
-                    await db.delete(asset)
-            board = await db.scalar(select(Asset).where(Asset.url == "https://example.com/outfit-board.jpg"))
-            if board:
-                await db.delete(board)
-            await db.commit()
+    payload = response.json()["data"]
+    assert response.status_code == 200
+    assert payload["width"] == 2048
+    assert payload["height"] == 3640
+    assert payload["metadata"] == {
+        "type": "outfit-board",
+        "source_asset_ids": asset_ids,
+        "layout": "2x3",
+        "aspect_ratio": "9:16",
+    }

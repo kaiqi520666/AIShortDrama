@@ -35,25 +35,17 @@ async def test_account_credit_summary_uses_beijing_consume_boundary(override_bus
             ("freeze", 99, day_start + timedelta(seconds=1)),
         )
     ]
-    try:
-        async with SessionLocal() as db:
-            db.add_all(entries)
-            await db.commit()
+    async with SessionLocal() as db:
+        db.add_all(entries)
+        await db.commit()
 
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            after = (await client.get("/api/account")).json()["data"]
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        after = (await client.get("/api/account")).json()["data"]
 
-        assert after["credits"]["consumed_total"] == before["credits"]["consumed_total"] + 18
-        assert after["credits"]["consumed_today"] == before["credits"]["consumed_today"] + 11
-        assert after["user"]["username"]
-        assert after["user"]["email"]
-    finally:
-        async with SessionLocal() as db:
-            for entry in entries:
-                current = await db.get(CreditLedger, entry.id)
-                if current:
-                    await db.delete(current)
-            await db.commit()
+    assert after["credits"]["consumed_total"] == before["credits"]["consumed_total"] + 18
+    assert after["credits"]["consumed_today"] == before["credits"]["consumed_today"] + 11
+    assert after["user"]["username"]
+    assert after["user"]["email"]
 
 
 @pytest.mark.asyncio
@@ -116,43 +108,30 @@ async def test_credit_ledger_filters_and_signed_deltas(override_business_user):
         "end_at": "2099-01-03T00:00:00+00:00",
         "page_size": 20,
     }
-    try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            all_items = (await client.get("/api/account/credits", params=params)).json()[
-                "data"
-            ]
-            consumed = (
-                await client.get(
-                    "/api/account/credits",
-                    params={**params, "type": "consume", "media_type": "image"},
-                )
-            ).json()["data"]
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        all_items = (await client.get("/api/account/credits", params=params)).json()["data"]
+        consumed = (
+            await client.get(
+                "/api/account/credits",
+                params={**params, "type": "consume", "media_type": "image"},
+            )
+        ).json()["data"]
 
-        assert all_items["total"] == 5
-        assert {item["type"] for item in all_items["items"]} == {
-            "consume",
-            "refund",
-            "system",
-            "recharge",
-        }
-        assert [item["delta"] for item in all_items["items"] if item["type"] == "system"] == [
-            -5,
-            30,
-        ]
-        assert consumed["total"] == 1
-        assert consumed["items"][0]["delta"] == -7
-        assert consumed["items"][0]["media_type"] == "image"
-        assert consumed["items"][0]["model"] == "test-image-model"
-    finally:
-        async with SessionLocal() as db:
-            for entry in entries:
-                current = await db.get(CreditLedger, entry.id)
-                if current:
-                    await db.delete(current)
-            current_task = await db.get(GenerationTask, task_id)
-            if current_task:
-                await db.delete(current_task)
-            await db.commit()
+    assert all_items["total"] == 5
+    assert {item["type"] for item in all_items["items"]} == {
+        "consume",
+        "refund",
+        "system",
+        "recharge",
+    }
+    assert [item["delta"] for item in all_items["items"] if item["type"] == "system"] == [
+        -5,
+        30,
+    ]
+    assert consumed["total"] == 1
+    assert consumed["items"][0]["delta"] == -7
+    assert consumed["items"][0]["media_type"] == "image"
+    assert consumed["items"][0]["model"] == "test-image-model"
 
 
 @pytest.mark.asyncio
@@ -242,62 +221,46 @@ async def test_generation_history_filters_ownership_and_hides_internal_data(
         db.add_all(tasks)
         await db.commit()
 
-    try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            images = (
-                await client.get(
-                    "/api/account/generations",
-                    params={"media_type": "image", "status": "succeeded"},
-                )
-            ).json()["data"]
-            failed_text = (
-                await client.get(
-                    "/api/account/generations",
-                    params={"media_type": "text", "status": "failed"},
-                )
-            ).json()["data"]
-            detail_response = await client.get(f"/api/account/generations/{own_image_id}")
-            other_response = await client.get(f"/api/account/generations/{other_task_id}")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        images = (
+            await client.get(
+                "/api/account/generations",
+                params={"media_type": "image", "status": "succeeded"},
+            )
+        ).json()["data"]
+        failed_text = (
+            await client.get(
+                "/api/account/generations",
+                params={"media_type": "text", "status": "failed"},
+            )
+        ).json()["data"]
+        detail_response = await client.get(f"/api/account/generations/{own_image_id}")
+        other_response = await client.get(f"/api/account/generations/{other_task_id}")
 
-        image_item = next(item for item in images["items"] if item["id"] == str(own_image_id))
-        reverse_item = next(
-            item for item in failed_text["items"] if item["id"] == str(own_reverse_id)
-        )
-        assert image_item["workspace"]["name"] == workspace.name
-        assert image_item["media_type"] == "image"
-        assert reverse_item["type_label"] == "视频反推"
-        assert all(item["id"] != str(other_task_id) for item in images["items"])
+    image_item = next(item for item in images["items"] if item["id"] == str(own_image_id))
+    reverse_item = next(
+        item for item in failed_text["items"] if item["id"] == str(own_reverse_id)
+    )
+    assert image_item["workspace"]["name"] == workspace.name
+    assert image_item["media_type"] == "image"
+    assert reverse_item["type_label"] == "视频反推"
+    assert all(item["id"] != str(other_task_id) for item in images["items"])
 
-        assert detail_response.status_code == 200
-        detail = detail_response.json()["data"]
-        assert detail["result"] == {
-            "type": "image",
-            "url": "https://result.example/image.png",
-        }
-        assert {spec["label"] for spec in detail["specs"]} == {
-            "比例",
-            "分辨率",
-            "参考图片",
-        }
-        serialized = str(detail)
-        assert "request_snapshot" not in detail
-        assert "pricing_snapshot" not in detail
-        assert "secret-provider" not in serialized
-        assert "secret.example" not in serialized
-        assert "internal-id" not in serialized
-        assert other_response.status_code == 404
-    finally:
-        async with SessionLocal() as db:
-            for task_id in (own_image_id, own_reverse_id, other_task_id):
-                task = await db.get(GenerationTask, task_id)
-                if task:
-                    await db.delete(task)
-            await db.flush()
-            other_workspace = await db.get(Workspace, other_workspace_id)
-            if other_workspace:
-                await db.delete(other_workspace)
-            await db.flush()
-            other_user = await db.get(User, other_user_id)
-            if other_user:
-                await db.delete(other_user)
-            await db.commit()
+    assert detail_response.status_code == 200
+    detail = detail_response.json()["data"]
+    assert detail["result"] == {
+        "type": "image",
+        "url": "https://result.example/image.png",
+    }
+    assert {spec["label"] for spec in detail["specs"]} == {
+        "比例",
+        "分辨率",
+        "参考图片",
+    }
+    serialized = str(detail)
+    assert "request_snapshot" not in detail
+    assert "pricing_snapshot" not in detail
+    assert "secret-provider" not in serialized
+    assert "secret.example" not in serialized
+    assert "internal-id" not in serialized
+    assert other_response.status_code == 404

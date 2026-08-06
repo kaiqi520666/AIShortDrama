@@ -84,49 +84,24 @@ async def test_reference_libraries_separate_system_and_user_content(
             await client.post(f"/api/characters/{system_character.id}/register")
         ).json()["data"]
 
-    created_ids = [
-        uuid.UUID(model["id"]),
-        uuid.UUID(character["id"]),
-        uuid.UUID(garment["id"]),
-        system_garment.id,
-        system_character.id,
+    created_ids = [uuid.UUID(model["id"]), uuid.UUID(character["id"]), uuid.UUID(garment["id"])]
+    assert len([item for item in initial_models if item["source"] == "system"]) == 25
+    assert all(item["resource_type"] == "model" for item in initial_models)
+    assert all(item["resource_type"] == "character" for item in initial_characters)
+    assert ("系统标准服饰", "system") in [
+        (item["name"], item["source"]) for item in initial_garments
     ]
-    try:
-        assert len([item for item in initial_models if item["source"] == "system"]) == 25
-        assert all(item["resource_type"] == "model" for item in initial_models)
-        assert all(item["resource_type"] == "character" for item in initial_characters)
-        assert ("系统标准服饰", "system") in [
-            (item["name"], item["source"]) for item in initial_garments
-        ]
-        assert all(item["resource_type"] == "garment" for item in initial_garments)
-        assert model["resource_type"] == "model" and model["source"] == "user"
-        assert character["resource_type"] == "character" and character["source"] == "user"
-        assert character["metadata"]["seedance"]["asset_url"] == "asset://pa_test"
-        assert registered_system_character["metadata"]["seedance"]["status"] == "active"
-        assert garment["resource_type"] == "garment" and garment["source"] == "user"
-        assert (model["width"], model["height"]) == (6, 8)
-        async with SessionLocal() as db:
-            assert (await db.get(OutfitModel, created_ids[0])).user_id == override_business_user
-            assert (await db.get(Character, created_ids[1])).user_id == override_business_user
-            assert (await db.get(Garment, created_ids[2])).user_id == override_business_user
-    finally:
-        async with SessionLocal() as db:
-            model_row = await db.get(OutfitModel, created_ids[0])
-            character_row = await db.get(Character, created_ids[1])
-            garment_row = await db.get(Garment, created_ids[2])
-            system_garment_row = await db.get(Garment, created_ids[3])
-            system_character_row = await db.get(Character, created_ids[4])
-            if model_row:
-                await db.delete(model_row)
-            if character_row:
-                await db.delete(character_row)
-            if garment_row:
-                await db.delete(garment_row)
-            if system_garment_row:
-                await db.delete(system_garment_row)
-            if system_character_row:
-                await db.delete(system_character_row)
-            await db.commit()
+    assert all(item["resource_type"] == "garment" for item in initial_garments)
+    assert model["resource_type"] == "model" and model["source"] == "user"
+    assert character["resource_type"] == "character" and character["source"] == "user"
+    assert character["metadata"]["seedance"]["asset_url"] == "asset://pa_test"
+    assert registered_system_character["metadata"]["seedance"]["status"] == "active"
+    assert garment["resource_type"] == "garment" and garment["source"] == "user"
+    assert (model["width"], model["height"]) == (6, 8)
+    async with SessionLocal() as db:
+        assert (await db.get(OutfitModel, created_ids[0])).user_id == override_business_user
+        assert (await db.get(Character, created_ids[1])).user_id == override_business_user
+        assert (await db.get(Garment, created_ids[2])).user_id == override_business_user
 
 
 async def async_value(value):
@@ -163,27 +138,16 @@ async def test_create_character_from_existing_asset(monkeypatch, override_busine
         await db.refresh(asset)
         asset_id = asset.id
 
-    character_id = None
-    try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.post(f"/api/characters/from-asset/{asset_id}")
-        payload = response.json()["data"]
-        character_id = uuid.UUID(payload["id"])
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(f"/api/characters/from-asset/{asset_id}")
+    payload = response.json()["data"]
+    character_id = uuid.UUID(payload["id"])
 
-        assert payload["resource_type"] == "character"
-        assert payload["name"] == "素材角色"
-        assert payload["metadata"]["source_asset_id"] == str(asset_id)
-        assert payload["metadata"]["seedance"]["status"] == "active"
-        async with SessionLocal() as db:
-            character = await db.get(Character, character_id)
-            assert character.user_id == override_business_user
-            assert character.image_url == "https://cdn.example.com/assets/character.png"
-    finally:
-        async with SessionLocal() as db:
-            character = await db.get(Character, character_id) if character_id else None
-            asset = await db.get(Asset, asset_id)
-            if character:
-                await db.delete(character)
-            if asset:
-                await db.delete(asset)
-            await db.commit()
+    assert payload["resource_type"] == "character"
+    assert payload["name"] == "素材角色"
+    assert payload["metadata"]["source_asset_id"] == str(asset_id)
+    assert payload["metadata"]["seedance"]["status"] == "active"
+    async with SessionLocal() as db:
+        character = await db.get(Character, character_id)
+        assert character.user_id == override_business_user
+        assert character.image_url == "https://cdn.example.com/assets/character.png"

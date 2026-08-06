@@ -44,23 +44,15 @@ async def test_upload_media(monkeypatch, media_type, filename, content_type, con
         )
 
     payload = response.json()
-    try:
-        assert payload["code"] == 0
-        assert payload["data"]["url"].startswith(f"https://cdn.example.com/uploads/{media_type}s/")
-        assert payload["data"]["size"] == len(content)
-        assert FakeStorage.uploaded[1:] == (content, content_type)
-        async with SessionLocal() as db:
-            asset = await db.get(Asset, uuid.UUID(payload["data"]["id"]))
-            assert asset.source_type == "upload"
-            assert asset.workspace_id == DEFAULT_WORKSPACE_ID
-            assert asset.asset_metadata == {}
-    finally:
-        if payload.get("data", {}).get("id"):
-            async with SessionLocal() as db:
-                asset = await db.get(Asset, uuid.UUID(payload["data"]["id"]))
-                if asset:
-                    await db.delete(asset)
-                    await db.commit()
+    assert payload["code"] == 0
+    assert payload["data"]["url"].startswith(f"https://cdn.example.com/uploads/{media_type}s/")
+    assert payload["data"]["size"] == len(content)
+    assert FakeStorage.uploaded[1:] == (content, content_type)
+    async with SessionLocal() as db:
+        asset = await db.get(Asset, uuid.UUID(payload["data"]["id"]))
+        assert asset.source_type == "upload"
+        assert asset.workspace_id == DEFAULT_WORKSPACE_ID
+        assert asset.asset_metadata == {}
 
 
 @pytest.mark.asyncio
@@ -74,20 +66,12 @@ async def test_reencodes_image_when_declared_format_differs_from_content(monkeyp
         )
 
     payload = response.json()
-    try:
-        assert payload["code"] == 0
-        assert FakeStorage.uploaded[0].endswith(".jpg")
-        assert FakeStorage.uploaded[2] == "image/jpeg"
-        with Image.open(BytesIO(FakeStorage.uploaded[1])) as uploaded:
-            assert uploaded.format == "JPEG"
-            assert uploaded.size == (3, 2)
-    finally:
-        if payload.get("data", {}).get("id"):
-            async with SessionLocal() as db:
-                asset = await db.get(Asset, uuid.UUID(payload["data"]["id"]))
-                if asset:
-                    await db.delete(asset)
-                    await db.commit()
+    assert payload["code"] == 0
+    assert FakeStorage.uploaded[0].endswith(".jpg")
+    assert FakeStorage.uploaded[2] == "image/jpeg"
+    with Image.open(BytesIO(FakeStorage.uploaded[1])) as uploaded:
+        assert uploaded.format == "JPEG"
+        assert uploaded.size == (3, 2)
 
 
 @pytest.mark.asyncio

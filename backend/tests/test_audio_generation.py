@@ -158,21 +158,14 @@ async def test_create_audio_generation_api(monkeypatch):
 
     data = response.json()
     task_id = uuid.UUID(data["data"]["id"])
-    try:
-        assert data["code"] == 0
-        async with SessionLocal() as db:
-            task = await db.get(GenerationTask, task_id)
-            assert task.provider == "volcengine"
-            assert "client_business_id" not in task.request_snapshot
-            assert task.request_snapshot["references"] == [
-                {"audio_url": "https://example.com/reference.mp3"}
-            ]
-    finally:
-        async with SessionLocal() as db:
-            task = await db.get(GenerationTask, task_id)
-            if task:
-                await db.delete(task)
-                await db.commit()
+    assert data["code"] == 0
+    async with SessionLocal() as db:
+        task = await db.get(GenerationTask, task_id)
+        assert task.provider == "volcengine"
+        assert "client_business_id" not in task.request_snapshot
+        assert task.request_snapshot["references"] == [
+            {"audio_url": "https://example.com/reference.mp3"}
+        ]
 
 
 @pytest.mark.asyncio
@@ -182,28 +175,15 @@ async def test_audio_generation_flow():
         task = await create_audio_task(db, FakeRedis(), audio_request(), workspace.user_id)
         task_id = task.id
 
-    try:
-        await run_audio_generation(
-            str(task_id), provider=FakeAudioProvider(), storage=FakeStorage()
-        )
-        async with SessionLocal() as db:
-            completed = await db.get(GenerationTask, task_id)
-            asset = await db.scalar(select(Asset).where(Asset.generation_task_id == task_id))
-            assert completed.status == "succeeded"
-            assert completed.result["data"][0]["duration"] == 8.5
-            assert asset.media_type == "audio"
-            assert asset.mime_type == "audio/mpeg"
-            assert asset.duration == 8.5
-    finally:
-        async with SessionLocal() as db:
-            for asset in (
-                await db.scalars(select(Asset).where(Asset.generation_task_id == task_id))
-            ).all():
-                await db.delete(asset)
-            task = await db.get(GenerationTask, task_id)
-            if task:
-                await db.delete(task)
-            await db.commit()
+    await run_audio_generation(str(task_id), provider=FakeAudioProvider(), storage=FakeStorage())
+    async with SessionLocal() as db:
+        completed = await db.get(GenerationTask, task_id)
+        asset = await db.scalar(select(Asset).where(Asset.generation_task_id == task_id))
+        assert completed.status == "succeeded"
+        assert completed.result["data"][0]["duration"] == 8.5
+        assert asset.media_type == "audio"
+        assert asset.mime_type == "audio/mpeg"
+        assert asset.duration == 8.5
 
 
 @pytest.mark.asyncio
@@ -221,18 +201,7 @@ async def test_audio_generation_base64_fallback():
         task = await create_audio_task(db, FakeRedis(), audio_request(), workspace.user_id)
         task_id = task.id
 
-    try:
-        await run_audio_generation(str(task_id), provider=Base64Provider(), storage=FakeStorage())
-        async with SessionLocal() as db:
-            completed = await db.get(GenerationTask, task_id)
-            assert completed.status == "succeeded"
-    finally:
-        async with SessionLocal() as db:
-            for asset in (
-                await db.scalars(select(Asset).where(Asset.generation_task_id == task_id))
-            ).all():
-                await db.delete(asset)
-            task = await db.get(GenerationTask, task_id)
-            if task:
-                await db.delete(task)
-            await db.commit()
+    await run_audio_generation(str(task_id), provider=Base64Provider(), storage=FakeStorage())
+    async with SessionLocal() as db:
+        completed = await db.get(GenerationTask, task_id)
+        assert completed.status == "succeeded"

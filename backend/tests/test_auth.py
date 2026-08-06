@@ -71,45 +71,35 @@ async def test_login_refresh_replay_and_logout():
 
     redis = FakeRedis()
     app.state.redis = redis
-    try:
-        async with AsyncClient(
-            transport=ASGITransport(app=app),
-            base_url="http://test",
-        ) as client:
-            login = await client.post(
-                "/api/auth/login",
-                json={"email": f"AUTH-{user_id.hex[:8]}@EXAMPLE.COM", "password": "password-123"},
-            )
-            assert login.status_code == 200
-            assert login.json()["data"]["id"] == str(user_id)
-            assert "aisd_access" in login.headers.get_list("set-cookie")[0]
-            assert any("HttpOnly" in value for value in login.headers.get_list("set-cookie"))
-            assert any("Path=/api;" in value for value in login.headers.get_list("set-cookie"))
-            assert any("Path=/api/auth;" in value for value in login.headers.get_list("set-cookie"))
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        login = await client.post(
+            "/api/auth/login",
+            json={"email": f"AUTH-{user_id.hex[:8]}@EXAMPLE.COM", "password": "password-123"},
+        )
+        assert login.status_code == 200
+        assert login.json()["data"]["id"] == str(user_id)
+        assert "aisd_access" in login.headers.get_list("set-cookie")[0]
+        assert any("HttpOnly" in value for value in login.headers.get_list("set-cookie"))
+        assert any("Path=/api;" in value for value in login.headers.get_list("set-cookie"))
+        assert any("Path=/api/auth;" in value for value in login.headers.get_list("set-cookie"))
 
-            me = await client.get("/api/auth/me")
-            assert me.status_code == 200
-            assert me.json()["data"]["username"] == f"auth-{user_id.hex[:8]}"
+        me = await client.get("/api/auth/me")
+        assert me.status_code == 200
+        assert me.json()["data"]["username"] == f"auth-{user_id.hex[:8]}"
 
-            old_refresh = client.cookies.get("aisd_refresh")
-            refreshed = await client.post("/api/auth/refresh")
-            assert refreshed.status_code == 200
-            client.cookies.set("aisd_refresh", old_refresh, path="/api/auth")
-            replayed = await client.post("/api/auth/refresh")
-            assert replayed.status_code == 401
+        old_refresh = client.cookies.get("aisd_refresh")
+        refreshed = await client.post("/api/auth/refresh")
+        assert refreshed.status_code == 200
+        client.cookies.set("aisd_refresh", old_refresh, path="/api/auth")
+        replayed = await client.post("/api/auth/refresh")
+        assert replayed.status_code == 401
 
-            logged_out = await client.post("/api/auth/logout")
-            assert logged_out.status_code == 200
-            assert (await client.get("/api/auth/me")).status_code == 401
-    finally:
-        async with SessionLocal() as db:
-            workspace = await db.get(Workspace, workspace_id)
-            if workspace:
-                await db.delete(workspace)
-            user = await db.get(User, user_id)
-            if user:
-                await db.delete(user)
-            await db.commit()
+        logged_out = await client.post("/api/auth/logout")
+        assert logged_out.status_code == 200
+        assert (await client.get("/api/auth/me")).status_code == 401
 
 
 @pytest.mark.asyncio
@@ -129,42 +119,26 @@ async def test_register_creates_default_workspace_without_exposing_token():
         await db.commit()
 
     app.state.redis = FakeRedis()
-    registered_id = None
-    try:
-        async with AsyncClient(
-            transport=ASGITransport(app=app),
-            base_url="http://test",
-        ) as client:
-            response = await client.post(
-                "/api/auth/register",
-                json={
-                    "username": "NewUser",
-                    "email": registered_email.upper(),
-                    "password": "password-123",
-                },
-            )
-        data = response.json()["data"]
-        registered_id = uuid.UUID(data["id"])
-        assert response.status_code == 200
-        assert data["username"] == "newuser"
-        assert "token" not in data
-        async with SessionLocal() as db:
-            workspace = await db.scalar(select(Workspace).where(Workspace.user_id == registered_id))
-            assert workspace.name == "默认工作台"
-    finally:
-        async with SessionLocal() as db:
-            if registered_id:
-                for workspace in (
-                    await db.scalars(select(Workspace).where(Workspace.user_id == registered_id))
-                ).all():
-                    await db.delete(workspace)
-                user = await db.get(User, registered_id)
-                if user:
-                    await db.delete(user)
-            anchor = await db.get(User, anchor_id)
-            if anchor:
-                await db.delete(anchor)
-            await db.commit()
+    async with AsyncClient(
+        transport=ASGITransport(app=app),
+        base_url="http://test",
+    ) as client:
+        response = await client.post(
+            "/api/auth/register",
+            json={
+                "username": "NewUser",
+                "email": registered_email.upper(),
+                "password": "password-123",
+            },
+        )
+    data = response.json()["data"]
+    registered_id = uuid.UUID(data["id"])
+    assert response.status_code == 200
+    assert data["username"] == "newuser"
+    assert "token" not in data
+    async with SessionLocal() as db:
+        workspace = await db.scalar(select(Workspace).where(Workspace.user_id == registered_id))
+        assert workspace.name == "默认工作台"
 
 
 @pytest.mark.asyncio
@@ -270,11 +244,3 @@ async def test_change_password_keeps_current_device_and_revokes_others():
     finally:
         await first.aclose()
         await second.aclose()
-        async with SessionLocal() as db:
-            workspace = await db.get(Workspace, workspace_id)
-            if workspace:
-                await db.delete(workspace)
-            user = await db.get(User, user_id)
-            if user:
-                await db.delete(user)
-            await db.commit()

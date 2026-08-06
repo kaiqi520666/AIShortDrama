@@ -2,13 +2,13 @@ import uuid
 
 import pytest
 from httpx import ASGITransport, AsyncClient
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
 from app.core.auth import hash_password
 from app.core.database import SessionLocal
 from app.core.identity import get_current_admin
 from app.main import app
-from app.models import AdminAuditLog, CreditLedger, User
+from app.models import AdminAuditLog, User
 
 
 @pytest.mark.asyncio
@@ -48,15 +48,6 @@ async def test_admin_actions_audit_and_credit_floor():
             assert audit_actions == ["adjust_credits", "change_role"]
     finally:
         app.dependency_overrides.pop(get_current_admin, None)
-        async with SessionLocal() as db:
-            for audit in list(await db.scalars(select(AdminAuditLog).where(AdminAuditLog.admin_id == admin_id))):
-                await db.delete(audit)
-            await db.execute(delete(CreditLedger).where(CreditLedger.user_id == target_id))
-            for user_id in (target_id, admin_id):
-                user = await db.get(User, user_id)
-                if user:
-                    await db.delete(user)
-            await db.commit()
 
 
 @pytest.mark.asyncio
@@ -77,8 +68,3 @@ async def test_admin_cannot_demote_or_disable_self():
             assert (await client.post(f"/api/admin/users/{admin_id}/status", json={"status": "disabled", "reason": "测试"})).status_code == 400
     finally:
         app.dependency_overrides.pop(get_current_admin, None)
-        async with SessionLocal() as db:
-            user = await db.get(User, admin_id)
-            if user:
-                await db.delete(user)
-            await db.commit()

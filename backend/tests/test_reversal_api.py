@@ -185,8 +185,6 @@ async def test_stream_reverse_prompt(monkeypatch):
         task = await db.get(GenerationTask, task_id)
         assert task.status == "succeeded"
         assert task.result["content"] == "第一段第二段"
-        await db.delete(task)
-        await db.commit()
 
 
 @pytest.mark.asyncio
@@ -214,5 +212,3 @@ async def test_stream_reverse_prompt_keeps_content_over_3000_characters(monkeypa
     async with SessionLocal() as db:
         task = await db.get(GenerationTask, task_id)
         assert task.result["content"] == "".join(chunks)
-        await db.delete(task)
-        await db.commit()

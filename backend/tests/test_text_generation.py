@@ -51,8 +51,6 @@ async def test_stream_text_generation(monkeypatch):
         assert task.task_type == "text"
         assert task.status == "succeeded"
         assert task.result == {"type": "text", "content": "轻盈防风，自在出发。"}
-        await db.delete(task)
-        await db.commit()
 
 
 @pytest.mark.asyncio
@@ -93,5 +91,3 @@ async def test_stream_text_generation_keeps_content_over_3000_characters(monkeyp
     async with SessionLocal() as db:
         task = await db.get(GenerationTask, task_id)
         assert task.result["content"] == "".join(chunks)
-        await db.delete(task)
-        await db.commit()

@@ -2,7 +2,7 @@ import uuid
 from types import SimpleNamespace
 
 import pytest
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
 from app.core.database import SessionLocal
 from app.models import CreditLedger, RechargeOrder, RechargeTier, User
@@ -80,24 +80,18 @@ async def test_zpay_notification_credits_user_once(monkeypatch, override_busines
     }
     params["sign"] = sign_params(params, "secret")
 
-    try:
-        async with SessionLocal() as db:
-            assert await process_notification(db, params) == "success"
-        async with SessionLocal() as db:
-            assert await process_notification(db, params) == "success"
-        async with SessionLocal() as db:
-            user = await db.get(User, override_business_user)
-            order = await db.get(RechargeOrder, order_id)
-            ledgers = list(
-                await db.scalars(
-                    select(CreditLedger).where(CreditLedger.recharge_order_id == order_id)
-                )
+    async with SessionLocal() as db:
+        assert await process_notification(db, params) == "success"
+    async with SessionLocal() as db:
+        assert await process_notification(db, params) == "success"
+    async with SessionLocal() as db:
+        user = await db.get(User, override_business_user)
+        order = await db.get(RechargeOrder, order_id)
+        ledgers = list(
+            await db.scalars(
+                select(CreditLedger).where(CreditLedger.recharge_order_id == order_id)
             )
-            assert user.credit_balance == before + 1000
-            assert order.status == "paid"
-            assert len(ledgers) == 1
-    finally:
-        async with SessionLocal() as db:
-            await db.execute(delete(CreditLedger).where(CreditLedger.recharge_order_id == order_id))
-            await db.execute(delete(RechargeOrder).where(RechargeOrder.id == order_id))
-            await db.commit()
+        )
+        assert user.credit_balance == before + 1000
+        assert order.status == "paid"
+        assert len(ledgers) == 1
