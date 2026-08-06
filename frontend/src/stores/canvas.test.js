@@ -63,6 +63,22 @@ describe('canvas version conflicts', () => {
     expect(store.workspaceVersion).toBe(8)
   })
 
+  it('does not apply an old workspace save response after switching workspaces', async () => {
+    let resolveSave
+    saveWorkspaceCanvas.mockImplementationOnce(() => new Promise((resolve) => { resolveSave = resolve }))
+    const store = useCanvasStore()
+    await store.loadWorkspace({ id: 'workspace-1', version: 1, workspace_type: 'general', canvas: {} })
+    const pending = store.saveCanvas()
+
+    await store.loadWorkspace({ id: 'workspace-2', version: 9, workspace_type: 'general', canvas: {} })
+    resolveSave({ code: 0, data: { version: 2 } })
+    await pending
+
+    expect(store.workspaceId).toBe('workspace-2')
+    expect(store.workspaceVersion).toBe(9)
+    expect(store.saveStatus).toBe('saved')
+  })
+
   it('blocks later saves after the server reports a stale version', async () => {
     const conflict = Object.assign(new Error('conflict'), { response: { status: 409 } })
     saveWorkspaceCanvas.mockRejectedValueOnce(conflict)
@@ -356,7 +372,7 @@ describe('canvas node packs', () => {
     expect(store.addStoryboardVideoNode(ids[0])).toBe(videoId)
   })
 
-  it('normalizes legacy product storyboard templates to UGC', async () => {
+  it('preserves saved product storyboard settings during migration', async () => {
     const store = useCanvasStore()
     await store.loadWorkspace({
       id: 'workspace-1',
@@ -380,9 +396,9 @@ describe('canvas node packs', () => {
     })
 
     expect(store.nodes[0].data).toEqual(expect.objectContaining({
-      textModel: 'gpt-5.6-sol',
-      templateId: 'ugc-seeding',
-      templates: [{ id: 'ugc-seeding', label: 'UGC 种草', description: '用户视角真实分享体验', enabled: true }],
+      textModel: 'qwen3.7',
+      templateId: 'tvc',
+      templates: [{ id: 'tvc', label: 'TVC 广告', enabled: true }],
     }))
   })
 

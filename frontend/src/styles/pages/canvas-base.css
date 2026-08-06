@@ -149,6 +149,26 @@
   white-space: nowrap;
   font-size: 12px;
 }
+.canvas-save-state {
+  display: inline-flex;
+  width: 82px;
+  height: 28px;
+  flex: none;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 5px;
+  margin-left: 10px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+}
+.canvas-save-state.is-failed,
+.canvas-save-state.is-conflict {
+  color: var(--color-danger);
+}
+.canvas-save-state .ui-button {
+  width: 24px;
+  height: 24px;
+}
 .media-node {
   position: relative;
   width: 380px;

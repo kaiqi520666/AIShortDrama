@@ -21,6 +21,7 @@ import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
 import { nodeRegistry } from '../../config/canvas/nodeRegistry'
 import { getNodeTypes } from '../../config/canvas/nodePacks'
 import { useGlobalConfirm, useGlobalToast } from '../../composables/useGlobalUI'
+import { useCanvasAutosave } from '../../composables/useCanvasAutosave'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 
@@ -48,10 +49,7 @@ const canvasDropActive = ref(false)
 const uploadInput = ref(null)
 const pendingUpload = ref(null)
 const generationPanel = ref(null)
-let saveTimer = null
 let readyEmitted = false
-const dirty = ref(false)
-let suppressInitialAutosave = true
 let pastePoint = null
 let history = []
 const historyIndex = ref(-1)
@@ -405,19 +403,6 @@ function createPaneNode(type) {
   contextMenu.value = null
 }
 
-function scheduleSave() {
-  if (suppressInitialAutosave || !store.ready || store.saveConflict) return
-  dirty.value = true
-  window.clearTimeout(saveTimer)
-  saveTimer = window.setTimeout(async () => {
-    try {
-      await store.saveCanvas()
-      if (store.saveConflict || store.saveStatus === 'failed') throw new Error('画布保存失败')
-      dirty.value = false
-    } catch {}
-  }, 800)
-}
-
 function historySnapshot() {
   const payload = store.canvasPayload()
   return JSON.stringify({
@@ -712,25 +697,12 @@ function handlePaste(event) {
   else pasteText(text, position)
 }
 
-async function saveBeforeLeave() {
-  window.clearTimeout(saveTimer)
-  if (!dirty.value) return true
-
-  try {
-    await store.saveCanvas(viewport.value)
-    if (store.saveConflict || store.saveStatus === 'failed') throw new Error('画布保存失败')
-    dirty.value = false
-    return true
-  } catch {
-    return confirm({
-      title: '画布保存失败',
-      message: '最新修改尚未保存，仍要离开画布吗？',
-      confirmText: '仍然离开',
-      cancelText: '留在画布',
-      tone: 'danger',
-    })
-  }
-}
+const { enable: enableAutosave, saveBeforeLeave, retrySave, cancelScheduledSave } = useCanvasAutosave({
+  store,
+  getPayload: () => store.canvasPayload(),
+  getViewport: () => viewport.value,
+  confirm,
+})
 
 async function goHome() {
   if (await saveBeforeLeave()) emit('back')
@@ -743,10 +715,9 @@ async function signOut() {
   emit('back')
 }
 
-watch(() => store.canvasPayload(), scheduleSave, { deep: true })
 watch(() => store.saveConflict, async (conflict) => {
   if (!conflict) return
-  window.clearTimeout(saveTimer)
+  cancelScheduledSave()
   const shouldReload = await confirm({
     title: '画布内容已更新',
     message: '该画布已在其他页面保存。当前页面已停止自动保存，刷新后可继续编辑。',
@@ -763,18 +734,22 @@ onMounted(async () => {
   window.addEventListener('keydown', handleCanvasShortcut)
   window.addEventListener('keyup', handleCanvasKeyup)
   window.addEventListener('blur', restoreTemporaryHand)
-  await store.loadWorkspace(props.workspace)
+  try {
+    await store.loadWorkspace(props.workspace)
+  } catch (error) {
+    toast.error(error.message || '画布版本不受支持')
+    emit('back')
+    return
+  }
   window.clearTimeout(historyTimer)
   history = [historySnapshot()]
   historyIndex.value = 0
   flowMounted.value = true
   await nextTick()
   if (!nodes.value.length) await finishCanvasSetup()
-  suppressInitialAutosave = false
-  dirty.value = false
+  enableAutosave()
 })
 onBeforeUnmount(() => {
-  window.clearTimeout(saveTimer)
   window.clearTimeout(historyTimer)
   window.removeEventListener('paste', handlePaste)
   window.removeEventListener('keydown', handleCanvasShortcut)
@@ -791,8 +766,10 @@ onBeforeUnmount(() => {
       :username="authStore.user?.username || '访客'"
       :credit-balance="authStore.user?.credit_balance || 0"
       :credit-frozen="authStore.user?.credit_frozen || 0"
+      :save-status="store.saveStatus"
       @back="goHome"
       @logout="signOut"
+      @retry-save="retrySave"
     />
 
     <VueFlow

@@ -3,14 +3,14 @@ import { canConnect, getConnectionError, inferTargetHandle } from '../config/can
 import { createNodeData, getNodeDefinition, getReversePrompt } from '../config/canvas/nodeDefinitions'
 import { isNodeTypeAvailable } from '../config/canvas/nodePacks'
 import { buildStoryboardReferenceManifest, createStoryboardTemplates, normalizeStoryboardCharacters, storyboardShotCount } from '../config/canvas/productStoryboard'
+import { CURRENT_CANVAS_SCHEMA_VERSION, migrateCanvas } from '../config/canvas/migrations'
 import { defaultReverseModel } from '../config/reverseModels'
 import { defaultVideoModel } from '../config/videoModels'
 import { saveWorkspaceCanvas } from '../api/workspaces'
 
 const createEdge = (id, source, target, targetHandle) => ({ id, source, target, ...(targetHandle ? { targetHandle } : {}), type: 'cinematic' })
 const defaultWorkspaceId = '00000000-0000-0000-0000-000000000101'
-let activeSave = null
-let saveQueued = false
+const saveQueues = new Map()
 
 function storyboardVideoData(source) {
   const prompt = source?.type === 'image' ? source.data.videoPrompt?.trim() : ''
@@ -77,18 +77,9 @@ export const useCanvasStore = defineStore('canvas', {
         canvas = legacy
         this.legacyImportPending = true
       }
+      canvas = migrateCanvas(canvas)
       const persistent = stripTransientNodes(canvas.nodes, canvas.edges, canvas.groups)
-      this.nodes = JSON.parse(JSON.stringify(persistent.nodes)).map((node) => node.type === 'product_storyboard'
-        ? {
-            ...node,
-            data: {
-              ...node.data,
-              textModel: defaultReverseModel.id,
-              templateId: 'ugc-seeding',
-              templates: createStoryboardTemplates(),
-            },
-          }
-        : node)
+      this.nodes = JSON.parse(JSON.stringify(persistent.nodes))
       this.edges = JSON.parse(JSON.stringify(persistent.edges))
       this.groups = JSON.parse(JSON.stringify(persistent.groups))
       this.sequence = canvas.sequence || 1
@@ -108,7 +99,7 @@ export const useCanvasStore = defineStore('canvas', {
     canvasPayload() {
       const persistent = stripTransientNodes(this.nodes, this.edges, this.groups)
       return {
-        schema_version: 1,
+        schema_version: CURRENT_CANVAS_SCHEMA_VERSION,
         nodes: persistent.nodes.map(({ id, type, position, data }) => ({ id, type, position, data })),
         edges: persistent.edges.map(({ id, source, target, sourceHandle, targetHandle, type }) => ({ id, source, target, ...(sourceHandle ? { sourceHandle } : {}), ...(targetHandle ? { targetHandle } : {}), type: type || 'cinematic' })),
         groups: persistent.groups,
@@ -120,40 +111,53 @@ export const useCanvasStore = defineStore('canvas', {
     async saveCanvas(viewport) {
       if (!this.workspaceId || !this.ready || this.saveConflict) return
       if (viewport) this.viewportData = { x: viewport.x, y: viewport.y, zoom: viewport.zoom }
-      if (activeSave) {
-        saveQueued = true
-        return activeSave
+      const workspaceId = this.workspaceId
+      const existing = saveQueues.get(workspaceId)
+      if (existing) {
+        existing.payload = this.canvasPayload()
+        existing.queued = true
+        return existing.promise
       }
-      activeSave = (async () => {
+      const context = {
+        payload: this.canvasPayload(),
+        version: this.workspaceVersion,
+        queued: false,
+        promise: null,
+      }
+      context.promise = (async () => {
         do {
-          saveQueued = false
-          this.saveStatus = 'saving'
-          const result = await saveWorkspaceCanvas(this.workspaceId, {
-            ...this.canvasPayload(),
-            version: this.workspaceVersion,
+          context.queued = false
+          if (this.workspaceId === workspaceId) this.saveStatus = 'saving'
+          const result = await saveWorkspaceCanvas(workspaceId, {
+            ...context.payload,
+            version: context.version,
           })
           if (result.code !== 0) throw new Error(result.message)
-          this.workspaceVersion = result.data.version
-          this.saveStatus = 'saved'
-        } while (saveQueued)
+          context.version = result.data.version
+          if (this.workspaceId === workspaceId) {
+            this.workspaceVersion = context.version
+            this.saveStatus = 'saved'
+          }
+        } while (context.queued)
       })()
+      saveQueues.set(workspaceId, context)
       try {
-        await activeSave
-        if (this.legacyImportPending) {
+        await context.promise
+        if (this.workspaceId === workspaceId && this.legacyImportPending) {
           localStorage.removeItem('canvas')
           this.legacyImportPending = false
         }
       } catch (error) {
-        if (error.response?.status === 409) {
-          saveQueued = false
+        if (this.workspaceId === workspaceId && error.response?.status === 409) {
+          context.queued = false
           this.saveConflict = true
           this.saveStatus = 'conflict'
-        } else {
+        } else if (this.workspaceId === workspaceId) {
           this.saveStatus = 'failed'
         }
         throw error
       } finally {
-        activeSave = null
+        if (saveQueues.get(workspaceId) === context) saveQueues.delete(workspaceId)
       }
     },
     setViewport(viewport) {
