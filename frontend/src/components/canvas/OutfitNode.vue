@@ -21,13 +21,9 @@ const { updateNodeData } = useVueFlow()
 const composing = ref(false)
 const targetHandles = [{ id: 'apparel', top: '48%' }, { id: 'model', top: '78%' }]
 
-function inputNode(handle) {
-  const edge = store.edges.find((item) => item.target === props.id && item.targetHandle === handle)
-  return store.nodes.find((item) => item.id === edge?.source)
-}
-
-const apparelNode = computed(() => inputNode('apparel'))
+const apparelNode = computed(() => store.incomingNodeByHandle(props.id, 'apparel'))
 const apparelReference = computed(() => apparelNode.value && store.incomingNodes(apparelNode.value.id).find((node) => node.type === 'image'))
+const modelNode = computed(() => store.incomingNodeByHandle(props.id, 'model'))
 const generatedNodes = computed(() => (props.data.generatedNodeIds || []).map((id) => store.nodes.find((node) => node.id === id)).filter(Boolean))
 const boardItems = computed(() => outfitMaterials.map((item) => ({
   ...item,
@@ -38,7 +34,7 @@ const readyAssets = computed(() => boardItems.value.map((item) => item.node?.dat
 const sourceKey = computed(() => readyAssets.value.map((data) => data.assetId).join('|'))
 const inputs = computed(() => [
   { id: 'apparel', label: '服饰资料', icon: Shirt, node: apparelNode.value, asset: apparelReference.value?.data.asset, description: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件已启用` : '等待连接资料' },
-  { id: 'model', label: '模特参考图', icon: UserRound, node: inputNode('model'), asset: inputNode('model')?.data.asset, description: inputNode('model')?.data.title || '等待选择图片' },
+  { id: 'model', label: '模特参考图', icon: UserRound, node: modelNode.value, asset: modelNode.value?.data.asset, description: modelNode.value?.data.title || '等待选择图片' },
 ])
 
 async function composeBoard() {

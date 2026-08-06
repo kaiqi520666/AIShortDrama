@@ -28,14 +28,9 @@ const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
 const { failure, runTextTask } = useStreamingTextTask(props.nodeId)
 
-function inputNode(handle) {
-  const edge = store.edges.find((item) => item.target === props.nodeId && item.targetHandle === handle)
-  return store.nodes.find((item) => item.id === edge?.source)
-}
-
-const apparelNode = computed(() => inputNode('apparel'))
+const apparelNode = computed(() => store.incomingNodeByHandle(props.nodeId, 'apparel'))
 const garmentNode = computed(() => apparelNode.value && store.incomingNodes(apparelNode.value.id).find((node) => node.type === 'image' && node.data.asset))
-const modelNode = computed(() => inputNode('model'))
+const modelNode = computed(() => store.incomingNodeByHandle(props.nodeId, 'model'))
 const apparelContext = computed(() => apparelPromptContext(apparelNode.value?.data))
 const selectedImageSettings = computed(() => ({ model: { id: 'gpt-image-2' }, aspectRatio: '9:16', resolution: '1K' }))
 const selectedTextModel = computed(() => capabilityStore.textModels.find((model) => model.id === props.data.textModel) || capabilityStore.defaultTextModel)

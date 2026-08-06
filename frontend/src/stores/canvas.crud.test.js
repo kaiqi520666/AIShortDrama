@@ -117,6 +117,17 @@ describe('canvas grouping and duplication', () => {
 })
 
 describe('canvas connections and node packs', () => {
+  it('finds an incoming node by its target handle', () => {
+    const store = useCanvasStore()
+    store.$patch({
+      nodes: [{ id: 'world-1', type: 'world', data: {} }, { id: 'character-1', type: 'character', data: {} }],
+      edges: [{ id: 'edge-1', source: 'world-1', target: 'character-1', targetHandle: 'world' }],
+    })
+
+    expect(store.incomingNodeByHandle('character-1', 'world')).toEqual(expect.objectContaining({ id: 'world-1' }))
+    expect(store.incomingNodeByHandle('character-1', 'reference')).toBeUndefined()
+  })
+
   it('enforces mutually exclusive and counted media references in the store', () => {
     const store = useCanvasStore()
     store.$patch({

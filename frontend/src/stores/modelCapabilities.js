@@ -4,6 +4,7 @@ import { normalizeAudioCapability } from '../config/audioModels'
 import { normalizeImageModels } from '../config/imageModels'
 import { normalizeTextModels } from '../config/reverseModels'
 import { normalizeVideoModels } from '../config/videoModels'
+import { validateModelCapabilities } from '../config/modelCapabilitiesValidation'
 import { getApiErrorMessage } from '../utils/apiError'
 
 let loadPromise = null
@@ -37,8 +38,9 @@ export const useModelCapabilitiesStore = defineStore('modelCapabilities', {
       this.error = ''
       loadPromise = getGenerationCapabilities()
         .then((response) => {
-          if (response.code !== 0) throw new Error(response.message)
-          if (response.data?.version !== 1) throw new Error('模型能力版本不兼容')
+          if (response?.code !== 0) throw new Error(response?.message || '模型能力加载失败')
+          const validationError = validateModelCapabilities(response.data)
+          if (validationError) throw new Error(validationError)
           this.capabilities = response.data
           return response.data
         })

@@ -38,4 +38,16 @@ describe('model capabilities store', () => {
     expect(store.error).toBe('')
     expect(store.capabilities.version).toBe(1)
   })
+
+  it('rejects malformed capabilities before writing partial data', async () => {
+    const malformed = structuredClone(modelCapabilitiesFixture)
+    delete malformed.audio.models[0].parameters.pitch_rate
+    getGenerationCapabilities.mockResolvedValue({ code: 0, data: malformed })
+    const store = useModelCapabilitiesStore()
+
+    await expect(store.load()).rejects.toThrow('音频参数范围无效')
+
+    expect(store.capabilities).toBeNull()
+    expect(store.error).toBe('音频参数范围无效')
+  })
 })

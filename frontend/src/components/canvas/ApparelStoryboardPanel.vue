@@ -28,15 +28,10 @@ const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
 const { failure, runTextTask } = useStreamingTextTask(props.nodeId)
 
-function inputNode(handle) {
-  const edge = store.edges.find((item) => item.target === props.nodeId && item.targetHandle === handle)
-  return store.nodes.find((node) => node.id === edge?.source)
-}
-
-const apparelNode = computed(() => inputNode('apparel'))
+const apparelNode = computed(() => store.incomingNodeByHandle(props.nodeId, 'apparel'))
 const garmentNode = computed(() => apparelNode.value && store.incomingNodes(apparelNode.value.id).find((node) => node.type === 'image'))
-const modelNode = computed(() => inputNode('model'))
-const sceneNode = computed(() => inputNode('scene'))
+const modelNode = computed(() => store.incomingNodeByHandle(props.nodeId, 'model'))
+const sceneNode = computed(() => store.incomingNodeByHandle(props.nodeId, 'scene'))
 const apparelContext = computed(() => apparelPromptContext(apparelNode.value?.data))
 const modelCapabilities = computed(() => ({
   videoModels: capabilityStore.videoModels,

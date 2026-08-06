@@ -30,13 +30,8 @@ const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
 const { failure, runTextTask } = useStreamingTextTask(props.nodeId)
 
-function inputNode(handle) {
-  const edge = store.edges.find((item) => item.target === props.nodeId && item.targetHandle === handle)
-  return store.nodes.find((item) => item.id === edge?.source)
-}
-
-const worldNode = computed(() => inputNode('world'))
-const referenceImage = computed(() => inputNode('reference'))
+const worldNode = computed(() => store.incomingNodeByHandle(props.nodeId, 'world'))
+const referenceImage = computed(() => store.incomingNodeByHandle(props.nodeId, 'reference'))
 const selectedImageSettings = computed(() => normalizeImageSettings(
   { model: props.data.imageModel, aspectRatio: props.data.aspectRatio, resolution: props.data.resolution },
   capabilityStore.imageModels,

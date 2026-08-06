@@ -28,13 +28,8 @@ const authStore = useAuthStore()
 const { updateNodeData } = useVueFlow()
 const { failure, runTextTask } = useStreamingTextTask(props.nodeId)
 
-function inputNode(handle) {
-  const edge = store.edges.find((item) => item.target === props.nodeId && item.targetHandle === handle)
-  return store.nodes.find((item) => item.id === edge?.source)
-}
-
-const worldNode = computed(() => inputNode('world'))
-const referenceImage = computed(() => inputNode('reference'))
+const worldNode = computed(() => store.incomingNodeByHandle(props.nodeId, 'world'))
+const referenceImage = computed(() => store.incomingNodeByHandle(props.nodeId, 'reference'))
 const selectedModel = computed(() => capabilityStore.textModels.find((model) => model.id === props.data.model) || capabilityStore.defaultTextModel)
 const modelOptions = computed(() => capabilityStore.textModels.map(({ id, label }) => ({ value: id, label })))
 const running = computed(() => props.data.status === 'generating')

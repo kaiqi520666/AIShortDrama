@@ -59,6 +59,10 @@ export const useCanvasStore = defineStore('canvas', {
         .filter((edge) => edge.target === nodeId)
         .map((edge) => state.nodes.find((node) => node.id === edge.source))
         .filter(Boolean),
+    incomingNodeByHandle: (state) => (nodeId, handle) => {
+      const edge = state.edges.find((item) => item.target === nodeId && item.targetHandle === handle)
+      return state.nodes.find((node) => node.id === edge?.source)
+    },
   },
   actions: {
     async loadWorkspace(workspace) {

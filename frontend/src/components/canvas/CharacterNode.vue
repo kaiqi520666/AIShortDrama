@@ -31,13 +31,8 @@ const profileFields = [
   ['costume', '服装造型'], ['signature', '标志性特征'], ['constraints', '一致性约束'],
 ]
 
-function inputNode(handle) {
-  const edge = store.edges.find((item) => item.target === props.id && item.targetHandle === handle)
-  return store.nodes.find((item) => item.id === edge?.source)
-}
-
-const worldNode = computed(() => inputNode('world'))
-const referenceImage = computed(() => inputNode('reference'))
+const worldNode = computed(() => store.incomingNodeByHandle(props.id, 'world'))
+const referenceImage = computed(() => store.incomingNodeByHandle(props.id, 'reference'))
 const generatedNodes = computed(() => (props.data.generatedNodeIds || []).map((id) => store.nodes.find((node) => node.id === id)).filter(Boolean))
 const mainReferenceOptions = computed(() => generatedNodes.value.filter((node) => node.data.asset).map((node) => ({ value: node.id, label: node.data.title })))
 
