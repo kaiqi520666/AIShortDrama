@@ -7,10 +7,6 @@ describe('canvas node packs', () => {
   it('derives node metadata and workspace packs from one catalog', () => {
     expect(Object.values(nodeCatalog).every((node) => node.componentName && node.panelName)).toBe(true)
     expect(getNodeDescriptor('product').businessCreator).toBe('product')
-    expect(getNodeTypes('ecommerce')).toEqual(Object.values(nodeCatalog)
-      .filter((node) => node.workspaces.includes('ecommerce'))
-      .sort((left, right) => left.order.ecommerce - right.order.ecommerce)
-      .map((node) => node.type))
   })
 
   it('creates default data without importing UI components', () => {
@@ -25,13 +21,24 @@ describe('canvas node packs', () => {
     expect(() => isNodeTypeAvailable('general', 'missing')).toThrow('未在 nodeCatalog 注册')
   })
 
-  it('provides core nodes for general canvas', () => {
-    expect(getNodeTypes('general')).toEqual(['text', 'image', 'video', 'audio'])
+  it('provides the expected nodes for every workspace', () => {
+    const expectedPacks = {
+      general: ['text', 'image', 'video', 'audio'],
+      drama: ['world', 'character', 'text', 'image', 'video', 'audio'],
+      ecommerce: ['product', 'product_visual', 'product_storyboard', 'apparel', 'outfit', 'apparel_storyboard', 'text', 'image', 'video', 'audio'],
+    }
+
+    Object.entries(expectedPacks).forEach(([workspace, nodeTypes]) => {
+      expect(getWorkspaceType(workspace).id).toBe(workspace)
+      expect(getNodeTypes(workspace)).toEqual(nodeTypes)
+      expect(nodeTypes).toEqual(Object.values(nodeCatalog)
+        .filter((node) => node.workspaces.includes(workspace))
+        .sort((left, right) => left.order[workspace] - right.order[workspace])
+        .map((node) => node.type))
+    })
   })
 
-  it('adds world and character creation to drama canvas', () => {
-    expect(getNodeTypes('drama')).toEqual(['world', 'character', 'text', 'image', 'video', 'audio'])
-    expect(getWorkspaceType('drama').id).toBe('drama')
+  it('keeps drama connection rules', () => {
     expect(canConnect('world', 'character', 'drama')).toBe(true)
     expect(canConnect('image', 'character', 'drama')).toBe(true)
     expect(canConnect('character', 'image', 'drama')).toBe(true)
@@ -39,8 +46,7 @@ describe('canvas node packs', () => {
     expect(getConnectionError('image', 'character', ['image'], 'drama')).toContain('只能连接 1 张')
   })
 
-  it('adds ecommerce business nodes to ecommerce canvas', () => {
-    expect(getNodeTypes('ecommerce')).toEqual(['product', 'product_visual', 'product_storyboard', 'apparel', 'outfit', 'apparel_storyboard', 'text', 'image', 'video', 'audio'])
+  it('keeps ecommerce connection rules', () => {
     expect(canConnect('product', 'product_visual', 'ecommerce')).toBe(true)
     expect(canConnect('product', 'product_storyboard', 'ecommerce')).toBe(true)
     expect(canConnect('product_visual', 'image', 'ecommerce')).toBe(true)
