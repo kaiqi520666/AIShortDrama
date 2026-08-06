@@ -24,6 +24,6 @@ const options = computed(() => getNodeTypes(store.workspaceType)
 <template>
   <AppButton v-for="option in options" :key="option.type" :class="`node-option--${option.type}`" @click="$emit('select', option.type)">
     <span class="menu-icon"><component :is="option.icon" :size="17" /></span>
-    <span><strong>{{ option.label }}</strong><small>{{ option.hint }}</small></span>
+    <strong>{{ option.label }}</strong>
   </AppButton>
 </template>

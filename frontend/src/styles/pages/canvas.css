@@ -337,7 +337,7 @@
   padding: 10px;
 }
 .node-create-menu > button {
-  min-height: 54px;
+  min-height: 44px;
 }
 .node-create-menu .menu-icon {
   color: var(--node-accent, var(--color-text-primary));

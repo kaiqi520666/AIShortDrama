@@ -43,8 +43,7 @@
   background: var(--color-border-strong);
   color: var(--color-text-primary);
 }
-.node-create-menu strong,
-.node-create-menu small {
+.node-create-menu strong {
   display: block;
   letter-spacing: 0;
 }
@@ -52,11 +51,6 @@
   color: var(--color-text-primary);
   font-size: 13px;
   font-weight: 550;
-}
-.node-create-menu small {
-  margin-top: 2px;
-  color: var(--color-text-muted);
-  font-size: 12px;
 }
 .context-menu {
   position: fixed;
@@ -162,9 +156,9 @@
 .context-submenu button {
   display: grid;
   grid-template-columns: 32px minmax(0, 1fr);
-  min-height: 48px;
+  min-height: 42px;
   gap: 10px;
-  padding: 7px;
+  padding: 5px 7px;
 }
 .context-submenu button:hover {
   background: var(--color-surface-hover);
@@ -195,12 +189,7 @@
 .node-create-menu .node-option--outfit .menu-icon {
   color: var(--color-warning);
 }
-.context-submenu button > span:last-child {
-  min-width: 0;
-  text-align: left;
-}
-.context-submenu strong,
-.context-submenu small {
+.context-submenu strong {
   display: block;
   letter-spacing: 0;
 }
@@ -208,12 +197,4 @@
   color: var(--color-text-primary);
   font-size: 12px;
   font-weight: 600;
-}
-.context-submenu small {
-  overflow: hidden;
-  margin-top: 2px;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
