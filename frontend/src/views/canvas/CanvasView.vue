@@ -15,9 +15,7 @@ import AppButton from '../../components/ui/AppButton.vue'
 import AppInput from '../../components/ui/AppInput.vue'
 import AppMenu from '../../components/ui/AppMenu.vue'
 import AppTooltip from '../../components/ui/AppTooltip.vue'
-import { uploadMedia } from '../../api/uploads'
 import { canConnect, getConnectionError, inferTargetHandle } from '../../config/canvas/connectionRules'
-import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
 import { nodeRegistry } from '../../config/canvas/nodeRegistry'
 import { getNodeTypes } from '../../config/canvas/nodePacks'
 import { useGlobalConfirm, useGlobalToast } from '../../composables/useGlobalUI'
@@ -27,7 +25,8 @@ import { useCanvasHistory } from '../../composables/useCanvasHistory'
 import { stopAllGenerationPolling, stopWorkspaceGenerationPolling } from '../../services/generationPolling'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
-import { mediaUploadRules, readMediaMetadata } from '../../utils/mediaFiles'
+import { useCanvasDropUpload } from './useCanvasDropUpload'
+import { useCanvasGrouping } from './useCanvasGrouping'
 import { useCanvasShortcuts } from './useCanvasShortcuts'
 
 const store = useCanvasStore()
@@ -44,28 +43,60 @@ const edgeTypes = { cinematic: markRaw(FlowEdge) }
 const createMenu = ref(null)
 const contextMenu = ref(null)
 const connectionSource = ref(null)
-const groupDrag = ref(null)
 const pointerMode = ref(null)
 const canvasTool = ref('move')
 const toolMenuOpen = ref(false)
 const shortcutPanelOpen = ref(false)
 const flowMounted = ref(false)
-const canvasDropActive = ref(false)
-const uploadInput = ref(null)
-const pendingUpload = ref(null)
 const generationPanel = ref(null)
 let readyEmitted = false
-let nodeDragCopy = null
-
-const uploadRules = {
-  image: { ...mediaUploadRules.image, accept: 'image/jpeg,image/png,image/webp' },
-  video: { ...mediaUploadRules.video, accept: 'video/mp4,video/quicktime,video/webm' },
-  audio: { ...mediaUploadRules.audio, accept: 'audio/mpeg,audio/wav,audio/x-wav,audio/mp4' },
-}
 
 const minimapVisible = ref(false)
 const assetsVisible = ref(false)
-const activeGroupId = ref(null)
+const {
+  activeGroupId,
+  selectedNodes,
+  selectedNode,
+  selectedGroup,
+  selectedPartialGroup,
+  contextNodeIds,
+  contextCompleteGroup,
+  contextPartialGroup,
+  selectionFrameStyle,
+  selectionToolbarStyle,
+  groupFrames,
+  panelStyle,
+  openContextMenu,
+  openSelectionContextMenu,
+  groupContextNodes,
+  ungroupContextNodes,
+  removeContextNodesFromGroup,
+  duplicateContextNodes,
+  deleteContextNodes,
+  handleCanvasPointerDown,
+  handleNodeDragStart,
+  handleNodeDragStop,
+  ungroupSelected,
+  focusNode,
+  focusGroup,
+  disposeGrouping,
+} = useCanvasGrouping({
+  store,
+  nodes,
+  groups,
+  viewport,
+  assetsVisible,
+  contextMenu,
+  pointerMode,
+  canvasTool,
+  findNode,
+  fitView,
+  setCenter,
+  getPanelHeight: (type) => nodeRegistry[type]?.panelHeight || 260,
+  removeSelectedElements,
+  addSelectedNodes,
+  confirm,
+})
 const {
   canUndo,
   canRedo,
@@ -81,62 +112,18 @@ const {
   pasteFromClipboard,
   trackPastePoint,
 } = useCanvasClipboard({ store, nodes, project, updateNodeData, toast })
-const selectedNodes = computed(() => nodes.value.filter((node) => node.selected))
-const selectedNode = computed(() => selectedNodes.value.length === 1 ? selectedNodes.value[0] : null)
-const selectedNodeDefinition = computed(() => selectedNode.value && nodeDefinitions[selectedNode.value.type])
+const {
+  canvasDropActive,
+  uploadInput,
+  pendingUpload,
+  uploadRules,
+  handleCanvasDragOver,
+  handleCanvasDragLeave,
+  handleCanvasDrop,
+  chooseUpload,
+  handlePaneUpload,
+} = useCanvasDropUpload({ store, nodes, contextMenu, activeGroupId, screenToFlowCoordinate, updateNodeData, toast })
 const selectedNodeRegistry = computed(() => selectedNode.value && nodeRegistry[selectedNode.value.type])
-const selectedGroup = computed(() => groups.value.find((group) => group.id === activeGroupId.value) || groups.value.find((group) => group.nodeIds.length === selectedNodes.value.length && group.nodeIds.every((id) => selectedNodes.value.some((node) => node.id === id))))
-const selectedPartialGroup = computed(() => groups.value.find((group) => selectedNodes.value.length > 1 && group.nodeIds.length > selectedNodes.value.length && selectedNodes.value.every((node) => group.nodeIds.includes(node.id))))
-const contextNodeIds = computed(() => contextMenu.value?.nodeIds || [])
-const contextCompleteGroup = computed(() => groups.value.find((group) => contextNodeIds.value.length > 1 && group.nodeIds.length === contextNodeIds.value.length && group.nodeIds.every((id) => contextNodeIds.value.includes(id))))
-const contextPartialGroup = computed(() => groups.value.find((group) => contextNodeIds.value.length > 1 && group.nodeIds.length > contextNodeIds.value.length && contextNodeIds.value.every((id) => group.nodeIds.includes(id))))
-const panelConfig = { width: 600, gap: 16, margin: 16 }
-function frameStyle(nodeIds) {
-  const flowNodes = nodeIds.map((id) => findNode(id)).filter(Boolean)
-  if (flowNodes.length < 2) return {}
-
-  const zoom = viewport.value.zoom
-  const paddingX = 28
-  const paddingTop = 32
-  const paddingBottom = 14
-  const left = Math.min(...flowNodes.map((node) => node.computedPosition.x))
-  const top = Math.min(...flowNodes.map((node) => node.computedPosition.y))
-  const right = Math.max(...flowNodes.map((node) => node.computedPosition.x + node.dimensions.width))
-  const bottom = Math.max(...flowNodes.map((node) => node.computedPosition.y + node.dimensions.height))
-  const offset = assetsVisible.value ? 292 : 0
-
-  return {
-    left: `${offset + viewport.value.x + left * zoom - paddingX}px`,
-    top: `${viewport.value.y + top * zoom - paddingTop}px`,
-    width: `${(right - left) * zoom + paddingX * 2}px`,
-    height: `${(bottom - top) * zoom + paddingTop + paddingBottom}px`,
-  }
-}
-const selectionFrameStyle = computed(() => frameStyle(selectedNodes.value.map((node) => node.id)))
-const toolbarFrameStyle = computed(() => frameStyle(selectedGroup.value?.nodeIds || selectedNodes.value.map((node) => node.id)))
-const selectionToolbarStyle = computed(() => ({
-  left: toolbarFrameStyle.value.left,
-  top: `${Math.max(44, Number.parseFloat(toolbarFrameStyle.value.top))}px`,
-}))
-const groupFrames = computed(() => groups.value.map((group) => ({
-  id: group.id,
-  nodeIds: group.nodeIds,
-  active: selectedGroup.value?.id === group.id,
-  style: frameStyle(group.nodeIds),
-})))
-const panelStyle = computed(() => {
-  const node = selectedNode.value && findNode(selectedNode.value.id)
-  if (!node) return {}
-
-  const zoom = viewport.value.zoom
-  const center = (assetsVisible.value ? 292 : 0) + viewport.value.x + (node.computedPosition.x + node.dimensions.width / 2) * zoom
-  const top = viewport.value.y + (node.computedPosition.y + node.dimensions.height) * zoom + panelConfig.gap
-  const panelHeight = nodeRegistry[node.type]?.panelHeight || 260
-  return {
-    left: `clamp(${panelConfig.margin}px, ${center - panelConfig.width / 2}px, calc(100vw - ${panelConfig.width + panelConfig.margin}px))`,
-    top: `clamp(${panelConfig.margin}px, ${top}px, calc(100vh - ${panelHeight + 84}px))`,
-  }
-})
 function openGlobalMenu(event) {
   toolMenuOpen.value = false
   const buttonRect = event.currentTarget.getBoundingClientRect()
@@ -222,22 +209,6 @@ function handleConnectEnd(event) {
   connectionSource.value = null
 }
 
-function openContextMenu({ event, node }) {
-  event.preventDefault()
-  const nodeIds = node.selected && selectedNodes.value.length > 1 ? selectedNodes.value.map((item) => item.id) : [node.id]
-  if (nodeIds.length === 1) {
-    store.selectNodes(nodeIds)
-    activeGroupId.value = null
-  }
-  contextMenu.value = { x: event.clientX, y: event.clientY, nodeId: node.id, nodeIds }
-}
-
-function openSelectionContextMenu({ event, nodes: selected }) {
-  event.preventDefault()
-  const nodeIds = selected.map((node) => node.id)
-  contextMenu.value = { x: event.clientX, y: event.clientY, nodeId: nodeIds[0], nodeIds }
-}
-
 function openEdgeContextMenu({ event, edge }) {
   event.preventDefault()
   contextMenu.value = { x: event.clientX, y: event.clientY, edgeId: edge.id }
@@ -248,134 +219,7 @@ function runContextAction(action) {
   contextMenu.value = null
 }
 
-function groupContextNodes() {
-  store.selectNodes(contextNodeIds.value)
-  store.groupSelected()
-  contextMenu.value = null
-}
-
-function ungroupContextNodes() {
-  store.ungroupNode(contextCompleteGroup.value.nodeIds[0])
-  activeGroupId.value = null
-  contextMenu.value = null
-}
-
-function removeContextNodesFromGroup() {
-  store.removeNodesFromGroup(contextPartialGroup.value.id, contextNodeIds.value)
-  contextMenu.value = null
-}
-
-function duplicateContextNodes() {
-  if (contextNodeIds.value.length > 1) store.duplicateNodes(contextNodeIds.value)
-  else store.duplicateWithInputs(contextNodeIds.value[0])
-  activeGroupId.value = null
-  contextMenu.value = null
-}
-
-async function deleteContextNodes() {
-  const nodeIds = [...contextNodeIds.value]
-  contextMenu.value = null
-  if (nodeIds.length > 1) {
-    const accepted = await confirm({
-      title: '删除所选节点',
-      message: `确定删除选中的 ${nodeIds.length} 个节点吗？`,
-      confirmText: '删除',
-      tone: 'danger',
-    })
-    if (!accepted) return
-  }
-  store.deleteNodes(nodeIds)
-  activeGroupId.value = null
-}
-
-function moveGroup(event) {
-  if (!groupDrag.value) return
-  const deltaX = (event.clientX - groupDrag.value.startX) / viewport.value.zoom
-  const deltaY = (event.clientY - groupDrag.value.startY) / viewport.value.zoom
-  groupDrag.value.positions.forEach(({ id, x, y }) => {
-    const node = nodes.value.find((item) => item.id === id)
-    if (node) node.position = { x: x + deltaX, y: y + deltaY }
-  })
-}
-
-function stopGroupDrag() {
-  window.removeEventListener('pointermove', moveGroup)
-  window.removeEventListener('pointerup', stopGroupDrag)
-  groupDrag.value = null
-  pointerMode.value = null
-}
-
-function startGroupDrag(event, group) {
-  event.preventDefault()
-  event.stopPropagation()
-  activeGroupId.value = group.id
-  store.selectNodes([])
-  groupDrag.value = {
-    startX: event.clientX,
-    startY: event.clientY,
-    positions: group.nodeIds.map((id) => {
-      const node = findNode(id)
-      return { id, x: node.position.x, y: node.position.y }
-    }),
-  }
-  window.addEventListener('pointermove', moveGroup)
-  window.addEventListener('pointerup', stopGroupDrag)
-}
-
-function handleCanvasPointerDown(event) {
-  if (event.target.closest('.nodrag, .selection-toolbar, .asset-drawer, .canvas-side-tools, .canvas-bottom-toolbar, .node-create-menu, .generation-panel')) return
-  if (event.button === 1 || (event.button === 0 && canvasTool.value === 'hand')) {
-    pointerMode.value = 'panning'
-    return
-  }
-  if (event.button !== 0) return
-  pointerMode.value = 'selecting'
-  const nodeElement = event.target.closest('.vue-flow__node')
-  if (nodeElement) {
-    pointerMode.value = 'moving'
-    activeGroupId.value = null
-    const nodeId = nodeElement.getAttribute('data-id')
-    if (!event.shiftKey && groups.value.some((group) => group.nodeIds.includes(nodeId))) {
-      const node = findNode(nodeId)
-      if (node) {
-        removeSelectedElements()
-        addSelectedNodes([node])
-      }
-    }
-    return
-  }
-  const group = groupFrames.value.find(({ style }) => {
-    const left = Number.parseFloat(style.left)
-    const top = Number.parseFloat(style.top)
-    return event.clientX >= left && event.clientX <= left + Number.parseFloat(style.width) && event.clientY >= top && event.clientY <= top + Number.parseFloat(style.height)
-  })
-  if (group) {
-    activeGroupId.value = group.id
-    pointerMode.value = 'moving'
-    startGroupDrag(event, group)
-  } else {
-    activeGroupId.value = null
-  }
-}
-
-function resetPointerMode() {
-  pointerMode.value = null
-}
-
-function handleNodeDragStart({ event, nodes: draggedNodes }) {
-  if (!event.altKey) return
-  nodeDragCopy = Object.fromEntries(draggedNodes.map((node) => [node.id, { ...node.position }]))
-}
-
-function handleNodeDragStop() {
-  if (!nodeDragCopy) return
-  const ids = Object.keys(nodeDragCopy)
-  const positions = Object.fromEntries(ids.map((id) => [id, { ...nodes.value.find((node) => node.id === id).position }]))
-  Object.entries(nodeDragCopy).forEach(([id, position]) => { nodes.value.find((node) => node.id === id).position = position })
-  store.duplicateNodes(ids, positions)
-  nodeDragCopy = null
-  activeGroupId.value = null
-}
+function resetPointerMode() { pointerMode.value = null }
 
 function selectCanvasTool(tool) {
   canvasTool.value = tool
@@ -387,27 +231,6 @@ function toggleToolMenu() {
   createMenu.value = null
   contextMenu.value = null
   toolMenuOpen.value = !toolMenuOpen.value
-}
-
-function ungroupSelected() {
-  if (selectedGroup.value) store.ungroupNode(selectedGroup.value.nodeIds[0])
-  else if (selectedPartialGroup.value) store.removeNodesFromGroup(selectedPartialGroup.value.id, selectedNodes.value.map((node) => node.id))
-  activeGroupId.value = null
-}
-
-function focusNode(id) {
-  const node = findNode(id)
-  activeGroupId.value = null
-  nodes.value.forEach((item) => { item.selected = item.id === id })
-  setCenter(node.computedPosition.x + node.dimensions.width / 2, node.computedPosition.y + node.dimensions.height / 2, { zoom: 1, duration: 300 })
-}
-
-function focusGroup(id) {
-  const group = groups.value.find((item) => item.id === id)
-  if (!group) return
-  activeGroupId.value = id
-  store.selectNodes([])
-  fitView({ nodes: group.nodeIds, padding: 0.3, duration: 300 })
 }
 
 function createPaneNode(type) {
@@ -436,9 +259,7 @@ useCanvasShortcuts({
   zoomOut,
 })
 
-function updateViewport(value) {
-  store.setViewport(value)
-}
+function updateViewport(value) { store.setViewport(value) }
 
 async function finishCanvasSetup() {
   if (readyEmitted) return
@@ -446,72 +267,6 @@ async function finishCanvasSetup() {
   setViewport(store.viewportData)
   await nextTick()
   emit('ready')
-}
-
-function handleCanvasDragOver(event) {
-  if (!event.dataTransfer.types.includes('application/x-mooncut-canvas-item')) return
-  event.preventDefault()
-  event.dataTransfer.dropEffect = 'copy'
-  canvasDropActive.value = true
-}
-
-function handleCanvasDragLeave(event) {
-  if (!event.currentTarget.contains(event.relatedTarget)) canvasDropActive.value = false
-}
-
-function handleCanvasDrop(event) {
-  const raw = event.dataTransfer.getData('application/x-mooncut-canvas-item')
-  canvasDropActive.value = false
-  if (!raw) return
-  event.preventDefault()
-  try {
-    const item = JSON.parse(raw)
-    const position = screenToFlowCoordinate({ x: event.clientX, y: event.clientY })
-    if (item.kind !== 'asset') return
-    store.addAssetNode(item.asset, position)
-    activeGroupId.value = null
-  } catch {
-    toast.error('无法添加拖拽内容')
-  }
-}
-
-function chooseUpload(type) {
-  pendingUpload.value = { type, position: contextMenu.value.position }
-  contextMenu.value = null
-  nextTick(() => uploadInput.value?.click())
-}
-
-async function handlePaneUpload(event) {
-  const file = event.target.files?.[0]
-  event.target.value = ''
-  const upload = pendingUpload.value
-  pendingUpload.value = null
-  if (!file || !upload) return
-  const rule = uploadRules[upload.type]
-  if (!rule.types.includes(file.type)) return toast.warning(`不支持的${nodeDefinitions[upload.type].label}格式`)
-  if (file.size > rule.maxSize) return toast.warning(`文件不能超过 ${rule.maxSize / 1024 / 1024}MB`)
-
-  const id = store.addNode(upload.type, upload.position)
-  const node = nodes.value.find((item) => item.id === id)
-  node.data = { ...node.data, status: 'uploading', assetSource: 'upload', pasted: true }
-  try {
-    const metadata = await readMediaMetadata(upload.type, file)
-    const result = await uploadMedia(upload.type, file, { workspaceId: store.workspaceId, nodeId: id, timeout: 60_000, ...metadata })
-    if (result.code !== 0) throw new Error(result.message)
-    const sourceWidth = result.data.width || metadata.width
-    const sourceHeight = result.data.height || metadata.height
-    updateNodeData(id, {
-      asset: result.data.url,
-      assetId: result.data.id,
-      status: 'ready',
-      ...(sourceWidth ? { sourceWidth, sourceHeight, sourceAspectRatio: sourceWidth / sourceHeight } : {}),
-      ...(metadata.duration ? { sourceDuration: metadata.duration } : {}),
-      sourceByteSize: result.data.size,
-    })
-  } catch (error) {
-    store.deleteNode(id)
-    toast.error(error.code === 'ECONNABORTED' ? '上传超时，请重试' : error.response?.data?.message || error.message || '上传失败')
-  }
 }
 
 async function pasteFromMenu() {
@@ -569,6 +324,7 @@ onMounted(async () => {
 })
 onBeforeUnmount(() => {
   stopWorkspaceGenerationPolling(store.workspaceId)
+  disposeGrouping()
   disposeHistory()
 })
 </script>
