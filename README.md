@@ -63,6 +63,12 @@ npm run dev -- --host 127.0.0.1 --port 5173
 
 ## 验证
 
+先创建与业务库隔离的测试数据库，并在 `backend/.env` 配置 `TEST_DATABASE_URL`。数据库名称必须包含 `test`，pytest 会在运行前重建该数据库的 `public` schema：
+
+```sql
+CREATE DATABASE ai_short_drama_test;
+```
+
 ```powershell
 Set-Location backend
 uv run pytest

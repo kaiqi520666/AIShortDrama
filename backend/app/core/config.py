@@ -2,6 +2,7 @@ from functools import lru_cache
 from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 
 BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -12,6 +13,7 @@ class Settings(BaseSettings):
 
     app_env: str = "development"
     database_url: str
+    test_database_url: str = ""
     redis_url: str
     secret_key: str
     redis_prefix: str = "aisd"
@@ -44,6 +46,27 @@ class Settings(BaseSettings):
     @property
     def secure_cookies(self) -> bool:
         return self.app_env == "production"
+
+    @property
+    def active_database_url(self) -> str:
+        if self.app_env != "test":
+            return self.database_url
+        return validate_test_database_url(self.database_url, self.test_database_url)
+
+
+def validate_test_database_url(database_url: str, test_database_url: str) -> str:
+    if not test_database_url:
+        raise ValueError("TEST_DATABASE_URL 未配置")
+    database = make_url(database_url)
+    test_database = make_url(test_database_url)
+    test_name = (test_database.database or "").lower()
+    if database.render_as_string(hide_password=False) == test_database.render_as_string(
+        hide_password=False
+    ):
+        raise ValueError("测试数据库不能与业务数据库相同")
+    if "test" not in test_name:
+        raise ValueError("测试数据库名称必须包含 test")
+    return test_database_url
 
 
 @lru_cache
