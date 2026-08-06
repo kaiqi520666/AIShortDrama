@@ -41,11 +41,13 @@ async def test_stream_text_generation(monkeypatch):
 
     events = [json.loads(line) for line in response.text.splitlines()]
     task_id = uuid.UUID(events[0]["task_id"])
-    assert events[1:] == [
-        {"type": "delta", "content": "轻盈防风，"},
-        {"type": "delta", "content": "自在出发。"},
-        {"type": "done"},
-    ]
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith("application/x-ndjson")
+    assert events[0]["type"] == "meta"
+    assert events[-1]["type"] == "done"
+    assert "".join(event["content"] for event in events if event["type"] == "delta") == (
+        "轻盈防风，自在出发。"
+    )
     async with SessionLocal() as db:
         task = await db.get(GenerationTask, task_id)
         assert task.task_type == "text"

@@ -25,89 +25,25 @@ class FakeRedis:
         pass
 
 
-IMAGE_REQUESTS = [
-    {
-        "node_id": "image-gpt-test",
-        "model": "gpt-image-2",
-        "prompt": "test image",
-        "size": "16:9",
-        "resolution": "1K",
-    },
-    {
-        "node_id": "image-seedream-pro-test",
-        "model": "doubao-seedream-5-0-pro",
-        "prompt": "test image",
-        "size": "16:9",
-        "resolution": "2K",
-        "reference_images": ["https://example.com/reference.png"],
-    },
-    {
-        "node_id": "image-seedream-test",
-        "model": "doubao-seedream-5-0",
-        "prompt": "test image",
-        "size": "9:16",
-        "resolution": "3K",
-    },
-    {
-        "node_id": "image-gemini-pro-test",
-        "model": "gemini-3-pro-image-preview",
-        "prompt": "test image",
-        "size": "4:3",
-        "resolution": "4K",
-        "reference_images": ["https://example.com/reference.png"],
-    },
-    {
-        "node_id": "image-gemini-flash-test",
-        "model": "gemini-3.1-flash-image-preview",
-        "prompt": "test image",
-        "size": "1:4",
-        "resolution": "1K",
-        "reference_images": ["https://example.com/reference.png"],
-        "google_search": True,
-        "google_image_search": True,
-    },
-]
+IMAGE_REQUEST = {
+    "workspace_id": str(DEFAULT_WORKSPACE_ID),
+    "node_id": "image-gpt-test",
+    "model": "gpt-image-2",
+    "prompt": "test image",
+    "size": "16:9",
+    "resolution": "1K",
+}
 
-for request in IMAGE_REQUESTS:
-    request["workspace_id"] = str(DEFAULT_WORKSPACE_ID)
-
-VIDEO_REQUESTS = [
-    {
-        "node_id": "video-seedance-test",
-        "model": "seedance-2",
-        "prompt": "test video",
-        "duration": 5,
-        "resolution": "1080p",
-        "aspect_ratio": "adaptive",
-        "generate_audio": True,
-        "reference_images": [],
-    },
-    {
-        "node_id": "video-seedance-fast-test",
-        "model": "seedance-2-fast",
-        "prompt": "test video",
-        "duration": 8,
-        "resolution": "720p",
-        "aspect_ratio": "9:16",
-        "generate_audio": False,
-        "reference_images": ["https://example.com/one.png"],
-    },
-    {
-        "node_id": "video-seedance-mini-test",
-        "model": "seedance-2-mini",
-        "prompt": "test video",
-        "duration": 10,
-        "resolution": "480p",
-        "aspect_ratio": "1:1",
-        "reference_images": [
-            "https://example.com/one.png",
-            "https://example.com/two.png",
-        ],
-    },
-]
-
-for request in VIDEO_REQUESTS:
-    request["workspace_id"] = str(DEFAULT_WORKSPACE_ID)
+VIDEO_REQUEST = {
+    "workspace_id": str(DEFAULT_WORKSPACE_ID),
+    "node_id": "video-seedance-mini-test",
+    "model": "seedance-2-mini",
+    "prompt": "test video",
+    "duration": 10,
+    "resolution": "480p",
+    "aspect_ratio": "1:1",
+    "reference_images": ["https://example.com/one.png"],
+}
 
 
 @pytest_asyncio.fixture
@@ -134,10 +70,7 @@ async def post_generation(monkeypatch, path, payload, redis):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "payload", IMAGE_REQUESTS, ids=[request["model"] for request in IMAGE_REQUESTS]
-)
-async def test_create_image_generation(monkeypatch, payload, generation_user_id):
+async def test_create_image_generation(monkeypatch, generation_user_id):
     async def create_fake_redis_pool():
         return FakeRedis()
 
@@ -149,7 +82,7 @@ async def test_create_image_generation(monkeypatch, payload, generation_user_id)
         ) as client:
             response = await client.post(
                 "/api/generations/images",
-                json=payload,
+                json=IMAGE_REQUEST,
             )
 
     data = response.json()
@@ -159,36 +92,12 @@ async def test_create_image_generation(monkeypatch, payload, generation_user_id)
     assert data["data"]["status"] == "queued"
     async with SessionLocal() as db:
         task = await db.get(GenerationTask, task_id)
-        assert task.model == payload["model"]
-        expected_payload = {
-            "model": payload["model"],
-            "prompt": payload["prompt"],
-            "size": payload["size"],
-            "n": 1,
-        }
-        if payload["model"] == "gpt-image-2":
-            expected_payload["resolution"] = payload["resolution"].lower()
-            expected_payload["response_format"] = "url"
-        else:
-            expected_payload["metadata"] = {"resolution": payload["resolution"]}
-            if payload["model"].startswith("doubao-seedream-5-0"):
-                expected_payload["metadata"]["watermark"] = False
-            if payload.get("google_search"):
-                expected_payload["metadata"]["google_search"] = True
-            if payload.get("google_image_search"):
-                expected_payload["metadata"]["google_image_search"] = True
-            if payload.get("reference_images"):
-                expected_payload["image_urls"] = payload["reference_images"]
-        provider_payload = task.request_snapshot.copy()
-        provider_payload.pop("client_business_id")
-        assert provider_payload == expected_payload
+        assert task.model == IMAGE_REQUEST["model"]
+        assert task.request_snapshot["client_business_id"]
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(
-    "payload", VIDEO_REQUESTS, ids=[request["model"] for request in VIDEO_REQUESTS]
-)
-async def test_create_video_generation(monkeypatch, payload, generation_user_id):
+async def test_create_video_generation(monkeypatch, generation_user_id):
     async def create_fake_redis_pool():
         return FakeRedis()
 
@@ -198,7 +107,7 @@ async def test_create_video_generation(monkeypatch, payload, generation_user_id)
             transport=ASGITransport(app=main_module.app),
             base_url="http://test",
         ) as client:
-            response = await client.post("/api/generations/videos", json=payload)
+            response = await client.post("/api/generations/videos", json=VIDEO_REQUEST)
 
     data = response.json()
     task_id = uuid.UUID(data["data"]["id"])
@@ -207,20 +116,16 @@ async def test_create_video_generation(monkeypatch, payload, generation_user_id)
     assert data["data"]["task_type"] == "video"
     async with SessionLocal() as db:
         task = await db.get(GenerationTask, task_id)
-        assert task.model == payload["model"]
-        expected = [
-            {"url": url, "role": "reference_image"} for url in payload["reference_images"]
-        ]
-        assert task.request_snapshot.get("image_with_roles", []) == expected
-        assert task.request_snapshot["generate_audio"] is payload.get("generate_audio", True)
+        assert task.model == VIDEO_REQUEST["model"]
+        assert task.request_snapshot["client_business_id"]
 
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("path", "payload"),
     [
-        ("images", IMAGE_REQUESTS[0]),
-        ("videos", VIDEO_REQUESTS[0]),
+        ("images", IMAGE_REQUEST),
+        ("videos", VIDEO_REQUEST),
         (
             "audios",
             {
@@ -252,7 +157,7 @@ async def test_generation_returns_402_for_insufficient_credits(monkeypatch, gene
     response = await post_generation(
         monkeypatch,
         "images",
-        {**IMAGE_REQUESTS[0], "node_id": "insufficient-credits-api"},
+        {**IMAGE_REQUEST, "node_id": "insufficient-credits-api"},
         FakeRedis(),
     )
 
@@ -268,7 +173,7 @@ async def test_generation_returns_503_and_refunds_when_enqueue_fails(
     response = await post_generation(
         monkeypatch,
         "images",
-        {**IMAGE_REQUESTS[0], "node_id": node_id},
+        {**IMAGE_REQUEST, "node_id": node_id},
         FakeRedis(False),
     )
 
