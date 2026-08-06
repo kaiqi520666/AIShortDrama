@@ -46,6 +46,7 @@
 .node-create-menu strong {
   display: block;
   letter-spacing: 0;
+  text-align: left;
 }
 .node-create-menu strong {
   color: var(--color-text-primary);
@@ -192,6 +193,7 @@
 .context-submenu strong {
   display: block;
   letter-spacing: 0;
+  text-align: left;
 }
 .context-submenu strong {
   color: var(--color-text-primary);
