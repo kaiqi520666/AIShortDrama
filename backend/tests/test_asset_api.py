@@ -14,6 +14,7 @@ from app.core.identity import DEFAULT_WORKSPACE_ID
 from app.main import app
 from app.models import Asset
 from app.schemas.asset import ComposeImageBoardRequest
+from app.services.private_avatar import PrivateAvatarService
 
 
 class FakePrivateAvatarProvider:
@@ -179,7 +180,12 @@ async def test_stream_asset_forwards_range(monkeypatch, override_business_user):
 
 @pytest.mark.asyncio
 async def test_register_and_refresh_storyboard_private_avatar(monkeypatch, override_business_user):
-    monkeypatch.setattr(assets_module, "ToApisProvider", FakePrivateAvatarProvider)
+    provider = FakePrivateAvatarProvider()
+    monkeypatch.setattr(
+        assets_module,
+        "get_private_avatar_service",
+        lambda: PrivateAvatarService(lambda: provider),
+    )
     asset_id = None
     async with SessionLocal() as db:
         asset = Asset(
@@ -195,33 +201,30 @@ async def test_register_and_refresh_storyboard_private_avatar(monkeypatch, overr
         await db.refresh(asset)
         asset_id = asset.id
 
-    try:
-        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            registered = (
-                await client.post(
-                    f"/api/assets/{asset_id}/private-avatar",
-                    json={"group_id": "pg_character"},
-                )
-            ).json()
-            FakePrivateAvatarProvider.status = "active"
-            refreshed = (
-                await client.post(
-                    f"/api/assets/{asset_id}/private-avatar",
-                    json={"group_id": "pg_character"},
-                )
-            ).json()
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        registered = (
+            await client.post(
+                f"/api/assets/{asset_id}/private-avatar",
+                json={"group_id": "pg_character"},
+            )
+        ).json()
+        provider.status = "active"
+        refreshed = (
+            await client.post(
+                f"/api/assets/{asset_id}/private-avatar",
+                json={"group_id": "pg_character"},
+            )
+        ).json()
 
-        assert registered["data"]["metadata"]["seedance"]["status"] == "processing"
-        assert refreshed["data"]["metadata"]["seedance"] == {
-            "provider": "toapis",
-            "type": "private-avatar",
-            "group_id": "pg_character",
-            "asset_id": "pa_storyboard",
-            "asset_url": "asset://pa_storyboard",
-            "status": "active",
-        }
-    finally:
-        FakePrivateAvatarProvider.status = "processing"
+    assert registered["data"]["metadata"]["seedance"]["status"] == "processing"
+    assert refreshed["data"]["metadata"]["seedance"] == {
+        "provider": "toapis",
+        "type": "private-avatar",
+        "group_id": "pg_character",
+        "asset_id": "pa_storyboard",
+        "asset_url": "asset://pa_storyboard",
+        "status": "active",
+    }
 
 
 @pytest.mark.asyncio

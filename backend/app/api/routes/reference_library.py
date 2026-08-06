@@ -1,7 +1,5 @@
-import asyncio
 import logging
 import uuid
-from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile
@@ -12,53 +10,45 @@ from app.core.database import get_db
 from app.core.errors import NotFoundError, RequestError, ServiceUnavailableError, public_error_message
 from app.core.identity import get_current_user_id
 from app.models import Asset, Character, Garment, OutfitModel
-from app.providers.toapis import ToApisError, ToApisProvider
+from app.providers.toapis import ToApisProvider
 from app.schemas.response import success
-from app.services.image_processing import normalize_image
-from app.services.storage import OssStorage
+from app.services.media_upload import MEDIA_UPLOAD_RULES, MediaUploadService, StoredMedia
+from app.services.private_avatar import PrivateAvatarService
+from app.services.storage import IMAGE_MAX_BYTES, OssStorage
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
-MAX_IMAGE_SIZE = 20 * 1024 * 1024
+IMAGE_TYPES = MEDIA_UPLOAD_RULES["image"]["content_types"]
+MAX_IMAGE_SIZE = IMAGE_MAX_BYTES
 
 
-def avatar_metadata(data: dict[str, Any]) -> dict[str, Any]:
-    asset_id = data.get("asset_id")
-    return {
-        "provider": "toapis",
-        "type": "private-avatar",
-        "group_id": data.get("group_id"),
-        "asset_id": asset_id,
-        "asset_url": data.get("asset_url") or (f"asset://{asset_id}" if asset_id else None),
-        "status": data.get("status") or "processing",
-    }
+def get_media_upload_service() -> MediaUploadService:
+    return MediaUploadService(storage_factory=OssStorage)
 
 
-async def register_virtual_character(name: str, source_url: str) -> dict[str, Any]:
-    async with ToApisProvider() as provider:
-        group = await provider.create_private_avatar_group(name)
-        group_id = group.get("group_id")
-        if not group_id:
-            raise ToApisError("ToAPIs 未返回虚拟角色组 ID")
-        asset = await provider.upload_private_avatar(group_id, source_url, name)
-        asset["group_id"] = group_id
-        if not asset.get("asset_id"):
-            raise ToApisError("ToAPIs 未返回虚拟角色素材 ID")
-        return avatar_metadata(asset)
+def get_private_avatar_service() -> PrivateAvatarService:
+    return PrivateAvatarService(provider_factory=ToApisProvider)
 
 
-async def refresh_virtual_character(item: Character) -> None:
+async def register_virtual_character(
+    name: str, source_url: str, group_id: str | None = None
+) -> dict[str, Any]:
+    """Compatibility wrapper for callers that still use the route helper."""
+    return await get_private_avatar_service().register(name, source_url, group_id)
+
+
+async def refresh_virtual_character(item: Character) -> dict[str, Any]:
     seedance = (item.character_metadata or {}).get("seedance") or {}
     if seedance.get("status") != "processing" or not seedance.get("asset_id"):
-        return
-    async with ToApisProvider() as provider:
-        state = await provider.get_private_avatar(seedance["asset_id"])
-    item.character_metadata = {
-        **(item.character_metadata or {}),
-        "seedance": {**seedance, **avatar_metadata({**state, "group_id": seedance.get("group_id")})},
-    }
+        return seedance
+    refreshed = await get_private_avatar_service().refresh(seedance)
+    if refreshed != seedance:
+        item.character_metadata = {
+            **(item.character_metadata or {}),
+            "seedance": refreshed,
+        }
+    return refreshed
 
 
 def reference_payload(item: OutfitModel | Character | Garment, resource_type: str) -> dict[str, Any]:
@@ -79,29 +69,36 @@ def reference_payload(item: OutfitModel | Character | Garment, resource_type: st
     }
 
 
-async def store_reference_image(file: UploadFile, folder: str) -> dict[str, Any]:
-    if file.content_type not in IMAGE_TYPES:
-        raise ValueError("仅支持 JPG、PNG、WebP 图片")
-    if not file.size:
-        raise ValueError("上传文件不能为空")
-    if file.size > MAX_IMAGE_SIZE:
-        raise ValueError("图片不能超过 20MB")
+async def store_reference_image(
+    file: UploadFile, folder: str, service: MediaUploadService | None = None
+) -> StoredMedia:
+    return await (service or get_media_upload_service()).store(
+        file, "image", f"library/{folder}"
+    )
+
+
+async def _delete_stored_media(service: MediaUploadService, stored: StoredMedia) -> None:
     try:
-        await file.seek(0)
-        normalized = await asyncio.to_thread(normalize_image, file.file, file.content_type)
-        if normalized.size > MAX_IMAGE_SIZE:
-            raise ValueError("重编码后的图片不能超过 20MB")
-        date_path = datetime.now(UTC).strftime("%Y/%m/%d")
-        object_key = f"library/{folder}/{date_path}/{uuid.uuid4().hex}{IMAGE_TYPES[file.content_type]}"
-        url = await OssStorage().store_upload(object_key, normalized.stream, file.content_type)
-        return {
-            "url": url,
-            "object_key": object_key,
-            "width": normalized.width,
-            "height": normalized.height,
-        }
-    finally:
-        await file.close()
+        await service.delete(stored)
+    except Exception:
+        logger.exception("Failed to delete orphan reference media", extra={"object_key": stored.object_key})
+
+
+async def _commit_reference_item(
+    db: AsyncSession,
+    item: OutfitModel | Character | Garment,
+    stored: StoredMedia | None = None,
+    service: MediaUploadService | None = None,
+) -> None:
+    db.add(item)
+    try:
+        await db.commit()
+    except Exception as exc:
+        await db.rollback()
+        if stored and service:
+            await _delete_stored_media(service, stored)
+        raise ServiceUnavailableError("素材保存服务暂时不可用") from exc
+    await db.refresh(item)
 
 
 async def create_character_item(
@@ -115,6 +112,8 @@ async def create_character_item(
     db: AsyncSession,
     source_asset_id: uuid.UUID | None = None,
     existing_seedance: dict[str, Any] | None = None,
+    stored: StoredMedia | None = None,
+    upload_service: MediaUploadService | None = None,
 ) -> Character:
     seedance = existing_seedance or {}
     if seedance.get("status") not in {"active", "processing"}:
@@ -141,9 +140,7 @@ async def create_character_item(
             "seedance": seedance,
         },
     )
-    db.add(item)
-    await db.commit()
-    await db.refresh(item)
+    await _commit_reference_item(db, item, stored, upload_service)
     return item
 
 
@@ -170,8 +167,9 @@ async def upload_outfit_model(
     db: AsyncSession = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
+    service = get_media_upload_service()
     try:
-        stored = await store_reference_image(file, "outfit-models")
+        stored = await store_reference_image(file, "outfit-models", service)
     except ValueError as exc:
         raise RequestError(str(exc)) from exc
     except Exception as exc:
@@ -180,14 +178,12 @@ async def upload_outfit_model(
     item = OutfitModel(
         user_id=user_id,
         name=((name or file.filename or "我的模特").rsplit(".", 1)[0].strip() or "我的模特")[:100],
-        image_url=stored["url"],
-        object_key=stored["object_key"],
-        width=stored["width"],
-        height=stored["height"],
+        image_url=stored.url,
+        object_key=stored.object_key,
+        width=stored.width,
+        height=stored.height,
     )
-    db.add(item)
-    await db.commit()
-    await db.refresh(item)
+    await _commit_reference_item(db, item, stored, service)
     return success(reference_payload(item, "model"))
 
 
@@ -204,12 +200,6 @@ async def list_characters(
         )
         .order_by(Character.user_id.is_not(None), Character.sort_order, Character.created_at)
     ))
-    try:
-        for item in items:
-            await refresh_virtual_character(item)
-        await db.commit()
-    except ToApisError:
-        pass
     return success([reference_payload(item, "character") for item in items])
 
 
@@ -220,8 +210,9 @@ async def upload_character(
     db: AsyncSession = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
+    service = get_media_upload_service()
     try:
-        stored = await store_reference_image(file, "characters")
+        stored = await store_reference_image(file, "characters", service)
     except ValueError as exc:
         raise RequestError(str(exc)) from exc
     except Exception as exc:
@@ -230,12 +221,14 @@ async def upload_character(
     character_name = ((name or file.filename or "我的角色").rsplit(".", 1)[0].strip() or "我的角色")[:100]
     item = await create_character_item(
         name=character_name,
-        image_url=stored["url"],
-        object_key=stored["object_key"],
-        width=stored["width"],
-        height=stored["height"],
+        image_url=stored.url,
+        object_key=stored.object_key,
+        width=stored.width,
+        height=stored.height,
         user_id=user_id,
         db=db,
+        stored=stored,
+        upload_service=service,
     )
     return success(reference_payload(item, "character"))
 
@@ -336,8 +329,9 @@ async def upload_garment(
     db: AsyncSession = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
+    service = get_media_upload_service()
     try:
-        stored = await store_reference_image(file, "garments")
+        stored = await store_reference_image(file, "garments", service)
     except ValueError as exc:
         raise RequestError(str(exc)) from exc
     except Exception as exc:
@@ -346,12 +340,10 @@ async def upload_garment(
     item = Garment(
         user_id=user_id,
         name=((name or file.filename or "我的服饰").rsplit(".", 1)[0].strip() or "我的服饰")[:100],
-        image_url=stored["url"],
-        object_key=stored["object_key"],
-        width=stored["width"],
-        height=stored["height"],
+        image_url=stored.url,
+        object_key=stored.object_key,
+        width=stored.width,
+        height=stored.height,
     )
-    db.add(item)
-    await db.commit()
-    await db.refresh(item)
+    await _commit_reference_item(db, item, stored, service)
     return success(reference_payload(item, "garment"))

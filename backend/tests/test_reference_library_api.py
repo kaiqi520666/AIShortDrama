@@ -9,11 +9,27 @@ from app.api.routes import reference_library as reference_library_route
 from app.core.database import SessionLocal
 from app.main import app
 from app.models import Asset, Character, Garment, OutfitModel
+from app.services.media_upload import MediaUploadService
 
 
 class FakeStorage:
     async def store_upload(self, object_key, stream, content_type):
         return f"https://cdn.example.com/{object_key}"
+
+
+class FakeAvatarService:
+    async def register(self, _name, _source_url, _group_id=None):
+        return {
+            "provider": "toapis",
+            "type": "private-avatar",
+            "group_id": "pg_test",
+            "asset_id": "pa_test",
+            "asset_url": "asset://pa_test",
+            "status": "active",
+        }
+
+    async def refresh(self, metadata):
+        return metadata
 
 
 def png_bytes():
@@ -27,18 +43,15 @@ async def test_reference_libraries_separate_system_and_user_content(
     monkeypatch,
     override_business_user,
 ):
-    monkeypatch.setattr(reference_library_route, "OssStorage", FakeStorage)
     monkeypatch.setattr(
         reference_library_route,
-        "register_virtual_character",
-        lambda *_: async_value({
-            "provider": "toapis",
-            "type": "private-avatar",
-            "group_id": "pg_test",
-            "asset_id": "pa_test",
-            "asset_url": "asset://pa_test",
-            "status": "active",
-        }),
+        "get_media_upload_service",
+        lambda: MediaUploadService(lambda: FakeStorage()),
+    )
+    monkeypatch.setattr(
+        reference_library_route,
+        "get_private_avatar_service",
+        lambda: FakeAvatarService(),
     )
     created_ids = []
     system_garment = Garment(
@@ -104,23 +117,12 @@ async def test_reference_libraries_separate_system_and_user_content(
         assert (await db.get(Garment, created_ids[2])).user_id == override_business_user
 
 
-async def async_value(value):
-    return value
-
-
 @pytest.mark.asyncio
 async def test_create_character_from_existing_asset(monkeypatch, override_business_user):
     monkeypatch.setattr(
         reference_library_route,
-        "register_virtual_character",
-        lambda *_: async_value({
-            "provider": "toapis",
-            "type": "private-avatar",
-            "group_id": "pg_asset",
-            "asset_id": "pa_asset",
-            "asset_url": "asset://pa_asset",
-            "status": "active",
-        }),
+        "get_private_avatar_service",
+        lambda: FakeAvatarService(),
     )
     async with SessionLocal() as db:
         asset = Asset(
@@ -151,3 +153,17 @@ async def test_create_character_from_existing_asset(monkeypatch, override_busine
         character = await db.get(Character, character_id)
         assert character.user_id == override_business_user
         assert character.image_url == "https://cdn.example.com/assets/character.png"
+
+
+@pytest.mark.asyncio
+async def test_list_characters_uses_cached_seedance_without_provider(monkeypatch, override_business_user):
+    def fail_if_called():
+        raise AssertionError("角色列表不应访问虚拟人像上游")
+
+    monkeypatch.setattr(reference_library_route, "get_private_avatar_service", fail_if_called)
+
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get("/api/characters")
+
+    assert response.status_code == 200
+    assert response.json()["code"] == 0

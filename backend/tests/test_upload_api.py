@@ -10,6 +10,7 @@ from app.core.database import SessionLocal
 from app.core.identity import DEFAULT_WORKSPACE_ID
 from app.main import app
 from app.models import Asset
+from app.services.media_upload import MediaUploadService
 
 
 class FakeStorage:
@@ -35,7 +36,11 @@ def png_bytes():
     ],
 )
 async def test_upload_media(monkeypatch, media_type, filename, content_type, content):
-    monkeypatch.setattr(uploads_route, "OssStorage", FakeStorage)
+    monkeypatch.setattr(
+        uploads_route,
+        "get_media_upload_service",
+        lambda: MediaUploadService(lambda: FakeStorage()),
+    )
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             f"/api/uploads/{media_type}",
@@ -57,7 +62,11 @@ async def test_upload_media(monkeypatch, media_type, filename, content_type, con
 
 @pytest.mark.asyncio
 async def test_reencodes_image_when_declared_format_differs_from_content(monkeypatch):
-    monkeypatch.setattr(uploads_route, "OssStorage", FakeStorage)
+    monkeypatch.setattr(
+        uploads_route,
+        "get_media_upload_service",
+        lambda: MediaUploadService(lambda: FakeStorage()),
+    )
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/uploads/image",

@@ -21,13 +21,14 @@ from app.core.identity import get_current_user_id
 from app.models import Asset
 from app.providers.toapis import ToApisProvider
 from app.schemas.asset import AssetPrivateAvatarRequest, AssetUpdate, ComposeImageBoardRequest
+from app.schemas.response import success
 from app.services.image_processing import (
     OutfitBoardDownloadError,
     compose_outfit_board,
     download_outfit_board_images,
 )
+from app.services.private_avatar import PrivateAvatarService
 from app.services.storage import OssStorage
-from app.schemas.response import success
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -75,16 +76,8 @@ def asset_payload(asset: Asset) -> dict[str, Any]:
     }
 
 
-def private_avatar_metadata(data: dict[str, Any]) -> dict[str, Any]:
-    asset_id = data.get("asset_id") or data.get("id")
-    return {
-        "provider": "toapis",
-        "type": "private-avatar",
-        "group_id": data.get("group_id"),
-        "asset_id": asset_id,
-        "asset_url": data.get("asset_url") or (f"asset://{asset_id}" if asset_id else None),
-        "status": str(data.get("status") or "processing").lower(),
-    }
+def get_private_avatar_service() -> PrivateAvatarService:
+    return PrivateAvatarService(provider_factory=ToApisProvider)
 
 
 @router.get("")
@@ -226,22 +219,16 @@ async def register_private_avatar(
         raise RequestError("仅图片资产可注册为虚拟人像素材")
 
     seedance = (asset.asset_metadata or {}).get("seedance") or {}
+    service = get_private_avatar_service()
     try:
-        async with ToApisProvider() as provider:
-            if seedance.get("status") == "processing" and seedance.get("asset_id"):
-                state = await provider.get_private_avatar(seedance["asset_id"])
-                seedance = private_avatar_metadata(
-                    {**seedance, **state, "group_id": seedance.get("group_id")}
-                )
-            elif seedance.get("status") != "active":
-                group_id = payload.group_id or seedance.get("group_id")
-                if not group_id:
-                    group = await provider.create_private_avatar_group(asset.name)
-                    group_id = group.get("group_id")
-                if not group_id:
-                    raise RuntimeError("ToAPIs 未返回虚拟人像组 ID")
-                uploaded = await provider.upload_private_avatar(group_id, asset.url, asset.name)
-                seedance = private_avatar_metadata({**uploaded, "group_id": group_id})
+        if seedance.get("status") == "processing" and seedance.get("asset_id"):
+            seedance = await service.refresh(seedance)
+        elif seedance.get("status") != "active":
+            seedance = await service.register(
+                asset.name,
+                asset.url,
+                payload.group_id or seedance.get("group_id"),
+            )
         asset.asset_metadata = {**(asset.asset_metadata or {}), "seedance": seedance}
         await db.commit()
         await db.refresh(asset)
