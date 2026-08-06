@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { buildImageRequest } from './imageModels'
+import { modelCapabilitiesFixture } from '../test/modelCapabilities'
+import { buildImageRequest as buildRequest, normalizeImageModels } from './imageModels'
+
+const imageModels = normalizeImageModels(modelCapabilitiesFixture.image)
+const defaultImageModel = imageModels.find(({ id }) => id === modelCapabilitiesFixture.image.default_model)
+const buildImageRequest = (data, references) => buildRequest(data, references, imageModels, defaultImageModel)
 
 describe('buildImageRequest', () => {
   it('builds the unified image request for every model', () => {

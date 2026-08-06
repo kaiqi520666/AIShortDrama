@@ -1,8 +1,5 @@
-import { defaultImageModel } from '../imageModels'
-import { defaultVideoModel, getVideoModel, videoAspectRatios } from '../videoModels'
+import { getVideoModel } from '../videoModels'
 import { storyboardGrid, storyboardShotCount } from './productStoryboard'
-
-export { videoAspectRatios }
 
 export const outfitStoryboardTemplate = {
   id: 'apparel-showcase',
@@ -10,8 +7,8 @@ export const outfitStoryboardTemplate = {
   description: '根据服饰、角色与场景参考图生成一张静态故事板和一条视频脚本',
 }
 
-export function getApparelVideoSettings(data = {}) {
-  const model = getVideoModel(data.videoModel || defaultVideoModel.id)
+export function getApparelVideoSettings(data = {}, capabilities) {
+  const model = getVideoModel(capabilities?.videoModels || [], capabilities?.defaultVideoModel, data.videoModel)
   const duration = model.durationOptions
     ? model.durationOptions.includes(Number(data.duration)) ? Number(data.duration) : model.defaultDuration
     : Number.isInteger(Number(data.duration)) && Number(data.duration) >= model.durationMin && Number(data.duration) <= model.durationMax
@@ -22,8 +19,8 @@ export function getApparelVideoSettings(data = {}) {
   return { model, duration, aspectRatio, resolution }
 }
 
-export function buildOutfitStoryboardPrompt(apparelContext, data = {}) {
-  const settings = getApparelVideoSettings(data)
+export function buildOutfitStoryboardPrompt(apparelContext, data = {}, capabilities) {
+  const settings = getApparelVideoSettings(data, capabilities)
   const grid = storyboardGrid(settings.duration, settings.aspectRatio)
   const context = apparelContext?.trim() || '以图片1中的服饰为准，准确保持服装类别、颜色、面料、版型和细节。'
   const prefix = `图片1是服饰参考图，图片2是角色（模特）参考图，图片3是场景参考图。三张图片的引用关系固定不变：图片1只用于锁定服饰，图片2只用于锁定角色身份与外观，图片3只用于锁定环境与光线。请为服饰展示生成一条 ${settings.duration} 秒、${settings.aspectRatio} 画幅的 Seedance 2 视频方案。\n服饰资料：\n`
@@ -31,7 +28,7 @@ export function buildOutfitStoryboardPrompt(apparelContext, data = {}) {
   return `${prefix}${context.slice(0, Math.max(0, 3000 - prefix.length - suffix.length))}${suffix}`
 }
 
-export function parseOutfitStoryboardPlan(content, duration, data = {}) {
+export function parseOutfitStoryboardPlan(content, duration, data = {}, capabilities) {
   const source = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
   const start = source.indexOf('{')
   const end = source.lastIndexOf('}')
@@ -44,7 +41,7 @@ export function parseOutfitStoryboardPlan(content, duration, data = {}) {
     throw new Error('服饰分镜方案格式异常')
   }
 
-  const settings = getApparelVideoSettings({ ...data, duration })
+  const settings = getApparelVideoSettings({ ...data, duration }, capabilities)
   const shotCount = storyboardShotCount(settings.duration)
   if (!parsed || typeof parsed !== 'object' || parsed.templateId !== outfitStoryboardTemplate.id) throw new Error('服饰分镜方案模板异常')
   if (![parsed.storyboardPrompt, parsed.videoPrompt].every((value) => typeof value === 'string' && value.trim())) throw new Error('服饰分镜方案内容不完整')
@@ -52,6 +49,8 @@ export function parseOutfitStoryboardPlan(content, duration, data = {}) {
   if (hasImagePromptAudio(parsed.storyboardPrompt)) throw new Error('故事板图片提示词不得包含对白或音效')
   if (hasSpeech(parsed.videoPrompt)) throw new Error('服饰视频提示词不得包含台词或角色说话')
 
+  const imageModel = capabilities?.defaultImageModel
+  if (!imageModel) throw new Error('图片模型能力尚未加载')
   return {
     templateId: outfitStoryboardTemplate.id,
     title: typeof parsed.title === 'string' && parsed.title.trim() ? parsed.title.trim() : outfitStoryboardTemplate.label,
@@ -60,7 +59,11 @@ export function parseOutfitStoryboardPlan(content, duration, data = {}) {
     shotCount,
     storyboardPrompt: `${parsed.storyboardPrompt.trim()}\n保持指定服饰、模特身份与场景外观一致。\n无文字、水印或额外 Logo。`,
     videoPrompt: `${parsed.videoPrompt.trim()}\n不生成台词、角色说话、旁白、字幕或背景音乐。`,
-    imageSettings: { model: defaultImageModel.id, aspectRatio: settings.aspectRatio, resolution: '2K' },
+    imageSettings: {
+      model: imageModel.id,
+      aspectRatio: settings.aspectRatio,
+      resolution: imageModel.resolutions.includes('2K') ? '2K' : imageModel.defaultResolution,
+    },
     videoSettings: { model: settings.model.id, duration: settings.duration, aspectRatio: settings.aspectRatio, resolution: settings.resolution, generateAudio: true },
   }
 }

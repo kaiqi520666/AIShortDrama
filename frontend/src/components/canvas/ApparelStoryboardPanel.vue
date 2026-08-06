@@ -4,13 +4,12 @@ import { ArrowUp, Clapperboard, Coins, FileText, Images, LoaderCircle, Shirt, Us
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
 import { apparelPromptContext } from '../../config/canvas/apparel'
-import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
-import { videoModels } from '../../config/videoModels'
 import { buildOutfitStoryboardPrompt, getApparelVideoSettings, parseOutfitStoryboardPlan } from '../../config/canvas/outfitStoryboard'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
 import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
+import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import AppButton from '../ui/AppButton.vue'
 import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
@@ -23,6 +22,7 @@ const props = defineProps({
 })
 
 const store = useCanvasStore()
+const capabilityStore = useModelCapabilitiesStore()
 const authStore = useAuthStore()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
@@ -38,11 +38,16 @@ const garmentNode = computed(() => apparelNode.value && store.incomingNodes(appa
 const modelNode = computed(() => inputNode('model'))
 const sceneNode = computed(() => inputNode('scene'))
 const apparelContext = computed(() => apparelPromptContext(apparelNode.value?.data))
-const selectedTextModel = computed(() => reverseModels.find((model) => model.id === props.data.textModel) || defaultReverseModel)
-const selectedVideoSettings = computed(() => getApparelVideoSettings(props.data))
+const modelCapabilities = computed(() => ({
+  videoModels: capabilityStore.videoModels,
+  defaultVideoModel: capabilityStore.defaultVideoModel,
+  defaultImageModel: capabilityStore.defaultImageModel,
+}))
+const selectedTextModel = computed(() => capabilityStore.textModels.find((model) => model.id === props.data.textModel) || capabilityStore.defaultTextModel)
+const selectedVideoSettings = computed(() => getApparelVideoSettings(props.data, modelCapabilities.value))
 const selectedVideoModel = computed(() => selectedVideoSettings.value.model)
-const textModelOptions = reverseModels.map(({ id, label }) => ({ value: id, label }))
-const videoModelOptions = videoModels.map(({ id, label }) => ({ value: id, label }))
+const textModelOptions = computed(() => capabilityStore.textModels.map(({ id, label }) => ({ value: id, label })))
+const videoModelOptions = computed(() => capabilityStore.videoModels.map(({ id, label }) => ({ value: id, label })))
 const durationOptions = computed(() => {
   const values = selectedVideoModel.value.durationOptions || Array.from({ length: selectedVideoModel.value.durationMax - selectedVideoModel.value.durationMin + 1 }, (_, index) => selectedVideoModel.value.durationMin + index)
   return values.map((value) => ({ value, label: `${value} 秒` }))
@@ -74,12 +79,12 @@ function updateData(value) {
 }
 
 function updateVideoModel(modelId) {
-  const next = getApparelVideoSettings({ ...props.data, videoModel: modelId })
+  const next = getApparelVideoSettings({ ...props.data, videoModel: modelId }, modelCapabilities.value)
   updateData({ videoModel: modelId, duration: next.duration, videoAspectRatio: next.aspectRatio, videoResolution: next.resolution, generateAudio: true })
 }
 
 function updateVideoSetting(key, value) {
-  const next = getApparelVideoSettings({ ...props.data, [key]: value })
+  const next = getApparelVideoSettings({ ...props.data, [key]: value }, modelCapabilities.value)
   updateData({
     duration: next.duration,
     videoAspectRatio: next.aspectRatio,
@@ -105,12 +110,12 @@ async function submitTask() {
     media_type: 'image',
     media_url: garmentNode.value.data.asset,
     media_urls: [modelNode.value.data.asset, sceneNode.value.data.asset],
-    prompt: buildOutfitStoryboardPrompt(apparelContext.value, props.data),
+    prompt: buildOutfitStoryboardPrompt(apparelContext.value, props.data, modelCapabilities.value),
     response_mode: 'apparel_storyboard_plan',
   }, {
     failureMessage: '服饰分镜方案生成失败',
     onSuccess: (content) => {
-      const plan = parseOutfitStoryboardPlan(content, props.data.duration, props.data)
+      const plan = parseOutfitStoryboardPlan(content, props.data.duration, props.data, modelCapabilities.value)
       const generatedNodeIds = store.addApparelStoryboardNodes(
         props.nodeId,
         garmentNode.value.id,

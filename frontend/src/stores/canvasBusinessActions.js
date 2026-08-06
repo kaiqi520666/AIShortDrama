@@ -3,7 +3,7 @@ import {
   normalizeStoryboardCharacters,
   storyboardShotCount,
 } from '../config/canvas/productStoryboard'
-import { defaultVideoModel } from '../config/videoModels'
+import { useModelCapabilitiesStore } from './modelCapabilities'
 
 export const createCanvasEdge = (id, source, target, targetHandle) => ({
   id,
@@ -13,7 +13,7 @@ export const createCanvasEdge = (id, source, target, targetHandle) => ({
   type: 'cinematic',
 })
 
-export function storyboardVideoData(source) {
+export function storyboardVideoData(source, defaultVideoModel) {
   const prompt = source?.type === 'image' ? source.data.videoPrompt?.trim() : ''
   if (!prompt) return null
   return {
@@ -256,10 +256,13 @@ export const canvasBusinessActions = {
   addApparelStoryboardNodes(plannerId, garmentId, modelId, sceneId, plan, settings = {}) {
     const planner = this.nodes.find((node) => node.id === plannerId)
     if (!planner || !plan?.storyboardPrompt?.trim() || !plan.videoPrompt?.trim()) return []
+    const capabilities = useModelCapabilitiesStore()
+    const defaultImageModel = capabilities.defaultImageModel
+    const defaultVideoModel = capabilities.defaultVideoModel
     const imageSettings = settings.imageSettings || {
-      model: 'gpt-image-2',
+      model: defaultImageModel.id,
       aspectRatio: planner.data.videoAspectRatio,
-      resolution: '2K',
+      resolution: defaultImageModel.resolutions.includes('2K') ? '2K' : defaultImageModel.defaultResolution,
     }
     const videoSettings = settings.videoSettings || {
       model: planner.data.videoModel || defaultVideoModel.id,
@@ -415,7 +418,7 @@ export const canvasBusinessActions = {
     if (!image?.data.asset || !image.data.videoPrompt?.trim()) return
     const existing = this.nodes.find((node) => node.type === 'video' && node.data.storyboardImageId === imageId)
     if (existing) {
-      Object.assign(existing.data, storyboardVideoData(image))
+      Object.assign(existing.data, storyboardVideoData(image, useModelCapabilitiesStore().defaultVideoModel))
       this.selectNodes([existing.id])
       return existing.id
     }

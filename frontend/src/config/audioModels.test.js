@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildAudioRequest, getAudioReferenceError, normalizeAudioSettings } from './audioModels'
+import { modelCapabilitiesFixture } from '../test/modelCapabilities'
+import { buildAudioRequest as buildRequest, getAudioReferenceError as getReferenceError, normalizeAudioCapability, normalizeAudioSettings as normalizeSettings } from './audioModels'
+
+const audioCapability = normalizeAudioCapability(modelCapabilitiesFixture.audio)
+const normalizeAudioSettings = (data) => normalizeSettings(data, audioCapability)
+const buildAudioRequest = (data, references) => buildRequest(data, references, audioCapability)
+const getAudioReferenceError = (references) => getReferenceError(references, audioCapability)
 
 const reference = (type, id, data = {}) => ({ id, type, data: { asset: `https://example.com/${id}`, ...data } })
 

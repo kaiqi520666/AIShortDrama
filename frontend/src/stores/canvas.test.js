@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { saveWorkspaceCanvas } from '../api/workspaces'
+import { seedModelCapabilities } from '../test/modelCapabilities'
 import { useCanvasStore } from './canvas'
 
 vi.mock('../api/workspaces', () => ({
@@ -12,6 +13,7 @@ const uploadingNode = { id: 'image-2', type: 'image', position: { x: 20, y: 20 }
 
 beforeEach(() => {
   setActivePinia(createPinia())
+  seedModelCapabilities()
   vi.clearAllMocks()
 })
 

@@ -1,8 +1,3 @@
-import { defaultImageModel } from "../imageModels";
-import { videoAspectRatios } from "../videoModels";
-
-export { videoAspectRatios };
-
 export const storyboardTemplates = [
   { id: "ugc-seeding", label: "UGC 种草", description: "用户视角真实分享体验" },
 ];
@@ -62,7 +57,8 @@ export function storyboardGrid(duration, videoAspectRatio = "9:16") {
   return { shots, columns, rows };
 }
 
-export function recommendStoryboardSettings(duration, videoAspectRatio = "9:16", model = defaultImageModel) {
+export function recommendStoryboardSettings(duration, videoAspectRatio = "9:16", model) {
+  if (!model) throw new Error("图片模型能力尚未加载");
   const grid = storyboardGrid(duration, videoAspectRatio);
   const targetRatio = (grid.columns * ratioValue(videoAspectRatio)) / grid.rows;
   const aspectRatio = model.aspectRatios.reduce((best, value) =>
@@ -102,11 +98,14 @@ function buildSpeakerInstructions(characterCount) {
   return `共有${characterCount}个指定角色，每个角色只能对应自己的参考图，不得新增人物。${speakers}。每个镜头都要有与当前动作相关的自然分享或连续画外音，人物未露脸、手部特写和商品特写也不能停止分享。对白必须使用中文双引号，禁止写“台词：”，禁止背诵式广告口号。`;
 }
 
-export function buildProductStoryboardPrompt(productContext, _templates, data = {}) {
+export function buildProductStoryboardPrompt(productContext, _templates, data = {}, supportedAspectRatios = []) {
   const requestedDuration = Number(data.duration);
   const totalDuration = storyboardDurations.includes(requestedDuration) ? requestedDuration : 15;
   const segments = storyboardSegmentCount(totalDuration);
-  const ratio = videoAspectRatios.includes(data.videoAspectRatio) ? data.videoAspectRatio : "9:16";
+  const ratio = supportedAspectRatios.includes(data.videoAspectRatio)
+    ? data.videoAspectRatio
+    : supportedAspectRatios.includes("9:16") ? "9:16" : supportedAspectRatios[0];
+  if (!ratio) throw new Error("视频模型能力尚未加载");
   const grid = storyboardGrid(15, ratio);
   const characters = normalizeStoryboardCharacters(data.characterReferences);
   const productCount = Math.max(1, Math.min(getStoryboardProductLimit(characters.length), data.productReferences?.length || 1));

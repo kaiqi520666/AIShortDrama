@@ -4,11 +4,11 @@ import { ArrowUp, Coins, FileText, Image, LoaderCircle, Plus, Shirt, Trash2 } fr
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
 import { createEmptyApparelItem, parseApparelProfile } from '../../config/canvas/apparel'
-import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
 import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
+import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import AppButton from '../ui/AppButton.vue'
 import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
@@ -22,14 +22,15 @@ const props = defineProps({
 })
 
 const store = useCanvasStore()
+const capabilityStore = useModelCapabilitiesStore()
 const authStore = useAuthStore()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
 const { failure, runTextTask } = useStreamingTextTask(props.nodeId)
 const reference = computed(() => store.incomingNodes(props.nodeId).find((node) => node.type === 'image'))
 const items = computed(() => props.data.items || [])
-const selectedModel = computed(() => reverseModels.find((model) => model.id === props.data.model) || defaultReverseModel)
-const modelOptions = reverseModels.map(({ id, label }) => ({ value: id, label }))
+const selectedModel = computed(() => capabilityStore.textModels.find((model) => model.id === props.data.model) || capabilityStore.defaultTextModel)
+const modelOptions = computed(() => capabilityStore.textModels.map(({ id, label }) => ({ value: id, label })))
 const compositionOptions = [{ value: 'single', label: '单件服饰' }, { value: 'set', label: '整套搭配' }]
 const running = computed(() => props.data.status === 'generating')
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedModel.value.id))

@@ -1,9 +1,8 @@
 import { createStoryboardTemplates } from './productStoryboard'
-import { defaultReverseModel } from '../reverseModels'
 
 export const CURRENT_CANVAS_SCHEMA_VERSION = 2
 
-export function migrateCanvas(source = {}) {
+export function migrateCanvas(source = {}, defaultTextModelId) {
   const canvas = JSON.parse(JSON.stringify(source || {}))
   const version = Number(canvas.schema_version || 1)
   if (version > CURRENT_CANVAS_SCHEMA_VERSION) {
@@ -15,7 +14,7 @@ export function migrateCanvas(source = {}) {
           ...node,
           data: {
             ...node.data,
-            textModel: node.data?.textModel ?? defaultReverseModel.id,
+            textModel: node.data?.textModel ?? defaultTextModelId,
             templateId: node.data?.templateId ?? 'ugc-seeding',
             templates: node.data?.templates ?? createStoryboardTemplates(),
           },

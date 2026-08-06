@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { Clapperboard, Images, Shirt, UserRound } from 'lucide-vue-next'
 import { useCanvasStore } from '../../stores/canvas'
+import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
 import { getApparelVideoSettings } from '../../config/canvas/outfitStoryboard'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import StructuredNodeShell from './StructuredNodeShell.vue'
@@ -14,6 +15,7 @@ const props = defineProps({
 })
 
 const store = useCanvasStore()
+const capabilityStore = useModelCapabilitiesStore()
 const targetHandles = [
   { id: 'apparel', top: '38%' },
   { id: 'model', top: '61%' },
@@ -30,7 +32,10 @@ const garmentNode = computed(() => apparelNode.value && store.incomingNodes(appa
 const modelNode = computed(() => inputNode('model'))
 const sceneNode = computed(() => inputNode('scene'))
 const generatedCount = computed(() => (props.data.generatedNodeIds || []).filter((id) => store.nodes.some((node) => node.id === id)).length)
-const settings = computed(() => getApparelVideoSettings(props.data))
+const settings = computed(() => getApparelVideoSettings(props.data, {
+  videoModels: capabilityStore.videoModels,
+  defaultVideoModel: capabilityStore.defaultVideoModel,
+}))
 const inputs = computed(() => [
   { label: '服饰', icon: Shirt, node: apparelNode.value, asset: garmentNode.value?.data.asset },
   { label: '模特', icon: UserRound, node: modelNode.value, asset: modelNode.value?.data.asset },

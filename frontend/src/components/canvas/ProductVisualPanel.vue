@@ -6,10 +6,10 @@ import { streamReversePrompt } from '../../api/reversals'
 import { maxProductReferenceImages } from '../../config/canvas/connectionRules'
 import { productPromptContext } from '../../config/canvas/ecommerce'
 import { buildProductVisualPrompt, parseProductVisualPlan, productVisualGroups } from '../../config/canvas/productVisual'
-import { imageModels, normalizeImageSettings } from '../../config/imageModels'
-import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
+import { normalizeImageSettings } from '../../config/imageModels'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
+import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
 import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import AppButton from '../ui/AppButton.vue'
@@ -24,6 +24,7 @@ const props = defineProps({
 
 const groupIcons = { basic: Box, marketing: BadgeCheck, detail: ScanSearch, trust: Package }
 const store = useCanvasStore()
+const capabilityStore = useModelCapabilitiesStore()
 const authStore = useAuthStore()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
@@ -42,16 +43,16 @@ const selectedImageSettings = computed(() => normalizeImageSettings({
   model: props.data.imageModel,
   aspectRatio: props.data.aspectRatio,
   resolution: props.data.resolution,
-}))
-const selectedTextModel = computed(() => reverseModels.find((model) => model.id === props.data.textModel) || defaultReverseModel)
+}, capabilityStore.imageModels, capabilityStore.defaultImageModel))
+const selectedTextModel = computed(() => capabilityStore.textModels.find((model) => model.id === props.data.textModel) || capabilityStore.defaultTextModel)
 const selectedItems = computed(() => (props.data.items || []).filter((item) => item.enabled))
 const prompt = computed(() => buildProductVisualPrompt(productContext.value, selectedItems.value, props.data))
 const running = computed(() => props.data.status === 'generating')
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedTextModel.value.id))
 const insufficientCredits = computed(() => (authStore.user?.credit_balance || 0) < estimatedCredits.value)
 const existingGeneratedNodes = computed(() => (props.data.generatedNodeIds || []).filter((id) => store.nodes.some((node) => node.id === id)))
-const imageModelOptions = imageModels.map(({ id, label }) => ({ value: id, label }))
-const textModelOptions = reverseModels.map(({ id, label }) => ({ value: id, label }))
+const imageModelOptions = computed(() => capabilityStore.imageModels.map(({ id, label }) => ({ value: id, label })))
+const textModelOptions = computed(() => capabilityStore.textModels.map(({ id, label }) => ({ value: id, label })))
 const ratioOptions = computed(() => selectedImageSettings.value.model.aspectRatios.map((value) => ({ value, label: value })))
 const resolutionOptions = computed(() => selectedImageSettings.value.model.resolutions.map((value) => ({ value, label: value })))
 const message = computed(() => failure.value || props.data.generationError || (!productNode.value
@@ -78,7 +79,7 @@ function updateItem(id, enabled) {
 }
 
 function updateImageModel(imageModel) {
-  const model = imageModels.find(({ id }) => id === imageModel)
+  const model = capabilityStore.imageModels.find(({ id }) => id === imageModel)
   updateNodeData(props.nodeId, {
     imageModel: model.id,
     aspectRatio: model.aspectRatios.includes(props.data.aspectRatio) ? props.data.aspectRatio : model.defaultAspectRatio,

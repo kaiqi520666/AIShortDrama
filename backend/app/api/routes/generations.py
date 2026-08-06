@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.identity import get_current_user_id
+from app.core.model_capabilities import capabilities_payload
 from app.models import GenerationTask, Workspace
 from app.providers.openai_responses import OpenAIResponsesProvider
 from app.schemas.generation import (
@@ -31,6 +32,13 @@ from app.services.billing import BillingError, InsufficientCredits, freeze_task_
 from app.workers.generation import complete_text_task, fail_task
 
 router = APIRouter()
+
+
+@router.get("/capabilities")
+async def get_generation_capabilities(
+    _user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    return success(capabilities_payload())
 
 
 async def _create_queued_generation(create_task, db, redis, payload, user_id):

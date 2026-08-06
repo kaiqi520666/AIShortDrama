@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { changePassword as changePasswordRequest, getCurrentUser, login as loginRequest, logout as logoutRequest, register as registerRequest } from '../api/auth'
 import { getCredits } from '../api/credits'
+import { useModelCapabilitiesStore } from './modelCapabilities'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -15,6 +16,7 @@ export const useAuthStore = defineStore('auth', {
     clear() {
       this.user = null
       this.creditPrices = []
+      useModelCapabilitiesStore().clear()
     },
     async restore() {
       if (this.initialized) return

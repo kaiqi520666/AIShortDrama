@@ -1,5 +1,9 @@
 import { apiClient } from './client'
 
+export async function getGenerationCapabilities() {
+  return (await apiClient.get('/generations/capabilities')).data
+}
+
 export async function createImageGeneration(payload) {
   return (await apiClient.post('/generations/images', payload)).data
 }

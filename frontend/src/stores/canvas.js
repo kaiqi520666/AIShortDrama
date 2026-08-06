@@ -3,8 +3,8 @@ import { canConnect, getConnectionError, inferTargetHandle } from '../config/can
 import { createNodeData, getNodeDefinition, getReversePrompt } from '../config/canvas/nodeDefinitions'
 import { isNodeTypeAvailable } from '../config/canvas/nodePacks'
 import { CURRENT_CANVAS_SCHEMA_VERSION, migrateCanvas } from '../config/canvas/migrations'
-import { defaultReverseModel } from '../config/reverseModels'
 import { saveWorkspaceCanvas } from '../api/workspaces'
+import { useModelCapabilitiesStore } from './modelCapabilities'
 import {
   canvasBusinessActions,
   createBusinessNodeChain,
@@ -14,6 +14,16 @@ import {
 
 const defaultWorkspaceId = '00000000-0000-0000-0000-000000000101'
 const saveQueues = new Map()
+
+function modelDefaults() {
+  const capabilities = useModelCapabilitiesStore()
+  return {
+    text: capabilities.defaultTextModel,
+    image: capabilities.defaultImageModel,
+    video: capabilities.defaultVideoModel,
+    audio: capabilities.audioCapability,
+  }
+}
 
 function stripTransientNodes(nodes = [], edges = [], groups = []) {
   const transientIds = new Set(nodes.filter((node) => node.data?.status === 'uploading').map((node) => node.id))
@@ -63,7 +73,7 @@ export const useCanvasStore = defineStore('canvas', {
         canvas = legacy
         this.legacyImportPending = true
       }
-      canvas = migrateCanvas(canvas)
+      canvas = migrateCanvas(canvas, modelDefaults().text.id)
       const persistent = stripTransientNodes(canvas.nodes, canvas.edges, canvas.groups)
       this.nodes = JSON.parse(JSON.stringify(persistent.nodes))
       this.edges = JSON.parse(JSON.stringify(persistent.edges))
@@ -171,8 +181,8 @@ export const useCanvasStore = defineStore('canvas', {
       const number = this.sequence++
       const id = `${type}-${number}`
       this.nodes.forEach((node) => { node.selected = false })
-      const data = createNodeData(type, number, source)
-      if (type === 'video') Object.assign(data, storyboardVideoData(source) || {})
+      const data = createNodeData(type, number, source, modelDefaults())
+      if (type === 'video') Object.assign(data, storyboardVideoData(source, modelDefaults().video) || {})
       this.nodes.push({
         id,
         type,
@@ -199,7 +209,7 @@ export const useCanvasStore = defineStore('canvas', {
       const incomingTypes = incomingConnections.map(({ type }) => type)
       if (getConnectionError(source.type, target.type, incomingTypes, this.workspaceType, targetHandle, incomingConnections)) return false
       this.edges.push({ id: `edge-${crypto.randomUUID()}`, ...connection, ...(targetHandle ? { targetHandle } : {}), type: 'cinematic' })
-      if (target.type === 'video' && !target.data.prompt?.trim()) Object.assign(target.data, storyboardVideoData(source) || {})
+      if (target.type === 'video' && !target.data.prompt?.trim()) Object.assign(target.data, storyboardVideoData(source, modelDefaults().video) || {})
       return true
     },
     addProductVisualNodes(...args) {
@@ -258,7 +268,7 @@ export const useCanvasStore = defineStore('canvas', {
       const media = this.nodes.find((item) => item.id === mediaId)
       const mediaLabel = getNodeDefinition(mediaType).label
       media.data = { ...media.data, title: `参考${mediaLabel}`, assetSource: 'upload' }
-      node.data = { ...node.data, textMode: 'task', title: `${mediaLabel}反推提示词`, model: defaultReverseModel.id, prompt: getReversePrompt(mediaType), reverseType: mediaType }
+      node.data = { ...node.data, textMode: 'task', title: `${mediaLabel}反推提示词`, model: modelDefaults().text.id, prompt: getReversePrompt(mediaType), reverseType: mediaType }
       this.edges.push(createCanvasEdge(`edge-${crypto.randomUUID()}`, mediaId, id))
       this.selectNodes([id])
     },

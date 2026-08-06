@@ -4,19 +4,19 @@ import { useVueFlow } from '@vue-flow/core'
 import { ArrowUp, Check, ChevronDown, Clapperboard, Coins, Eye, EyeOff, FileText, Image, Images, LoaderCircle, Music2, Package, Shirt, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
 import { createAudioGeneration, createImageGeneration, createVideoGeneration } from '../../api/generations'
 import { streamReversePrompt } from '../../api/reversals'
-import { audioFormatOptions, audioModel, audioSampleRateOptions, buildAudioRequest, getAudioReferenceError, maxAudioPromptLength, normalizeAudioSettings } from '../../config/audioModels'
-import { getEffectivePrompt, maxGenerationPromptLength } from '../../config/generationPrompt'
+import { buildAudioRequest, getAudioReferenceError, normalizeAudioSettings } from '../../config/audioModels'
+import { getEffectivePrompt } from '../../config/generationPrompt'
 import { MAX_STORYBOARD_REFERENCES } from '../../config/canvas/productStoryboard'
 import { buildImageRequest, normalizeImageSettings } from '../../config/imageModels'
 import { mergeProductProfile, parseProductProfile } from '../../config/canvas/ecommerce'
 import { maxProductReferenceImages } from '../../config/canvas/connectionRules'
 import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
-import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
-import { buildVideoRequest, getVideoModelError, getVideoReferenceError, normalizeVideoSettings, videoModels } from '../../config/videoModels'
+import { buildVideoRequest, getVideoModelError, getVideoReferenceError, normalizeVideoSettings } from '../../config/videoModels'
 import { useGlobalConfirm, useGlobalToast } from '../../composables/useGlobalUI'
 import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import { useCanvasStore } from '../../stores/canvas'
 import { useAuthStore } from '../../stores/auth'
+import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import AppButton from '../ui/AppButton.vue'
 import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
@@ -39,6 +39,7 @@ const modelIcon = computed(() => modelIcons[props.type] || WandSparkles)
 
 const store = useCanvasStore()
 const authStore = useAuthStore()
+const capabilityStore = useModelCapabilitiesStore()
 const toast = useGlobalToast()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
@@ -107,24 +108,39 @@ const effectivePrompt = computed(() => ['image', 'video', 'audio'].includes(prop
 const videoGenerationPrompt = computed(() => {
   return effectivePrompt.value
 })
-const promptLimit = computed(() => isVisionTextTask.value ? 3000 : props.type === 'audio' ? maxAudioPromptLength : maxGenerationPromptLength)
+const imageModels = computed(() => capabilityStore.imageModels)
+const videoModels = computed(() => capabilityStore.videoModels)
+const reverseModels = computed(() => capabilityStore.textModels)
+const defaultImageModel = computed(() => capabilityStore.defaultImageModel)
+const defaultVideoModel = computed(() => capabilityStore.defaultVideoModel)
+const defaultReverseModel = computed(() => capabilityStore.defaultTextModel)
+const audioCapability = computed(() => capabilityStore.audioCapability)
+const audioModel = computed(() => audioCapability.value.model)
+const audioFormatOptions = computed(() => audioCapability.value.formatOptions)
+const audioSampleRateOptions = computed(() => audioCapability.value.sampleRateOptions)
 const promptError = computed(() => (props.type === 'video' ? videoGenerationPrompt.value : effectivePrompt.value).length > promptLimit.value ? `提示词不能超过 ${promptLimit.value} 个字符` : '')
 const promptParts = computed(() => props.data.promptParts ?? (props.data.prompt ? [{ type: 'text', value: props.data.prompt }] : []))
-const selectedImageSettings = computed(() => normalizeImageSettings(props.data))
+const selectedImageSettings = computed(() => normalizeImageSettings(props.data, imageModels.value, defaultImageModel.value))
 const selectedImageModel = computed(() => selectedImageSettings.value.model)
-const selectedVideoSettings = computed(() => normalizeVideoSettings(props.data))
+const selectedVideoSettings = computed(() => normalizeVideoSettings(props.data, videoModels.value, defaultVideoModel.value))
 const selectedVideoModel = computed(() => selectedVideoSettings.value.model)
-const selectedAudioSettings = computed(() => normalizeAudioSettings(props.data))
-const selectedReverseModel = computed(() => reverseModels.find((model) => model.id === props.data.model) || defaultReverseModel)
-const selectableModels = computed(() => props.type === 'video' ? videoModels : reverseModels)
+const selectedAudioSettings = computed(() => normalizeAudioSettings(props.data, audioCapability.value))
+const selectedReverseModel = computed(() => reverseModels.value.find((model) => model.id === props.data.model) || defaultReverseModel.value)
+const selectableModels = computed(() => props.type === 'video' ? videoModels.value : reverseModels.value)
 const selectedModel = computed(() => props.type === 'video' ? selectedVideoModel.value : selectedReverseModel.value)
+const promptLimit = computed(() => {
+  if (props.type === 'image') return selectedImageModel.value.maxPromptLength
+  if (props.type === 'video') return selectedVideoModel.value.maxPromptLength
+  if (props.type === 'audio') return audioCapability.value.maxPromptLength
+  return selectedReverseModel.value.maxPromptLength
+})
 const selectedResolution = computed(() => props.type === 'image' ? selectedImageSettings.value.resolution : selectedVideoSettings.value.resolution)
 const selectedAspectRatio = computed(() => props.type === 'image' ? selectedImageSettings.value.aspectRatio : selectedVideoSettings.value.aspectRatio)
 const selectedDuration = computed(() => selectedVideoSettings.value.duration)
 const estimatedCredits = computed(() => {
   if (isVisionTextTask.value) return authStore.estimateCredits('text', selectedReverseModel.value.id)
   if (!['image', 'video', 'audio'].includes(props.type)) return null
-  const model = props.type === 'image' ? selectedImageModel.value.id : props.type === 'video' ? selectedVideoModel.value.id : audioModel.id
+  const model = props.type === 'image' ? selectedImageModel.value.id : props.type === 'video' ? selectedVideoModel.value.id : audioModel.value.id
   return authStore.estimateCredits(props.type, model, {
     resolution: selectedResolution.value,
     duration: selectedDuration.value,
@@ -133,8 +149,8 @@ const estimatedCredits = computed(() => {
 const insufficientCredits = computed(() => estimatedCredits.value !== null && (authStore.user?.credit_balance || 0) < estimatedCredits.value)
 const creditLabel = computed(() => `${props.type === 'audio' ? '冻结' : '本次'} ${estimatedCredits.value} 积分`)
 const referenceError = computed(() => {
-  if (props.type === 'video') return getVideoReferenceError(props.data, activeReferences.value)
-  if (props.type === 'audio') return getAudioReferenceError(activeReferences.value)
+  if (props.type === 'video') return videoModelReferenceError(props.data, activeReferences.value)
+  if (props.type === 'audio') return getAudioReferenceError(activeReferences.value, audioCapability.value)
   if (isProductRecognition.value && !allImageReferences.value.length) return '请先上传商品参考图'
   if (isProductRecognition.value && !imageReferences.value.length) return '请至少启用一张商品参考图片'
   if (isProductRecognition.value && imageReferences.value.length > maxProductReferenceImages) return `商品创作最多支持 ${maxProductReferenceImages} 张参考图片`
@@ -150,7 +166,7 @@ const panelMessage = computed(() => {
 })
 const settingLabel = computed(() => {
   if (props.type === 'video') return `${selectedAspectRatio.value} · ${selectedResolution.value} · ${selectedDuration.value}s`
-  if (props.type === 'audio') return `${audioFormatOptions.find(({ value }) => value === selectedAudioSettings.value.format)?.label} · ${selectedAudioSettings.value.sampleRate / 1000} kHz`
+  if (props.type === 'audio') return `${audioFormatOptions.value.find(({ value }) => value === selectedAudioSettings.value.format)?.label} · ${selectedAudioSettings.value.sampleRate / 1000} kHz`
   return nodeDefinitions[props.type].setting
 })
 const displayReferences = computed(() => {
@@ -244,11 +260,12 @@ async function submitTask() {
   })
   try {
     const createGeneration = { image: createImageGeneration, video: createVideoGeneration, audio: createAudioGeneration }[props.type]
-    const requestBuilders = { image: buildImageRequest, video: buildVideoRequest, audio: buildAudioRequest }
-    const generationRequest = requestBuilders[props.type](
-      { ...props.data, prompt: props.type === 'video' ? videoGenerationPrompt.value : effectivePrompt.value },
-      props.type === 'image' ? imageReferences.value : props.type === 'video' ? activeReferences.value : references.value,
-    )
+    const requestData = { ...props.data, prompt: props.type === 'video' ? videoGenerationPrompt.value : effectivePrompt.value }
+    const generationRequest = props.type === 'image'
+      ? buildImageRequest(requestData, imageReferences.value, imageModels.value, defaultImageModel.value)
+      : props.type === 'video'
+        ? buildVideoRequest(requestData, activeReferences.value, videoModels.value, defaultVideoModel.value)
+        : buildAudioRequest(requestData, references.value, audioCapability.value)
     const result = await createGeneration({
       workspace_id: store.workspaceId,
       node_id: nodeId,
@@ -281,8 +298,16 @@ function ratioIconStyle(value) {
   return { width: `${Math.round(width * scale)}px`, height: `${Math.round(height * scale)}px` }
 }
 
+function videoModelError(data, modelReferences) {
+  return getVideoModelError(data, modelReferences, videoModels.value, defaultVideoModel.value)
+}
+
+function videoModelReferenceError(data, modelReferences) {
+  return getVideoReferenceError(data, modelReferences, videoModels.value, defaultVideoModel.value)
+}
+
 function updateVideoModel(model) {
-  const error = getVideoModelError({ ...props.data, model: model.id }, references.value)
+  const error = videoModelError({ ...props.data, model: model.id }, references.value)
   if (error) return
   const updates = { model: model.id }
   if (!model.resolutions.includes(selectedResolution.value)) updates.resolution = model.defaultResolution
@@ -444,7 +469,7 @@ onBeforeUnmount(() => {
       v-else-if="isStoryboardImage"
       class="storyboard-video-prompt nodrag nopan"
       :model-value="data.videoPrompt"
-      :maxlength="maxGenerationPromptLength"
+      :maxlength="promptLimit"
       placeholder="输入 Seedance 视频提示词…"
       aria-label="视频脚本"
       @input="updateVideoPrompt"
@@ -460,7 +485,7 @@ onBeforeUnmount(() => {
     />
 
     <AppMenu v-if="modelOpen && (type === 'video' || isVisionTextTask)" ref="modelMenu" class="model-menu" :style="modelStyle" @pointerdown.stop>
-      <AppButton v-for="model in selectableModels" :key="model.id" :class="{ active: selectedModel.id === model.id }" :disabled="type === 'video' && Boolean(getVideoModelError({ ...data, model: model.id }, references))" :title="type === 'video' ? getVideoModelError({ ...data, model: model.id }, references) : ''" @click="updateModel(model)">
+      <AppButton v-for="model in selectableModels" :key="model.id" :class="{ active: selectedModel.id === model.id }" :disabled="type === 'video' && Boolean(videoModelError({ ...data, model: model.id }, references))" :title="type === 'video' ? videoModelError({ ...data, model: model.id }, references) : ''" @click="updateModel(model)">
         <component :is="modelIcon" :size="15" />
         <span>{{ model.label }}</span>
       </AppButton>

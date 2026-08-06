@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildVideoRequest, defaultVideoModel, getVideoReferenceError, normalizeVideoSettings, videoAspectRatios, videoModels } from './videoModels'
+import { modelCapabilitiesFixture } from '../test/modelCapabilities'
+import { buildVideoRequest as buildRequest, getVideoReferenceError as getReferenceError, normalizeVideoModels, normalizeVideoSettings as normalizeSettings } from './videoModels'
+
+const videoModels = normalizeVideoModels(modelCapabilitiesFixture.video)
+const defaultVideoModel = videoModels.find(({ id }) => id === modelCapabilitiesFixture.video.default_model)
+const videoAspectRatios = defaultVideoModel.aspectRatios
+const normalizeVideoSettings = (data) => normalizeSettings(data, videoModels, defaultVideoModel)
+const buildVideoRequest = (data, references) => buildRequest(data, references, videoModels, defaultVideoModel)
+const getVideoReferenceError = (data, references) => getReferenceError(data, references, videoModels, defaultVideoModel)
 
 const imageNode = (id) => ({ id, type: 'image', data: { asset: `https://example.com/${id}.png` } })
 const mediaNode = (type, id) => ({ id, type, data: { asset: `https://example.com/${id}.${type === 'audio' ? 'mp3' : 'mp4'}` } })

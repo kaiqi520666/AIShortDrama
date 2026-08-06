@@ -1,58 +1,31 @@
-export const videoAspectRatios = ['21:9', '16:9', '4:3', '1:1', '3:4', '9:16']
-const seedanceRatios = videoAspectRatios
-
-export const videoModels = [
-  {
-    id: 'seedance-2',
-    label: 'Seedance 2',
-    resolutions: ['480p', '720p', '1080p', '4k'],
-    aspectRatios: seedanceRatios,
-    defaultResolution: '720p',
-    defaultAspectRatio: '16:9',
-    defaultDuration: 5,
-    durationMin: 4,
-    durationMax: 15,
-    generateAudio: true,
-    requiresPrivateAsset: true,
-    referenceLimits: { image: 9, video: 3, audio: 3 },
-  },
-  {
-    id: 'seedance-2-fast',
-    label: 'Seedance 2 Fast',
-    resolutions: ['480p', '720p'],
-    aspectRatios: seedanceRatios,
-    defaultResolution: '720p',
-    defaultAspectRatio: '16:9',
-    defaultDuration: 5,
-    durationMin: 4,
-    durationMax: 15,
-    generateAudio: true,
-    requiresPrivateAsset: true,
-    referenceLimits: { image: 9, video: 3, audio: 3 },
-  },
-  {
-    id: 'seedance-2-mini',
-    label: 'Seedance 2 Mini',
-    resolutions: ['480p', '720p'],
-    aspectRatios: seedanceRatios,
-    defaultResolution: '720p',
-    defaultAspectRatio: '16:9',
-    defaultDuration: 10,
-    durationOptions: [4, 8, 10, 12, 15],
-    generateAudio: true,
-    requiresPrivateAsset: true,
-    referenceLimits: { image: 9, video: 3, audio: 3 },
-  },
-]
-
-export const defaultVideoModel = videoModels.find((model) => model.id === 'seedance-2-mini')
-
-export function getVideoModel(modelId) {
-  return videoModels.find((model) => model.id === modelId) || defaultVideoModel
+export function normalizeVideoModels(section) {
+  return (section?.models || []).map((model) => ({
+    id: model.id,
+    label: model.label,
+    resolutions: model.resolutions,
+    aspectRatios: model.aspect_ratios.filter((ratio) => ratio !== 'adaptive'),
+    defaultResolution: model.default_resolution,
+    defaultAspectRatio: model.default_aspect_ratio,
+    defaultDuration: model.default_duration,
+    durationMin: model.duration.min,
+    durationMax: model.duration.max,
+    durationOptions: model.duration.options,
+    maxPromptLength: model.prompt_max_length,
+    generateAudio: model.generate_audio,
+    returnLastFrame: model.return_last_frame,
+    requiresPrivateAsset: model.requires_private_asset,
+    referenceLimits: model.reference_limits,
+  }))
 }
 
-export function normalizeVideoSettings(data = {}) {
-  const model = getVideoModel(data.model)
+export function getVideoModel(models, defaultModel, modelId) {
+  const model = models.find((item) => item.id === modelId) || defaultModel
+  if (!model) throw new Error('视频模型能力尚未加载')
+  return model
+}
+
+export function normalizeVideoSettings(data = {}, models, defaultModel) {
+  const model = getVideoModel(models, defaultModel, data.model)
   const requestedDuration = Number(data.duration)
   const duration = model.durationOptions
     ? model.durationOptions.includes(requestedDuration) ? requestedDuration : model.defaultDuration
@@ -84,8 +57,8 @@ function normalizeReferences(references, usePrivateAssets = false) {
 const referenceLabels = { image: '图片', video: '视频', audio: '音频' }
 const referenceUnits = { image: '张', video: '条', audio: '条' }
 
-export function getVideoModelError(data, references = []) {
-  const model = getVideoModel(data.model)
+export function getVideoModelError(data, references = [], models, defaultModel) {
+  const model = getVideoModel(models, defaultModel, data.model)
   const normalized = normalizeReferences(references)
   const counts = Object.fromEntries(['image', 'video', 'audio'].map((type) => [type, normalized.filter((reference) => reference.type === type).length]))
 
@@ -96,10 +69,10 @@ export function getVideoModelError(data, references = []) {
   return ''
 }
 
-export function getVideoReferenceError(data, references = []) {
-  const model = getVideoModel(data.model)
+export function getVideoReferenceError(data, references = [], models, defaultModel) {
+  const model = getVideoModel(models, defaultModel, data.model)
   const normalized = normalizeReferences(references, model.requiresPrivateAsset)
-  const modelError = getVideoModelError(data, references)
+  const modelError = getVideoModelError(data, references, models, defaultModel)
   if (modelError) return modelError
   if (model.requiresPrivateAsset && normalized.some((reference) => reference.type === 'image' && reference.storyboard && (reference.storyboardCharacterReferences?.some((character) => character.assetUrl) || reference.storyboardRequiresRegistration || reference.storyboardOutfitBoard) && !reference.providerAsset)) {
     return '请先在分镜图工具栏注册虚拟人像素材'
@@ -110,12 +83,13 @@ export function getVideoReferenceError(data, references = []) {
   return ''
 }
 
-export function buildVideoRequest(data, references = []) {
-  const settings = normalizeVideoSettings(data)
+export function buildVideoRequest(data, references = [], models, defaultModel) {
+  const settings = normalizeVideoSettings(data, models, defaultModel)
   const prompt = data.prompt?.trim()
   if (!prompt) throw new Error('视频提示词不能为空')
+  if (prompt.length > settings.model.maxPromptLength) throw new Error(`视频提示词不能超过 ${settings.model.maxPromptLength} 个字符`)
 
-  const referenceError = getVideoReferenceError(data, references)
+  const referenceError = getVideoReferenceError(data, references, models, defaultModel)
   if (referenceError) throw new Error(referenceError)
   const normalized = normalizeReferences(references, settings.model.requiresPrivateAsset)
   const referenceUrls = (type) => normalized.filter((reference) => reference.type === type && reference.url).map(({ url }) => url)
@@ -126,7 +100,7 @@ export function buildVideoRequest(data, references = []) {
     aspect_ratio: settings.aspectRatio,
     resolution: settings.resolution,
     ...(settings.model.generateAudio ? { generate_audio: settings.generateAudio } : {}),
-    ...(data.returnLastFrame !== false ? { return_last_frame: true } : {}),
+    ...(settings.model.returnLastFrame && data.returnLastFrame !== false ? { return_last_frame: true } : {}),
     reference_images: referenceUrls('image'),
     reference_videos: referenceUrls('video'),
     reference_audios: referenceUrls('audio'),

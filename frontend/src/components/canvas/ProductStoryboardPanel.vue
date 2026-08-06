@@ -16,14 +16,12 @@ import {
   storyboardSegmentCount,
   storyboardShotCount,
   storyboardTemplates,
-  videoAspectRatios,
 } from '../../config/canvas/productStoryboard'
-import { defaultImageModel } from '../../config/imageModels'
-import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
 import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
+import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import AppAssetPickerModal from '../assets/AppAssetPickerModal.vue'
 import AppButton from '../ui/AppButton.vue'
@@ -37,6 +35,7 @@ const props = defineProps({
 })
 
 const store = useCanvasStore()
+const capabilityStore = useModelCapabilitiesStore()
 const authStore = useAuthStore()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
@@ -52,16 +51,17 @@ const referenceManifest = computed(() => buildStoryboardReferenceManifest(props.
 const productReferences = computed(() => referenceManifest.value.products)
 const productContext = computed(() => productPromptContext(productNode.value?.data.product))
 const ugcTemplate = storyboardTemplates[0]
-const selectedTextModel = computed(() => reverseModels.find((model) => model.id === props.data.textModel) || defaultReverseModel)
+const selectedTextModel = computed(() => capabilityStore.textModels.find((model) => model.id === props.data.textModel) || capabilityStore.defaultTextModel)
 const segmentCount = computed(() => storyboardSegmentCount(props.data.duration))
 const shots = computed(() => storyboardShotCount(15))
-const recommended = computed(() => recommendStoryboardSettings(15, props.data.videoAspectRatio, defaultImageModel))
+const recommended = computed(() => recommendStoryboardSettings(15, props.data.videoAspectRatio, capabilityStore.defaultImageModel))
 const running = computed(() => props.data.status === 'generating')
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedTextModel.value.id))
 const insufficientCredits = computed(() => estimatedCredits.value !== null && (authStore.user?.credit_balance || 0) < estimatedCredits.value)
 const existingGeneratedNodes = computed(() => (props.data.generatedNodeIds || []).filter((id) => store.nodes.some((node) => node.id === id)))
-const textModelOptions = reverseModels.map(({ id, label }) => ({ value: id, label }))
-const ratioOptions = videoAspectRatios.map((value) => ({ value, label: value }))
+const textModelOptions = computed(() => capabilityStore.textModels.map(({ id, label }) => ({ value: id, label })))
+const videoAspectRatios = computed(() => capabilityStore.defaultVideoModel.aspectRatios)
+const ratioOptions = computed(() => videoAspectRatios.value.map((value) => ({ value, label: value })))
 const characterReferences = computed(() => referenceManifest.value.characters)
 const totalReferenceCount = computed(() => characterReferences.value.length + productReferences.value.length)
 const productLimit = computed(() => getStoryboardProductLimit(characterReferences.value.length))
@@ -188,7 +188,7 @@ async function submitTask() {
     media_type: 'image',
     media_url: references[0]?.url,
     media_urls: references.slice(1).map((reference) => reference.url),
-    prompt: buildProductStoryboardPrompt(productContext.value, [ugcTemplate], props.data),
+    prompt: buildProductStoryboardPrompt(productContext.value, [ugcTemplate], props.data, videoAspectRatios.value),
     response_mode: 'product_storyboard_plan',
   }, {
     failureMessage: '商品分镜方案生成失败',
@@ -198,7 +198,7 @@ async function submitTask() {
         props.nodeId,
         productNode.value.id,
         plan,
-        { model: defaultImageModel.id, aspectRatio: recommended.value.aspectRatio, resolution: recommended.value.resolution },
+        { model: capabilityStore.defaultImageModel.id, aspectRatio: recommended.value.aspectRatio, resolution: recommended.value.resolution },
       )
       return { generatedNodeIds: [...existingGeneratedNodes.value, ...generatedNodeIds] }
     },

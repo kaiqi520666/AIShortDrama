@@ -9,12 +9,12 @@ describe('canvas migrations', () => {
         { id: 'a', type: 'product_storyboard', data: {} },
         { id: 'b', type: 'product_storyboard', data: { textModel: 'custom', templateId: 'saved', templates: [{ id: 'saved' }] } },
       ],
-    })
+    }, 'gpt-5.6-sol')
 
     expect(migrated.schema_version).toBe(CURRENT_CANVAS_SCHEMA_VERSION)
     expect(migrated.nodes[0].data).toEqual(expect.objectContaining({ textModel: expect.any(String), templateId: 'ugc-seeding', templates: expect.any(Array) }))
     expect(migrated.nodes[1].data).toEqual({ textModel: 'custom', templateId: 'saved', templates: [{ id: 'saved' }] })
-    expect(migrateCanvas(migrated)).toEqual(migrated)
+    expect(migrateCanvas(migrated, 'gpt-5.6-sol')).toEqual(migrated)
   })
 
   it('rejects canvases created by a newer client', () => {

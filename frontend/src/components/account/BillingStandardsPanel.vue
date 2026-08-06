@@ -1,10 +1,7 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { getCredits } from '../../api/credits'
-import { audioModel } from '../../config/audioModels'
-import { imageModels } from '../../config/imageModels'
-import { reverseModels } from '../../config/reverseModels'
-import { videoModels } from '../../config/videoModels'
+import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
 import AppButton from '../ui/AppButton.vue'
 import AppDataTable from '../ui/AppDataTable.vue'
 import EmptyState from '../ui/EmptyState.vue'
@@ -12,12 +9,13 @@ import EmptyState from '../ui/EmptyState.vue'
 const mediaLabels = { text: '文本', image: '图片', video: '视频', audio: '音频' }
 const mediaOrder = { text: 0, image: 1, video: 2, audio: 3 }
 const unitLabels = { request: '次', image: '张', second: '秒', minute: '分钟' }
-const modelLabels = Object.fromEntries([
-  ...reverseModels,
-  ...imageModels,
-  ...videoModels,
-  audioModel,
-].map(({ id, label }) => [id, label]))
+const capabilityStore = useModelCapabilitiesStore()
+const modelLabels = computed(() => Object.fromEntries([
+  ...capabilityStore.textModels,
+  ...capabilityStore.imageModels,
+  ...capabilityStore.videoModels,
+  capabilityStore.audioCapability?.model,
+].filter(Boolean).map(({ id, label }) => [id, label])))
 const columns = [
   { key: 'media_type', label: '模型类型', width: '110px' },
   { key: 'model', label: '模型', width: '34%' },
@@ -33,7 +31,7 @@ async function load() {
   loading.value = true
   error.value = ''
   try {
-    const response = await getCredits()
+    const [response] = await Promise.all([getCredits(), capabilityStore.load()])
     if (response.code !== 0) throw new Error(response.message)
     rules.value = response.data.prices.toSorted((a, b) =>
       mediaOrder[a.media_type] - mediaOrder[b.media_type]

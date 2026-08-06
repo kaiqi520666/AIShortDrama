@@ -1,7 +1,8 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ArrowUp, ChevronDown, Coins, Image, LoaderCircle } from 'lucide-vue-next'
-import { getImageModel, imageModels, normalizeImageSettings } from '../../config/imageModels'
+import { getImageModel, normalizeImageSettings } from '../../config/imageModels'
+import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
 import AppButton from '../ui/AppButton.vue'
 import AppMenu from '../ui/AppMenu.vue'
 
@@ -14,7 +15,10 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:settings', 'submit'])
 
-const normalized = computed(() => normalizeImageSettings(props.settings))
+const capabilityStore = useModelCapabilitiesStore()
+const imageModels = computed(() => capabilityStore.imageModels)
+const defaultImageModel = computed(() => capabilityStore.defaultImageModel)
+const normalized = computed(() => normalizeImageSettings(props.settings, imageModels.value, defaultImageModel.value))
 const model = computed(() => normalized.value.model)
 const modelOpen = ref(false)
 const settingsOpen = ref(false)
@@ -56,7 +60,7 @@ function toggleSettings() {
 }
 
 function updateModel(modelId) {
-  const nextModel = getImageModel(modelId)
+  const nextModel = getImageModel(imageModels.value, defaultImageModel.value, modelId)
   emit('update:settings', {
     model: nextModel.id,
     resolution: nextModel.resolutions.includes(normalized.value.resolution) ? normalized.value.resolution : nextModel.defaultResolution,

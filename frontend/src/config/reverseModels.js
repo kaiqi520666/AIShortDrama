@@ -1,5 +1,7 @@
-export const reverseModels = [
-  { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol' },
-]
-
-export const defaultReverseModel = reverseModels[0]
+export function normalizeTextModels(section) {
+  return (section?.models || []).map(({ id, label, prompt_max_length: maxPromptLength }) => ({
+    id,
+    label,
+    maxPromptLength,
+  }))
+}

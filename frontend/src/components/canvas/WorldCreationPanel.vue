@@ -4,10 +4,10 @@ import { ArrowUp, Coins, FileText, LoaderCircle } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamTextGeneration } from '../../api/generations'
 import { buildWorldPrompt, parseWorldProfile, worldReady } from '../../config/canvas/drama'
-import { defaultReverseModel, reverseModels } from '../../config/reverseModels'
 import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
+import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
 import AppButton from '../ui/AppButton.vue'
 import AppSelect from '../ui/AppSelect.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
@@ -19,13 +19,14 @@ const props = defineProps({
 })
 
 const store = useCanvasStore()
+const capabilityStore = useModelCapabilitiesStore()
 const authStore = useAuthStore()
 const { updateNodeData } = useVueFlow()
 const { failure, runTextTask } = useStreamingTextTask(props.nodeId)
 const step = computed(() => props.data.workflowStep || 'setting')
 const completed = computed(() => worldReady(props.data.world))
-const selectedModel = computed(() => reverseModels.find((model) => model.id === props.data.model) || defaultReverseModel)
-const modelOptions = reverseModels.map(({ id, label }) => ({ value: id, label }))
+const selectedModel = computed(() => capabilityStore.textModels.find((model) => model.id === props.data.model) || capabilityStore.defaultTextModel)
+const modelOptions = computed(() => capabilityStore.textModels.map(({ id, label }) => ({ value: id, label })))
 const running = computed(() => props.data.status === 'generating')
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedModel.value.id))
 const insufficientCredits = computed(() => estimatedCredits.value !== null && (authStore.user?.credit_balance || 0) < estimatedCredits.value)

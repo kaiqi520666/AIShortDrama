@@ -11,8 +11,15 @@ import {
   storyboardSegmentCount,
   storyboardShotCount,
   storyboardTemplates,
-  videoAspectRatios,
 } from './productStoryboard'
+import { modelCapabilitiesFixture } from '../../test/modelCapabilities'
+import { normalizeImageModels } from '../imageModels'
+import { normalizeVideoModels } from '../videoModels'
+
+const imageModels = normalizeImageModels(modelCapabilitiesFixture.image)
+const defaultImageModel = imageModels.find(({ id }) => id === modelCapabilitiesFixture.image.default_model)
+const videoModels = normalizeVideoModels(modelCapabilitiesFixture.video)
+const videoAspectRatios = videoModels.find(({ id }) => id === modelCapabilitiesFixture.video.default_model).aspectRatios
 
 const shotText = (prefix = '') => Array.from({ length: 6 }, (_, index) => `${prefix}镜头${index + 1}：具体动作`).join('；')
 
@@ -69,7 +76,7 @@ describe('product storyboard planning', () => {
       characterReferences: [{ url: 'https://example.com/character.png' }],
       productReferences: [{ url: 'https://example.com/product.png' }],
       prompt: '场景在家庭餐桌和办公室之间切换',
-    })
+    }, videoAspectRatios)
     expect(prompt).toContain('只保留“UGC 种草”这一种内容')
     expect(prompt).toContain('全程由人物本人或同行者真实手持手机拍摄')
     expect(prompt).toContain('前置广角')
@@ -117,7 +124,7 @@ describe('product storyboard planning', () => {
   })
 
   it('recommends image settings from duration and aspect ratio', () => {
-    expect(recommendStoryboardSettings(9, '9:16')).toEqual(expect.objectContaining({ shots: 4, aspectRatio: '9:16', resolution: '2K' }))
-    expect(recommendStoryboardSettings(15, '9:16')).toEqual(expect.objectContaining({ shots: 6, aspectRatio: '4:5', resolution: '4K' }))
+    expect(recommendStoryboardSettings(9, '9:16', defaultImageModel)).toEqual(expect.objectContaining({ shots: 4, aspectRatio: '9:16', resolution: '2K' }))
+    expect(recommendStoryboardSettings(15, '9:16', defaultImageModel)).toEqual(expect.objectContaining({ shots: 6, aspectRatio: '4:5', resolution: '4K' }))
   })
 })

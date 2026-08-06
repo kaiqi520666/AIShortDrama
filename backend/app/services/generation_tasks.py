@@ -5,6 +5,7 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.model_capabilities import get_model_capability
 from app.models import GenerationTask, Workspace
 from app.schemas.generation import (
     AudioGenerationRequest,
@@ -53,6 +54,7 @@ async def create_image_task(
 
 
 def build_image_provider_payload(request: ImageGenerationRequest) -> dict[str, Any]:
+    capability = get_model_capability("image", request.model)
     references = [str(url) for url in request.reference_images]
     provider_payload: dict[str, Any] = {
         "model": request.model,
@@ -60,7 +62,7 @@ def build_image_provider_payload(request: ImageGenerationRequest) -> dict[str, A
         "size": request.size,
         "n": request.n,
     }
-    if request.model == "gpt-image-2":
+    if capability.get("_provider_format") == "openai_image":
         if request.resolution:
             provider_payload["resolution"] = request.resolution.lower()
         provider_payload["response_format"] = "url"
@@ -71,7 +73,7 @@ def build_image_provider_payload(request: ImageGenerationRequest) -> dict[str, A
     metadata: dict[str, Any] = {}
     if request.resolution:
         metadata["resolution"] = request.resolution
-    if request.model in {"doubao-seedream-5-0", "doubao-seedream-5-0-pro"}:
+    if capability.get("_disable_watermark"):
         metadata["watermark"] = False
     if request.google_search:
         metadata["google_search"] = True
@@ -113,6 +115,7 @@ async def create_video_task(
 
 
 def build_video_provider_payload(request: VideoGenerationRequest) -> dict[str, Any]:
+    capability = get_model_capability("video", request.model)
     reference_images = [str(url) for url in request.reference_images]
     reference_videos = [str(url) for url in request.reference_videos]
     reference_audios = [str(url) for url in request.reference_audios]
@@ -123,8 +126,8 @@ def build_video_provider_payload(request: VideoGenerationRequest) -> dict[str, A
         "resolution": request.resolution,
         "aspect_ratio": request.aspect_ratio,
     }
-    provider_payload["generate_audio"] = request.generate_audio is not False
-    if request.return_last_frame:
+    provider_payload["generate_audio"] = capability["generate_audio"] and request.generate_audio is not False
+    if capability["return_last_frame"] and request.return_last_frame:
         provider_payload["return_last_frame"] = True
     if reference_images:
         provider_payload["image_with_roles"] = [
@@ -142,6 +145,7 @@ def build_video_provider_payload(request: VideoGenerationRequest) -> dict[str, A
 
 
 def build_audio_provider_payload(request: AudioGenerationRequest) -> dict[str, Any]:
+    get_model_capability("audio", request.model)
     references = [{"image_url": str(url)} for url in request.reference_images] or [
         {"audio_url": str(url)} for url in request.reference_audios
     ]
