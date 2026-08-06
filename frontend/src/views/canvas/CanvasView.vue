@@ -22,6 +22,7 @@ import { nodeRegistry } from '../../config/canvas/nodeRegistry'
 import { getNodeTypes } from '../../config/canvas/nodePacks'
 import { useGlobalConfirm, useGlobalToast } from '../../composables/useGlobalUI'
 import { useCanvasAutosave } from '../../composables/useCanvasAutosave'
+import { stopAllGenerationPolling, stopWorkspaceGenerationPolling } from '../../services/generationPolling'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 
@@ -710,6 +711,7 @@ async function goHome() {
 
 async function signOut() {
   if (!(await saveBeforeLeave())) return
+  stopAllGenerationPolling()
   await authStore.logout()
   store.$reset()
   emit('back')
@@ -750,6 +752,7 @@ onMounted(async () => {
   enableAutosave()
 })
 onBeforeUnmount(() => {
+  stopWorkspaceGenerationPolling(store.workspaceId)
   window.clearTimeout(historyTimer)
   window.removeEventListener('paste', handlePaste)
   window.removeEventListener('keydown', handleCanvasShortcut)

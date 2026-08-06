@@ -6,7 +6,7 @@ import { registerAssetPrivateAvatar } from '../../api/assets'
 import { uploadMedia } from '../../api/uploads'
 import { useGlobalToast } from '../../composables/useGlobalUI'
 import { imageAspectRatios } from '../../config/imageSettings'
-import { startGenerationPolling } from '../../services/generationPolling'
+import { startGenerationPolling, stopGenerationPolling } from '../../services/generationPolling'
 import { useCanvasStore } from '../../stores/canvas'
 import { downloadUrl } from '../../utils/download'
 import { buildOssImageUrl } from '../../utils/ossImage'
@@ -261,13 +261,21 @@ function startResize(event) {
 }
 
 watch(
-  () => [props.data.generationTaskId, props.data.status],
-  ([taskId, status]) => {
-    if (taskId && status === 'generating') startGenerationPolling(taskId, props.id, updateNodeData)
+  () => [props.data.generationTaskId, props.data.status, props.data.generationPollingPaused],
+  ([taskId, status, paused], [previousTaskId] = []) => {
+    if (previousTaskId && previousTaskId !== taskId) stopGenerationPolling(previousTaskId)
+    if (taskId && status === 'generating' && !paused) startGenerationPolling(taskId, props.id, updateNodeData)
   },
   { immediate: true },
 )
+
+function resumeGenerationPolling() {
+  updateNodeData(props.id, { generationPollingPaused: false, generationError: '' })
+  startGenerationPolling(props.data.generationTaskId, props.id, updateNodeData)
+}
+
 onBeforeUnmount(() => {
+  stopGenerationPolling(props.data.generationTaskId)
   stopResize()
 })
 </script>
@@ -320,8 +328,14 @@ onBeforeUnmount(() => {
       </div>
 
       <div v-else-if="['generating', 'uploading'].includes(data.status) && type !== 'text'" class="generating-state">
-        <span></span>
-        <p>{{ data.status === 'uploading' ? '上传中' : `生成中 ${data.generationProgress || 0}%` }}</p>
+        <template v-if="data.generationPollingPaused">
+          <p>{{ data.generationError || '状态同步中断' }}</p>
+          <AppButton class="nodrag nopan" size="sm" @click.stop="resumeGenerationPolling"><RefreshCw :size="14" />继续同步</AppButton>
+        </template>
+        <template v-else>
+          <span></span>
+          <p>{{ data.status === 'uploading' ? '上传中' : `生成中 ${data.generationProgress || 0}%` }}</p>
+        </template>
       </div>
 
       <div v-else-if="data.status === 'failed' && type !== 'text'" class="generation-failed-state">

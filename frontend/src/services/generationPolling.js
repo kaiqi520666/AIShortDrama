@@ -2,26 +2,70 @@ import { getGenerationTask } from '../api/generations'
 import { useAuthStore } from '../stores/auth'
 import { useCanvasStore } from '../stores/canvas'
 
-const pollTimers = new Map()
+const POLL_INTERVAL = 5000
+const RETRY_DELAYS = [5000, 10000, 20000, 40000, 60000, 60000]
+const MAX_POLL_DURATION = 30 * 60 * 1000
+const polls = new Map()
 
-function schedulePoll(taskId, nodeId, updateNodeData) {
-  pollTimers.set(taskId, window.setTimeout(() => pollTask(taskId, nodeId, updateNodeData), 5000))
+const mediaLabels = { image: '图片', video: '视频', audio: '音频' }
+
+function clearRecord(record) {
+  if (record.timer !== null) globalThis.clearTimeout(record.timer)
+  record.controller?.abort()
+  record.timer = null
+  record.controller = null
+  if (polls.get(record.taskId) === record) polls.delete(record.taskId)
 }
 
-async function pollTask(taskId, nodeId, updateNodeData) {
+function schedule(record, delay = POLL_INTERVAL) {
+  if (polls.get(record.taskId) !== record) return
+  record.timer = globalThis.setTimeout(() => pollTask(record), delay)
+}
+
+function failNode(record, message) {
+  clearRecord(record)
+  record.updateNodeData(record.nodeId, {
+    status: 'failed',
+    generationPollingPaused: false,
+    generationError: message,
+  })
+}
+
+function pauseNode(record, message = '状态同步中断，请继续同步') {
+  clearRecord(record)
+  record.updateNodeData(record.nodeId, {
+    generationPollingPaused: true,
+    generationError: message,
+  })
+}
+
+async function pollTask(record) {
+  if (polls.get(record.taskId) !== record) return
+  if (Date.now() - record.startedAt >= MAX_POLL_DURATION) {
+    pauseNode(record, '任务状态同步已超时，请继续同步')
+    return
+  }
+
+  record.controller = new AbortController()
   try {
-    const result = await getGenerationTask(taskId)
-    if (result.code !== 0) throw new Error(result.message)
+    const result = await getGenerationTask(record.taskId, { signal: record.controller.signal })
+    if (polls.get(record.taskId) !== record) return
+    if (result.code !== 0) {
+      failNode(record, result.message || '任务不存在')
+      return
+    }
+    record.failures = 0
     const task = result.data
-    updateNodeData(nodeId, {
+    record.updateNodeData(record.nodeId, {
       generationStatus: task.status,
       generationProgress: task.progress,
+      generationPollingPaused: false,
     })
     if (task.status === 'succeeded') {
       useAuthStore().refreshCredits().catch(() => {})
       if (task.result?.type === 'text') {
-        pollTimers.delete(taskId)
-        updateNodeData(nodeId, {
+        clearRecord(record)
+        record.updateNodeData(record.nodeId, {
           content: task.result.content || '',
           status: 'ready',
           generationProgress: 100,
@@ -31,13 +75,13 @@ async function pollTask(taskId, nodeId, updateNodeData) {
       }
       const generated = task.result?.data?.[0]
       const asset = generated?.url
-      const mediaLabel = { image: '图片', video: '视频', audio: '音频' }[task.task_type] || '内容'
-      pollTimers.delete(taskId)
+      const mediaLabel = mediaLabels[task.task_type] || '内容'
       if (!asset) {
-        updateNodeData(nodeId, { status: 'failed', generationError: `任务未返回${mediaLabel}地址` })
+        failNode(record, `任务未返回${mediaLabel}地址`)
         return
       }
-      updateNodeData(nodeId, {
+      clearRecord(record)
+      record.updateNodeData(record.nodeId, {
         asset,
         ...(generated.asset_id ? { assetId: generated.asset_id } : {}),
         status: 'ready',
@@ -46,28 +90,62 @@ async function pollTask(taskId, nodeId, updateNodeData) {
         ...(generated.duration ? { sourceDuration: generated.duration } : {}),
         ...(task.task_type === 'video' && task.result?.last_frame_url ? { lastFrameUrl: task.result.last_frame_url } : {}),
       })
-      if (task.task_type === 'image') useCanvasStore().unlockStoryboardVideo(nodeId)
+      if (task.task_type === 'image') useCanvasStore().unlockStoryboardVideo(record.nodeId)
       return
     }
     if (['failed', 'cancelled', 'timeout'].includes(task.status)) {
       useAuthStore().refreshCredits().catch(() => {})
-      const mediaLabel = { image: '图片', video: '视频', audio: '音频' }[task.task_type] || '内容'
-      pollTimers.delete(taskId)
-      updateNodeData(nodeId, {
-        status: 'failed',
-        generationError: task.error_message || `${mediaLabel}生成失败`,
-      })
+      failNode(record, task.error_message || `${mediaLabels[task.task_type] || '内容'}生成失败`)
       return
     }
-  } catch {
-    schedulePoll(taskId, nodeId, updateNodeData)
+  } catch (error) {
+    if (error.code === 'ERR_CANCELED' || polls.get(record.taskId) !== record) return
+    const status = error.response?.status
+    if (status === 401) stopAllGenerationPolling()
+    if (status && status < 500) {
+      failNode(record, error.response?.data?.message || error.message || '任务状态查询失败')
+      return
+    }
+    record.failures += 1
+    if (record.failures >= RETRY_DELAYS.length) {
+      pauseNode(record)
+      return
+    }
+    schedule(record, RETRY_DELAYS[record.failures - 1])
     return
+  } finally {
+    record.controller = null
   }
-  schedulePoll(taskId, nodeId, updateNodeData)
+  schedule(record)
 }
 
-export function startGenerationPolling(taskId, nodeId, updateNodeData) {
-  if (pollTimers.has(taskId)) return
-  pollTimers.set(taskId, null)
-  pollTask(taskId, nodeId, updateNodeData)
+export function startGenerationPolling(taskId, nodeId, updateNodeData, workspaceId = useCanvasStore().workspaceId) {
+  if (!taskId || polls.has(taskId)) return
+  const record = {
+    taskId,
+    nodeId,
+    workspaceId,
+    updateNodeData,
+    timer: null,
+    controller: null,
+    startedAt: Date.now(),
+    failures: 0,
+  }
+  polls.set(taskId, record)
+  pollTask(record)
+}
+
+export function stopGenerationPolling(taskId) {
+  const record = polls.get(taskId)
+  if (record) clearRecord(record)
+}
+
+export function stopWorkspaceGenerationPolling(workspaceId) {
+  for (const record of [...polls.values()]) {
+    if (record.workspaceId === workspaceId) clearRecord(record)
+  }
+}
+
+export function stopAllGenerationPolling() {
+  for (const record of [...polls.values()]) clearRecord(record)
 }

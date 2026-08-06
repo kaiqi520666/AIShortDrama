@@ -61,6 +61,6 @@ export function streamTextGeneration(payload, onDelta, onMeta) {
   return streamGeneration('/generations/texts', payload, onDelta, onMeta, '文本生成失败')
 }
 
-export async function getGenerationTask(taskId) {
-  return (await apiClient.get(`/generations/${taskId}`)).data
+export async function getGenerationTask(taskId, config) {
+  return (await apiClient.get(`/generations/${taskId}`, config)).data
 }
