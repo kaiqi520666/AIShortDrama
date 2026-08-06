@@ -23,7 +23,9 @@ OUTFIT_BOARD_MAX_BYTES = IMAGE_MAX_BYTES * 6
 
 
 class OutfitBoardDownloadError(RuntimeError):
-    pass
+    def __init__(self, message: str, status_code: int = 422):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 @dataclass(frozen=True)
@@ -126,7 +128,7 @@ async def download_outfit_board_images(
             except OutfitBoardDownloadError:
                 raise
             except httpx.HTTPError as exc:
-                raise OutfitBoardDownloadError("服饰总览源图片读取失败") from exc
+                raise OutfitBoardDownloadError("服饰总览源图片读取失败", status_code=502) from exc
     except Exception:
         for image in images:
             image.close()

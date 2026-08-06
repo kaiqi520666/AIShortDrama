@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
@@ -9,12 +10,16 @@ from typing import Any, Protocol
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.errors import ServiceUnavailableError, public_error_message
 from app.models import GenerationTask, Workspace
 from app.providers.openai_responses import OpenAIResponsesProvider
 from app.schemas.generation import TextGenerationRequest
 from app.services.billing import freeze_task_credits
 from app.services.generation_tasks import WorkspaceNotFoundError
 from app.workers.generation import complete_text_task, fail_task
+
+
+logger = logging.getLogger(__name__)
 
 
 class TextProvider(Protocol):
@@ -80,9 +85,11 @@ class TextGenerationService:
             raise
         try:
             provider = self.provider_factory()
-        except RuntimeError as exc:
-            await self.fail_task(task.id, "failed", str(exc))
-            raise
+        except Exception as exc:
+            message = public_error_message(exc, "文本生成服务暂时不可用")
+            logger.exception("Text generation provider initialization failed", extra={"task_id": str(task.id)})
+            await self.fail_task(task.id, "failed", message)
+            raise ServiceUnavailableError(message) from exc
         return PreparedTextGeneration(task=task, provider=provider)
 
     async def stream_text_events(
@@ -109,7 +116,9 @@ class TextGenerationService:
             )
             raise
         except Exception as exc:
-            await self.fail_task(prepared.task.id, "failed", str(exc))
+            message = public_error_message(exc, "文本生成服务暂时不可用")
+            logger.exception("Text generation stream failed", extra={"task_id": str(prepared.task.id)})
+            await self.fail_task(prepared.task.id, "failed", message)
             yield json.dumps(
-                {"type": "error", "message": str(exc)}, ensure_ascii=False
+                {"type": "error", "message": message}, ensure_ascii=False
             ) + "\n"

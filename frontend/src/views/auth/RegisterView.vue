@@ -6,6 +6,7 @@ import AuthFormShell from '../../components/auth/AuthFormShell.vue'
 import AuthInputField from '../../components/auth/AuthInputField.vue'
 import AppButton from '../../components/ui/AppButton.vue'
 import { useAuthStore } from '../../stores/auth'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -22,7 +23,7 @@ async function submit() {
     await authStore.register({ username: username.value, email: email.value, password: password.value })
     await router.replace({ name: 'workspaces' })
   } catch (error) {
-    errorMessage.value = error.response?.data?.message || error.message || '注册失败'
+    errorMessage.value = getApiErrorMessage(error, '注册失败')
   } finally {
     submitting.value = false
   }

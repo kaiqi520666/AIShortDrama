@@ -5,6 +5,7 @@ import { useVueFlow } from '@vue-flow/core'
 import { composeImageBoard } from '../../api/assets'
 import { useCanvasStore } from '../../stores/canvas'
 import { outfitMaterials } from '../../config/canvas/outfit'
+import { getApiErrorMessage } from '../../utils/apiError'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import StructuredNodeShell from './StructuredNodeShell.vue'
 
@@ -55,7 +56,7 @@ async function composeBoard() {
       outfitBoardError: '',
     })
   } catch (error) {
-    updateNodeData(props.id, { outfitBoardStatus: 'failed', outfitBoardError: error.response?.data?.message || error.message || '总览图合成失败' })
+    updateNodeData(props.id, { outfitBoardStatus: 'failed', outfitBoardError: getApiErrorMessage(error, '总览图合成失败') })
   } finally {
     composing.value = false
   }

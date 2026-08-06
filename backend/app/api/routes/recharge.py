@@ -1,13 +1,14 @@
 import uuid
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import PlainTextResponse, RedirectResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.database import get_db
+from app.core.errors import NotFoundError, RequestError, ServiceUnavailableError
 from app.core.identity import get_current_user
 from app.models import RechargeOrder, RechargeTier, User
 from app.schemas.recharge import CreateRechargeOrderRequest
@@ -66,7 +67,8 @@ async def create_recharge_order(
     try:
         order = await create_order(db, user, payload.amount_cents, _client_ip(request))
     except RechargeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        error_type = ServiceUnavailableError if exc.status_code == 503 else RequestError
+        raise error_type(str(exc)) from exc
     return success(order_data(order, user.credit_balance))
 
 
@@ -82,7 +84,7 @@ async def get_recharge_order(
         )
     )
     if not order:
-        raise HTTPException(status_code=404, detail="充值订单不存在")
+        raise NotFoundError("充值订单不存在")
     await db.refresh(user)
     return success(order_data(order, user.credit_balance))
 

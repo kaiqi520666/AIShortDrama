@@ -25,6 +25,12 @@ class FakeProvider:
             yield chunk
 
 
+class FailingProvider(FakeProvider):
+    async def stream_text(self, **_kwargs):
+        raise RuntimeError("provider secret response")
+        yield ""
+
+
 @pytest.mark.asyncio
 async def test_stream_text_generation(monkeypatch):
     monkeypatch.setattr(text_generation, "OpenAIResponsesProvider", FakeProvider)
@@ -93,3 +99,26 @@ async def test_stream_text_generation_keeps_content_over_3000_characters(monkeyp
     async with SessionLocal() as db:
         task = await db.get(GenerationTask, task_id)
         assert task.result["content"] == "".join(chunks)
+
+
+@pytest.mark.asyncio
+async def test_stream_text_generation_hides_provider_error(monkeypatch):
+    monkeypatch.setattr(text_generation, "OpenAIResponsesProvider", FailingProvider)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/generations/texts",
+            json={
+                "workspace_id": str(DEFAULT_WORKSPACE_ID),
+                "node_id": "text-provider-error-test",
+                "model": "gpt-5.6-sol",
+                "prompt": "生成测试内容",
+            },
+        )
+
+    events = [json.loads(line) for line in response.text.splitlines()]
+    task_id = uuid.UUID(events[0]["task_id"])
+    assert events[-1] == {"type": "error", "message": "文本生成服务暂时不可用"}
+    assert "provider secret response" not in response.text
+    async with SessionLocal() as db:
+        task = await db.get(GenerationTask, task_id)
+        assert task.error_message == "文本生成服务暂时不可用"

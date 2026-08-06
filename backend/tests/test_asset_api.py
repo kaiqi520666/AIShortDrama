@@ -9,6 +9,7 @@ from httpx import ASGITransport, AsyncClient
 from PIL import Image
 from app.api.routes import assets as assets_module
 from app.core.database import SessionLocal
+from app.core.errors import ServiceUnavailableError
 from app.core.identity import DEFAULT_WORKSPACE_ID
 from app.main import app
 from app.models import Asset
@@ -326,16 +327,15 @@ async def test_compose_outfit_board_removes_uploaded_object_when_database_commit
     monkeypatch.setattr(assets_module, "OssStorage", lambda: storage)
     db = FailedCommitDb()
 
-    response = await assets_module.compose_board(
-        ComposeImageBoardRequest(
-            workspace_id=str(workspace_id),
-            node_id="outfit-1",
-            asset_ids=[str(asset.id) for asset in source_assets],
-        ),
-        db,
-        user_id,
-    )
-
-    assert response == {"code": 1, "message": "服饰总览图合成失败", "data": None}
+    with pytest.raises(ServiceUnavailableError, match="服饰总览图服务暂时不可用"):
+        await assets_module.compose_board(
+            ComposeImageBoardRequest(
+                workspace_id=str(workspace_id),
+                node_id="outfit-1",
+                asset_ids=[str(asset.id) for asset in source_assets],
+            ),
+            db,
+            user_id,
+        )
     assert db.rolled_back
     assert len(storage.deleted) == 1

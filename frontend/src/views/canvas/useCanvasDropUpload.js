@@ -1,6 +1,7 @@
 import { nextTick, ref } from 'vue'
 import { uploadMedia } from '../../api/uploads'
 import { getNodeDescriptor } from '../../config/canvas/nodeCatalog'
+import { getApiErrorMessage } from '../../utils/apiError'
 import { mediaUploadRules, readMediaMetadata } from '../../utils/mediaFiles'
 
 export const uploadRules = {
@@ -82,7 +83,7 @@ export function useCanvasDropUpload({ store, nodes, contextMenu, activeGroupId, 
       })
     } catch (error) {
       store.deleteNode(id)
-      toast.error(error.code === 'ECONNABORTED' ? '上传超时，请重试' : error.response?.data?.message || error.message || '上传失败')
+      toast.error(error.code === 'ECONNABORTED' ? '上传超时，请重试' : getApiErrorMessage(error, '上传失败'))
     }
   }
 

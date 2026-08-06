@@ -35,7 +35,7 @@ async def test_admin_actions_audit_and_credit_floor():
             assert adjusted.json()["data"]["credit_balance"] == 2
 
             rejected = await client.post(f"/api/admin/users/{target_id}/credits", json={"amount": -3, "reason": "测试下限"})
-            assert rejected.status_code == 400
+            assert rejected.status_code == 422
 
             promoted = await client.post(f"/api/admin/users/{target_id}/role", json={"role": "admin", "reason": "授权测试"})
             assert promoted.status_code == 200
@@ -64,7 +64,7 @@ async def test_admin_cannot_demote_or_disable_self():
     app.dependency_overrides[get_current_admin] = lambda: admin
     try:
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            assert (await client.post(f"/api/admin/users/{admin_id}/role", json={"role": "user", "reason": "测试"})).status_code == 400
-            assert (await client.post(f"/api/admin/users/{admin_id}/status", json={"status": "disabled", "reason": "测试"})).status_code == 400
+            assert (await client.post(f"/api/admin/users/{admin_id}/role", json={"role": "user", "reason": "测试"})).status_code == 422
+            assert (await client.post(f"/api/admin/users/{admin_id}/status", json={"status": "disabled", "reason": "测试"})).status_code == 422
     finally:
         app.dependency_overrides.pop(get_current_admin, None)

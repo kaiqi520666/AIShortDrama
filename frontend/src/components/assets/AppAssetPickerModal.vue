@@ -6,6 +6,7 @@ import { createCharacterFromAsset, listReferenceItems, registerCharacter, upload
 import { uploadMedia } from '../../api/uploads'
 import { normalizeLibraryItem } from '../../config/assetLibrary'
 import { useGlobalToast } from '../../composables/useGlobalUI'
+import { getApiErrorMessage } from '../../utils/apiError'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import { mediaUploadRules, readMediaMetadata, validateMediaFile } from '../../utils/mediaFiles'
 import AppButton from '../ui/AppButton.vue'
@@ -61,7 +62,7 @@ async function loadAssets() {
     items.value = props.resourceType === 'character' ? [props.extraItem, ...libraryItems].filter(Boolean) : libraryItems
     selected.value = items.value.find((item) => item.url === props.selectedUrl) || null
   } catch (error) {
-    toast.error(error.response?.data?.message || error.message || '素材加载失败')
+    toast.error(getApiErrorMessage(error, '素材加载失败'))
   } finally {
     loading.value = false
   }
@@ -89,7 +90,7 @@ async function handleUpload(event) {
     items.value = [item, ...items.value]
     selected.value = props.resourceType === 'character' && item.seedanceStatus !== 'active' ? null : item
   } catch (uploadError) {
-    toast.error(uploadError.response?.data?.message || uploadError.message || '素材上传失败')
+    toast.error(getApiErrorMessage(uploadError, '素材上传失败'))
   } finally {
     uploading.value = false
   }
@@ -113,7 +114,7 @@ async function selectItem(item) {
     if (refreshed.seedanceStatus === 'active') selected.value = refreshed
     else toast.info('角色正在处理中，请稍后点击刷新')
   } catch (error) {
-    toast.error(error.response?.data?.message || error.message || '角色注册失败')
+    toast.error(getApiErrorMessage(error, '角色注册失败'))
   } finally {
     registeringId.value = ''
   }

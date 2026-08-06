@@ -1,13 +1,18 @@
 import base64
 import binascii
+import logging
 import uuid
 from datetime import UTC, datetime
 
 from app.core.database import SessionLocal
+from app.core.errors import public_error_message
 from app.models import GenerationTask
 from app.providers.volcengine_audio import VolcengineAudioError, VolcengineAudioProvider
 from app.services.storage import OssStorage
 from app.workers.generation import complete_task, fail_task, update_task
+
+
+logger = logging.getLogger(__name__)
 
 
 AUDIO_MIME_TYPES = {
@@ -67,7 +72,8 @@ async def run_audio_generation(
             mime_type=AUDIO_MIME_TYPES[audio_format],
         )
     except Exception as exc:
-        await fail_task(task_uuid, "failed", str(exc))
+        logger.exception("Audio generation failed", extra={"task_id": str(task_uuid)})
+        await fail_task(task_uuid, "failed", public_error_message(exc, "音频生成服务暂时不可用"))
         raise
     finally:
         if owns_provider and provider:

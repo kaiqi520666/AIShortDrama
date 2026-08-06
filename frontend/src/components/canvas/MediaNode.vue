@@ -8,6 +8,7 @@ import { useGlobalToast } from '../../composables/useGlobalUI'
 import { imageAspectRatios } from '../../config/imageSettings'
 import { startGenerationPolling, stopGenerationPolling } from '../../services/generationPolling'
 import { useCanvasStore } from '../../stores/canvas'
+import { getApiErrorMessage } from '../../utils/apiError'
 import { downloadUrl } from '../../utils/download'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import { mediaUploadRules, readMediaMetadata, validateMediaFile } from '../../utils/mediaFiles'
@@ -139,7 +140,7 @@ async function handleUpload(event) {
       ...(props.data.storyboardSourceId ? { storyboardAsset: null } : {}),
     })
   } catch (error) {
-    uploadNotice.value = error.response?.data?.message || error.message || '上传失败'
+    uploadNotice.value = getApiErrorMessage(error, '上传失败')
   } finally {
     uploading.value = false
   }
@@ -227,7 +228,7 @@ async function registerStoryboardAsset() {
     if (seedance?.status === 'active') toast.success('分镜虚拟人像素材已可用于 Seedance')
     else toast.info('分镜素材审核中，请稍后点击刷新')
   } catch (error) {
-    toast.error(error.response?.data?.message || error.message || '分镜素材注册失败')
+    toast.error(getApiErrorMessage(error, '分镜素材注册失败'))
   } finally {
     registeringStoryboard.value = false
   }

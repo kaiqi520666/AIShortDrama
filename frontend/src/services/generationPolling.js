@@ -1,6 +1,7 @@
 import { getGenerationTask } from '../api/generations'
 import { useAuthStore } from '../stores/auth'
 import { useCanvasStore } from '../stores/canvas'
+import { getApiErrorMessage } from '../utils/apiError'
 
 const POLL_INTERVAL = 5000
 const RETRY_DELAYS = [5000, 10000, 20000, 40000, 60000, 60000]
@@ -103,7 +104,7 @@ async function pollTask(record) {
     const status = error.response?.status
     if (status === 401) stopAllGenerationPolling()
     if (status && status < 500) {
-      failNode(record, error.response?.data?.message || error.message || '任务状态查询失败')
+      failNode(record, getApiErrorMessage(error, '任务状态查询失败'))
       return
     }
     record.failures += 1

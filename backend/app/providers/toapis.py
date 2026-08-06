@@ -13,7 +13,7 @@ class ToApisError(RuntimeError):
 
     @property
     def public_message(self) -> str:
-        return f"ToAPIs 请求失败（{self.status_code}）" if self.status_code else str(self)
+        return "上游服务暂时不可用，请稍后重试"
 
 
 class ToApisProvider:

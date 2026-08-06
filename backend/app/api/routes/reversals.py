@@ -1,23 +1,30 @@
 import asyncio
 import json
+import logging
 import uuid
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.errors import (
+    InsufficientCreditsError,
+    NotFoundError,
+    ServiceUnavailableError,
+    public_error_message,
+)
 from app.core.identity import get_current_user_id
 from app.models import GenerationTask, Workspace
 from app.providers.openai_responses import OpenAIResponsesProvider
-from app.schemas.response import fail
 from app.schemas.reversal import ReversePromptRequest
-from app.services.billing import BillingError, freeze_task_credits
+from app.services.billing import BillingError, InsufficientCredits, freeze_task_credits
 from app.workers.generation import complete_text_task, fail_task
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.post("/stream")
@@ -34,7 +41,7 @@ async def stream_reverse_prompt(
         )
     )
     if not workspace:
-        return JSONResponse(status_code=404, content=fail("工作台不存在"))
+        raise NotFoundError("工作台不存在")
     task = GenerationTask(
         user_id=user_id,
         workspace_id=payload.workspace_id,
@@ -52,12 +59,17 @@ async def stream_reverse_prompt(
         await freeze_task_credits(db, task, "text")
         await db.commit()
         provider = OpenAIResponsesProvider()
+    except InsufficientCredits as exc:
+        await db.rollback()
+        raise InsufficientCreditsError(str(exc)) from exc
     except BillingError as exc:
         await db.rollback()
-        return JSONResponse(status_code=402, content=fail(str(exc)))
+        raise ServiceUnavailableError(public_error_message(exc, "反推服务暂时不可用")) from exc
     except RuntimeError as exc:
-        await fail_task(task.id, "failed", str(exc))
-        return JSONResponse(status_code=503, content=fail(str(exc)))
+        message = public_error_message(exc, "反推服务暂时不可用")
+        logger.exception("Reverse prompt provider initialization failed", extra={"task_id": str(task.id)})
+        await fail_task(task.id, "failed", message)
+        raise ServiceUnavailableError(message) from exc
 
     async def events():
         content = ""
@@ -83,8 +95,10 @@ async def stream_reverse_prompt(
             await fail_task(task.id, "cancelled", "客户端已中断反推任务")
             raise
         except Exception as exc:
-            await fail_task(task.id, "failed", str(exc))
-            yield json.dumps({"type": "error", "message": str(exc)}, ensure_ascii=False) + "\n"
+            message = public_error_message(exc, "反推服务暂时不可用")
+            logger.exception("Reverse prompt stream failed", extra={"task_id": str(task.id)})
+            await fail_task(task.id, "failed", message)
+            yield json.dumps({"type": "error", "message": message}, ensure_ascii=False) + "\n"
 
     return StreamingResponse(
         events(),

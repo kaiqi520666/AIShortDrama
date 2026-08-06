@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import uuid
 from datetime import UTC, datetime
 from fastapi import APIRouter, Depends, File, Form, UploadFile
@@ -6,13 +7,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.errors import NotFoundError, RequestError, ServiceUnavailableError, public_error_message
 from app.core.identity import get_current_user_id
 from app.models import Asset, Workspace
-from app.schemas.response import fail, success
+from app.schemas.response import success
 from app.services.image_processing import normalize_image
 from app.services.storage import OssStorage
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 UPLOAD_RULES = {
     "image": {
@@ -57,19 +60,19 @@ async def upload_media(
 ):
     rule = UPLOAD_RULES.get(media_type)
     if not rule:
-        return fail("不支持的媒体类型")
+        raise RequestError("不支持的媒体类型")
     if file.content_type not in rule["content_types"]:
         label = {"image": "图片", "video": "视频", "audio": "音频"}[media_type]
-        return fail(f"不支持的{label}格式")
+        raise RequestError(f"不支持的{label}格式")
     if not file.size:
-        return fail("上传文件不能为空")
+        raise RequestError("上传文件不能为空")
     if file.size > rule["max_size"]:
         limit = (
             f"{rule['max_size'] // (1024 * 1024)}MB"
             if rule["max_size"] >= 1024 * 1024
             else f"{rule['max_size']}B"
         )
-        return fail(f"文件不能超过 {limit}")
+        raise RequestError(f"文件不能超过 {limit}")
 
     workspace = await db.scalar(
         select(Workspace).where(
@@ -79,7 +82,7 @@ async def upload_media(
         )
     )
     if not workspace:
-        return fail("工作台不存在")
+        raise NotFoundError("工作台不存在")
 
     content_type = file.content_type
     byte_size = file.size
@@ -93,15 +96,20 @@ async def upload_media(
         if media_type == "image":
             normalized = await asyncio.to_thread(normalize_image, file.file, content_type)
             if normalized.size > rule["max_size"]:
-                return fail(f"重编码后的图片不能超过 {rule['max_size'] // (1024 * 1024)}MB")
+                raise RequestError(
+                    f"重编码后的图片不能超过 {rule['max_size'] // (1024 * 1024)}MB"
+                )
             upload_stream = normalized.stream
             byte_size = normalized.size
             width, height = normalized.width, normalized.height
         url = await OssStorage().store_upload(object_key, upload_stream, content_type)
     except ValueError as exc:
-        return fail(str(exc))
+        raise RequestError(str(exc)) from exc
     except Exception as exc:
-        return fail(f"上传失败：{exc}")
+        logger.exception(
+            "Media upload failed", extra={"workspace_id": str(workspace_id), "node_id": node_id}
+        )
+        raise ServiceUnavailableError(public_error_message(exc, "上传服务暂时不可用")) from exc
     finally:
         await file.close()
 

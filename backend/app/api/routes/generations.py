@@ -1,10 +1,16 @@
 import uuid
 
 from fastapi import APIRouter, Depends, Request
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.errors import (
+    InsufficientCreditsError,
+    NotFoundError,
+    ServiceUnavailableError,
+    public_error_message,
+)
 from app.core.identity import get_current_user_id
 from app.core.model_capabilities import capabilities_payload
 from app.models import GenerationTask
@@ -14,7 +20,7 @@ from app.schemas.generation import (
     TextGenerationRequest,
     VideoGenerationRequest,
 )
-from app.schemas.response import fail, success
+from app.schemas.response import success
 from app.services.generation_tasks import (
     GenerationQueueError,
     WorkspaceNotFoundError,
@@ -44,11 +50,13 @@ async def _create_queued_generation(create_task, db, redis, payload, user_id):
     try:
         task = await create_task(db, redis, payload, user_id)
     except WorkspaceNotFoundError as exc:
-        return JSONResponse(status_code=404, content=fail(str(exc)))
+        raise NotFoundError(str(exc)) from exc
     except InsufficientCredits as exc:
-        return JSONResponse(status_code=402, content=fail(str(exc)))
-    except (BillingError, GenerationQueueError) as exc:
-        return JSONResponse(status_code=503, content=fail(str(exc)))
+        raise InsufficientCreditsError(str(exc)) from exc
+    except GenerationQueueError as exc:
+        raise ServiceUnavailableError(str(exc)) from exc
+    except BillingError as exc:
+        raise ServiceUnavailableError(public_error_message(exc, "生成服务暂时不可用")) from exc
     return success(task_payload(task))
 
 
@@ -62,11 +70,11 @@ async def create_text_generation(
     try:
         prepared = await service.prepare_text_generation(db, payload, user_id)
     except WorkspaceNotFoundError as exc:
-        return JSONResponse(status_code=404, content=fail(str(exc)))
+        raise NotFoundError(str(exc)) from exc
     except InsufficientCredits as exc:
-        return JSONResponse(status_code=402, content=fail(str(exc)))
+        raise InsufficientCreditsError(str(exc)) from exc
     except (BillingError, RuntimeError) as exc:
-        return JSONResponse(status_code=503, content=fail(str(exc)))
+        raise ServiceUnavailableError(public_error_message(exc, "文本生成服务暂时不可用")) from exc
 
     return StreamingResponse(
         service.stream_text_events(prepared, payload),
@@ -119,5 +127,5 @@ async def get_generation_task(
 ):
     task = await db.get(GenerationTask, task_id)
     if not task or task.user_id != user_id:
-        return JSONResponse(status_code=404, content=fail("任务不存在"))
+        raise NotFoundError("任务不存在")
     return success(task_payload(task))

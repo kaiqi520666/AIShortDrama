@@ -1,5 +1,6 @@
 import { getCurrentInstance, onBeforeUnmount, onMounted } from 'vue'
 import { uploadMedia } from '../api/uploads'
+import { getApiErrorMessage } from '../utils/apiError'
 import { mediaUploadRules, readMediaMetadata } from '../utils/mediaFiles'
 
 export function useCanvasClipboard({ store, nodes, project, updateNodeData, toast, eventTarget = globalThis.window }) {
@@ -41,7 +42,7 @@ export function useCanvasClipboard({ store, nodes, project, updateNodeData, toas
       toast.success('图片已粘贴到画布')
     } catch (error) {
       store.deleteNode(id)
-      toast.error(error.code === 'ECONNABORTED' ? '图片上传超时，请重试' : error.response?.data?.message || error.message || '图片粘贴失败')
+      toast.error(error.code === 'ECONNABORTED' ? '图片上传超时，请重试' : getApiErrorMessage(error, '图片粘贴失败'))
     }
   }
 

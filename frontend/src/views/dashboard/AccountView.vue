@@ -7,6 +7,7 @@ import AppButton from '../../components/ui/AppButton.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import { useGlobalToast } from '../../composables/useGlobalUI'
 import { useAuthStore } from '../../stores/auth'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 const authStore = useAuthStore()
 const toast = useGlobalToast()
@@ -29,7 +30,7 @@ async function loadAccount() {
       credit_frozen: result.data.credits.frozen,
     })
   } catch (error) {
-    loadError.value = error.response?.data?.message || error.message || '账户信息加载失败'
+    loadError.value = getApiErrorMessage(error, '账户信息加载失败')
   } finally {
     loading.value = false
   }
@@ -50,7 +51,7 @@ async function changePassword() {
     password.confirm = ''
     toast.success('密码已更新，其他设备已退出登录')
   } catch (error) {
-    passwordError.value = error.response?.data?.message || error.message || '密码修改失败'
+    passwordError.value = getApiErrorMessage(error, '密码修改失败')
   } finally {
     submitting.value = false
   }

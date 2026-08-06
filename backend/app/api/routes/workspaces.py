@@ -2,14 +2,15 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.errors import ConflictError, NotFoundError
 from app.core.identity import get_current_user_id
 from app.models import Workspace
-from app.schemas.response import fail, success
+from app.schemas.response import success
 from app.schemas.workspace import CanvasUpdate, WorkspaceCreate, WorkspaceUpdate, empty_canvas
 
 router = APIRouter()
@@ -82,11 +83,9 @@ async def get_workspace(
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
     workspace = await owned_workspace(db, workspace_id, user_id)
-    return (
-        success(workspace_payload(workspace, include_canvas=True))
-        if workspace
-        else fail("工作台不存在")
-    )
+    if not workspace:
+        raise NotFoundError("工作台不存在")
+    return success(workspace_payload(workspace, include_canvas=True))
 
 
 @router.patch("/{workspace_id}")
@@ -98,7 +97,7 @@ async def update_workspace(
 ):
     workspace = await owned_workspace(db, workspace_id, user_id)
     if not workspace:
-        return fail("工作台不存在")
+        raise NotFoundError("工作台不存在")
     workspace.name = payload.name.strip()
     await db.commit()
     await db.refresh(workspace)
@@ -113,7 +112,7 @@ async def delete_workspace(
 ):
     workspace = await owned_workspace(db, workspace_id, user_id)
     if not workspace:
-        return fail("工作台不存在")
+        raise NotFoundError("工作台不存在")
     workspace.deleted_at = datetime.now(UTC)
     await db.commit()
     return success({"id": str(workspace.id)})
@@ -127,7 +126,7 @@ async def duplicate_workspace(
 ):
     source = await owned_workspace(db, workspace_id, user_id)
     if not source:
-        return fail("工作台不存在")
+        raise NotFoundError("工作台不存在")
     workspace = Workspace(
         user_id=user_id,
         name=f"{source.name} 副本"[:100],
@@ -158,9 +157,9 @@ async def save_canvas(
         .with_for_update()
     )
     if not workspace:
-        return fail("工作台不存在")
+        raise NotFoundError("工作台不存在")
     if workspace.version != payload.version:
-        raise HTTPException(status_code=409, detail="画布已在其他页面更新，请刷新后继续")
+        raise ConflictError("画布已在其他页面更新，请刷新后继续")
     workspace.canvas = payload.model_dump(mode="json", exclude={"version"})
     workspace.version += 1
     await db.commit()

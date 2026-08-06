@@ -9,6 +9,7 @@ import AppDateTime from '../../components/ui/AppDateTime.vue'
 import AppInput from '../../components/ui/AppInput.vue'
 import AppSelect from '../../components/ui/AppSelect.vue'
 import { useGlobalToast } from '../../composables/useGlobalUI'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 const toast = useGlobalToast()
 const view = ref('tiers')
@@ -43,7 +44,7 @@ async function loadTiers() {
     const result = await getAdminRechargeTiers()
     if (result.code !== 0) throw new Error(result.message)
     tiers.value = result.data
-  } catch (error) { toast.error(error.response?.data?.message || error.message || '充值阶梯加载失败') }
+  } catch (error) { toast.error(getApiErrorMessage(error, '充值阶梯加载失败')) }
   finally { loading.value = false }
 }
 
@@ -56,7 +57,7 @@ async function loadOrders(page = 1) {
     const result = await getAdminRechargeOrders(params)
     if (result.code !== 0) throw new Error(result.message)
     Object.assign(orders, result.data)
-  } catch (error) { toast.error(error.response?.data?.message || error.message || '充值订单加载失败') }
+  } catch (error) { toast.error(getApiErrorMessage(error, '充值订单加载失败')) }
   finally { loading.value = false }
 }
 
@@ -90,7 +91,7 @@ async function saveTier() {
     dialog.open = false
     toast.success('充值阶梯已保存')
     await loadTiers()
-  } catch (error) { toast.error(error.response?.data?.message || error.message || '保存失败') }
+  } catch (error) { toast.error(getApiErrorMessage(error, '保存失败')) }
   finally { dialog.submitting = false }
 }
 

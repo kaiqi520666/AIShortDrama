@@ -6,6 +6,7 @@ import AuthFormShell from '../../components/auth/AuthFormShell.vue'
 import AuthInputField from '../../components/auth/AuthInputField.vue'
 import AppButton from '../../components/ui/AppButton.vue'
 import { useAuthStore } from '../../stores/auth'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 const route = useRoute()
 const router = useRouter()
@@ -23,7 +24,7 @@ async function submit() {
     const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') ? route.query.redirect : '/dashboard/workspaces'
     await router.replace(redirect)
   } catch (error) {
-    errorMessage.value = error.response?.data?.message || error.message || '登录失败'
+    errorMessage.value = getApiErrorMessage(error, '登录失败')
   } finally {
     submitting.value = false
   }

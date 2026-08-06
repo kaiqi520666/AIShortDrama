@@ -8,6 +8,7 @@ import AppDataTable from '../../components/ui/AppDataTable.vue'
 import AppInput from '../../components/ui/AppInput.vue'
 import AppSelect from '../../components/ui/AppSelect.vue'
 import { useGlobalToast } from '../../composables/useGlobalUI'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 const toast = useGlobalToast()
 const loading = ref(false)
@@ -24,7 +25,7 @@ const columns = [
   { key: 'enabled', label: '状态' },
   { key: 'actions', label: '操作' },
 ]
-async function load() { loading.value = true; try { const result = await getAdminPricing(); if (result.code !== 0) throw new Error(result.message); items.value = result.data } catch (error) { toast.error(error.response?.data?.message || error.message) } finally { loading.value = false } }
+async function load() { loading.value = true; try { const result = await getAdminPricing(); if (result.code !== 0) throw new Error(result.message); items.value = result.data } catch (error) { toast.error(getApiErrorMessage(error, '计费规则加载失败')) } finally { loading.value = false } }
 function open(rule) { dialog.rule = rule; dialog.reason = ''; dialog.form = { ...rule, enabled: String(rule.enabled) } }
 function numberOrNull(value) { return value === '' || value === null ? null : Number(value) }
 async function submit() {
@@ -34,7 +35,7 @@ async function submit() {
     const payload = { reason: dialog.reason, provider: form.provider, media_type: form.media_type, model: form.model, specification: form.specification, billing_unit: form.billing_unit, cost_per_unit: numberOrNull(form.cost_per_unit), input_cost_per_million: numberOrNull(form.input_cost_per_million), output_cost_per_million: numberOrNull(form.output_cost_per_million), base_credits: numberOrNull(form.base_credits), freeze_credits: numberOrNull(form.freeze_credits), multiplier: Number(form.multiplier), enabled: form.enabled === 'true' }
     const result = await updateAdminPricing(dialog.rule.id, payload); if (result.code !== 0) throw new Error(result.message)
     dialog.rule = null; toast.success('计费规则已更新'); await load()
-  } catch (error) { toast.error(error.response?.data?.message || error.message || '保存失败') } finally { dialog.submitting = false }
+  } catch (error) { toast.error(getApiErrorMessage(error, '保存失败')) } finally { dialog.submitting = false }
 }
 onMounted(load)
 </script>

@@ -7,6 +7,7 @@ import AppDataTable from '../ui/AppDataTable.vue'
 import AppDateTime from '../ui/AppDateTime.vue'
 import AppSelect from '../ui/AppSelect.vue'
 import EmptyState from '../ui/EmptyState.vue'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 const typeOptions = [
   { value: 'all', label: '全部类型' },
@@ -85,7 +86,7 @@ async function load(page = 1) {
     if (response.code !== 0) throw new Error(response.message)
     result.value = response.data
   } catch (requestError) {
-    error.value = requestError.response?.data?.message || requestError.message || '积分明细加载失败'
+    error.value = getApiErrorMessage(requestError, '积分明细加载失败')
   } finally {
     loading.value = false
   }

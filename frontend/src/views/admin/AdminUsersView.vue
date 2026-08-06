@@ -8,6 +8,7 @@ import AppDataTable from '../../components/ui/AppDataTable.vue'
 import AppInput from '../../components/ui/AppInput.vue'
 import AppSelect from '../../components/ui/AppSelect.vue'
 import { useGlobalToast } from '../../composables/useGlobalUI'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 const toast = useGlobalToast()
 const loading = ref(false)
@@ -32,7 +33,7 @@ async function load(page = 1) {
     const result = await getAdminUsers({ ...filters, page, page_size: data.page_size })
     if (result.code !== 0) throw new Error(result.message)
     Object.assign(data, result.data)
-  } catch (error) { toast.error(error.response?.data?.message || error.message || '用户加载失败') }
+  } catch (error) { toast.error(getApiErrorMessage(error, '用户加载失败')) }
   finally { loading.value = false }
 }
 
@@ -53,7 +54,7 @@ async function submit() {
     toast.success('操作已完成')
     dialog.type = ''
     await load(data.page)
-  } catch (error) { toast.error(error.response?.data?.message || error.message || '操作失败') }
+  } catch (error) { toast.error(getApiErrorMessage(error, '操作失败')) }
   finally { dialog.submitting = false }
 }
 

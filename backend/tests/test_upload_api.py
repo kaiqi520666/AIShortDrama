@@ -83,6 +83,7 @@ async def test_rejects_unsupported_format():
             files={"file": ("source.avi", b"video-data", "video/x-msvideo")},
         )
 
+    assert response.status_code == 422
     assert response.json()["message"] == "不支持的视频格式"
 
 
@@ -100,4 +101,5 @@ async def test_rejects_oversized_file(monkeypatch):
             files={"file": ("source.png", b"large", "image/png")},
         )
 
+    assert response.status_code == 422
     assert response.json()["message"] == "文件不能超过 3B"

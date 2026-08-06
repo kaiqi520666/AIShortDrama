@@ -1,7 +1,9 @@
+import logging
 import uuid
 from datetime import UTC, datetime
 
 from app.core.database import SessionLocal
+from app.core.errors import public_error_message
 from app.models import GenerationTask
 from app.providers.toapis import ToApisError, ToApisProvider
 from app.services.storage import OssStorage
@@ -13,6 +15,9 @@ from app.workers.generation import (
     result_urls,
     update_task,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 async def generate_image(_ctx, task_id: str):
@@ -59,11 +64,8 @@ async def run_image_generation(
     except GenerationPollTimeout as exc:
         await fail_task(task_uuid, "timeout", str(exc))
     except Exception as exc:
-        await fail_task(
-            task_uuid,
-            "failed",
-            exc.public_message if isinstance(exc, ToApisError) else str(exc),
-        )
+        logger.exception("Image generation failed", extra={"task_id": str(task_uuid)})
+        await fail_task(task_uuid, "failed", public_error_message(exc, "图片生成服务暂时不可用"))
         raise
     finally:
         if owns_provider and provider:

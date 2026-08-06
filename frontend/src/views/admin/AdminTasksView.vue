@@ -9,6 +9,7 @@ import AppDateTime from '../../components/ui/AppDateTime.vue'
 import AppInput from '../../components/ui/AppInput.vue'
 import AppSelect from '../../components/ui/AppSelect.vue'
 import { useGlobalToast } from '../../composables/useGlobalUI'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 const toast = useGlobalToast()
 const loading = ref(false)
@@ -25,7 +26,7 @@ const columns = [
   { key: 'created_at', label: '创建时间' },
   { key: 'actions', label: '详情' },
 ]
-async function load(page = 1) { loading.value = true; try { const params = { ...filters, page, page_size: data.page_size }; if (!params.start_at) delete params.start_at; if (!params.end_at) delete params.end_at; const result = await getAdminTasks(params); if (result.code !== 0) throw new Error(result.message); Object.assign(data, result.data) } catch (error) { toast.error(error.response?.data?.message || error.message || '任务加载失败') } finally { loading.value = false } }
+async function load(page = 1) { loading.value = true; try { const params = { ...filters, page, page_size: data.page_size }; if (!params.start_at) delete params.start_at; if (!params.end_at) delete params.end_at; const result = await getAdminTasks(params); if (result.code !== 0) throw new Error(result.message); Object.assign(data, result.data) } catch (error) { toast.error(getApiErrorMessage(error, '任务加载失败')) } finally { loading.value = false } }
 function formatDate(value) { return value ? new Date(value).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '—' }
 function parseEmbeddedJson(value) {
   if (typeof value !== 'string') return value

@@ -9,6 +9,7 @@ import EmptyState from '../../components/ui/EmptyState.vue'
 import { useGlobalConfirm, useGlobalPrompt, useGlobalToast } from '../../composables/useGlobalUI'
 import { getWorkspaceType } from '../../config/canvas/nodePacks'
 import { useWorkspaceStore } from '../../stores/workspaces'
+import { getApiErrorMessage } from '../../utils/apiError'
 import { buildOssImageUrl } from '../../utils/ossImage'
 
 const router = useRouter()
@@ -41,7 +42,7 @@ async function run(action, successMessage) {
     if (successMessage) toast.success(successMessage)
     return result
   } catch (error) {
-    toast.error(error.response?.data?.message || error.message || '操作失败')
+    toast.error(getApiErrorMessage(error, '操作失败'))
   }
 }
 

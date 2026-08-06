@@ -4,6 +4,7 @@ import { normalizeAudioCapability } from '../config/audioModels'
 import { normalizeImageModels } from '../config/imageModels'
 import { normalizeTextModels } from '../config/reverseModels'
 import { normalizeVideoModels } from '../config/videoModels'
+import { getApiErrorMessage } from '../utils/apiError'
 
 let loadPromise = null
 
@@ -42,7 +43,7 @@ export const useModelCapabilitiesStore = defineStore('modelCapabilities', {
           return response.data
         })
         .catch((error) => {
-          this.error = error.response?.data?.message || error.message || '模型能力加载失败'
+          this.error = getApiErrorMessage(error, '模型能力加载失败')
           throw error
         })
         .finally(() => {

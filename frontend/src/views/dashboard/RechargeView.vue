@@ -8,6 +8,7 @@ import AppInput from '../../components/ui/AppInput.vue'
 import EmptyState from '../../components/ui/EmptyState.vue'
 import { useGlobalConfirm, useGlobalToast } from '../../composables/useGlobalUI'
 import { useAuthStore } from '../../stores/auth'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 const route = useRoute()
 const router = useRouter()
@@ -60,7 +61,7 @@ async function refreshOrder(silent = false) {
     if (result.data.status !== 'pending') stopPolling()
     if (result.data.status === 'paid' && previous !== 'paid') toast.success('积分已到账')
   } catch (error) {
-    if (!silent) toast.error(error.response?.data?.message || error.message || '订单状态刷新失败')
+    if (!silent) toast.error(getApiErrorMessage(error, '订单状态刷新失败'))
   } finally {
     refreshing.value = false
   }
@@ -95,7 +96,7 @@ async function submit() {
     await router.replace({ query: { order: result.data.id } })
     startPolling()
   } catch (error) {
-    toast.error(error.response?.data?.message || error.message || '支付订单创建失败')
+    toast.error(getApiErrorMessage(error, '支付订单创建失败'))
   } finally {
     creating.value = false
   }
@@ -111,7 +112,7 @@ onMounted(async () => {
       if (order.value?.status === 'pending') startPolling()
     }
   } catch (error) {
-    toast.error(error.response?.data?.message || error.message || '充值配置加载失败')
+    toast.error(getApiErrorMessage(error, '充值配置加载失败'))
   } finally {
     loading.value = false
   }

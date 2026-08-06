@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.errors import public_error_message
 from app.models import CreditLedger, RechargeOrder, RechargeTier, User
 from app.providers.zpay import ZPayError, ZPayProvider, parse_amount_cents, verify_signature
 
@@ -15,7 +16,9 @@ MAX_RECHARGE_CENTS = 350000
 
 
 class RechargeError(RuntimeError):
-    pass
+    def __init__(self, message: str, status_code: int = 422):
+        super().__init__(message)
+        self.status_code = status_code
 
 
 @dataclass(slots=True)
@@ -95,7 +98,7 @@ async def create_order(db: AsyncSession, user: User, amount_cents: int, client_i
     try:
         provider = ZPayProvider()
     except ZPayError as exc:
-        raise RechargeError(str(exc)) from exc
+        raise RechargeError(public_error_message(exc, "支付服务暂时不可用"), status_code=503) from exc
     order = RechargeOrder(
         user_id=user.id,
         tier_id=quote.tier.id,
@@ -122,10 +125,11 @@ async def create_order(db: AsyncSession, user: User, amount_cents: int, client_i
                 client_ip=client_ip,
             )
     except ZPayError as exc:
+        message = public_error_message(exc, "支付服务暂时不可用")
         order.status = "failed"
-        order.error_message = str(exc)[:255]
+        order.error_message = message[:255]
         await db.commit()
-        raise RechargeError(str(exc)) from exc
+        raise RechargeError(message, status_code=503) from exc
     order.provider_trade_no = str(result.get("trade_no") or result.get("O_id") or "") or None
     order.pay_url = result.get("payurl") or None
     order.qr_code = result.get("qrcode") or None

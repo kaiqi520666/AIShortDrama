@@ -21,6 +21,7 @@ from app.core.auth import (
     verify_password,
 )
 from app.core.database import get_db
+from app.core.errors import RequestError
 from app.core.identity import get_current_user
 from app.models import User
 from app.schemas.auth import ChangePasswordRequest, LoginRequest, RegisterRequest
@@ -57,7 +58,7 @@ async def register(
             encoded_password=encoded_password,
         )
     except RegistrationError as exc:
-        return fail(str(exc))
+        raise RequestError(str(exc)) from exc
     access_token, refresh_token = await create_refresh_session(
         request.app.state.redis,
         user.id,
@@ -159,9 +160,9 @@ async def change_password(
 ):
     current = await db.scalar(select(User).where(User.id == user.id).with_for_update())
     if not await asyncio.to_thread(verify_password, payload.current_password, current.password_hash):
-        return JSONResponse(status_code=400, content=fail("原密码错误"))
+        raise RequestError("原密码错误")
     if payload.current_password == payload.new_password:
-        return JSONResponse(status_code=400, content=fail("新密码不能与原密码相同"))
+        raise RequestError("新密码不能与原密码相同")
 
     current.password_hash = await asyncio.to_thread(hash_password, payload.new_password)
     current.auth_version += 1

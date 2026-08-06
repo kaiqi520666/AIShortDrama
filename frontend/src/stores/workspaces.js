@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { createWorkspace, deleteWorkspace, duplicateWorkspace, getWorkspace, listWorkspaces, renameWorkspace } from '../api/workspaces'
 import { getWorkspaceType } from '../config/canvas/nodePacks'
+import { getApiErrorMessage } from '../utils/apiError'
 
 let workspaceRequestSequence = 0
 
@@ -20,7 +21,7 @@ export const useWorkspaceStore = defineStore('workspaces', {
         if (result.code !== 0) throw new Error(result.message)
         this.items = result.data
       } catch (error) {
-        this.error = error.response?.data?.message || error.message || '工作台加载失败'
+        this.error = getApiErrorMessage(error, '工作台加载失败')
       } finally {
         this.loading = false
       }

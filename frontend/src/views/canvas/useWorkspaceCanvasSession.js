@@ -1,11 +1,8 @@
 import { ref } from 'vue'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 function isCancelled(error) {
   return error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError'
-}
-
-function errorMessage(error, fallback) {
-  return error?.response?.data?.message || error?.message || fallback
 }
 
 export function useWorkspaceCanvasSession({ workspaceStore, capabilityStore, loading, toast }) {
@@ -44,7 +41,7 @@ export function useWorkspaceCanvasSession({ workspaceStore, capabilityStore, loa
       return currentSequence === requestSequence ? workspace : null
     } catch (error) {
       if (currentSequence === requestSequence && !isCancelled(error)) {
-        const message = errorMessage(error, '画布配置加载失败')
+        const message = getApiErrorMessage(error, '画布配置加载失败')
         if (initial) loadError.value = message
         else toast.error(message)
       }

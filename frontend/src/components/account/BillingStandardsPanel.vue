@@ -5,6 +5,7 @@ import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
 import AppButton from '../ui/AppButton.vue'
 import AppDataTable from '../ui/AppDataTable.vue'
 import EmptyState from '../ui/EmptyState.vue'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 const mediaLabels = { text: '文本', image: '图片', video: '视频', audio: '音频' }
 const mediaOrder = { text: 0, image: 1, video: 2, audio: 3 }
@@ -39,7 +40,7 @@ async function load() {
       || a.specification.localeCompare(b.specification),
     )
   } catch (requestError) {
-    error.value = requestError.response?.data?.message || requestError.message || '计费标准加载失败'
+    error.value = getApiErrorMessage(requestError, '计费标准加载失败')
   } finally {
     loading.value = false
   }

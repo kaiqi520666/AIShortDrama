@@ -3,6 +3,7 @@ import { computed, ref } from 'vue'
 import { ChevronDown, ChevronRight, FileText, Folder, Image, LayoutGrid, Library, Music2, Package, Pencil, RefreshCw, Trash2, Video, Workflow, X } from 'lucide-vue-next'
 import { deleteAsset, listAssets, renameAsset } from '../../api/assets'
 import { useGlobalConfirm, useGlobalPrompt, useGlobalToast } from '../../composables/useGlobalUI'
+import { getApiErrorMessage } from '../../utils/apiError'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import AppButton from '../ui/AppButton.vue'
 import AppInput from '../ui/AppInput.vue'
@@ -104,7 +105,7 @@ async function loadAssetItems({ reset = false } = {}) {
     assetLoaded.value = true
   } catch (error) {
     if (requestId !== assetRequestId) return
-    assetError.value = error.response?.data?.message || error.message || '资产加载失败'
+    assetError.value = getApiErrorMessage(error, '资产加载失败')
   } finally {
     if (requestId === assetRequestId) loadingAssets.value = false
   }
@@ -125,7 +126,7 @@ async function renameAssetItem(asset) {
     Object.assign(asset, result.data)
     toast.success('资产名称已更新')
   } catch (error) {
-    toast.error(error.response?.data?.message || error.message || '资产重命名失败')
+    toast.error(getApiErrorMessage(error, '资产重命名失败'))
   }
 }
 
@@ -144,7 +145,7 @@ async function deleteAssetItem(asset) {
     assetOffset.value = Math.max(0, assetOffset.value - 1)
     toast.success('资产已删除')
   } catch (error) {
-    toast.error(error.response?.data?.message || error.message || '资产删除失败')
+    toast.error(getApiErrorMessage(error, '资产删除失败'))
   }
 }
 

@@ -14,6 +14,7 @@ import { getGenerationAdapter } from '../../services/generationAdapters'
 import { useCanvasStore } from '../../stores/canvas'
 import { useAuthStore } from '../../stores/auth'
 import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
+import { getApiErrorMessage } from '../../utils/apiError'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import AppButton from '../ui/AppButton.vue'
 import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
@@ -288,7 +289,7 @@ async function submitTask() {
   } catch (error) {
     updateNodeData(nodeId, {
       status: 'failed',
-      generationError: error.response?.data?.message || error.message || '任务提交失败',
+      generationError: getApiErrorMessage(error, '任务提交失败'),
     })
   }
 }

@@ -219,7 +219,7 @@ async def test_change_password_keeps_current_device_and_revokes_others():
             "/api/auth/change-password",
             json={"current_password": "wrong-password", "new_password": "password-456"},
         )
-        assert wrong.status_code == 400
+        assert wrong.status_code == 422
         assert (await first.get("/api/auth/me")).status_code == 200
 
         invalid = await first.post(
@@ -232,7 +232,7 @@ async def test_change_password_keeps_current_device_and_revokes_others():
             "/api/auth/change-password",
             json={"current_password": "password-123", "new_password": "password-123"},
         )
-        assert unchanged.status_code == 400
+        assert unchanged.status_code == 422
 
         changed = await first.post(
             "/api/auth/change-password",

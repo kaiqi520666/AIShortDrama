@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import { useAuthStore } from '../stores/auth'
+import { getApiErrorMessage } from '../utils/apiError'
 
 export function useStreamingTextTask(nodeId) {
   const authStore = useAuthStore()
@@ -40,7 +41,7 @@ export function useStreamingTextTask(nodeId) {
       })
       return partialContent.value
     } catch (error) {
-      failure.value = error.response?.data?.message || error.message || failureMessage
+      failure.value = getApiErrorMessage(error, failureMessage)
       updateNodeData(nodeId, {
         status: 'failed',
         generationStatus: 'failed',

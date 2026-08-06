@@ -10,13 +10,24 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.errors import (
+    NotFoundError,
+    RequestError,
+    ServiceUnavailableError,
+    UpstreamMediaError,
+    public_error_message,
+)
 from app.core.identity import get_current_user_id
 from app.models import Asset
 from app.providers.toapis import ToApisProvider
 from app.schemas.asset import AssetPrivateAvatarRequest, AssetUpdate, ComposeImageBoardRequest
-from app.services.image_processing import compose_outfit_board, download_outfit_board_images
+from app.services.image_processing import (
+    OutfitBoardDownloadError,
+    compose_outfit_board,
+    download_outfit_board_images,
+)
 from app.services.storage import OssStorage
-from app.schemas.response import fail, success
+from app.schemas.response import success
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -107,7 +118,7 @@ async def compose_board(
         workspace_id = uuid.UUID(payload.workspace_id)
         asset_uuid_list = [uuid.UUID(asset_id) for asset_id in payload.asset_ids]
     except ValueError:
-        return fail("工作台或图片资产 ID 无效")
+        raise RequestError("工作台或图片资产 ID 无效")
 
     assets = (
         await db.scalars(
@@ -122,7 +133,7 @@ async def compose_board(
     ).all()
     by_id = {str(asset.id): asset for asset in assets}
     if len(by_id) != 6 or any(asset_id not in by_id for asset_id in payload.asset_ids):
-        return fail("只能合成当前工作台中属于自己的 6 张图片")
+        raise RequestError("只能合成当前工作台中属于自己的 6 张图片")
 
     stream = None
     images = []
@@ -163,7 +174,7 @@ async def compose_board(
         committed = True
         await db.refresh(board)
         return success(asset_payload(board))
-    except Exception:
+    except Exception as exc:
         if not committed:
             await db.rollback()
             if object_key and storage:
@@ -171,8 +182,13 @@ async def compose_board(
                     await storage.delete_object(object_key)
                 except Exception:
                     logger.exception("Failed to delete orphan outfit board object", extra={"object_key": object_key})
+        if isinstance(exc, OutfitBoardDownloadError):
+            error_type = UpstreamMediaError if exc.status_code == 502 else RequestError
+            raise error_type(str(exc)) from exc
         logger.exception("Failed to compose outfit board")
-        return fail("服饰总览图合成失败")
+        raise ServiceUnavailableError(
+            public_error_message(exc, "服饰总览图服务暂时不可用")
+        ) from exc
     finally:
         for image in images:
             image.close()
@@ -189,7 +205,7 @@ async def update_asset(
 ):
     asset = await owned_asset(db, asset_id, user_id)
     if not asset:
-        return fail("资产不存在")
+        raise NotFoundError("资产不存在")
     asset.name = payload.name
     await db.commit()
     await db.refresh(asset)
@@ -205,9 +221,9 @@ async def register_private_avatar(
 ):
     asset = await owned_asset(db, asset_id, user_id)
     if not asset:
-        return fail("资产不存在")
+        raise NotFoundError("资产不存在")
     if asset.media_type != "image":
-        return fail("仅图片资产可注册为虚拟人像素材")
+        raise RequestError("仅图片资产可注册为虚拟人像素材")
 
     seedance = (asset.asset_metadata or {}).get("seedance") or {}
     try:
@@ -231,12 +247,14 @@ async def register_private_avatar(
         await db.refresh(asset)
         return success(asset_payload(asset))
     except Exception as exc:
+        message = public_error_message(exc, "虚拟人像服务暂时不可用")
+        logger.exception("Private avatar registration failed", extra={"asset_id": str(asset.id)})
         asset.asset_metadata = {
             **(asset.asset_metadata or {}),
-            "seedance": {**seedance, "status": "failed", "error": str(exc)[:500]},
+            "seedance": {**seedance, "status": "failed", "error": message},
         }
         await db.commit()
-        return fail(str(exc), asset_payload(asset))
+        raise ServiceUnavailableError(message, asset_payload(asset)) from exc
 
 
 @router.get("/{asset_id}/content")
@@ -282,7 +300,7 @@ async def delete_asset(
 ):
     asset = await owned_asset(db, asset_id, user_id)
     if not asset:
-        return fail("资产不存在")
+        raise NotFoundError("资产不存在")
     asset.deleted_at = datetime.now(UTC)
     await db.commit()
     return success({"id": str(asset.id)})

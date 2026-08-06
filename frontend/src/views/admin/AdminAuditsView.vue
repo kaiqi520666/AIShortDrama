@@ -8,6 +8,7 @@ import AppDataTable from '../../components/ui/AppDataTable.vue'
 import AppDateTime from '../../components/ui/AppDateTime.vue'
 import AppInput from '../../components/ui/AppInput.vue'
 import { useGlobalToast } from '../../composables/useGlobalUI'
+import { getApiErrorMessage } from '../../utils/apiError'
 
 const toast = useGlobalToast()
 const loading = ref(false)
@@ -22,7 +23,7 @@ const columns = [
   { key: 'created_at', label: '时间' },
   { key: 'actions', label: '变更' },
 ]
-async function load(page = 1) { loading.value = true; try { const params = { ...filters, page, page_size: data.page_size }; Object.keys(params).forEach((key) => params[key] === '' && delete params[key]); const result = await getAdminAudits(params); if (result.code !== 0) throw new Error(result.message); Object.assign(data, result.data) } catch (error) { toast.error(error.response?.data?.message || error.message || '审计记录加载失败') } finally { loading.value = false } }
+async function load(page = 1) { loading.value = true; try { const params = { ...filters, page, page_size: data.page_size }; Object.keys(params).forEach((key) => params[key] === '' && delete params[key]); const result = await getAdminAudits(params); if (result.code !== 0) throw new Error(result.message); Object.assign(data, result.data) } catch (error) { toast.error(getApiErrorMessage(error, '审计记录加载失败')) } finally { loading.value = false } }
 function formatDate(value) { return new Date(value).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) }
 function pretty(value) { return JSON.stringify(value ?? {}, null, 2) }
 onMounted(load)

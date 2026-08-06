@@ -176,4 +176,4 @@ async def test_video_generation_hides_provider_detail_from_node():
     async with SessionLocal() as db:
         failed = await db.get(GenerationTask, task_id)
         assert failed.status == "failed"
-        assert failed.error_message == "ToAPIs 请求失败（400）"
+        assert failed.error_message == "视频生成服务暂时不可用"

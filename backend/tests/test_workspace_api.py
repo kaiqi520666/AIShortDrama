@@ -114,3 +114,12 @@ async def test_workspace_create_rejects_invalid_type():
         )
 
     assert response.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_missing_workspace_uses_not_found_envelope(override_business_user):
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.get(f"/api/workspaces/{uuid.uuid4()}")
+
+    assert response.status_code == 404
+    assert response.json() == {"code": 1, "message": "工作台不存在", "data": None}

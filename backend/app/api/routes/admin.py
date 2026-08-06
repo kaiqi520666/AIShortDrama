@@ -1,13 +1,14 @@
 import asyncio
 import uuid
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import hash_password
 from app.core.database import get_db
+from app.core.errors import NotFoundError, RequestError
 from app.core.identity import get_current_admin
 from app.models import AdminAuditLog, GenerationTask, ModelPriceRule, RechargeOrder, RechargeTier, User
 from app.schemas.admin import (
@@ -63,7 +64,7 @@ async def list_users(
 async def target_user(db: AsyncSession, user_id: uuid.UUID) -> User:
     user = await db.scalar(select(User).where(User.id == user_id, User.is_system.is_(False)).with_for_update())
     if not user:
-        raise HTTPException(status_code=404, detail="用户不存在")
+        raise NotFoundError("用户不存在")
     return user
 
 
@@ -78,7 +79,7 @@ async def update_user_credits(
         user = await adjust_credits(db, admin=admin, user_id=user_id, amount=payload.amount, reason=payload.reason)
     except ValueError as exc:
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise RequestError(str(exc)) from exc
     return success(user_data(user))
 
 
@@ -91,9 +92,9 @@ async def update_user_role(
 ):
     user = await target_user(db, user_id)
     if user.id == admin.id and payload.role != "admin":
-        raise HTTPException(status_code=400, detail="不能降低自己的管理员角色")
+        raise RequestError("不能降低自己的管理员角色")
     if user.role == "admin" and payload.role != "admin" and user.status == "active" and await active_admin_count(db) <= 1:
-        raise HTTPException(status_code=400, detail="至少需要保留一名启用的管理员")
+        raise RequestError("至少需要保留一名启用的管理员")
     before = user_snapshot(user)
     if user.role != payload.role:
         user.role = payload.role
@@ -113,9 +114,9 @@ async def update_user_status(
 ):
     user = await target_user(db, user_id)
     if user.id == admin.id and payload.status != "active":
-        raise HTTPException(status_code=400, detail="不能停用自己的账号")
+        raise RequestError("不能停用自己的账号")
     if user.role == "admin" and user.status == "active" and payload.status != "active" and await active_admin_count(db) <= 1:
-        raise HTTPException(status_code=400, detail="至少需要保留一名启用的管理员")
+        raise RequestError("至少需要保留一名启用的管理员")
     before = user_snapshot(user)
     if user.status != payload.status:
         user.status = payload.status
@@ -160,7 +161,7 @@ async def update_price_rule(
 ):
     rule = await db.scalar(select(ModelPriceRule).where(ModelPriceRule.id == rule_id).with_for_update())
     if not rule:
-        raise HTTPException(status_code=404, detail="计费规则不存在")
+        raise NotFoundError("计费规则不存在")
     before = price_snapshot(rule)
     for field, value in payload.model_dump(exclude={"reason"}).items():
         setattr(rule, field, value)
@@ -168,7 +169,7 @@ async def update_price_rule(
         await db.flush()
     except IntegrityError as exc:
         await db.rollback()
-        raise HTTPException(status_code=400, detail="模型、类型和规格组合已存在") from exc
+        raise RequestError("模型、类型和规格组合已存在") from exc
     add_audit(db, admin_id=admin.id, action="update_pricing", target_type="price_rule", target_id=rule.id, reason=payload.reason, before=before, after=price_snapshot(rule))
     await db.commit()
     await db.refresh(rule)
@@ -269,12 +270,12 @@ async def create_recharge_tier(
 ):
     tiers = list(await db.scalars(select(RechargeTier).with_for_update()))
     if any(tier.min_amount_cents == payload.min_amount_cents for tier in tiers):
-        raise HTTPException(status_code=400, detail="该充值金额阶梯已存在")
+        raise RequestError("该充值金额阶梯已存在")
     tier = RechargeTier(**payload.model_dump(exclude={"reason"}))
     try:
         validate_tiers([*tiers, tier])
     except RechargeError as exc:
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise RequestError(str(exc)) from exc
     db.add(tier)
     await db.flush()
     add_audit(
@@ -302,12 +303,12 @@ async def update_recharge_tier(
     tiers = list(await db.scalars(select(RechargeTier).with_for_update()))
     tier = next((item for item in tiers if item.id == tier_id), None)
     if not tier:
-        raise HTTPException(status_code=404, detail="充值阶梯不存在")
+        raise NotFoundError("充值阶梯不存在")
     if any(
         item.id != tier_id and item.min_amount_cents == payload.min_amount_cents
         for item in tiers
     ):
-        raise HTTPException(status_code=400, detail="该充值金额阶梯已存在")
+        raise RequestError("该充值金额阶梯已存在")
     before = tier_data(tier)
     tier.min_amount_cents = payload.min_amount_cents
     tier.bonus_rate_bps = payload.bonus_rate_bps
@@ -316,7 +317,7 @@ async def update_recharge_tier(
         validate_tiers(tiers)
     except RechargeError as exc:
         await db.rollback()
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+        raise RequestError(str(exc)) from exc
     add_audit(
         db,
         admin_id=admin.id,

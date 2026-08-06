@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import uuid
 from datetime import UTC, datetime
 from typing import Any
@@ -8,14 +9,16 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.errors import NotFoundError, RequestError, ServiceUnavailableError, public_error_message
 from app.core.identity import get_current_user_id
 from app.models import Asset, Character, Garment, OutfitModel
 from app.providers.toapis import ToApisError, ToApisProvider
-from app.schemas.response import fail, success
+from app.schemas.response import success
 from app.services.image_processing import normalize_image
 from app.services.storage import OssStorage
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 IMAGE_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 MAX_IMAGE_SIZE = 20 * 1024 * 1024
@@ -118,11 +121,13 @@ async def create_character_item(
         try:
             seedance = await register_virtual_character(name, image_url)
         except Exception as exc:
+            message = public_error_message(exc, "虚拟人像服务暂时不可用")
+            logger.exception("Virtual character registration failed")
             seedance = {
                 "provider": "toapis",
                 "type": "private-avatar",
                 "status": "failed",
-                "error": str(exc)[:500],
+                "error": message,
             }
     item = Character(
         user_id=user_id,
@@ -168,9 +173,10 @@ async def upload_outfit_model(
     try:
         stored = await store_reference_image(file, "outfit-models")
     except ValueError as exc:
-        return fail(str(exc))
+        raise RequestError(str(exc)) from exc
     except Exception as exc:
-        return fail(f"模特上传失败：{exc}")
+        logger.exception("Outfit model upload failed")
+        raise ServiceUnavailableError(public_error_message(exc, "上传服务暂时不可用")) from exc
     item = OutfitModel(
         user_id=user_id,
         name=((name or file.filename or "我的模特").rsplit(".", 1)[0].strip() or "我的模特")[:100],
@@ -217,9 +223,10 @@ async def upload_character(
     try:
         stored = await store_reference_image(file, "characters")
     except ValueError as exc:
-        return fail(str(exc))
+        raise RequestError(str(exc)) from exc
     except Exception as exc:
-        return fail(f"角色上传失败：{exc}")
+        logger.exception("Character upload failed")
+        raise ServiceUnavailableError(public_error_message(exc, "上传服务暂时不可用")) from exc
     character_name = ((name or file.filename or "我的角色").rsplit(".", 1)[0].strip() or "我的角色")[:100]
     item = await create_character_item(
         name=character_name,
@@ -247,9 +254,9 @@ async def create_character_from_asset(
         )
     )
     if not asset:
-        return fail("素材不存在")
+        raise NotFoundError("素材不存在")
     if asset.media_type != "image":
-        return fail("仅图片素材可注册为角色")
+        raise RequestError("仅图片素材可注册为角色")
     name = ((asset.name or "我的角色").rsplit(".", 1)[0].strip() or "我的角色")[:100]
     item = await create_character_item(
         name=name,
@@ -278,7 +285,7 @@ async def register_character(
         )
     )
     if not item:
-        return fail("角色不存在")
+        raise NotFoundError("角色不存在")
     try:
         seedance = (item.character_metadata or {}).get("seedance") or {}
         if seedance.get("status") == "processing" and seedance.get("asset_id"):
@@ -292,12 +299,18 @@ async def register_character(
         await db.refresh(item)
         return success(reference_payload(item, "character"))
     except Exception as exc:
+        message = public_error_message(exc, "虚拟人像服务暂时不可用")
+        logger.exception("Character registration failed", extra={"character_id": str(item.id)})
         item.character_metadata = {
             **(item.character_metadata or {}),
-            "seedance": {**((item.character_metadata or {}).get("seedance") or {}), "status": "failed", "error": str(exc)[:500]},
+            "seedance": {
+                **((item.character_metadata or {}).get("seedance") or {}),
+                "status": "failed",
+                "error": message,
+            },
         }
         await db.commit()
-        return fail(str(exc), reference_payload(item, "character"))
+        raise ServiceUnavailableError(message, reference_payload(item, "character")) from exc
 
 
 @router.get("/garments")
@@ -326,9 +339,10 @@ async def upload_garment(
     try:
         stored = await store_reference_image(file, "garments")
     except ValueError as exc:
-        return fail(str(exc))
+        raise RequestError(str(exc)) from exc
     except Exception as exc:
-        return fail(f"服饰上传失败：{exc}")
+        logger.exception("Garment upload failed")
+        raise ServiceUnavailableError(public_error_message(exc, "上传服务暂时不可用")) from exc
     item = Garment(
         user_id=user_id,
         name=((name or file.filename or "我的服饰").rsplit(".", 1)[0].strip() or "我的服饰")[:100],

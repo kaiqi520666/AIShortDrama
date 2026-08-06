@@ -8,6 +8,7 @@ import AppButton from '../../components/ui/AppButton.vue'
 import AppDataTable from '../../components/ui/AppDataTable.vue'
 import AppSelect from '../../components/ui/AppSelect.vue'
 import { useGlobalToast } from '../../composables/useGlobalUI'
+import { getApiErrorMessage } from '../../utils/apiError'
 import { buildOssImageUrl } from '../../utils/ossImage'
 
 const router = useRouter()
@@ -43,10 +44,6 @@ const columns = [
   { key: 'actions', label: '详情', width: '84px', align: 'right' },
 ]
 
-function message(error, fallback) {
-  return error.response?.data?.message || error.message || fallback
-}
-
 async function load(page = 1) {
   loading.value = true
   try {
@@ -54,7 +51,7 @@ async function load(page = 1) {
     if (response.code !== 0) throw new Error(response.message)
     result.value = response.data
   } catch (error) {
-    toast.error(message(error, '生成记录加载失败'))
+    toast.error(getApiErrorMessage(error, '生成记录加载失败'))
   } finally {
     loading.value = false
   }
@@ -67,7 +64,7 @@ async function showDetail(task) {
     if (response.code !== 0) throw new Error(response.message)
     detail.value = response.data
   } catch (error) {
-    toast.error(message(error, '任务详情加载失败'))
+    toast.error(getApiErrorMessage(error, '任务详情加载失败'))
   } finally {
     detailLoadingId.value = ''
   }
