@@ -25,6 +25,13 @@ AUDIO_EXTENSIONS = {
     "audio/x-wav": ".wav",
     "audio/ogg": ".ogg",
 }
+IMAGE_MAX_BYTES = 20 * 1024 * 1024
+VIDEO_MAX_BYTES = 500 * 1024 * 1024
+AUDIO_MAX_BYTES = 100 * 1024 * 1024
+
+
+class MediaSizeLimitError(RuntimeError):
+    pass
 
 
 class OssStorage:
@@ -53,38 +60,44 @@ class OssStorage:
         return f"{self.public_base_url}/{object_key}"
 
     async def store_remote_images(self, task_id: str, urls: list[str]) -> list[str]:
-        stored = []
-        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
-            for index, url in enumerate(urls, start=1):
-                response = await client.get(url)
-                response.raise_for_status()
-                content_type = response.headers.get("content-type", "").split(";", 1)[0]
-                extension = (
-                    CONTENT_TYPE_EXTENSIONS.get(content_type)
-                    or PurePosixPath(urlparse(url).path).suffix
-                )
-                extension = extension if extension in {".jpg", ".jpeg", ".png", ".webp"} else ".png"
-                object_key = f"generations/images/{task_id}-{index}{extension}"
-                headers = {"Content-Type": content_type} if content_type else None
-                await asyncio.to_thread(
-                    self.bucket.put_object,
-                    object_key,
-                    response.content,
-                    headers,
-                )
-                stored.append(f"{self.public_base_url}/{object_key}")
-        return stored
+        return await self._store_remote_media(
+            task_id,
+            urls,
+            "images",
+            CONTENT_TYPE_EXTENSIONS,
+            ".png",
+            IMAGE_MAX_BYTES,
+            "图片",
+        )
 
     async def store_remote_videos(self, task_id: str, urls: list[str]) -> list[str]:
-        return await self._store_remote_media(task_id, urls, "videos", VIDEO_EXTENSIONS, ".mp4")
+        return await self._store_remote_media(
+            task_id,
+            urls,
+            "videos",
+            VIDEO_EXTENSIONS,
+            ".mp4",
+            VIDEO_MAX_BYTES,
+            "视频",
+        )
 
     async def store_remote_audios(
         self, task_id: str, urls: list[str], audio_format: str
     ) -> list[str]:
         fallback = {"mp3": ".mp3", "wav": ".wav", "ogg_opus": ".ogg"}[audio_format]
-        return await self._store_remote_media(task_id, urls, "audios", AUDIO_EXTENSIONS, fallback)
+        return await self._store_remote_media(
+            task_id,
+            urls,
+            "audios",
+            AUDIO_EXTENSIONS,
+            fallback,
+            AUDIO_MAX_BYTES,
+            "音频",
+        )
 
     async def store_audio_bytes(self, task_id: str, data: bytes, audio_format: str) -> str:
+        if len(data) > AUDIO_MAX_BYTES:
+            raise MediaSizeLimitError(f"音频文件不能超过 {AUDIO_MAX_BYTES // (1024 * 1024)}MB")
         extension, content_type = {
             "mp3": (".mp3", "audio/mpeg"),
             "wav": (".wav", "audio/wav"),
@@ -101,6 +114,8 @@ class OssStorage:
         media_dir: str,
         content_type_extensions: dict[str, str],
         fallback_extension: str,
+        max_bytes: int,
+        media_label: str,
     ) -> list[str]:
         stored = []
         timeout = httpx.Timeout(300, connect=30)
@@ -108,6 +123,15 @@ class OssStorage:
             for index, url in enumerate(urls, start=1):
                 async with client.stream("GET", url) as response:
                     response.raise_for_status()
+                    content_length = response.headers.get("content-length")
+                    if (
+                        content_length
+                        and content_length.isdigit()
+                        and int(content_length) > max_bytes
+                    ):
+                        raise MediaSizeLimitError(
+                            f"{media_label}文件不能超过 {max_bytes // (1024 * 1024)}MB"
+                        )
                     content_type = response.headers.get("content-type", "").split(";", 1)[0]
                     extension = (
                         content_type_extensions.get(content_type)
@@ -124,7 +148,13 @@ class OssStorage:
                     object_key = f"generations/{media_dir}/{task_id}-{index}{extension}"
                     headers = {"Content-Type": content_type}
                     with tempfile.TemporaryFile() as stream:
+                        downloaded = 0
                         async for chunk in response.aiter_bytes():
+                            downloaded += len(chunk)
+                            if downloaded > max_bytes:
+                                raise MediaSizeLimitError(
+                                    f"{media_label}文件不能超过 {max_bytes // (1024 * 1024)}MB"
+                                )
                             stream.write(chunk)
                         stream.seek(0)
                         await asyncio.to_thread(self.bucket.put_object, object_key, stream, headers)

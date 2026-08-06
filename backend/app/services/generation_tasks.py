@@ -14,6 +14,14 @@ from app.schemas.generation import (
 from app.services.billing import freeze_task_credits, refund_task_credits
 
 
+class WorkspaceNotFoundError(RuntimeError):
+    pass
+
+
+class GenerationQueueError(RuntimeError):
+    pass
+
+
 def task_payload(task: GenerationTask) -> dict[str, Any]:
     return {
         "id": str(task.id),
@@ -169,7 +177,7 @@ async def _create_task(
         )
     )
     if not workspace:
-        raise RuntimeError("工作台不存在")
+        raise WorkspaceNotFoundError("工作台不存在")
     task_id = uuid.uuid4()
     if include_client_business_id:
         provider_payload["client_business_id"] = str(task_id)
@@ -210,7 +218,7 @@ async def _create_task(
         task.finished_at = datetime.now(UTC)
         await refund_task_credits(db, task, "任务入队失败，退还冻结积分")
         await db.commit()
-        raise RuntimeError("任务入队失败") from exc
+        raise GenerationQueueError("任务入队失败") from exc
     return task
 
 

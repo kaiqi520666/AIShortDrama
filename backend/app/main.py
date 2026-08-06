@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
 from app.api.router import api_router
@@ -25,3 +26,8 @@ app.include_router(api_router)
 @app.exception_handler(HTTPException)
 async def http_exception_handler(_request: Request, exc: HTTPException):
     return JSONResponse(status_code=exc.status_code, content=fail(str(exc.detail)))
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(_request: Request, _exc: RequestValidationError):
+    return JSONResponse(status_code=422, content=fail("请求参数无效"))

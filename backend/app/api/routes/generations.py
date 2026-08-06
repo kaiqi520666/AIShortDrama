@@ -20,15 +20,29 @@ from app.schemas.generation import (
 )
 from app.schemas.response import fail, success
 from app.services.generation_tasks import (
+    GenerationQueueError,
+    WorkspaceNotFoundError,
     create_audio_task,
     create_image_task,
     create_video_task,
     task_payload,
 )
-from app.services.billing import BillingError, freeze_task_credits
+from app.services.billing import BillingError, InsufficientCredits, freeze_task_credits
 from app.workers.generation import complete_text_task, fail_task
 
 router = APIRouter()
+
+
+async def _create_queued_generation(create_task, db, redis, payload, user_id):
+    try:
+        task = await create_task(db, redis, payload, user_id)
+    except WorkspaceNotFoundError as exc:
+        return JSONResponse(status_code=404, content=fail(str(exc)))
+    except InsufficientCredits as exc:
+        return JSONResponse(status_code=402, content=fail(str(exc)))
+    except (BillingError, GenerationQueueError) as exc:
+        return JSONResponse(status_code=503, content=fail(str(exc)))
+    return success(task_payload(task))
 
 
 @router.post("/texts")
@@ -63,9 +77,12 @@ async def create_text_generation(
         await freeze_task_credits(db, task, "text")
         await db.commit()
         provider = OpenAIResponsesProvider()
-    except BillingError as exc:
+    except InsufficientCredits as exc:
         await db.rollback()
         return JSONResponse(status_code=402, content=fail(str(exc)))
+    except BillingError as exc:
+        await db.rollback()
+        return JSONResponse(status_code=503, content=fail(str(exc)))
     except RuntimeError as exc:
         await fail_task(task.id, "failed", str(exc))
         return JSONResponse(status_code=503, content=fail(str(exc)))
@@ -77,9 +94,7 @@ async def create_text_generation(
             async with provider:
                 async for chunk in provider.stream_text(model=payload.model, prompt=payload.prompt):
                     content += chunk
-                    yield json.dumps(
-                        {"type": "delta", "content": chunk}, ensure_ascii=False
-                    ) + "\n"
+                    yield json.dumps({"type": "delta", "content": chunk}, ensure_ascii=False) + "\n"
             await complete_text_task(task.id, content)
             yield '{"type":"done"}\n'
         except asyncio.CancelledError:
@@ -103,11 +118,9 @@ async def create_image_generation(
     db: AsyncSession = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
-    try:
-        task = await create_image_task(db, request.app.state.redis, payload, user_id)
-    except RuntimeError as exc:
-        return fail(str(exc))
-    return success(task_payload(task))
+    return await _create_queued_generation(
+        create_image_task, db, request.app.state.redis, payload, user_id
+    )
 
 
 @router.post("/videos")
@@ -117,11 +130,9 @@ async def create_video_generation(
     db: AsyncSession = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
-    try:
-        task = await create_video_task(db, request.app.state.redis, payload, user_id)
-    except RuntimeError as exc:
-        return fail(str(exc))
-    return success(task_payload(task))
+    return await _create_queued_generation(
+        create_video_task, db, request.app.state.redis, payload, user_id
+    )
 
 
 @router.post("/audios")
@@ -131,11 +142,9 @@ async def create_audio_generation(
     db: AsyncSession = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
-    try:
-        task = await create_audio_task(db, request.app.state.redis, payload, user_id)
-    except RuntimeError as exc:
-        return fail(str(exc))
-    return success(task_payload(task))
+    return await _create_queued_generation(
+        create_audio_task, db, request.app.state.redis, payload, user_id
+    )
 
 
 @router.get("/{task_id}")
@@ -145,4 +154,6 @@ async def get_generation_task(
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
     task = await db.get(GenerationTask, task_id)
-    return success(task_payload(task)) if task and task.user_id == user_id else fail("任务不存在")
+    if not task or task.user_id != user_id:
+        return JSONResponse(status_code=404, content=fail("任务不存在"))
+    return success(task_payload(task))
