@@ -7,7 +7,7 @@ from app.core.database import get_db
 from app.core.errors import ServiceUnavailableError
 from app.core.identity import get_current_user_id
 from app.schemas.response import success
-from app.services.admin_configuration import get_product_templates
+from app.services.content_templates import get_product_templates
 
 
 router = APIRouter()

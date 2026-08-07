@@ -6,18 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.model_capabilities import MODEL_CAPABILITIES
-from app.models import BillingPolicy, ContentTemplate, ModelAdminSetting
-
-
-TEMPLATE_KEYS = {"product_visual", "product_storyboard"}
-PRODUCT_VISUAL_GROUPS = {
-    "basic": ("white-bg", "first-screen", "multi-angle", "series-show"),
-    "marketing": ("core-selling", "use-scenario", "ambient-scene", "contrast-effect"),
-    "detail": ("detail-zoom", "specs-info", "tech-specs", "manufacturing", "ingredients"),
-    "trust": ("brand-story", "freebies", "warranty", "usage-tips"),
-}
-STORYBOARD_TEMPLATE_ID = "ugc-seeding"
-STORYBOARD_DURATIONS = {15, 30, 45, 60}
+from app.models import BillingPolicy, ModelAdminSetting
 
 
 class ModelDisabledError(ValueError):
@@ -122,91 +111,3 @@ def merged_capabilities(settings: list[ModelAdminSetting]) -> dict[str, Any]:
             raise RuntimeError(f"{media_type} 模型配置无可用默认模型")
         payload[media_type] = {"default_model": default_model, "models": models}
     return payload
-
-
-def template_data(template: ContentTemplate) -> dict[str, Any]:
-    return {
-        "key": template.key,
-        "version": template.version,
-        "enabled": template.enabled,
-        "config": deepcopy(template.config),
-    }
-
-
-async def get_product_templates(db: AsyncSession) -> dict[str, dict[str, Any]]:
-    templates = list(
-        await db.scalars(
-            select(ContentTemplate).where(ContentTemplate.key.in_(TEMPLATE_KEYS))
-        )
-    )
-    result = {template.key: template_data(template) for template in templates}
-    if set(result) != TEMPLATE_KEYS:
-        raise RuntimeError("商品模板未初始化")
-    return result
-
-
-def _text(value: Any, label: str, *, max_length: int = 6000) -> str:
-    if not isinstance(value, str) or not value.strip() or len(value.strip()) > max_length:
-        raise ValueError(f"{label}无效")
-    return value.strip()
-
-
-def validate_template_config(key: str, value: Any) -> dict[str, Any]:
-    if key not in TEMPLATE_KEYS or not isinstance(value, dict):
-        raise ValueError("模板配置无效")
-    if key == "product_visual":
-        groups = value.get("groups")
-        if not isinstance(groups, list) or len(groups) != len(PRODUCT_VISUAL_GROUPS):
-            raise ValueError("商品图种分组无效")
-        result_groups = []
-        for group in groups:
-            if not isinstance(group, dict):
-                raise ValueError("商品图种分组无效")
-            group_id = group.get("id")
-            expected_ids = PRODUCT_VISUAL_GROUPS.get(group_id)
-            items = group.get("items")
-            if not expected_ids or not isinstance(items, list) or [item.get("id") if isinstance(item, dict) else None for item in items] != list(expected_ids):
-                raise ValueError("图种 ID 不允许修改或删除")
-            result_groups.append(
-                {
-                    "id": group_id,
-                    "label": _text(group.get("label"), "图种分组名称", max_length=64),
-                    "items": [
-                        {
-                            "id": item["id"],
-                            "label": _text(item.get("label"), "图种名称", max_length=64),
-                            "default_enabled": bool(item.get("default_enabled")),
-                        }
-                        for item in items
-                    ],
-                }
-            )
-        if not any(item["default_enabled"] for group in result_groups for item in group["items"]):
-            raise ValueError("至少保留一个默认图种")
-        instruction = value.get("business_instruction", "")
-        if not isinstance(instruction, str) or len(instruction.strip()) > 6000:
-            raise ValueError("商品图种业务指令无效")
-        return {"groups": result_groups, "business_instruction": instruction.strip()}
-
-    templates = value.get("templates")
-    durations = value.get("durations")
-    if not isinstance(templates, list) or len(templates) != 1 or not isinstance(templates[0], dict):
-        raise ValueError("商品分镜模板无效")
-    template = templates[0]
-    if template.get("id") != STORYBOARD_TEMPLATE_ID:
-        raise ValueError("分镜模板 ID 不允许修改")
-    if not isinstance(durations, list) or not durations or any(item not in STORYBOARD_DURATIONS for item in durations):
-        raise ValueError("商品分镜时长无效")
-    instruction = _text(value.get("business_instruction"), "商品分镜业务指令")
-    return {
-        "templates": [
-            {
-                "id": STORYBOARD_TEMPLATE_ID,
-                "label": _text(template.get("label"), "分镜模板名称", max_length=64),
-                "description": _text(template.get("description"), "分镜模板描述", max_length=255),
-                "enabled": bool(template.get("enabled")),
-            }
-        ],
-        "durations": sorted(set(durations)),
-        "business_instruction": instruction,
-    }

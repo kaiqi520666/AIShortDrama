@@ -141,6 +141,13 @@ async def test_content_template_version_is_validated_and_published(override_busi
     admin = await create_admin()
     try:
         async with admin_client(admin) as client:
+            catalog = await client.get("/api/admin/content-templates")
+            assert catalog.status_code == 200
+            assert [(item["key"], item["status"]) for item in catalog.json()["data"]] == [
+                ("product_visual", "active"),
+                ("product_storyboard", "active"),
+                ("commerce_drama", "draft"),
+            ]
             fetched = await client.get("/api/admin/content-templates/product_visual")
             assert fetched.status_code == 200
             template = fetched.json()["data"]
@@ -165,6 +172,7 @@ async def test_content_template_version_is_validated_and_published(override_busi
             published = await client.get("/api/content-templates/product")
         assert published.status_code == 200
         assert published.json()["data"]["product_visual"]["config"]["groups"][0]["label"] == "测试基础展示"
+        assert "prompt_blocks" not in published.json()["data"]["product_storyboard"]["config"]
     finally:
         app.dependency_overrides.pop(get_current_admin, None)
 

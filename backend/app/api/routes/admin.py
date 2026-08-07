@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import hash_password
 from app.core.database import get_db
-from app.core.errors import NotFoundError, RequestError
+from app.core.errors import NotFoundError, RequestError, ServiceUnavailableError
 from app.core.identity import get_current_admin
 from app.core.model_capabilities import get_model_capability
 from app.models import (
@@ -40,6 +40,9 @@ from app.services.admin_configuration import (
     get_model_settings,
     model_settings_payload,
     policy_data,
+)
+from app.services.content_templates import (
+    get_template_catalog,
     template_data,
     validate_template_config,
 )
@@ -389,6 +392,17 @@ async def update_admin_model(
     return success(next(item for item in model_settings_payload(settings) if item["model_id"] == model_id))
 
 
+@router.get("/content-templates")
+async def list_admin_content_templates(
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+):
+    try:
+        return success(await get_template_catalog(db))
+    except RuntimeError as exc:
+        raise ServiceUnavailableError("内容模板服务暂时不可用") from exc
+
+
 @router.get("/content-templates/{key}")
 async def get_admin_content_template(
     key: str,
@@ -414,7 +428,7 @@ async def update_admin_content_template(
     if not template:
         raise NotFoundError("内容模板不存在")
     try:
-        config = validate_template_config(key, payload.config)
+        config = validate_template_config(key, payload.config, enabled=payload.enabled)
     except ValueError as exc:
         raise RequestError(str(exc)) from exc
     before = template_data(template)
