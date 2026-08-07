@@ -11,16 +11,19 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
 from app.core.errors import (
+    ConflictError,
     InsufficientCreditsError,
     NotFoundError,
     ServiceUnavailableError,
+    RequestError,
     public_error_message,
 )
 from app.core.identity import get_current_user_id
-from app.models import GenerationTask, Workspace
+from app.models import ContentTemplate, GenerationTask, Workspace
 from app.providers.openai_responses import OpenAIResponsesProvider
 from app.schemas.reversal import ReversePromptRequest
 from app.services.billing import BillingError, InsufficientCredits, freeze_task_credits
+from app.services.content_templates import TEMPLATE_BUILDERS
 from app.workers.generation import complete_text_task, fail_task
 
 router = APIRouter()
@@ -33,6 +36,26 @@ async def stream_reverse_prompt(
     db: AsyncSession = Depends(get_db),
     user_id: uuid.UUID = Depends(get_current_user_id),
 ):
+    prompt = payload.prompt
+    provider_instruction = None
+    template_version = None
+    if payload.response_mode == "product_storyboard_plan":
+        template = await db.get(ContentTemplate, payload.template_key)
+        if not template:
+            raise ServiceUnavailableError("内容模板服务暂时不可用")
+        if not template.enabled or not template.config.get("templates", [{}])[0].get("enabled"):
+            raise ConflictError("UGC 种草模板已停用，请重新加载")
+        if template.version != payload.template_version:
+            raise ConflictError("UGC 种草模板已更新，请重新加载")
+        try:
+            prompt = TEMPLATE_BUILDERS[payload.template_key](
+                template.config,
+                payload.template_context.model_dump(),
+            )
+        except (KeyError, ValueError) as exc:
+            raise RequestError(str(exc)) from exc
+        provider_instruction = template.config["provider_instruction"]
+        template_version = template.version
     workspace = await db.scalar(
         select(Workspace).where(
             Workspace.id == payload.workspace_id,
@@ -50,8 +73,10 @@ async def stream_reverse_prompt(
         provider="aijws",
         model=payload.model,
         status="running",
-        prompt=payload.prompt,
-        request_snapshot=payload.model_dump(mode="json", exclude={"workspace_id", "node_id"}),
+        prompt=prompt,
+        request_snapshot=payload.model_dump(
+            mode="json", exclude={"workspace_id", "node_id", "prompt"}
+        ),
         started_at=datetime.now(UTC),
     )
     db.add(task)
@@ -73,7 +98,12 @@ async def stream_reverse_prompt(
 
     async def events():
         content = ""
-        yield json.dumps({"type": "meta", "task_id": str(task.id)}) + "\n"
+        meta = {"type": "meta", "task_id": str(task.id)}
+        if payload.template_key:
+            meta.update(
+                {"template_key": payload.template_key, "template_version": template_version}
+            )
+        yield json.dumps(meta) + "\n"
         try:
             async with provider:
                 async for content_chunk in provider.stream_reverse_prompt(
@@ -81,8 +111,9 @@ async def stream_reverse_prompt(
                     media_type=payload.media_type,
                     media_url=str(payload.media_url),
                     media_urls=[str(url) for url in payload.media_urls],
-                    prompt=payload.prompt,
+                    prompt=prompt,
                     response_mode=payload.response_mode,
+                    instructions=provider_instruction,
                 ):
                     content += content_chunk
                     yield (

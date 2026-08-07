@@ -9,7 +9,7 @@ from app.api.routes import reversals as reversals_route
 from app.core.database import SessionLocal
 from app.core.identity import DEFAULT_WORKSPACE_ID
 from app.main import app
-from app.models import GenerationTask
+from app.models import ContentTemplate, GenerationTask
 from app.schemas.reversal import ReversePromptRequest
 
 
@@ -27,6 +27,29 @@ class FakeProvider:
         self.__class__.last_kwargs = _kwargs
         for chunk in self.chunks:
             yield chunk
+
+
+def storyboard_payload(**overrides):
+    payload = {
+        "workspace_id": str(DEFAULT_WORKSPACE_ID),
+        "node_id": "product-storyboard-1",
+        "model": "gpt-5.6-sol",
+        "media_type": "image",
+        "media_url": "https://example.com/product.png",
+        "response_mode": "product_storyboard_plan",
+        "template_key": "product_storyboard",
+        "template_version": 2,
+        "template_context": {
+            "product_context": "商品名称：测试商品",
+            "duration": 30,
+            "video_aspect_ratio": "9:16",
+            "character_count": 0,
+            "product_count": 1,
+            "user_requirement": "",
+        },
+    }
+    payload.update(overrides)
+    return payload
 
 
 def test_product_visual_plan_requires_prompt():
@@ -117,40 +140,42 @@ def test_reverse_prompt_accepts_apparel_profile_without_prompt():
 
 
 def test_reverse_prompt_accepts_product_storyboard_mode():
-    payload = ReversePromptRequest(
+    payload = ReversePromptRequest(**storyboard_payload())
+    assert payload.response_mode == "product_storyboard_plan"
+    with pytest.raises(ValidationError, match="服务端模板"):
+        ReversePromptRequest(**storyboard_payload(prompt="生成商品分镜"))
+    apparel_payload = ReversePromptRequest(
         workspace_id=DEFAULT_WORKSPACE_ID,
-        node_id="product-storyboard-1",
+        node_id="apparel-storyboard-1",
         model="gpt-5.6-sol",
         media_type="image",
         media_url="https://example.com/product.png",
-        prompt="生成商品分镜",
-        response_mode="product_storyboard_plan",
+        prompt="生成服饰分镜",
+        response_mode="apparel_storyboard_plan",
     )
-    assert payload.response_mode == "product_storyboard_plan"
-    apparel_payload = ReversePromptRequest(**{**payload.model_dump(), "node_id": "apparel-storyboard-1", "response_mode": "apparel_storyboard_plan"})
     assert apparel_payload.response_mode == "apparel_storyboard_plan"
 
 
 def test_product_storyboard_limits_total_reference_images():
-    payload = {
-        "workspace_id": DEFAULT_WORKSPACE_ID,
-        "node_id": "product-storyboard-limit",
-        "model": "gpt-5.6-sol",
-        "media_type": "image",
-        "media_url": "https://example.com/reference-0.png",
-        "prompt": "生成商品分镜",
-        "response_mode": "product_storyboard_plan",
-    }
-    accepted = ReversePromptRequest(**{
-        **payload,
-        "media_urls": [f"https://example.com/reference-{index}.png" for index in range(1, 6)],
-    })
+    context = {**storyboard_payload()["template_context"], "character_count": 3, "product_count": 3}
+    accepted = ReversePromptRequest(**storyboard_payload(
+        node_id="product-storyboard-limit",
+        media_url="https://example.com/reference-0.png",
+        media_urls=[f"https://example.com/reference-{index}.png" for index in range(1, 6)],
+        template_context=context,
+    ))
     assert len(accepted.media_urls) == 5
     with pytest.raises(ValidationError, match="商品创作最多支持 6 张参考图片"):
-        ReversePromptRequest(**{
-            **payload,
-            "media_urls": [f"https://example.com/reference-{index}.png" for index in range(1, 7)],
-        })
+        ReversePromptRequest(**storyboard_payload(template_context={
+            **context,
+            "character_count": 3,
+            "product_count": 4,
+        }))
+    with pytest.raises(ValidationError, match="参考图数量不一致"):
+        ReversePromptRequest(**storyboard_payload(template_context={
+            **storyboard_payload()["template_context"],
+            "character_count": 1,
+        }))
 
 
 @pytest.mark.asyncio
@@ -193,22 +218,45 @@ async def test_stream_reverse_prompt_keeps_content_over_3000_characters(monkeypa
     monkeypatch.setattr(FakeProvider, "chunks", chunks)
     monkeypatch.setattr(reversals_route, "OpenAIResponsesProvider", FakeProvider)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        response = await client.post(
-            "/api/reversals/stream",
-            json={
-                "workspace_id": str(DEFAULT_WORKSPACE_ID),
-                "node_id": "long-reverse-test",
-                "model": "gpt-5.6-sol",
-                "media_type": "image",
-                "media_url": "https://example.com/image.png",
-                "prompt": "生成完整分镜",
-                "response_mode": "product_storyboard_plan",
-            },
-        )
+        async with SessionLocal() as db:
+            template = await db.get(ContentTemplate, "product_storyboard")
+        response = await client.post("/api/reversals/stream", json=storyboard_payload(
+            node_id="long-reverse-test",
+            template_version=template.version,
+        ))
 
     events = [json.loads(line) for line in response.text.splitlines()]
     task_id = uuid.UUID(events[0]["task_id"])
+    assert events[0]["template_key"] == "product_storyboard"
+    assert events[0]["template_version"] == template.version
     assert "".join(event["content"] for event in events if event["type"] == "delta") == "".join(chunks)
+    assert "UGC种草统一拍摄风格" in FakeProvider.last_kwargs["prompt"]
+    assert FakeProvider.last_kwargs["instructions"].startswith("你是专业的中文电商UGC种草")
     async with SessionLocal() as db:
         task = await db.get(GenerationTask, task_id)
         assert task.result["content"] == "".join(chunks)
+        assert task.prompt == FakeProvider.last_kwargs["prompt"]
+        assert task.request_snapshot["template_key"] == "product_storyboard"
+
+
+@pytest.mark.asyncio
+async def test_storyboard_stream_rejects_stale_or_disabled_template():
+    async with SessionLocal() as db:
+        template = await db.get(ContentTemplate, "product_storyboard")
+        version = template.version
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        stale = await client.post(
+            "/api/reversals/stream",
+            json=storyboard_payload(template_version=version + 1),
+        )
+        assert stale.status_code == 409
+
+        async with SessionLocal() as db:
+            template = await db.get(ContentTemplate, "product_storyboard")
+            template.enabled = False
+            await db.commit()
+        disabled = await client.post(
+            "/api/reversals/stream",
+            json=storyboard_payload(template_version=version),
+        )
+        assert disabled.status_code == 409

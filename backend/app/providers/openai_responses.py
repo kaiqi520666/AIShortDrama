@@ -50,6 +50,7 @@ class OpenAIResponsesProvider:
         prompt: str,
         media_urls: list[str] | None = None,
         response_mode: str = "prompt",
+        instructions: str | None = None,
     ) -> AsyncIterator[str]:
         if media_type != "image":
             raise OpenAIResponsesError("GPT-5.6 Sol 当前仅支持图片识别，不支持视频或音频识别")
@@ -81,7 +82,7 @@ class OpenAIResponsesProvider:
             "model": model,
             "stream": True,
             "reasoning": {"effort": self.reasoning_effort},
-            "instructions": system_prompts[response_mode],
+            "instructions": instructions or system_prompts[response_mode],
             "input": [{"role": "user", "content": content}],
         }
         async for text in self._stream_content(payload):

@@ -354,3 +354,119 @@ def validate_template_config(key: str, value: Any, *, enabled: bool = False) -> 
     if not validator or not isinstance(value, dict):
         raise ValueError("模板配置无效")
     return validator(value, enabled)
+
+
+def _storyboard_grid(ratio: str) -> tuple[int, int]:
+    try:
+        width, height = (int(value) for value in ratio.split(":"))
+    except (TypeError, ValueError) as exc:
+        raise ValueError("视频画幅比例无效") from exc
+    if width <= 0 or height <= 0:
+        raise ValueError("视频画幅比例无效")
+    return (3, 2) if width / height <= 1 else (2, 3)
+
+
+def _reference_instructions(character_count: int, product_count: int) -> tuple[str, str]:
+    image_characters = "，".join(
+        f"图片{index + 1}是角色{index + 1}参考图" for index in range(character_count)
+    )
+    image_products = "、".join(
+        f"图片{character_count + index + 1}" for index in range(product_count)
+    )
+    video_characters = "，".join(
+        f"图片{index + 2}是角色{index + 1}参考图" for index in range(character_count)
+    )
+    video_products = "、".join(
+        f"图片{character_count + index + 2}" for index in range(product_count)
+    )
+    image = "。".join(
+        item for item in (image_characters, f"{image_products}是商品参考图") if item
+    ) + "。"
+    video = "，".join(
+        item
+        for item in ("图片1是本段分镜图", video_characters, f"{video_products}是商品参考图")
+        if item
+    ) + "。"
+    return image, video
+
+
+def _speaker_instruction(blocks: dict[str, str], character_count: int) -> str:
+    if not character_count:
+        return blocks["dialogue_no_character"]
+    if character_count == 1:
+        examples = "她说道：\"内容。\"、他说道：\"内容。\"或他回答：\"内容。\""
+    else:
+        examples = "、".join(
+            f"角色{index + 1}{'回答' if index == 1 else '说道'}：\"内容。\""
+            for index in range(character_count)
+        )
+    return blocks["dialogue_with_characters"].format(
+        character_count=character_count,
+        speaker_examples=examples,
+    )
+
+
+def build_ugc_storyboard_prompt(config: dict[str, Any], context: dict[str, Any]) -> str:
+    validated = _validate_ugc(config, True)
+    duration = context["duration"]
+    if duration not in validated["durations"]:
+        raise ValueError("商品分镜时长无效")
+    character_count = context["character_count"]
+    product_count = context["product_count"]
+    if not 0 <= character_count <= 3 or not 1 <= product_count or character_count + product_count > 6:
+        raise ValueError("商品分镜参考图数量无效")
+    ratio = context["video_aspect_ratio"]
+    columns, rows = _storyboard_grid(ratio)
+    image_references, video_references = _reference_instructions(
+        character_count, product_count
+    )
+    blocks = validated["prompt_blocks"]
+    segment_count = duration // 15
+    segment_rules = "\n".join(
+        blocks["first_segment_rule"].format(segment=index)
+        if index == 1
+        else blocks["extend_segment_rule"].format(
+            segment=index, previous_segment=index - 1
+        )
+        for index in range(1, segment_count + 1)
+    )
+    product_context = context["product_context"].strip() or "暂无结构化商品资料，严格以商品参考图为准。"
+    user_requirement = context.get("user_requirement", "").strip()
+    extra = f"\n用户补充要求：{user_requirement}" if user_requirement else ""
+    schema = (
+        '{"templateId":"ugc-seeding","title":"UGC 种草","globalScript":"整体内容方向",'
+        '"segments":[{"segmentIndex":1,"duration":15,"shotCount":6,"plotGoal":"本段内容目标",'
+        '"openingState":"开头状态","endingState":"结尾状态","continuityMode":"cut",'
+        '"prompt":"镜头1：... 镜头2：... 镜头3：... 镜头4：... 镜头5：... 镜头6：...",'
+        '"videoPrompt":"图片1是本段分镜图，... 镜头1：... 镜头2：... 镜头3：... 镜头4：... '
+        '镜头5：... 镜头6：..."}]}'
+    )
+    output_contract = (
+        f"严格只输出一个JSON对象，不要Markdown、解释或额外文本，格式必须符合：{schema}。"
+        "templateId必须始终为“ugc-seeding”，title必须为“UGC 种草”，"
+        f"segments必须恰好{segment_count}条且按顺序。每个segment的duration必须为15、shotCount必须为6、"
+        "segmentIndex必须连续；第一段continuityMode必须为“cut”，后续段落只能为“extend”或“cut”。"
+        "每条prompt和videoPrompt都必须完整写出镜头1、镜头2、镜头3、镜头4、镜头5、镜头6，不能合并、"
+        "省略或输出空镜头。每条videoPrompt至少包含六句与镜头动作对应的自然对白或连续画外音。"
+        "JSON字符串中的对白双引号必须正确转义，确保整个结果可被JSON.parse直接解析。商品结构、颜色、材质、"
+        "包装和人物身份必须稳定，不得新增人物、商品或文字。"
+    )
+    return (
+        f"{blocks['director_role']}\n\n"
+        "本次输入参考图顺序：\n"
+        f"生图阶段：{image_references} 生图阶段只有角色图和商品图，不包含分镜图。\n"
+        f"生视频阶段：{video_references} 视频阶段图片1是刚生成的分镜图，角色和商品的身份、外观、颜色、"
+        "材质、包装结构和真实尺寸以对应参考图为准。\n\n"
+        "商品资料：\n"
+        f"{product_context}\n\n"
+        f"内容方向：{validated['business_instruction']}\n"
+        f"{blocks['shooting_style']}\n\n"
+        f"{_speaker_instruction(blocks, character_count)}\n\n"
+        f"{blocks['image_rules'].format(columns=columns, rows=rows, ratio=ratio)}\n\n"
+        f"{blocks['video_rules'].format(ratio=ratio)}\n\n"
+        f"{segment_rules}{extra}\n\n"
+        f"{output_contract}"
+    )
+
+
+TEMPLATE_BUILDERS = {UGC_STORYBOARD_KEY: build_ugc_storyboard_prompt}

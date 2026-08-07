@@ -1,4 +1,6 @@
 import importlib.util
+import hashlib
+import json
 from pathlib import Path
 
 import pytest
@@ -8,8 +10,12 @@ from app.services.content_templates import (
     UGC_STORYBOARD_KEY,
     default_commerce_drama_config,
     default_ugc_config,
+    build_ugc_storyboard_prompt,
     validate_template_config,
 )
+
+
+ROOT_DIR = Path(__file__).resolve().parents[2]
 
 
 def load_template_migration():
@@ -60,6 +66,19 @@ def test_ugc_template_validation_rejects_changed_placeholders():
     ].replace("{ratio}", "{unknown}")
     with pytest.raises(ValueError, match="动态变量"):
         validate_template_config(UGC_STORYBOARD_KEY, config, enabled=True)
+
+
+def test_backend_ugc_builder_matches_accepted_frontend_prompt_byte_for_byte():
+    golden = json.loads(
+        (ROOT_DIR / "contracts" / "ugc-storyboard-v1-golden.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    config = default_ugc_config()
+    for item in golden["cases"]:
+        prompt = build_ugc_storyboard_prompt(config, item)
+        assert len(prompt) == item["length"], item["name"]
+        assert hashlib.sha256(prompt.encode()).hexdigest() == item["sha256"], item["name"]
 
 
 def test_commerce_drama_template_is_editable_but_cannot_be_enabled():
