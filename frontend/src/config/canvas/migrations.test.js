@@ -8,13 +8,13 @@ describe('canvas migrations', () => {
       schema_version: 1,
       nodes: [
         { id: 'a', type: 'product_storyboard', data: {} },
-        { id: 'b', type: 'product_storyboard', data: { textModel: 'custom', templateId: 'saved', templates: [{ id: 'saved' }] } },
+        { id: 'b', type: 'product_storyboard', data: { textModel: 'custom', templateKey: 'saved-key', templateId: 'saved', templates: [{ id: 'saved' }] } },
       ],
     }, 'gpt-5.6-sol', contentTemplatesFixture)
 
     expect(migrated.schema_version).toBe(CURRENT_CANVAS_SCHEMA_VERSION)
-    expect(migrated.nodes[0].data).toEqual(expect.objectContaining({ textModel: expect.any(String), templateId: 'ugc-seeding', templates: expect.any(Array) }))
-    expect(migrated.nodes[1].data).toEqual(expect.objectContaining({ textModel: 'custom', templateId: 'saved', templates: [{ id: 'saved' }], templateVersion: 1 }))
+    expect(migrated.nodes[0].data).toEqual(expect.objectContaining({ textModel: expect.any(String), templateKey: 'product_storyboard', templateId: 'ugc-seeding', templates: expect.any(Array) }))
+    expect(migrated.nodes[1].data).toEqual(expect.objectContaining({ textModel: 'custom', templateKey: 'saved-key', templateId: 'saved', templates: [{ id: 'saved' }], templateVersion: 1 }))
     expect(migrateCanvas(migrated, 'gpt-5.6-sol', contentTemplatesFixture)).toEqual(migrated)
   })
 

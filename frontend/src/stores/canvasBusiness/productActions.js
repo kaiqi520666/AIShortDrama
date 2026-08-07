@@ -2,6 +2,7 @@ import {
   buildStoryboardReferenceManifest,
   storyboardShotCount,
 } from '../../config/canvas/productStoryboard'
+import { createStoryboardSegmentChain } from './sharedActions'
 
 export function createProductChain(position, sourceId) {
   if (sourceId) return { handled: false }
@@ -49,82 +50,17 @@ export const productActions = {
       planner.data.productReferences,
     )
     if (plans?.segments?.length) {
-      const segmentNodeIds = []
-      let previousVideoId = null
-      plans.segments.forEach((segment, index) => {
-        const segmentIndex = index + 1
-        const imageId = this.addNode('image', {
-          x: planner.position.x + 560 + index * 900,
-          y: planner.position.y,
-        })
-        const image = this.nodes.find((node) => node.id === imageId)
-        image.data = {
-          ...image.data,
-          title: `${plans.title || '商品分镜'} ${segmentIndex} · 分镜`,
-          storyboardSourceId: plannerId,
-          storyboardTemplateId: 'ugc-seeding',
-          storyboardTemplateLabel: plans.title,
-          storyboardGlobalScript: plans.globalScript,
-          storyboardSegmentIndex: segmentIndex,
-          storyboardSegmentCount: plans.segments.length,
-          storyboardDuration: 15,
-          storyboardVideoAspectRatio: planner.data.videoAspectRatio,
-          storyboardShotCount: 6,
-          storyboardProductReferences: referenceManifest.products,
-          storyboardCharacterReferences: referenceManifest.characters,
-          storyboardContinuityMode: segment.continuityMode,
-          storyboardPlotGoal: segment.plotGoal,
-          storyboardOpeningState: segment.openingState,
-          storyboardEndingState: segment.endingState,
-          videoPrompt: segment.videoPrompt,
-          prompt: segment.prompt,
-          promptParts: [{ type: 'text', value: segment.prompt }],
-          segmentLocked: segmentIndex > 1,
-          ...settings,
-        }
-        this.addEdge({ source: plannerId, target: imageId })
-        this.addEdge({ source: productId, target: imageId })
-        const videoId = this.addNode('video', {
-          x: planner.position.x + 1010 + index * 900,
-          y: planner.position.y,
-        }, imageId)
-        const video = this.nodes.find((node) => node.id === videoId)
-        video.data = {
-          ...video.data,
-          title: `${plans.title || '商品分镜'} ${segmentIndex} · 视频`,
-          storyboardSourceId: plannerId,
-          storyboardImageId: imageId,
-          storyboardTemplateId: 'ugc-seeding',
-          storyboardTemplateLabel: plans.title,
-          storyboardGlobalScript: plans.globalScript,
-          storyboardSegmentIndex: segmentIndex,
-          storyboardSegmentCount: plans.segments.length,
-          storyboardContinuityMode: segment.continuityMode,
-          storyboardPlotGoal: segment.plotGoal,
-          storyboardOpeningState: segment.openingState,
-          storyboardEndingState: segment.endingState,
-          storyboardCharacterReferences: referenceManifest.characters,
-          storyboardProductReferences: referenceManifest.products,
-          storyboardDuration: 15,
-          videoPrompt: segment.videoPrompt,
-          prompt: segment.videoPrompt,
-          promptParts: [{ type: 'text', value: segment.videoPrompt }],
-          segmentLocked: true,
-        }
-        if (segment.continuityMode === 'extend' && previousVideoId) {
-          this.addEdge({ source: previousVideoId, target: videoId })
-        }
-        segmentNodeIds.push({ segmentIndex, imageId, videoId })
-        previousVideoId = videoId
+      return createStoryboardSegmentChain.call(this, {
+        plannerId,
+        sourceIds: [productId],
+        plan: plans,
+        settings,
+        templateKey: planner.data.templateKey || 'product_storyboard',
+        templateId: plans.templateId || 'ugc-seeding',
+        fallbackTitle: '商品分镜',
+        productReferences: referenceManifest.products,
+        characterReferences: referenceManifest.characters,
       })
-      planner.data = {
-        ...planner.data,
-        globalScript: plans.globalScript,
-        segmentNodeIds,
-        generatedNodeIds: segmentNodeIds.flatMap(({ imageId, videoId }) => [imageId, videoId]),
-      }
-      this.selectNodes([segmentNodeIds[0].imageId])
-      return planner.data.generatedNodeIds
     }
     if (!plans?.length) return []
     const columns = Math.min(3, plans.length)

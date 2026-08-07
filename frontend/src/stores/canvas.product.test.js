@@ -147,6 +147,8 @@ describe('canvas product workflows', () => {
     const [image1, video1, image2, video2] = ids.map((id) => store.nodes.find((node) => node.id === id))
 
     expect(ids).toHaveLength(4)
+    expect(image1.data).toEqual(expect.objectContaining({ storyboardTemplateKey: 'product_storyboard', storyboardTemplateId: 'ugc-seeding' }))
+    expect(video1.data).toEqual(expect.objectContaining({ storyboardTemplateKey: 'product_storyboard', storyboardTemplateId: 'ugc-seeding' }))
     expect(image1.data.segmentLocked).toBe(false)
     expect(video1.data.segmentLocked).toBe(true)
     expect(image2.data.segmentLocked).toBe(true)

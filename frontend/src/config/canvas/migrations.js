@@ -1,6 +1,6 @@
 import { createStoryboardTemplates } from './productStoryboard'
 
-export const CURRENT_CANVAS_SCHEMA_VERSION = 2
+export const CURRENT_CANVAS_SCHEMA_VERSION = 3
 
 export function migrateCanvas(source = {}, defaultTextModelId, templates) {
   const canvas = JSON.parse(JSON.stringify(source || {}))
@@ -25,6 +25,12 @@ export function migrateCanvas(source = {}, defaultTextModelId, templates) {
               : { templateVersion: storyboardTemplate.version }),
           },
         }
+      : node)
+  }
+  if (version < 3) {
+    canvas.nodes = (canvas.nodes || []).map((node) => node.type === 'product_storyboard'
+      && !Object.hasOwn(node.data || {}, 'templateKey')
+      ? { ...node, data: { ...node.data, templateKey: 'product_storyboard' } }
       : node)
   }
   canvas.schema_version = CURRENT_CANVAS_SCHEMA_VERSION

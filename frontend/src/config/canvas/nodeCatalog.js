@@ -112,7 +112,7 @@ export const nodeCatalog = {
     inputLimits: { product: { max: 1, message: '商品分镜节点只能连接 1 个商品创作' } },
     createData: ({ number, models, templates }) => ({
       title: `商品分镜 ${number}`, status: 'empty', textModel: models.text.id, duration: 30,
-      videoAspectRatio: '9:16', templateId: 'ugc-seeding', templates: createStoryboardTemplates(templates.product_storyboard),
+      videoAspectRatio: '9:16', templateKey: 'product_storyboard', templateId: 'ugc-seeding', templates: createStoryboardTemplates(templates.product_storyboard),
       templateVersion: templates.product_storyboard.version,
       productReferences: [], characterReferences: [], prompt: '', generatedNodeIds: [],
     }),
