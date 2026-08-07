@@ -139,7 +139,7 @@ describe('canvas product workflows', () => {
     const plan = {
       templateId: 'ugc-seeding', title: 'UGC 种草', globalScript: '全局脚本', totalDuration: 30,
       segments: [
-        { segmentIndex: 1, duration: 15, plotGoal: '开场', openingState: '开始', endingState: '拿起', continuityMode: 'cut', prompt: '分镜1', videoPrompt: '视频1' },
+        { segmentIndex: 1, duration: 15, plotGoal: '开场', dramaticBeat: '冲突出现', productPlacement: '商品进入剧情', openingState: '开始', endingState: '拿起', continuityMode: 'cut', prompt: '分镜1', videoPrompt: '视频1' },
         { segmentIndex: 2, duration: 15, plotGoal: '结果', openingState: '拿起', endingState: '展示', continuityMode: 'extend', prompt: '分镜2', videoPrompt: '视频2' },
       ],
     }
@@ -148,6 +148,7 @@ describe('canvas product workflows', () => {
 
     expect(ids).toHaveLength(4)
     expect(image1.data).toEqual(expect.objectContaining({ storyboardTemplateKey: 'product_storyboard', storyboardTemplateId: 'ugc-seeding' }))
+    expect(image1.data).toEqual(expect.objectContaining({ storyboardDramaticBeat: '冲突出现', storyboardProductPlacement: '商品进入剧情' }))
     expect(video1.data).toEqual(expect.objectContaining({ storyboardTemplateKey: 'product_storyboard', storyboardTemplateId: 'ugc-seeding' }))
     expect(image1.data.segmentLocked).toBe(false)
     expect(video1.data.segmentLocked).toBe(true)

@@ -54,6 +54,8 @@ export function createStoryboardSegmentChain({
       storyboardDuration: segment.duration || 15,
       storyboardContinuityMode: segment.continuityMode,
       storyboardPlotGoal: segment.plotGoal,
+      storyboardDramaticBeat: segment.dramaticBeat,
+      storyboardProductPlacement: segment.productPlacement,
       storyboardOpeningState: segment.openingState,
       storyboardEndingState: segment.endingState,
       storyboardCharacterReferences: characterReferences,

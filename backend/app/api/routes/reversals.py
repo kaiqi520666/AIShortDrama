@@ -23,7 +23,7 @@ from app.models import ContentTemplate, GenerationTask, Workspace
 from app.providers.openai_responses import OpenAIResponsesProvider
 from app.schemas.reversal import ReversePromptRequest
 from app.services.billing import BillingError, InsufficientCredits, freeze_task_credits
-from app.services.content_templates import TEMPLATE_BUILDERS
+from app.services.content_templates import TEMPLATE_BUILDERS, UGC_STORYBOARD_KEY
 from app.workers.generation import complete_text_task, fail_task
 
 router = APIRouter()
@@ -39,14 +39,25 @@ async def stream_reverse_prompt(
     prompt = payload.prompt
     provider_instruction = None
     template_version = None
+    output_protocol_id = None
     if payload.response_mode == "product_storyboard_plan":
         template = await db.get(ContentTemplate, payload.template_key)
         if not template:
             raise ServiceUnavailableError("内容模板服务暂时不可用")
-        if not template.enabled or not template.config.get("templates", [{}])[0].get("enabled"):
-            raise ConflictError("UGC 种草模板已停用，请重新加载")
+        option_enabled = (
+            template.config.get("templates", [{}])[0].get("enabled")
+            if template.key == UGC_STORYBOARD_KEY
+            else True
+        )
+        template_label = (
+            template.config.get("templates", [{}])[0].get("label")
+            if template.key == UGC_STORYBOARD_KEY
+            else template.config.get("label")
+        ) or "商品分镜"
+        if not template.enabled or not option_enabled:
+            raise ConflictError(f"{template_label}模板已停用，请重新加载")
         if template.version != payload.template_version:
-            raise ConflictError("UGC 种草模板已更新，请重新加载")
+            raise ConflictError(f"{template_label}模板已更新，请重新加载")
         try:
             prompt = TEMPLATE_BUILDERS[payload.template_key](
                 template.config,
@@ -56,6 +67,7 @@ async def stream_reverse_prompt(
             raise RequestError(str(exc)) from exc
         provider_instruction = template.config["provider_instruction"]
         template_version = template.version
+        output_protocol_id = template.config.get("output_protocol_id", "ugc-seeding")
     workspace = await db.scalar(
         select(Workspace).where(
             Workspace.id == payload.workspace_id,
@@ -101,7 +113,11 @@ async def stream_reverse_prompt(
         meta = {"type": "meta", "task_id": str(task.id)}
         if payload.template_key:
             meta.update(
-                {"template_key": payload.template_key, "template_version": template_version}
+                {
+                    "template_key": payload.template_key,
+                    "template_version": template_version,
+                    "output_protocol_id": output_protocol_id,
+                }
             )
         yield json.dumps(meta) + "\n"
         try:

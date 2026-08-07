@@ -29,6 +29,22 @@ export const contentTemplatesFixture = {
       },
     },
   },
+  commerce_drama: {
+    key: 'commerce_drama',
+    version: 2,
+    enabled: true,
+    config: {
+      schema_version: 2,
+      label: '短剧带货',
+      description: '通过剧情内容完成商品植入与转化',
+      durations: [30, 45, 60],
+      output_protocol_id: 'commerce-drama-v1',
+      continuity: {
+        cut: { label: '独立新段', description: '不引用上一段视频' },
+        extend: { label: '延续上段', description: '引用上一段视频保持连续性' },
+      },
+    },
+  },
 }
 
 export function seedContentTemplates() {

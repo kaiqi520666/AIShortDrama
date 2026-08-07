@@ -104,8 +104,8 @@ export const nodeCatalog = {
     }),
   },
   product_storyboard: {
-    type: 'product_storyboard', label: '商品分镜', model: '', hint: '生成 UGC 种草多格分镜板与视频脚本',
-    setting: 'UGC 种草 · 15/30/45/60 秒', iconName: 'Clapperboard', componentName: 'ProductStoryboardNode',
+    type: 'product_storyboard', label: '商品分镜', model: '', hint: '生成 UGC 种草或短剧带货分镜板与视频脚本',
+    setting: 'UGC 种草 / 短剧带货', iconName: 'Clapperboard', componentName: 'ProductStoryboardNode',
     panelName: 'ProductStoryboardPanel', panelHeight: 590,
     workspaces: ['ecommerce'], order: { ecommerce: 2 },
     inputs: ['product'], outputs: ['image'],

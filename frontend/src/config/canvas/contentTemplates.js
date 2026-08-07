@@ -6,6 +6,7 @@ const visualItemIds = {
   trust: ['brand-story', 'freebies', 'warranty', 'usage-tips'],
 }
 const allowedDurations = new Set([15, 30, 45, 60])
+const dramaDurations = new Set([30, 45, 60])
 
 function validText(value, max = 6000) {
   return typeof value === 'string' && value.trim() && value.trim().length <= max
@@ -14,7 +15,8 @@ function validText(value, max = 6000) {
 export function validateProductContentTemplates(value) {
   const visual = value?.product_visual
   const storyboard = value?.product_storyboard
-  if (!visual || !storyboard || typeof visual.version !== 'number' || typeof storyboard.version !== 'number') return '商品模板响应无效'
+  const drama = value?.commerce_drama
+  if (!visual || !storyboard || !drama || [visual, storyboard, drama].some((item) => typeof item.version !== 'number' || typeof item.enabled !== 'boolean')) return '商品模板响应无效'
   const groups = visual.config?.groups
   if (!Array.isArray(groups) || groups.length !== visualGroupIds.length) return '商品图种模板无效'
   for (const group of groups) {
@@ -31,6 +33,11 @@ export function validateProductContentTemplates(value) {
   if (!Array.isArray(templates) || templates.length !== 1 || templates[0]?.id !== 'ugc-seeding' || !validText(templates[0]?.label, 64) || !validText(templates[0]?.description, 255)) return '商品分镜模板无效'
   if (!Array.isArray(durations) || !durations.length || durations.some((item) => !allowedDurations.has(item))) return '商品分镜时长无效'
   if (!continuity || !['cut', 'extend'].every((key) => validText(continuity[key]?.label, 32) && validText(continuity[key]?.description, 120))) return '商品分镜衔接配置无效'
+  const dramaConfig = drama.config
+  if (dramaConfig?.schema_version !== 2 || !validText(dramaConfig.label, 64) || !validText(dramaConfig.description, 255)) return '短剧带货模板无效'
+  if (!Array.isArray(dramaConfig.durations) || !dramaConfig.durations.length || dramaConfig.durations.some((item) => !dramaDurations.has(item))) return '短剧带货时长无效'
+  if (dramaConfig.output_protocol_id !== 'commerce-drama-v1') return '短剧带货输出协议无效'
+  if (!dramaConfig.continuity || !['cut', 'extend'].every((key) => validText(dramaConfig.continuity[key]?.label, 32) && validText(dramaConfig.continuity[key]?.description, 120))) return '短剧带货衔接配置无效'
   return ''
 }
 

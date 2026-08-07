@@ -1,6 +1,6 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { Check, CircleAlert, RefreshCw } from 'lucide-vue-next'
+import { Check, RefreshCw } from 'lucide-vue-next'
 import { getAdminContentTemplate, updateAdminContentTemplate } from '../../api/admin'
 import AppButton from '../../components/ui/AppButton.vue'
 import AppInput from '../../components/ui/AppInput.vue'
@@ -39,12 +39,12 @@ const promptFields = {
   ],
   commerce_drama: [
     ['creative_direction', '创作方向', ''],
-    ['story_structure', '剧情结构', ''],
-    ['character_rules', '角色规则', ''],
-    ['dialogue_rules', '对白规则', ''],
+    ['story_structure', '剧情结构', '{segment_count}'],
+    ['character_rules', '角色规则', '{character_count}'],
+    ['dialogue_rules', '对白规则', '{speaker_examples}'],
     ['product_placement_rules', '商品植入规则', ''],
-    ['image_rules', '生图规则', ''],
-    ['video_rules', '视频规则', ''],
+    ['image_rules', '生图规则', '{columns} {rows} {ratio}'],
+    ['video_rules', '视频规则', '{ratio}'],
     ['continuity_rules', '连续性规则', ''],
     ['forbidden_rules', '禁止项', ''],
   ],
@@ -63,6 +63,7 @@ const isImageSettings = computed(() => props.section === 'image')
 const isUgc = computed(() => props.templateKey === 'product_storyboard')
 const isDrama = computed(() => props.templateKey === 'commerce_drama')
 const currentPromptFields = computed(() => promptFields[props.templateKey] || [])
+const visibleDurationOptions = computed(() => isDrama.value ? durationOptions.slice(1) : durationOptions)
 const pageCopy = computed(() => isImageSettings.value
   ? { eyebrow: 'IMAGE SETTINGS', title: '出图设置', description: '管理商品出图类型、默认选项和业务指令。' }
   : { eyebrow: 'COMMERCE TEMPLATE', title: '电商模板', description: '管理 UGC 种草和短剧带货的内容工作流。' })
@@ -100,7 +101,7 @@ function toggleDuration(duration, checked) {
 
 async function save() {
   const label = templateLabels[props.templateKey]
-  const payload = { enabled: isDrama.value ? false : form.value.enabled, config: form.value.config, reason: reason.value }
+  const payload = { enabled: form.value.enabled, config: form.value.config, reason: reason.value }
   if (!await confirmMutation({
     title: `更新${label}`,
     message: `${label}将升级到下一版本，并仅用于后续新节点与新生成。`,
@@ -138,11 +139,9 @@ onMounted(load)
     <EmptyState v-else-if="loading || !form" loading :title="`正在加载${templateLabels[templateKey]}`" />
     <form v-else class="admin-template-form" @submit.prevent="save">
       <div class="admin-template-form__top">
-        <label class="admin-check" :class="{ 'is-disabled': isDrama }"><input v-model="form.enabled" type="checkbox" :disabled="isDrama" /><span>{{ isImageSettings ? '设置启用' : '模板启用' }}</span></label>
+        <label class="admin-check"><input v-model="form.enabled" type="checkbox" /><span>{{ isImageSettings ? '设置启用' : '模板启用' }}</span></label>
         <small>保存后只影响后续新节点和新生成，已有画布不会被覆盖。</small>
       </div>
-
-      <div v-if="isDrama" class="admin-template-notice" role="status"><CircleAlert :size="17" /><div><strong>流程待接入</strong><span>当前仅允许维护草稿区块，生成器接入前不能启用。</span></div></div>
 
       <template v-if="isImageSettings">
         <section v-for="group in form.config.groups" :key="group.id" class="admin-template-block">
@@ -160,7 +159,7 @@ onMounted(load)
 
       <template v-else>
         <section class="admin-template-block">
-          <header><strong>{{ isUgc ? 'UGC 种草基础信息' : '短剧带货草稿' }}</strong><small>{{ isUgc ? form.config.templates[0].id : 'commerce_drama' }}</small></header>
+          <header><strong>{{ isUgc ? 'UGC 种草基础信息' : '短剧带货基础信息' }}</strong><small>{{ isUgc ? form.config.templates[0].id : 'commerce_drama' }}</small></header>
           <div v-if="isUgc" class="admin-form-grid">
             <label class="admin-field"><span>模板名称</span><AppInput v-model="form.config.templates[0].label" maxlength="64" /></label>
             <label class="admin-field"><span>模板描述</span><AppInput v-model="form.config.templates[0].description" maxlength="255" /></label>
@@ -173,19 +172,27 @@ onMounted(load)
         </section>
 
         <section class="admin-template-block">
-          <header><strong>允许总时长</strong><small>{{ isUgc ? '固定以 15 秒为分段单位' : '草稿可预设候选时长' }}</small></header>
-          <div class="admin-duration-options"><label v-for="duration in durationOptions" :key="duration" class="admin-check"><input type="checkbox" :checked="form.config.durations.includes(duration)" @change="toggleDuration(duration, $event.target.checked)" /><span>{{ duration }} 秒</span></label></div>
+          <header><strong>允许总时长</strong><small>固定以 15 秒为分段单位</small></header>
+          <div class="admin-duration-options"><label v-for="duration in visibleDurationOptions" :key="duration" class="admin-check"><input type="checkbox" :checked="form.config.durations.includes(duration)" @change="toggleDuration(duration, $event.target.checked)" /><span>{{ duration }} 秒</span></label></div>
         </section>
 
         <label v-if="isUgc" class="admin-field"><span>业务指令块</span><AppTextarea v-model="form.config.business_instruction" rows="6" maxlength="6000" required /></label>
-        <label v-if="isUgc" class="admin-field"><span>Provider 系统指令</span><AppTextarea v-model="form.config.provider_instruction" rows="4" maxlength="2000" required /></label>
+        <label class="admin-field"><span>Provider 系统指令</span><AppTextarea v-model="form.config.provider_instruction" rows="4" maxlength="2000" required /></label>
 
         <section class="admin-template-block">
-          <header><strong>Prompt 区块</strong><small>{{ isUgc ? '动态变量不可删除、改名或新增' : '生成流程接入前仅保存草稿' }}</small></header>
+          <header><strong>JSON 输出协议</strong><small>协议由生成器固定，后台不可修改</small></header>
+          <div class="admin-continuity-row">
+            <code>{{ isUgc ? 'ugc-seeding' : form.config.output_protocol_id }}</code>
+            <span>{{ isUgc ? '每段 15 秒，每段 6 镜头，输出 prompt / videoPrompt' : '包含剧情角色、剧情节拍、商品植入及每段 6 镜头提示词' }}</span>
+          </div>
+        </section>
+
+        <section class="admin-template-block">
+          <header><strong>Prompt 区块</strong><small>动态变量不可删除、改名或新增</small></header>
           <div class="admin-prompt-blocks">
             <label v-for="([key, label, variables]) in currentPromptFields" :key="key" class="admin-field">
               <span>{{ label }}<code v-if="variables">{{ variables }}</code></span>
-              <AppTextarea v-model="form.config.prompt_blocks[key]" rows="5" maxlength="12000" :required="isUgc" />
+              <AppTextarea v-model="form.config.prompt_blocks[key]" rows="5" maxlength="12000" required />
             </label>
           </div>
         </section>

@@ -12,7 +12,10 @@ PRODUCT_VISUAL_KEY = "product_visual"
 UGC_STORYBOARD_KEY = "product_storyboard"
 COMMERCE_DRAMA_KEY = "commerce_drama"
 STORYBOARD_TEMPLATE_ID = "ugc-seeding"
+COMMERCE_DRAMA_TEMPLATE_ID = "commerce-drama"
+COMMERCE_DRAMA_PROTOCOL_ID = "commerce-drama-v1"
 STORYBOARD_DURATIONS = {15, 30, 45, 60}
+COMMERCE_DRAMA_DURATIONS = {30, 45, 60}
 PRODUCT_VISUAL_GROUPS = {
     "basic": ("white-bg", "first-screen", "multi-angle", "series-show"),
     "marketing": ("core-selling", "use-scenario", "ambient-scene", "contrast-effect"),
@@ -97,32 +100,99 @@ COMMERCE_DRAMA_BLOCKS = (
     "continuity_rules",
     "forbidden_rules",
 )
+COMMERCE_DRAMA_PROVIDER_INSTRUCTION = (
+    "你是专业的中文电商短剧分镜策划师。请严格执行用户提示词，根据商品资料、角色参考和剧情要求，"
+    "生成可直接用于生图和视频生成的短剧分镜方案。商品必须自然参与剧情推进，不得脱离人物动机强行植入；"
+    "人物身份、外观、关系、商品状态和场景连续性必须保持稳定。严格按照指定 JSON 输出协议返回一个合法 "
+    "JSON 对象，不解释，不使用 Markdown，不添加代码块或额外文本。prompt 和 videoPrompt 必须是完整可执行的"
+    "生成提示词，不得省略镜头，不得进行二次概括。"
+)
+COMMERCE_DRAMA_PROMPT_BLOCKS = {
+    "creative_direction": (
+        "围绕一个明确的生活困境、人物误会或需求冲突展开短剧情。开头3秒内出现人物目标或冲突，商品必须作为"
+        "推动剧情、解决问题或证明结果的关键道具自然进入故事，不能脱离剧情单独口播。整体节奏紧凑、人物动机"
+        "明确、转折合理，结尾完成冲突解决、商品价值验证和自然转化，不使用生硬广告腔。"
+    ),
+    "story_structure": (
+        "全片共{segment_count}个15秒剧情段落，每段固定6个镜头。第一段建立人物、场景和核心冲突；中间段通过"
+        "行动、误会、失败或对比升级矛盾，并让商品逐步参与解决问题；最后一段完成结果验证、情绪回收和自然转化。"
+        "每段必须包含明确的开头状态、剧情目标和结尾状态，后一段必须能承接前一段的动作、人物关系和未解决问题。"
+    ),
+    "character_rules": (
+        "本次共有{character_count}个指定角色，每个角色只能对应自己的参考图，不得新增主要人物。角色的脸部、"
+        "发型、服装、年龄感、体型和身份在所有分段中保持一致。每个角色必须有明确的关系、目标和行为动机，不能"
+        "为了介绍商品突然改变性格。没有角色参考图时不得生成可识别的特定人物。"
+    ),
+    "dialogue_rules": (
+        "对白必须服务于人物关系、冲突推进或商品体验，使用自然中文口语和短句，禁止连续背诵卖点。每句对白必须"
+        "标明说话角色，并与当前镜头动作对应；可使用的格式示例：{speaker_examples}。每15秒安排4至6句有效对白，"
+        "允许停顿、反问和情绪变化。画外音只用于补充无法通过动作和对白表达的信息，不得代替主要剧情。"
+    ),
+    "product_placement_rules": (
+        "商品必须在第一段前两个镜头内自然出现，并通过拿取、使用、试吃、展示、对比或结果反馈参与剧情。商品外观、"
+        "颜色、材质、包装结构和尺寸必须以参考图及商品资料为准，不得虚构功能、价格、优惠、认证或效果。卖点应通过"
+        "人物行为和结果表现，不安排角色面向镜头逐条念卖点。商品不得突然出现、无理由消失或在镜头间改变规格。"
+    ),
+    "image_rules": (
+        "生图prompt要求：生成一张{columns}列×{rows}行的六格短剧分镜板，按从左到右、从上到下对应镜头1至"
+        "镜头6，每格保持{ratio}视频画幅。明确描述人物位置、动作、表情、商品状态、场景、构图、景别和光线。"
+        "相邻镜头必须保持角色、服装、商品、道具和场景连续。分镜板只允许出现“镜头1”至“镜头6”标签，不生成"
+        "字幕、价格、二维码、水印或额外Logo；包装文字无法准确复现时避免正面特写。生图prompt禁止写对白和音效。"
+    ),
+    "video_rules": (
+        "生视频prompt要求：严格引用图片1分镜图并按照六格镜头顺序生成视频，明确写出{ratio}画幅、参考图关系、"
+        "人物动作、对白、景别、运镜、光线和现场声音。每个镜头只完成一个清晰动作，人物身份、服装、商品状态和"
+        "空间位置必须与参考图及前后镜头一致。对白优先清晰可辨，背景音乐不得遮盖对白。禁止无原因跳轴、人物瞬移、"
+        "商品变形、动作倒放和镜头内容错位。视频提示词中所有图片编号必须与实际参考顺序一致。"
+    ),
+    "continuity_rules": (
+        "第一段固定使用cut，作为独立剧情开场。后续分段使用extend时，必须承接上一段结尾的人物位置、动作、"
+        "表情、商品状态、场景、光影和声音；使用cut时允许切换时间或地点，但必须通过对白、动作或画面建立清晰的"
+        "剧情关系。不得把extend写成无关联的新场景，也不得在cut后假装动作连续。"
+    ),
+    "forbidden_rules": (
+        "禁止无铺垫反转、强行煽情、人物动机突变、无关角色抢戏和商品硬插入。禁止虚构疗效、绝对化承诺、价格"
+        "优惠、销量、认证和用户评价。禁止血腥暴力、危险模仿、歧视、低俗暗示和违法内容。禁止人物脸部漂移、"
+        "服装变化、商品变形、包装乱码、字幕、水印、二维码及额外Logo。禁止使用快速蒙太奇掩盖剧情不连续。"
+    ),
+}
+COMMERCE_DRAMA_PLACEHOLDERS = {
+    "creative_direction": set(),
+    "story_structure": {"segment_count"},
+    "character_rules": {"character_count"},
+    "dialogue_rules": {"speaker_examples"},
+    "product_placement_rules": set(),
+    "image_rules": {"columns", "rows", "ratio"},
+    "video_rules": {"ratio"},
+    "continuity_rules": set(),
+    "forbidden_rules": set(),
+}
 
 TEMPLATE_DEFINITIONS = {
     PRODUCT_VISUAL_KEY: {
-        "group": "product_image",
-        "group_label": "商品图片模板",
+        "group": "image_settings",
+        "group_label": "出图设置",
         "label": "商品出图",
         "status": "active",
         "order": 0,
     },
     UGC_STORYBOARD_KEY: {
-        "group": "content",
-        "group_label": "内容模板",
+        "group": "commerce",
+        "group_label": "电商模板",
         "label": "UGC 种草",
         "status": "active",
         "order": 1,
     },
     COMMERCE_DRAMA_KEY: {
-        "group": "content",
-        "group_label": "内容模板",
+        "group": "commerce",
+        "group_label": "电商模板",
         "label": "短剧带货",
-        "status": "draft",
+        "status": "active",
         "order": 2,
     },
 }
 TEMPLATE_KEYS = set(TEMPLATE_DEFINITIONS)
-PRODUCT_TEMPLATE_KEYS = {PRODUCT_VISUAL_KEY, UGC_STORYBOARD_KEY}
+PRODUCT_TEMPLATE_KEYS = {PRODUCT_VISUAL_KEY, UGC_STORYBOARD_KEY, COMMERCE_DRAMA_KEY}
 
 
 def default_ugc_config() -> dict[str, Any]:
@@ -148,12 +218,14 @@ def default_ugc_config() -> dict[str, Any]:
 
 def default_commerce_drama_config() -> dict[str, Any]:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "label": "短剧带货",
         "description": "通过剧情内容完成商品植入与转化",
-        "implementation_status": "draft",
-        "durations": [],
-        "prompt_blocks": {key: "" for key in COMMERCE_DRAMA_BLOCKS},
+        "implementation_status": "ready",
+        "durations": [30, 45, 60],
+        "provider_instruction": COMMERCE_DRAMA_PROVIDER_INSTRUCTION,
+        "output_protocol_id": COMMERCE_DRAMA_PROTOCOL_ID,
+        "prompt_blocks": deepcopy(COMMERCE_DRAMA_PROMPT_BLOCKS),
         "continuity": deepcopy(DEFAULT_CONTINUITY),
     }
 
@@ -200,6 +272,16 @@ async def get_product_templates(db: AsyncSession) -> dict[str, dict[str, Any]]:
                 "durations": deepcopy(config["durations"]),
                 "continuity": deepcopy(config["continuity"]),
             }
+        elif template.key == COMMERCE_DRAMA_KEY:
+            config = template.config
+            data["config"] = {
+                "schema_version": config["schema_version"],
+                "label": config["label"],
+                "description": config["description"],
+                "durations": deepcopy(config["durations"]),
+                "continuity": deepcopy(config["continuity"]),
+                "output_protocol_id": config["output_protocol_id"],
+            }
         result[template.key] = data
     return result
 
@@ -227,7 +309,7 @@ def _validate_continuity(value: Any) -> dict[str, dict[str, str]]:
     return result
 
 
-def _validate_prompt_block(key: str, value: Any) -> str:
+def _validate_prompt_block(key: str, value: Any, expected_placeholders: set[str]) -> str:
     text = _text(value, "Prompt 区块", max_length=12_000)
     try:
         placeholders = {
@@ -237,7 +319,7 @@ def _validate_prompt_block(key: str, value: Any) -> str:
         }
     except ValueError as exc:
         raise ValueError("Prompt 动态变量格式无效") from exc
-    if placeholders != UGC_PLACEHOLDERS[key]:
+    if placeholders != expected_placeholders:
         raise ValueError(f"{key} 动态变量无效")
     return text
 
@@ -313,29 +395,38 @@ def _validate_ugc(value: dict[str, Any], _enabled: bool) -> dict[str, Any]:
             value.get("provider_instruction"), "模型角色指令", max_length=2000
         ),
         "prompt_blocks": {
-            key: _validate_prompt_block(key, blocks[key]) for key in UGC_PROMPT_BLOCKS
+            key: _validate_prompt_block(key, blocks[key], UGC_PLACEHOLDERS[key])
+            for key in UGC_PROMPT_BLOCKS
         },
         "continuity": _validate_continuity(value.get("continuity")),
     }
 
 
-def _validate_commerce_drama(value: dict[str, Any], enabled: bool) -> dict[str, Any]:
-    if enabled:
-        raise ValueError("短剧带货生成流程尚未接入，暂时不能启用")
+def _validate_commerce_drama(value: dict[str, Any], _enabled: bool) -> dict[str, Any]:
     blocks = value.get("prompt_blocks")
-    if value.get("schema_version") != 1 or not isinstance(blocks, dict) or set(blocks) != set(COMMERCE_DRAMA_BLOCKS):
+    if value.get("schema_version") != 2 or not isinstance(blocks, dict) or set(blocks) != set(COMMERCE_DRAMA_BLOCKS):
         raise ValueError("短剧带货模板配置无效")
     durations = value.get("durations")
-    if not isinstance(durations, list) or any(not isinstance(item, int) or item <= 0 for item in durations):
+    if not isinstance(durations, list) or not durations or any(
+        item not in COMMERCE_DRAMA_DURATIONS for item in durations
+    ):
         raise ValueError("短剧带货时长配置无效")
+    if value.get("output_protocol_id") != COMMERCE_DRAMA_PROTOCOL_ID:
+        raise ValueError("短剧带货输出协议不允许修改")
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "label": _text(value.get("label"), "短剧带货名称", max_length=64),
         "description": _text(value.get("description"), "短剧带货描述", max_length=255),
-        "implementation_status": "draft",
+        "implementation_status": "ready",
         "durations": sorted(set(durations)),
+        "provider_instruction": _text(
+            value.get("provider_instruction"), "模型角色指令", max_length=2000
+        ),
+        "output_protocol_id": COMMERCE_DRAMA_PROTOCOL_ID,
         "prompt_blocks": {
-            key: _text(blocks[key], "短剧带货配置", max_length=12_000, required=False)
+            key: _validate_prompt_block(
+                key, blocks[key], COMMERCE_DRAMA_PLACEHOLDERS[key]
+            )
             for key in COMMERCE_DRAMA_BLOCKS
         },
         "continuity": _validate_continuity(value.get("continuity")),
@@ -469,4 +560,70 @@ def build_ugc_storyboard_prompt(config: dict[str, Any], context: dict[str, Any])
     )
 
 
-TEMPLATE_BUILDERS = {UGC_STORYBOARD_KEY: build_ugc_storyboard_prompt}
+def build_commerce_drama_prompt(config: dict[str, Any], context: dict[str, Any]) -> str:
+    validated = _validate_commerce_drama(config, True)
+    duration = context["duration"]
+    if duration not in validated["durations"]:
+        raise ValueError("短剧带货时长无效")
+    character_count = context["character_count"]
+    product_count = context["product_count"]
+    if not 0 <= character_count <= 3 or not 1 <= product_count or character_count + product_count > 6:
+        raise ValueError("短剧带货参考图数量无效")
+    ratio = context["video_aspect_ratio"]
+    columns, rows = _storyboard_grid(ratio)
+    image_references, video_references = _reference_instructions(character_count, product_count)
+    segment_count = duration // 15
+    if not character_count:
+        speaker_examples = "人物A说道：\"内容。\"、画外音说道：\"内容。\""
+    else:
+        speaker_examples = "、".join(
+            f"角色{index + 1}{'回答' if index == 1 else '说道'}：\"内容。\""
+            for index in range(character_count)
+        )
+    blocks = validated["prompt_blocks"]
+    product_context = context["product_context"].strip() or "暂无结构化商品资料，严格以商品参考图为准。"
+    user_requirement = context.get("user_requirement", "").strip()
+    extra = f"\n用户补充要求：{user_requirement}" if user_requirement else ""
+    schema = (
+        '{"templateId":"commerce-drama","title":"短剧标题","globalScript":"完整剧情方向和人物关系",'
+        f'"totalDuration":{duration},"characters":[{{"characterIndex":1,"name":"角色名称",'
+        '"role":"剧情身份","goal":"人物目标","relationship":"人物关系"}}],'
+        '"segments":[{"segmentIndex":1,"duration":15,"shotCount":6,"plotGoal":"本段剧情目标",'
+        '"dramaticBeat":"冲突、转折或结果","productPlacement":"商品如何参与剧情",'
+        '"openingState":"开头状态","endingState":"结尾状态","continuityMode":"cut",'
+        '"prompt":"镜头1：... 镜头2：... 镜头3：... 镜头4：... 镜头5：... 镜头6：...",'
+        '"videoPrompt":"图片1是本段分镜图，... 镜头1：... 镜头2：... 镜头3：... 镜头4：... '
+        '镜头5：... 镜头6：..."}]}'
+    )
+    output_contract = (
+        f"严格只输出一个JSON对象，不要Markdown、解释或额外文本，格式必须符合：{schema}。"
+        "templateId必须始终为“commerce-drama”，characters必须描述本次剧情实际使用的角色；"
+        f"segments必须恰好{segment_count}条且按顺序，每条duration必须为15、shotCount必须为6。"
+        "第一段continuityMode必须为“cut”，后续只能为“cut”或“extend”。每条prompt和videoPrompt必须"
+        "完整写出镜头1至镜头6；dramaticBeat和productPlacement不能为空。JSON字符串内的对白双引号必须"
+        "正确转义，确保结果可被JSON.parse直接解析。不得新增未提供的指定角色、商品或商品功效。"
+    )
+    return (
+        "本次输入参考图顺序：\n"
+        f"生图阶段：{image_references} 生图阶段只有角色图和商品图，不包含分镜图。\n"
+        f"生视频阶段：{video_references} 视频阶段图片1是刚生成的分镜图，角色和商品的身份、外观、颜色、"
+        "材质、包装结构和真实尺寸以对应参考图为准。\n\n"
+        "商品资料：\n"
+        f"{product_context}\n\n"
+        f"创作方向：{blocks['creative_direction']}\n\n"
+        f"剧情结构：{blocks['story_structure'].format(segment_count=segment_count)}\n\n"
+        f"角色规则：{blocks['character_rules'].format(character_count=character_count)}\n\n"
+        f"对白规则：{blocks['dialogue_rules'].format(speaker_examples=speaker_examples)}\n\n"
+        f"商品植入：{blocks['product_placement_rules']}\n\n"
+        f"生图规则：{blocks['image_rules'].format(columns=columns, rows=rows, ratio=ratio)}\n\n"
+        f"视频规则：{blocks['video_rules'].format(ratio=ratio)}\n\n"
+        f"连续性规则：{blocks['continuity_rules']}\n\n"
+        f"禁止项：{blocks['forbidden_rules']}{extra}\n\n"
+        f"{output_contract}"
+    )
+
+
+TEMPLATE_BUILDERS = {
+    UGC_STORYBOARD_KEY: build_ugc_storyboard_prompt,
+    COMMERCE_DRAMA_KEY: build_commerce_drama_prompt,
+}

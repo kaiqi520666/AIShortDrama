@@ -12,6 +12,32 @@ export function getStoryboardTemplates(template) {
   return storyboardConfig(template).templates.map((item) => ({ ...item }))
 }
 
+export function getStoryboardTemplateOption(template) {
+  if (!template?.config) return null
+  if (template.key === 'product_storyboard') {
+    const option = template.config.templates?.[0]
+    return option ? {
+      key: template.key,
+      id: option.id,
+      label: option.label,
+      description: option.description,
+      enabled: Boolean(template.enabled && option.enabled),
+      durations: [...template.config.durations],
+    } : null
+  }
+  if (template.key === 'commerce_drama') {
+    return {
+      key: template.key,
+      id: 'commerce-drama',
+      label: template.config.label,
+      description: template.config.description,
+      enabled: Boolean(template.enabled),
+      durations: [...template.config.durations],
+    }
+  }
+  return null
+}
+
 export function getStoryboardDurations(template) {
   return [...storyboardConfig(template).durations]
 }
@@ -112,6 +138,8 @@ export function buildProductStoryboardRequest({
 
 export function parseProductStoryboardPlan(content, template) {
   const storyboardDurations = getStoryboardDurations(template);
+  const expectedTemplateId = template.key === 'commerce_drama' ? 'commerce-drama' : 'ugc-seeding';
+  const templateLabel = template.key === 'commerce_drama' ? '短剧带货' : 'UGC 种草';
   const source = String(content || "")
     .trim()
     .replace(/^```(?:json)?\s*/i, "")
@@ -125,8 +153,8 @@ export function parseProductStoryboardPlan(content, template) {
   } catch {
     throw new Error("商品分镜方案格式异常");
   }
-  if (!parsed || parsed.templateId !== "ugc-seeding" || !Array.isArray(parsed.segments)) {
-    throw new Error("商品分镜方案必须为 UGC 种草 JSON 对象");
+  if (!parsed || parsed.templateId !== expectedTemplateId || !Array.isArray(parsed.segments)) {
+    throw new Error(`商品分镜方案必须为${templateLabel} JSON 对象`);
   }
   const totalDuration = Number(parsed.totalDuration || parsed.duration || parsed.segments.length * 15);
   const expectedSegments = storyboardSegmentCount(totalDuration, storyboardDurations);
@@ -143,6 +171,10 @@ export function parseProductStoryboardPlan(content, template) {
       .every((value) => typeof value === "string" && value.trim())) {
       throw new Error("商品分镜段落内容不完整");
     }
+    if (expectedTemplateId === 'commerce-drama' && ![segment.dramaticBeat, segment.productPlacement]
+      .every((value) => typeof value === 'string' && value.trim())) {
+      throw new Error('短剧带货段落缺少剧情节拍或商品植入');
+    }
     if (!hasStoryboardShotLabels(segment.prompt) || !hasStoryboardShotLabels(segment.videoPrompt)) {
       throw new Error(`第${index + 1}段必须包含镜头1至镜头${storyboardSegmentShotCount}`);
     }
@@ -151,6 +183,10 @@ export function parseProductStoryboardPlan(content, template) {
       duration: 15,
       shotCount: storyboardSegmentShotCount,
       plotGoal: segment.plotGoal.trim(),
+      ...(expectedTemplateId === 'commerce-drama' ? {
+        dramaticBeat: segment.dramaticBeat.trim(),
+        productPlacement: segment.productPlacement.trim(),
+      } : {}),
       openingState: segment.openingState.trim(),
       endingState: segment.endingState.trim(),
       continuityMode: segment.continuityMode,
@@ -159,9 +195,12 @@ export function parseProductStoryboardPlan(content, template) {
     };
   });
   return {
-    templateId: "ugc-seeding",
-    title: typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : "UGC 种草",
+    templateId: expectedTemplateId,
+    title: typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : templateLabel,
     globalScript: typeof parsed.globalScript === "string" ? parsed.globalScript.trim() : "",
+    ...(expectedTemplateId === 'commerce-drama' && Array.isArray(parsed.characters)
+      ? { characters: parsed.characters }
+      : {}),
     totalDuration,
     segments,
   };

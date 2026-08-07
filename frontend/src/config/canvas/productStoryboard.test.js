@@ -5,6 +5,7 @@ import {
   createStoryboardTemplates,
   getStoryboardDurations,
   getStoryboardProductLimit,
+  getStoryboardTemplateOption,
   getStoryboardTemplates,
   MAX_STORYBOARD_REFERENCES,
   parseProductStoryboardPlan,
@@ -23,6 +24,7 @@ const defaultImageModel = imageModels.find(({ id }) => id === modelCapabilitiesF
 const videoModels = normalizeVideoModels(modelCapabilitiesFixture.video)
 const videoAspectRatios = videoModels.find(({ id }) => id === modelCapabilitiesFixture.video.default_model).aspectRatios
 const template = contentTemplatesFixture.product_storyboard
+const dramaTemplate = contentTemplatesFixture.commerce_drama
 const storyboardTemplates = getStoryboardTemplates(template)
 const storyboardDurations = getStoryboardDurations(template)
 
@@ -53,6 +55,15 @@ describe('product storyboard planning', () => {
   it('only exposes the UGC seeding template', () => {
     expect(storyboardTemplates).toEqual([{ id: 'ugc-seeding', label: 'UGC 种草', description: '用户视角真实分享体验', enabled: true }])
     expect(createStoryboardTemplates(template)).toEqual(storyboardTemplates)
+  })
+
+  it('normalizes UGC and commerce drama as peer template options', () => {
+    expect(getStoryboardTemplateOption(template)).toEqual(expect.objectContaining({
+      key: 'product_storyboard', id: 'ugc-seeding', enabled: true,
+    }))
+    expect(getStoryboardTemplateOption(dramaTemplate)).toEqual(expect.objectContaining({
+      key: 'commerce_drama', id: 'commerce-drama', durations: [30, 45, 60], enabled: true,
+    }))
   })
 
   it('keeps the six-shot storyboard layout and supported durations', () => {
@@ -104,6 +115,51 @@ describe('product storyboard planning', () => {
     expect(plan.templateId).toBe('ugc-seeding')
     expect(plan.segments[0].prompt).toBe(exactPrompt)
     expect(plan.segments[0].videoPrompt).toBe(exactVideo)
+  })
+
+  it('builds and parses a commerce drama plan with dramatic fields', () => {
+    const request = buildProductStoryboardRequest({
+      workspaceId: 'workspace-1',
+      nodeId: 'storyboard-1',
+      model: 'gpt-5.6-sol',
+      template: dramaTemplate,
+      productContext: '商品名称：测试商品',
+      duration: 30,
+      videoAspectRatio: '9:16',
+      characterReferences: [],
+      productReferences: [{ url: 'https://example.com/product.png' }],
+      userRequirement: '家庭冲突',
+    })
+    expect(request.template_key).toBe('commerce_drama')
+    expect(request).not.toHaveProperty('prompt')
+
+    const baseSegment = {
+      duration: 15,
+      shotCount: 6,
+      plotGoal: '推动冲突',
+      dramaticBeat: '误会升级',
+      productPlacement: '商品帮助解决问题',
+      openingState: '双方争执',
+      endingState: '发现商品作用',
+      prompt: shotText(),
+      videoPrompt: shotText('人物A说道："先试试"；'),
+    }
+    const plan = parseProductStoryboardPlan(JSON.stringify({
+      templateId: 'commerce-drama',
+      title: '家庭小误会',
+      globalScript: '从误会到和解',
+      totalDuration: 30,
+      characters: [{ characterIndex: 1, name: '人物A' }],
+      segments: [
+        { ...baseSegment, segmentIndex: 1, continuityMode: 'cut' },
+        { ...baseSegment, segmentIndex: 2, continuityMode: 'extend' },
+      ],
+    }), dramaTemplate)
+    expect(plan.templateId).toBe('commerce-drama')
+    expect(plan.characters).toHaveLength(1)
+    expect(plan.segments[0]).toEqual(expect.objectContaining({
+      dramaticBeat: '误会升级', productPlacement: '商品帮助解决问题',
+    }))
   })
 
   it('accepts multiple ordered segments and keeps continuity from GPT', () => {

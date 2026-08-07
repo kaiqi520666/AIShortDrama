@@ -8,6 +8,7 @@ import pytest
 from app.services.content_templates import (
     COMMERCE_DRAMA_KEY,
     UGC_STORYBOARD_KEY,
+    build_commerce_drama_prompt,
     default_commerce_drama_config,
     default_ugc_config,
     build_ugc_storyboard_prompt,
@@ -26,6 +27,19 @@ def load_template_migration():
         / "j2c4e6f8a0b1_expand_content_templates.py"
     )
     spec = importlib.util.spec_from_file_location("ugc_template_migration", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_commerce_drama_migration():
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "alembic"
+        / "versions"
+        / "k3d5f7a9b1c2_enable_commerce_drama.py"
+    )
+    spec = importlib.util.spec_from_file_location("commerce_drama_migration", path)
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -81,11 +95,55 @@ def test_backend_ugc_builder_matches_accepted_frontend_prompt_byte_for_byte():
         assert hashlib.sha256(prompt.encode()).hexdigest() == item["sha256"], item["name"]
 
 
-def test_commerce_drama_template_is_editable_but_cannot_be_enabled():
+def test_commerce_drama_migration_preserves_operator_blocks_and_is_idempotent():
+    migration = load_commerce_drama_migration()
+    existing = {
+        "label": "自定义短剧",
+        "description": "已验证描述",
+        "durations": [45, 60],
+        "prompt_blocks": {"creative_direction": "自定义创作方向"},
+    }
+    merged = migration.merge_commerce_drama_config(existing)
+
+    assert merged["label"] == "自定义短剧"
+    assert merged["description"] == "已验证描述"
+    assert merged["durations"] == [45, 60]
+    assert merged["prompt_blocks"]["creative_direction"] == "自定义创作方向"
+    assert merged["prompt_blocks"]["story_structure"]
+    assert merged["implementation_status"] == "ready"
+    assert migration.merge_commerce_drama_config(merged) == merged
+
+
+def test_commerce_drama_template_is_valid_and_builds_complete_prompt():
     config = default_commerce_drama_config()
     config["prompt_blocks"]["creative_direction"] = "围绕剧情冲突自然植入商品"
-    validated = validate_template_config(COMMERCE_DRAMA_KEY, config, enabled=False)
+    validated = validate_template_config(COMMERCE_DRAMA_KEY, config, enabled=True)
     assert validated["prompt_blocks"]["creative_direction"] == "围绕剧情冲突自然植入商品"
+    prompt = build_commerce_drama_prompt(
+        config,
+        {
+            "product_context": "商品名称：测试商品",
+            "duration": 30,
+            "video_aspect_ratio": "9:16",
+            "character_count": 1,
+            "product_count": 1,
+            "user_requirement": "家庭场景",
+        },
+    )
+    assert "全片共2个15秒剧情段落" in prompt
+    assert "图片1是角色1参考图" in prompt
+    assert '"templateId":"commerce-drama"' in prompt
+    assert "dramaticBeat" in prompt
+    assert "用户补充要求：家庭场景" in prompt
 
-    with pytest.raises(ValueError, match="暂时不能启用"):
+
+def test_commerce_drama_validation_rejects_changed_protocol_or_placeholders():
+    config = default_commerce_drama_config()
+    config["output_protocol_id"] = "changed"
+    with pytest.raises(ValueError, match="输出协议"):
+        validate_template_config(COMMERCE_DRAMA_KEY, config, enabled=True)
+
+    config = default_commerce_drama_config()
+    config["prompt_blocks"]["story_structure"] = "共{unknown}段"
+    with pytest.raises(ValueError, match="动态变量"):
         validate_template_config(COMMERCE_DRAMA_KEY, config, enabled=True)

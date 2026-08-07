@@ -31,7 +31,7 @@ class ReversePromptRequest(BaseModel):
     media_url: AnyHttpUrl
     media_urls: list[AnyHttpUrl] = Field(default_factory=list, max_length=9)
     prompt: str = Field(default="", max_length=6000)
-    template_key: Literal["product_storyboard"] | None = None
+    template_key: Literal["product_storyboard", "commerce_drama"] | None = None
     template_version: int | None = Field(default=None, ge=1)
     template_context: StoryboardTemplateContext | None = None
     response_mode: Literal[
@@ -50,9 +50,9 @@ class ReversePromptRequest(BaseModel):
         storyboard_mode = self.response_mode == "product_storyboard_plan"
         if storyboard_mode:
             if self.prompt.strip():
-                raise ValueError("UGC 分镜 Prompt 必须由服务端模板生成")
+                raise ValueError("商品分镜 Prompt 必须由服务端模板生成")
             if not self.template_key or not self.template_version or not self.template_context:
-                raise ValueError("UGC 分镜模板参数不完整")
+                raise ValueError("商品分镜模板参数不完整")
             reference_count = 1 + len(self.media_urls)
             expected_count = (
                 self.template_context.character_count + self.template_context.product_count

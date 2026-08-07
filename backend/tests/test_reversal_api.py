@@ -142,6 +142,10 @@ def test_reverse_prompt_accepts_apparel_profile_without_prompt():
 def test_reverse_prompt_accepts_product_storyboard_mode():
     payload = ReversePromptRequest(**storyboard_payload())
     assert payload.response_mode == "product_storyboard_plan"
+    drama_payload = ReversePromptRequest(
+        **storyboard_payload(template_key="commerce_drama")
+    )
+    assert drama_payload.template_key == "commerce_drama"
     with pytest.raises(ValidationError, match="服务端模板"):
         ReversePromptRequest(**storyboard_payload(prompt="生成商品分镜"))
     apparel_payload = ReversePromptRequest(
@@ -237,6 +241,38 @@ async def test_stream_reverse_prompt_keeps_content_over_3000_characters(monkeypa
         assert task.result["content"] == "".join(chunks)
         assert task.prompt == FakeProvider.last_kwargs["prompt"]
         assert task.request_snapshot["template_key"] == "product_storyboard"
+
+
+@pytest.mark.asyncio
+async def test_commerce_drama_stream_uses_server_template(monkeypatch):
+    monkeypatch.setattr(reversals_route, "OpenAIResponsesProvider", FakeProvider)
+    async with SessionLocal() as db:
+        template = await db.get(ContentTemplate, "commerce_drama")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/reversals/stream",
+            json=storyboard_payload(
+                node_id="commerce-drama-test",
+                template_key="commerce_drama",
+                template_version=template.version,
+            ),
+        )
+
+    assert response.status_code == 200
+    events = [json.loads(line) for line in response.text.splitlines()]
+    assert events[0] == {
+        "type": "meta",
+        "task_id": events[0]["task_id"],
+        "template_key": "commerce_drama",
+        "template_version": template.version,
+        "output_protocol_id": "commerce-drama-v1",
+    }
+    assert '"templateId":"commerce-drama"' in FakeProvider.last_kwargs["prompt"]
+    assert FakeProvider.last_kwargs["instructions"].startswith("你是专业的中文电商短剧分镜策划师")
+    async with SessionLocal() as db:
+        task = await db.get(GenerationTask, uuid.UUID(events[0]["task_id"]))
+        assert task.request_snapshot["template_key"] == "commerce_drama"
+        assert task.prompt == FakeProvider.last_kwargs["prompt"]
 
 
 @pytest.mark.asyncio

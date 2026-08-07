@@ -7,9 +7,8 @@ import { productPromptContext } from '../../config/canvas/ecommerce'
 import {
   buildStoryboardReferenceManifest,
   buildProductStoryboardRequest,
-  getStoryboardDurations,
   getStoryboardProductLimit,
-  getStoryboardTemplates,
+  getStoryboardTemplateOption,
   MAX_STORYBOARD_CHARACTERS,
   MAX_STORYBOARD_REFERENCES,
   parseProductStoryboardPlan,
@@ -52,11 +51,13 @@ const productNode = computed(() => store.incomingNodes(props.nodeId).find((node)
 const referenceManifest = computed(() => buildStoryboardReferenceManifest(props.data.characterReferences, props.data.productReferences))
 const productReferences = computed(() => referenceManifest.value.products)
 const productContext = computed(() => productPromptContext(productNode.value?.data.product))
-const template = computed(() => contentTemplateStore.templates?.product_storyboard)
-const templateEnabled = computed(() => Boolean(template.value?.enabled && template.value?.config?.templates?.[0]?.enabled))
-const storyboardTemplates = computed(() => templateEnabled.value ? getStoryboardTemplates(template.value) : [])
-const storyboardDurations = computed(() => templateEnabled.value ? getStoryboardDurations(template.value) : [])
-const ugcTemplate = computed(() => storyboardTemplates.value[0])
+const storyboardTemplates = computed(() => ['product_storyboard', 'commerce_drama']
+  .map((key) => getStoryboardTemplateOption(contentTemplateStore.templates?.[key]))
+  .filter((item) => item?.enabled))
+const selectedTemplateOption = computed(() => storyboardTemplates.value.find((item) => item.key === props.data.templateKey) || storyboardTemplates.value[0])
+const template = computed(() => contentTemplateStore.templates?.[selectedTemplateOption.value?.key])
+const templateEnabled = computed(() => Boolean(selectedTemplateOption.value && template.value))
+const storyboardDurations = computed(() => selectedTemplateOption.value?.durations || [])
 const selectedTextModel = computed(() => capabilityStore.textModels.find((model) => model.id === props.data.textModel) || capabilityStore.defaultTextModel)
 const segmentCount = computed(() => storyboardSegmentCount(props.data.duration, storyboardDurations.value))
 const shots = computed(() => storyboardShotCount(15))
@@ -81,6 +82,16 @@ const message = computed(() => failure.value || props.data.generationError || (!
       ? '请先完成商品识别'
       : insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
 const canSubmit = computed(() => templateEnabled.value && !running.value && productNode.value && productReferences.value.length && productContext.value && !insufficientCredits.value)
+
+function selectTemplate(option) {
+  if (!option || option.key === selectedTemplateOption.value?.key) return
+  updateData({
+    templateKey: option.key,
+    templateId: option.id,
+    templateVersion: contentTemplateStore.templates[option.key].version,
+    duration: option.durations.includes(Number(props.data.duration)) ? Number(props.data.duration) : option.durations[0],
+  })
+}
 
 function updateData(value) {
   failure.value = ''
@@ -182,13 +193,17 @@ function closeProductPicker() {
 async function submitTask() {
   if (!canSubmit.value) return
   if (existingGeneratedNodes.value.length && !await confirm({
-    title: '重新生成商品分镜方案',
-    message: '将替换当前分镜链，已有节点会被移除。',
+    title: `重新生成${selectedTemplateOption.value.label}方案`,
+    message: `将使用${selectedTemplateOption.value.label}替换当前分镜链，已有节点会被移除。`,
     confirmText: '继续生成',
   })) return
   if (existingGeneratedNodes.value.length) store.deleteNodes(existingGeneratedNodes.value)
 
-  updateNodeData(props.nodeId, { templateVersion: template.value.version })
+  updateNodeData(props.nodeId, {
+    templateKey: template.value.key,
+    templateId: selectedTemplateOption.value.id,
+    templateVersion: template.value.version,
+  })
   await runTextTask(streamReversePrompt, buildProductStoryboardRequest({
     workspaceId: store.workspaceId,
     nodeId: props.nodeId,
@@ -201,7 +216,7 @@ async function submitTask() {
     productReferences: productReferences.value,
     userRequirement: props.data.prompt,
   }), {
-    failureMessage: '商品分镜方案生成失败',
+    failureMessage: `${selectedTemplateOption.value.label}方案生成失败`,
     onSuccess: (content) => {
       const plan = parseProductStoryboardPlan(content, template.value)
       const generatedNodeIds = store.addProductStoryboardNodes(
@@ -255,12 +270,13 @@ async function submitTask() {
       </div>
     </section>
 
-    <section class="storyboard-template-section storyboard-template-section--fixed">
-      <header class="storyboard-section-header"><span><Clapperboard :size="14" />内容类型</span><small>固定</small></header>
-      <div class="storyboard-template-grid storyboard-template-grid--fixed">
-        <div class="storyboard-template-option storyboard-template-option--fixed active">
-          <span><strong>{{ ugcTemplate?.label }}</strong><small>{{ ugcTemplate?.description }}</small></span>
-        </div>
+    <section class="storyboard-template-section">
+      <header class="storyboard-section-header"><span><Clapperboard :size="14" />内容类型</span><small>选择生成方向</small></header>
+      <div class="storyboard-template-grid">
+        <label v-for="option in storyboardTemplates" :key="option.key" class="storyboard-template-option" :class="{ active: option.key === selectedTemplateOption?.key }">
+          <input type="radio" name="storyboard-template" :checked="option.key === selectedTemplateOption?.key" @change="selectTemplate(option)" />
+          <span><strong>{{ option.label }}</strong><small>{{ option.description }}</small></span>
+        </label>
       </div>
     </section>
 
