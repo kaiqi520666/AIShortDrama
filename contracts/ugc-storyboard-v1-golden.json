@@ -1,0 +1,54 @@
+{
+  "supported_aspect_ratios": ["21:9", "16:9", "4:3", "1:1", "3:4", "9:16"],
+  "template": {
+    "enabled": true,
+    "version": 1,
+    "config": {
+      "templates": [
+        {
+          "id": "ugc-seeding",
+          "label": "UGC 种草",
+          "description": "用户视角真实分享体验",
+          "enabled": true
+        }
+      ],
+      "durations": [15, 30, 45, 60],
+      "business_instruction": "以真实用户体验分享为主，不设置复杂剧情，不使用广告腔，开头尽快出现商品并通过实际操作和试吃表达感受。"
+    }
+  },
+  "cases": [
+    {
+      "name": "no-character-15-portrait",
+      "product_context": "商品名称：测试饮品\n核心卖点：口感顺滑",
+      "duration": 15,
+      "video_aspect_ratio": "9:16",
+      "character_count": 0,
+      "product_count": 1,
+      "user_requirement": "",
+      "length": 2054,
+      "sha256": "249efb378192601e0e508d304b376ae149193fb94024c49577098a754da5d618"
+    },
+    {
+      "name": "single-character-30-portrait-extra",
+      "product_context": "商品名称：测试商品\n核心卖点：口感顺滑",
+      "duration": 30,
+      "video_aspect_ratio": "9:16",
+      "character_count": 1,
+      "product_count": 1,
+      "user_requirement": "场景在家庭餐桌和办公室之间切换",
+      "length": 2297,
+      "sha256": "14e294d566ed5f4149cb3dc1deb543599e754ef45f2ac8bcb00aa29b3cf5bff3"
+    },
+    {
+      "name": "multi-character-60-landscape",
+      "product_context": "商品名称：户外水杯\n品牌：测试品牌\n商品形态：带包装\n主体尺寸：高20cm\n外包装尺寸：25×10×10cm\n核心卖点：保温",
+      "duration": 60,
+      "video_aspect_ratio": "16:9",
+      "character_count": 3,
+      "product_count": 3,
+      "user_requirement": "户外露营场景",
+      "length": 2609,
+      "sha256": "8c9fcb12b5e9ff2b1714e72a8c8b382a9c0a5f1a5ec88bcc73f54506786c134b"
+    }
+  ]
+}

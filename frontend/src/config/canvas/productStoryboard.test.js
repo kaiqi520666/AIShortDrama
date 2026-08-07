@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { createHash } from 'node:crypto'
 import {
   buildProductStoryboardPrompt,
   buildStoryboardReferenceManifest,
@@ -17,6 +18,7 @@ import { modelCapabilitiesFixture } from '../../test/modelCapabilities'
 import { contentTemplatesFixture } from '../../test/contentTemplates'
 import { normalizeImageModels } from '../imageModels'
 import { normalizeVideoModels } from '../videoModels'
+import ugcGolden from '../../../../contracts/ugc-storyboard-v1-golden.json'
 
 const imageModels = normalizeImageModels(modelCapabilitiesFixture.image)
 const defaultImageModel = imageModels.find(({ id }) => id === modelCapabilitiesFixture.image.default_model)
@@ -50,6 +52,20 @@ function planJson(overrides = {}) {
 }
 
 describe('product storyboard planning', () => {
+  it('matches the accepted UGC prompt byte for byte', () => {
+    for (const item of ugcGolden.cases) {
+      const prompt = buildProductStoryboardPrompt(item.product_context, {
+        duration: item.duration,
+        videoAspectRatio: item.video_aspect_ratio,
+        characterReferences: Array.from({ length: item.character_count }, () => ({ url: 'https://example.com/character.png' })),
+        productReferences: Array.from({ length: item.product_count }, () => ({ url: 'https://example.com/product.png' })),
+        prompt: item.user_requirement,
+      }, ugcGolden.supported_aspect_ratios, ugcGolden.template)
+      expect(prompt.length, item.name).toBe(item.length)
+      expect(createHash('sha256').update(prompt).digest('hex'), item.name).toBe(item.sha256)
+    }
+  })
+
   it('only exposes the UGC seeding template', () => {
     expect(storyboardTemplates).toEqual([{ id: 'ugc-seeding', label: 'UGC 种草', description: '用户视角真实分享体验', enabled: true }])
     expect(createStoryboardTemplates(template)).toEqual(storyboardTemplates)
