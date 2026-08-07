@@ -17,11 +17,14 @@ from app.main import app
 from app.models import (
     AdminAuditLog,
     Asset,
+    BillingPolicy,
     Character,
+    ContentTemplate,
     CreditLedger,
     Garment,
     GenerationTask,
     ModelPriceRule,
+    ModelAdminSetting,
     OutfitModel,
     RechargeOrder,
     RechargeTier,
@@ -36,6 +39,9 @@ BASELINE_MODELS = (
     Workspace,
     ModelPriceRule,
     RechargeTier,
+    BillingPolicy,
+    ModelAdminSetting,
+    ContentTemplate,
     OutfitModel,
     Character,
     Garment,
@@ -49,6 +55,10 @@ def row_snapshot(row):
         column.key: copy.deepcopy(getattr(row, column.key))
         for column in row.__table__.columns
     }
+
+
+def primary_key_name(model):
+    return next(iter(model.__table__.primary_key.columns)).key
 
 
 async def capture_baseline() -> None:
@@ -69,22 +79,33 @@ async def restore_test_data() -> None:
             if baseline_ids:
                 statement = statement.where(model.id.not_in(baseline_ids))
             await db.execute(statement)
-        for model in (ModelPriceRule, RechargeTier):
-            baseline_ids = [row["id"] for row in baseline_rows[model]]
+        for model in (ModelPriceRule, RechargeTier, ModelAdminSetting):
+            primary_key = primary_key_name(model)
+            baseline_ids = [row[primary_key] for row in baseline_rows[model]]
             statement = delete(model)
             if baseline_ids:
-                statement = statement.where(model.id.not_in(baseline_ids))
+                statement = statement.where(getattr(model, primary_key).not_in(baseline_ids))
+            await db.execute(statement)
+        for model in (BillingPolicy, ContentTemplate):
+            primary_key = primary_key_name(model)
+            baseline_ids = [row[primary_key] for row in baseline_rows[model]]
+            statement = delete(model)
+            if baseline_ids:
+                statement = statement.where(getattr(model, primary_key).not_in(baseline_ids))
             await db.execute(statement)
         await db.flush()
         for model in BASELINE_MODELS:
             snapshots = baseline_rows[model]
-            baseline_ids = [values["id"] for values in snapshots]
+            primary_key = primary_key_name(model)
+            baseline_ids = [values[primary_key] for values in snapshots]
             existing = {
-                row.id: row
-                for row in await db.scalars(select(model).where(model.id.in_(baseline_ids)))
+                getattr(row, primary_key): row
+                for row in await db.scalars(
+                    select(model).where(getattr(model, primary_key).in_(baseline_ids))
+                )
             }
             for values in snapshots:
-                row = existing.get(values["id"])
+                row = existing.get(values[primary_key])
                 if not row:
                     row = model()
                     db.add(row)

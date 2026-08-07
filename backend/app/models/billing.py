@@ -102,7 +102,7 @@ class AdminAuditLog(Base):
 class RechargeTier(Base):
     __tablename__ = "recharge_tiers"
     __table_args__ = (
-        CheckConstraint("min_amount_cents >= 3500", name="ck_recharge_tiers_min_amount"),
+        CheckConstraint("min_amount_cents > 0", name="ck_recharge_tiers_min_amount_positive"),
         CheckConstraint(
             "bonus_rate_bps BETWEEN 0 AND 3000", name="ck_recharge_tiers_bonus_rate"
         ),

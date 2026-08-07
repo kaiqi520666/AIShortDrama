@@ -56,7 +56,13 @@ def reference_payload(item: OutfitModel | Character | Garment, resource_type: st
         "model": getattr(item, "model_metadata", {}),
         "character": getattr(item, "character_metadata", {}),
         "garment": getattr(item, "garment_metadata", {}),
-    }[resource_type]
+    }[resource_type] or {}
+    library = metadata.get("library") if isinstance(metadata, dict) else None
+    if isinstance(library, dict):
+        metadata = {
+            **metadata,
+            "library": {"tags": list(library.get("tags") or [])},
+        }
     return {
         "id": str(item.id),
         "resource_type": resource_type,

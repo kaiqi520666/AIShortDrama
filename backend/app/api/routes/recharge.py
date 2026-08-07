@@ -14,14 +14,13 @@ from app.models import RechargeOrder, RechargeTier, User
 from app.schemas.recharge import CreateRechargeOrderRequest
 from app.schemas.response import success
 from app.services.recharge import (
-    MAX_RECHARGE_CENTS,
-    MIN_RECHARGE_CENTS,
     RechargeError,
     create_order,
     order_data,
     process_notification,
     tier_data,
 )
+from app.services.admin_configuration import get_billing_policy, policy_data
 
 router = APIRouter()
 
@@ -46,12 +45,12 @@ async def get_recharge_config(
             .order_by(RechargeTier.min_amount_cents)
         )
     )
+    policy = await get_billing_policy(db)
     return success(
         {
-            "unit_amount_cents": 3500,
-            "unit_credits": 1000,
-            "min_amount_cents": MIN_RECHARGE_CENTS,
-            "max_amount_cents": MAX_RECHARGE_CENTS,
+            **policy_data(policy),
+            "min_amount_cents": policy.recharge_min_cents,
+            "max_amount_cents": policy.recharge_max_cents,
             "tiers": [tier_data(tier) for tier in tiers],
         }
     )

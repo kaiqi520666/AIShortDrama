@@ -8,11 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.errors import public_error_message
-from app.models import CreditLedger, RechargeOrder, RechargeTier, User
+from app.models import BillingPolicy, CreditLedger, RechargeOrder, RechargeTier, User
 from app.providers.zpay import ZPayError, ZPayProvider, parse_amount_cents, verify_signature
+from app.services.admin_configuration import get_billing_policy, policy_snapshot
 
-MIN_RECHARGE_CENTS = 3500
-MAX_RECHARGE_CENTS = 350000
 
 
 class RechargeError(RuntimeError):
@@ -24,6 +23,7 @@ class RechargeError(RuntimeError):
 @dataclass(slots=True)
 class RechargeQuote:
     tier: RechargeTier
+    policy: BillingPolicy
     base_credits: int
     bonus_credits: int
 
@@ -66,8 +66,11 @@ def order_data(order: RechargeOrder, credit_balance: int | None = None) -> dict[
 
 
 async def calculate_recharge(db: AsyncSession, amount_cents: int) -> RechargeQuote:
-    if amount_cents < MIN_RECHARGE_CENTS or amount_cents > MAX_RECHARGE_CENTS or amount_cents % 100:
-        raise RechargeError("充值金额必须为 35–3500 元的整数")
+    policy = await get_billing_policy(db)
+    if amount_cents < policy.recharge_min_cents or amount_cents > policy.recharge_max_cents or amount_cents % 100:
+        raise RechargeError(
+            f"充值金额必须为 {policy.recharge_min_cents // 100}–{policy.recharge_max_cents // 100} 元的整数"
+        )
     tier = await db.scalar(
         select(RechargeTier)
         .where(RechargeTier.enabled.is_(True), RechargeTier.min_amount_cents <= amount_cents)
@@ -76,15 +79,15 @@ async def calculate_recharge(db: AsyncSession, amount_cents: int) -> RechargeQuo
     )
     if not tier:
         raise RechargeError("当前没有可用的充值阶梯")
-    base_credits = amount_cents * 1000 // 3500
+    base_credits = amount_cents * policy.unit_credits // policy.unit_amount_cents
     bonus_credits = base_credits * tier.bonus_rate_bps // 10000
-    return RechargeQuote(tier, base_credits, bonus_credits)
+    return RechargeQuote(tier, policy, base_credits, bonus_credits)
 
 
-def validate_tiers(tiers: list[RechargeTier]) -> None:
+def validate_tiers(tiers: list[RechargeTier], policy: BillingPolicy) -> None:
     enabled = sorted((tier for tier in tiers if tier.enabled), key=lambda tier: tier.min_amount_cents)
-    if not enabled or enabled[0].min_amount_cents != MIN_RECHARGE_CENTS:
-        raise RechargeError("启用阶梯必须从 35 元开始")
+    if not enabled or not any(tier.min_amount_cents == policy.recharge_min_cents for tier in enabled):
+        raise RechargeError(f"启用阶梯必须包含 {policy.recharge_min_cents // 100} 元基础档")
     if any(current.bonus_rate_bps < previous.bonus_rate_bps for previous, current in zip(enabled, enabled[1:])):
         raise RechargeError("金额越高，赠送比例不能降低")
 
@@ -111,6 +114,7 @@ async def create_order(db: AsyncSession, user: User, amount_cents: int, client_i
             "tier_id": str(quote.tier.id),
             "min_amount_cents": quote.tier.min_amount_cents,
             "bonus_rate_bps": quote.tier.bonus_rate_bps,
+            "billing_policy": policy_snapshot(quote.policy),
         },
     )
     db.add(order)

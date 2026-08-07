@@ -9,18 +9,27 @@ from app.core.identity import DEFAULT_WORKSPACE_ID
 from app.models import (
     AdminAuditLog,
     Asset,
+    BillingPolicy,
     Character,
+    ContentTemplate,
     CreditLedger,
     Garment,
     GenerationTask,
     ModelPriceRule,
+    ModelAdminSetting,
     OutfitModel,
     RechargeOrder,
     RechargeTier,
     User,
     Workspace,
 )
-from tests.conftest import BASELINE_MODELS, baseline_rows, restore_test_data, row_snapshot
+from tests.conftest import (
+    BASELINE_MODELS,
+    baseline_rows,
+    primary_key_name,
+    restore_test_data,
+    row_snapshot,
+)
 
 
 @pytest.mark.asyncio
@@ -42,6 +51,7 @@ async def test_restore_test_data_removes_leaks_and_restores_baseline(
             "audit",
             "price",
             "tier",
+            "model_setting",
         )
     }
     async with SessionLocal() as db:
@@ -51,8 +61,14 @@ async def test_restore_test_data_removes_leaks_and_restores_baseline(
         default_workspace.name = "被测试污染的工作台"
         baseline_price = await db.scalar(select(ModelPriceRule).limit(1))
         baseline_tier = await db.scalar(select(RechargeTier).limit(1))
+        billing_policy = await db.get(BillingPolicy, "default")
+        content_template = await db.get(ContentTemplate, "product_visual")
+        model_setting = await db.scalar(select(ModelAdminSetting).limit(1))
         baseline_price.multiplier = Decimal("9")
         baseline_tier.bonus_rate_bps += 99
+        billing_policy.unit_credits = 7
+        content_template.version = 99
+        model_setting.label = "被测试污染的模型"
 
         db.add(
             User(
@@ -166,6 +182,12 @@ async def test_restore_test_data_removes_leaks_and_restores_baseline(
                     base_credits=1,
                     multiplier=Decimal("1"),
                 ),
+                ModelAdminSetting(
+                    id=leak_ids["model_setting"],
+                    media_type="text",
+                    model_id="cleanup-model",
+                    label="cleanup model",
+                ),
             ]
         )
         await db.commit()
@@ -186,6 +208,7 @@ async def test_restore_test_data_removes_leaks_and_restores_baseline(
         AdminAuditLog,
         ModelPriceRule,
         RechargeTier,
+        ModelAdminSetting,
     )
     async with SessionLocal() as db:
         leaked_rows = [
@@ -195,8 +218,10 @@ async def test_restore_test_data_removes_leaks_and_restores_baseline(
         assert all(row is None for row in leaked_rows)
 
         for model in BASELINE_MODELS:
+            primary_key = primary_key_name(model)
             restored = {
-                row.id: row_snapshot(row) for row in await db.scalars(select(model))
+                getattr(row, primary_key): row_snapshot(row)
+                for row in await db.scalars(select(model))
             }
-            expected = {row["id"]: row for row in baseline_rows[model]}
+            expected = {row[primary_key]: row for row in baseline_rows[model]}
             assert restored == expected

@@ -4,17 +4,12 @@ from typing import Any
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.model_capabilities import get_model_capability
 from app.models import CreditLedger, GenerationTask, ModelPriceRule, User
+from app.services.admin_configuration import get_billing_policy, policy_snapshot
 
 
-CREDIT_VALUE_YUAN = Decimal("0.035")
-DEFAULT_IMAGE_RESOLUTIONS = {
-    "gpt-image-2": "1K",
-    "doubao-seedream-5-0-pro": "2K",
-    "doubao-seedream-5-0": "2K",
-    "gemini-3-pro-image-preview": "1K",
-    "gemini-3.1-flash-image-preview": "1K",
-}
+LEGACY_CREDIT_VALUE_YUAN = Decimal("0.035")
 
 
 class BillingError(RuntimeError):
@@ -29,13 +24,16 @@ def _ceil(value: Decimal) -> int:
     return int(value.quantize(Decimal("1"), rounding=ROUND_CEILING))
 
 
-def _unit_credits(rule: ModelPriceRule) -> int:
+def _unit_credits(
+    rule: ModelPriceRule,
+    credit_value_yuan: Decimal = LEGACY_CREDIT_VALUE_YUAN,
+) -> int:
     multiplier = Decimal(rule.multiplier)
     if rule.base_credits is not None:
         return _ceil(Decimal(rule.base_credits) * multiplier)
     if rule.cost_per_unit is None:
         raise BillingError("模型价格配置不完整")
-    return _ceil(Decimal(rule.cost_per_unit) * multiplier / CREDIT_VALUE_YUAN)
+    return _ceil(Decimal(rule.cost_per_unit) * multiplier / credit_value_yuan)
 
 
 def _task_ledger_snapshot(task: GenerationTask) -> dict[str, str]:
@@ -72,13 +70,16 @@ async def build_price_snapshot(
     resolution: str | None = None,
     duration: int | None = None,
 ) -> dict[str, Any]:
+    policy = await get_billing_policy(db)
+    policy_values = policy_snapshot(policy)
+    credit_value_yuan = Decimal(policy_values["credit_value_yuan"])
     specification = (
-        resolution or DEFAULT_IMAGE_RESOLUTIONS.get(model, "")
+        resolution or get_model_capability("image", model)["default_resolution"]
         if media_type == "image"
         else ""
     )
     rule = await get_price_rule(db, media_type, model, specification or "")
-    unit_credits = _unit_credits(rule)
+    unit_credits = _unit_credits(rule, credit_value_yuan)
     if media_type == "video":
         if not duration or duration <= 0:
             raise BillingError("视频时长无效")
@@ -105,6 +106,7 @@ async def build_price_snapshot(
         if rule.output_cost_per_million is not None
         else None,
         "multiplier": str(rule.multiplier),
+        "billing_policy": policy_values,
         "unit_credits": unit_credits,
         "quantity": quantity,
         "frozen_credits": frozen_credits,
@@ -155,7 +157,9 @@ def _audio_charge(task: GenerationTask, original_duration: float) -> int:
     cost = Decimal(snapshot["cost_per_unit"])
     multiplier = Decimal(snapshot["multiplier"])
     duration = Decimal(str(original_duration))
-    return max(1, _ceil(duration / Decimal(60) * cost * multiplier / CREDIT_VALUE_YUAN))
+    policy = snapshot.get("billing_policy") or {}
+    credit_value = Decimal(policy.get("credit_value_yuan") or LEGACY_CREDIT_VALUE_YUAN)
+    return max(1, _ceil(duration / Decimal(60) * cost * multiplier / credit_value))
 
 
 async def settle_task_credits(
@@ -243,8 +247,11 @@ async def refund_task_credits(db: AsyncSession, task: GenerationTask, note: str)
     )
 
 
-def price_rule_payload(rule: ModelPriceRule) -> dict[str, Any]:
-    unit_credits = _unit_credits(rule)
+def price_rule_payload(
+    rule: ModelPriceRule,
+    credit_value_yuan: Decimal = LEGACY_CREDIT_VALUE_YUAN,
+) -> dict[str, Any]:
+    unit_credits = _unit_credits(rule, credit_value_yuan)
     return {
         "media_type": rule.media_type,
         "model": rule.model,

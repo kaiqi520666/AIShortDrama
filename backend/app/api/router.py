@@ -12,6 +12,8 @@ from app.api.routes.recharge import router as recharge_router
 from app.api.routes.reference_library import router as reference_library_router
 from app.api.routes.uploads import router as uploads_router
 from app.api.routes.workspaces import router as workspaces_router
+from app.api.routes.content_templates import router as content_templates_router
+from app.api.routes.admin_reference_assets import router as admin_reference_assets_router
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(health_router, tags=["health"])
@@ -26,3 +28,5 @@ api_router.include_router(reference_library_router, tags=["reference-library"])
 api_router.include_router(uploads_router, prefix="/uploads", tags=["uploads"])
 api_router.include_router(workspaces_router, prefix="/workspaces", tags=["workspaces"])
 api_router.include_router(assets_router, prefix="/assets", tags=["assets"])
+api_router.include_router(content_templates_router, prefix="/content-templates", tags=["content-templates"])
+api_router.include_router(admin_reference_assets_router, prefix="/admin", tags=["admin"])

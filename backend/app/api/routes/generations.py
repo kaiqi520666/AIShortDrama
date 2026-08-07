@@ -8,6 +8,7 @@ from app.core.database import get_db
 from app.core.errors import (
     InsufficientCreditsError,
     NotFoundError,
+    RequestError,
     ServiceUnavailableError,
     public_error_message,
 )
@@ -30,6 +31,11 @@ from app.services.generation_tasks import (
     task_payload,
 )
 from app.services.billing import BillingError, InsufficientCredits
+from app.services.admin_configuration import (
+    ModelDisabledError,
+    get_model_settings,
+    merged_capabilities,
+)
 from app.services.text_generation import TextGenerationService
 
 router = APIRouter()
@@ -41,9 +47,10 @@ def get_text_generation_service() -> TextGenerationService:
 
 @router.get("/capabilities")
 async def get_generation_capabilities(
+    db: AsyncSession = Depends(get_db),
     _user_id: uuid.UUID = Depends(get_current_user_id),
 ):
-    return success(capabilities_payload())
+    return success(capabilities_payload(merged_capabilities(await get_model_settings(db))))
 
 
 async def _create_queued_generation(create_task, db, redis, payload, user_id):
@@ -57,6 +64,8 @@ async def _create_queued_generation(create_task, db, redis, payload, user_id):
         raise ServiceUnavailableError(str(exc)) from exc
     except BillingError as exc:
         raise ServiceUnavailableError(public_error_message(exc, "生成服务暂时不可用")) from exc
+    except ModelDisabledError as exc:
+        raise RequestError(str(exc)) from exc
     return success(task_payload(task))
 
 
@@ -73,6 +82,8 @@ async def create_text_generation(
         raise NotFoundError(str(exc)) from exc
     except InsufficientCredits as exc:
         raise InsufficientCreditsError(str(exc)) from exc
+    except ModelDisabledError as exc:
+        raise RequestError(str(exc)) from exc
     except (BillingError, RuntimeError) as exc:
         raise ServiceUnavailableError(public_error_message(exc, "文本生成服务暂时不可用")) from exc
 

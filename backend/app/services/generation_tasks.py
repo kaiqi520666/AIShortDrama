@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.model_capabilities import get_model_capability
 from app.models import GenerationTask, Workspace
+from app.services.admin_configuration import ensure_model_enabled
 from app.schemas.generation import (
     AudioGenerationRequest,
     ImageGenerationRequest,
@@ -173,6 +174,7 @@ async def _create_task(
     provider: str = "toapis",
     include_client_business_id: bool = True,
 ) -> GenerationTask:
+    await ensure_model_enabled(db, task_type, request.model)
     workspace = await db.scalar(
         select(Workspace).where(
             Workspace.id == request.workspace_id,

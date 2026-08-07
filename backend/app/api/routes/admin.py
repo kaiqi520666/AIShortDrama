@@ -1,7 +1,7 @@
 import asyncio
 import uuid
-from datetime import datetime
-from fastapi import APIRouter, Depends, Query
+from datetime import UTC, datetime, timedelta
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,10 +10,24 @@ from app.core.auth import hash_password
 from app.core.database import get_db
 from app.core.errors import NotFoundError, RequestError
 from app.core.identity import get_current_admin
-from app.models import AdminAuditLog, GenerationTask, ModelPriceRule, RechargeOrder, RechargeTier, User
+from app.core.model_capabilities import get_model_capability
+from app.models import (
+    AdminAuditLog,
+    CreditLedger,
+    ContentTemplate,
+    GenerationTask,
+    ModelAdminSetting,
+    ModelPriceRule,
+    RechargeOrder,
+    RechargeTier,
+    User,
+)
 from app.schemas.admin import (
     AdminResetPasswordRequest,
+    BillingPolicyUpdateRequest,
+    ContentTemplateUpdateRequest,
     CreditAdjustmentRequest,
+    ModelAdminSettingUpdateRequest,
     PriceRuleUpdateRequest,
     RechargeTierMutationRequest,
     UserRoleRequest,
@@ -21,6 +35,14 @@ from app.schemas.admin import (
 )
 from app.schemas.response import success
 from app.services.admin import active_admin_count, add_audit, adjust_credits, price_snapshot, user_snapshot
+from app.services.admin_configuration import (
+    get_billing_policy,
+    get_model_settings,
+    model_settings_payload,
+    policy_data,
+    template_data,
+    validate_template_config,
+)
 from app.services.recharge import RechargeError, order_data, tier_data, validate_tiers
 
 router = APIRouter()
@@ -36,6 +58,89 @@ def user_data(user: User) -> dict:
 
 def rule_data(rule: ModelPriceRule) -> dict:
     return {"id": str(rule.id), **price_snapshot(rule), "created_at": rule.created_at.isoformat(), "updated_at": rule.updated_at.isoformat()}
+
+
+@router.get("/dashboard")
+async def get_admin_dashboard(
+    request: Request,
+    days: int = Query(7, ge=1, le=30),
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+):
+    if days not in {1, 7, 30}:
+        raise RequestError("统计周期仅支持 1、7 或 30 天")
+    start_at = datetime.now(UTC) - timedelta(days=days)
+    recharge_amount = int(
+        await db.scalar(
+            select(func.coalesce(func.sum(RechargeOrder.amount_cents), 0)).where(
+                RechargeOrder.status == "paid", RechargeOrder.created_at >= start_at
+            )
+        )
+        or 0
+    )
+    recharge_orders = int(
+        await db.scalar(
+            select(func.count()).select_from(RechargeOrder).where(
+                RechargeOrder.status == "paid", RechargeOrder.created_at >= start_at
+            )
+        )
+        or 0
+    )
+    consumed_credits = int(
+        await db.scalar(
+            select(func.coalesce(func.sum(CreditLedger.amount), 0)).where(
+                CreditLedger.entry_type == "consume", CreditLedger.created_at >= start_at
+            )
+        )
+        or 0
+    )
+    status_rows = (await db.execute(
+        select(GenerationTask.status, func.count())
+        .where(GenerationTask.created_at >= start_at)
+        .group_by(GenerationTask.status)
+    )).all()
+    status_counts = {status: int(count) for status, count in status_rows}
+    model_rows = (await db.execute(
+        select(GenerationTask.model, func.count())
+        .where(GenerationTask.created_at >= start_at)
+        .group_by(GenerationTask.model)
+        .order_by(func.count().desc(), GenerationTask.model)
+    )).all()
+    terminal = sum(status_counts.get(status, 0) for status in ("succeeded", "failed", "timeout", "cancelled"))
+    succeeded = status_counts.get("succeeded", 0)
+    queued_tasks = int(
+        await db.scalar(
+            select(func.count()).select_from(GenerationTask).where(
+                GenerationTask.status == "queued"
+            )
+        )
+        or 0
+    )
+    queue_depth = None
+    try:
+        from app.core.config import get_settings
+
+        queue_depth = int(await request.app.state.redis.zcard(get_settings().redis_queue_name))
+    except Exception:
+        queue_depth = None
+    return success(
+        {
+            "days": days,
+            "recharge_amount_cents": recharge_amount,
+            "recharge_order_count": recharge_orders,
+            "consumed_credits": consumed_credits,
+            "task_count": sum(status_counts.values()),
+            "succeeded_count": succeeded,
+            "failed_count": status_counts.get("failed", 0),
+            "timeout_count": status_counts.get("timeout", 0),
+            "success_rate": round(succeeded / terminal, 4) if terminal else None,
+            "queued_task_count": queued_tasks,
+            "queue_depth": queue_depth,
+            "model_calls": [
+                {"model": model, "count": int(count)} for model, count in model_rows
+            ],
+        }
+    )
 
 
 @router.get("/users")
@@ -176,6 +281,161 @@ async def update_price_rule(
     return success(rule_data(rule))
 
 
+@router.get("/billing-policy")
+async def get_billing_policy_data(
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+):
+    return success(policy_data(await get_billing_policy(db)))
+
+
+@router.put("/billing-policy")
+async def update_billing_policy(
+    payload: BillingPolicyUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    policy = await get_billing_policy(db, lock=True)
+    tiers = list(await db.scalars(select(RechargeTier).with_for_update()))
+    before = policy_data(policy)
+    for field, value in payload.model_dump(exclude={"reason"}).items():
+        setattr(policy, field, value)
+    try:
+        validate_tiers(tiers, policy)
+    except RechargeError as exc:
+        await db.rollback()
+        raise RequestError(str(exc)) from exc
+    policy.version += 1
+    add_audit(
+        db,
+        admin_id=admin.id,
+        action="update_billing_policy",
+        target_type="billing_policy",
+        target_id=policy.key,
+        reason=payload.reason,
+        before=before,
+        after=policy_data(policy),
+    )
+    await db.commit()
+    await db.refresh(policy)
+    return success(policy_data(policy))
+
+
+@router.get("/models")
+async def list_admin_models(
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+):
+    return success(model_settings_payload(await get_model_settings(db)))
+
+
+@router.put("/models/{media_type}/{model_id}")
+async def update_admin_model(
+    media_type: str,
+    model_id: str,
+    payload: ModelAdminSettingUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    try:
+        get_model_capability(media_type, model_id)
+    except ValueError as exc:
+        raise NotFoundError("模型不存在") from exc
+    # Re-query the media group under one lock to keep its single default invariant.
+    settings = list(
+        await db.scalars(
+            select(ModelAdminSetting)
+            .where(ModelAdminSetting.media_type == media_type)
+            .with_for_update()
+        )
+    )
+    setting = next((item for item in settings if item.model_id == model_id), None)
+    if not setting:
+        raise NotFoundError("模型设置不存在")
+    before = {
+        "label": setting.label,
+        "enabled": setting.enabled,
+        "is_default": setting.is_default,
+    }
+    if setting.is_default and not payload.is_default:
+        raise RequestError("请先设置其他启用模型为默认模型")
+    if setting.is_default and not payload.enabled:
+        raise RequestError("请先设置其他启用模型为默认模型")
+    if payload.is_default and not payload.enabled:
+        raise RequestError("默认模型必须启用")
+    setting.label = payload.label
+    setting.enabled = payload.enabled
+    if payload.is_default:
+        for item in settings:
+            item.is_default = item.id == setting.id
+    if not any(item.enabled and item.is_default for item in settings):
+        raise RequestError("每种媒体必须保留一个启用的默认模型")
+    after = {
+        "label": setting.label,
+        "enabled": setting.enabled,
+        "is_default": setting.is_default,
+    }
+    add_audit(
+        db,
+        admin_id=admin.id,
+        action="update_model_setting",
+        target_type="model_admin_setting",
+        target_id=setting.id,
+        reason=payload.reason,
+        before=before,
+        after=after,
+    )
+    await db.commit()
+    return success(next(item for item in model_settings_payload(settings) if item["model_id"] == model_id))
+
+
+@router.get("/content-templates/{key}")
+async def get_admin_content_template(
+    key: str,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+):
+    template = await db.get(ContentTemplate, key)
+    if not template:
+        raise NotFoundError("内容模板不存在")
+    return success(template_data(template))
+
+
+@router.put("/content-templates/{key}")
+async def update_admin_content_template(
+    key: str,
+    payload: ContentTemplateUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    template = await db.scalar(
+        select(ContentTemplate).where(ContentTemplate.key == key).with_for_update()
+    )
+    if not template:
+        raise NotFoundError("内容模板不存在")
+    try:
+        config = validate_template_config(key, payload.config)
+    except ValueError as exc:
+        raise RequestError(str(exc)) from exc
+    before = template_data(template)
+    template.enabled = payload.enabled
+    template.config = config
+    template.version += 1
+    add_audit(
+        db,
+        admin_id=admin.id,
+        action="update_content_template",
+        target_type="content_template",
+        target_id=template.key,
+        reason=payload.reason,
+        before=before,
+        after=template_data(template),
+    )
+    await db.commit()
+    await db.refresh(template)
+    return success(template_data(template))
+
+
 @router.get("/tasks")
 async def list_tasks(
     q: str = "",
@@ -273,7 +533,7 @@ async def create_recharge_tier(
         raise RequestError("该充值金额阶梯已存在")
     tier = RechargeTier(**payload.model_dump(exclude={"reason"}))
     try:
-        validate_tiers([*tiers, tier])
+        validate_tiers([*tiers, tier], await get_billing_policy(db))
     except RechargeError as exc:
         raise RequestError(str(exc)) from exc
     db.add(tier)
@@ -314,7 +574,7 @@ async def update_recharge_tier(
     tier.bonus_rate_bps = payload.bonus_rate_bps
     tier.enabled = payload.enabled
     try:
-        validate_tiers(tiers)
+        validate_tiers(tiers, await get_billing_policy(db))
     except RechargeError as exc:
         await db.rollback()
         raise RequestError(str(exc)) from exc
@@ -383,3 +643,4 @@ async def list_recharge_orders(
         for order, user in rows
     ]
     return success(page_data(page, page_size, total, items))
+    ModelAdminSettingUpdateRequest,

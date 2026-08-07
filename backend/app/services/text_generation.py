@@ -15,6 +15,7 @@ from app.models import GenerationTask, Workspace
 from app.providers.openai_responses import OpenAIResponsesProvider
 from app.schemas.generation import TextGenerationRequest
 from app.services.billing import freeze_task_credits
+from app.services.admin_configuration import ensure_model_enabled
 from app.services.generation_tasks import WorkspaceNotFoundError
 from app.workers.generation import complete_text_task, fail_task
 
@@ -53,6 +54,7 @@ class TextGenerationService:
         payload: TextGenerationRequest,
         user_id: uuid.UUID,
     ) -> PreparedTextGeneration:
+        await ensure_model_enabled(db, "text", payload.model)
         workspace = await db.scalar(
             select(Workspace).where(
                 Workspace.id == payload.workspace_id,

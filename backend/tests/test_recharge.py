@@ -31,16 +31,17 @@ async def test_recharge_quotes_use_highest_enabled_tier(amount_cents, base, bonu
 
 
 def test_recharge_tier_validation_requires_coverage_and_increasing_bonus():
+    policy = SimpleNamespace(recharge_min_cents=3500)
     valid = [
         SimpleNamespace(min_amount_cents=3500, bonus_rate_bps=0, enabled=True),
         SimpleNamespace(min_amount_cents=10500, bonus_rate_bps=300, enabled=True),
     ]
-    validate_tiers(valid)
+    validate_tiers(valid, policy)
     with pytest.raises(RechargeError, match="35 元"):
-        validate_tiers(valid[1:])
+        validate_tiers(valid[1:], policy)
     valid[1].bonus_rate_bps = -1
     with pytest.raises(RechargeError, match="不能降低"):
-        validate_tiers(valid)
+        validate_tiers(valid, policy)
 
 
 @pytest.mark.asyncio

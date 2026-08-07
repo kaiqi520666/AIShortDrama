@@ -169,7 +169,7 @@ def get_default_model(media_type: str) -> str:
     return media["default_model"]
 
 
-def capabilities_payload() -> dict[str, Any]:
+def capabilities_payload(capabilities: dict[str, dict[str, Any]] | None = None) -> dict[str, Any]:
     def public_value(value):
         if isinstance(value, dict):
             return {
@@ -181,4 +181,7 @@ def capabilities_payload() -> dict[str, Any]:
             return [public_value(item) for item in value]
         return value
 
-    return {"version": CAPABILITIES_VERSION, **public_value(deepcopy(MODEL_CAPABILITIES))}
+    return {
+        "version": CAPABILITIES_VERSION,
+        **public_value(deepcopy(capabilities or MODEL_CAPABILITIES)),
+    }

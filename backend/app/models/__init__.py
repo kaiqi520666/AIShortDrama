@@ -7,6 +7,7 @@ from app.models.billing import (
     RechargeOrder,
     RechargeTier,
 )
+from app.models.configuration import BillingPolicy, ContentTemplate, ModelAdminSetting
 from app.models.generation_task import GenerationTask
 from app.models.reference_library import Character, Garment, OutfitModel
 from app.models.user import User
@@ -16,11 +17,14 @@ __all__ = [
     "AdminAuditLog",
     "Asset",
     "Base",
+    "BillingPolicy",
     "Character",
+    "ContentTemplate",
     "CreditLedger",
     "GenerationTask",
     "Garment",
     "ModelPriceRule",
+    "ModelAdminSetting",
     "OutfitModel",
     "RechargeOrder",
     "RechargeTier",
