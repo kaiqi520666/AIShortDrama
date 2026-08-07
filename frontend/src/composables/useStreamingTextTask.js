@@ -27,9 +27,10 @@ export function useStreamingTextTask(nodeId) {
           partialContent.value += delta
           if (preservePartial) updateNodeData(nodeId, { content: partialContent.value })
         },
-        (taskId) => updateNodeData(nodeId, {
+        (taskId, meta = {}) => updateNodeData(nodeId, {
           generationTaskId: taskId,
           generationStatus: 'running',
+          ...(meta.template_version ? { templateVersion: meta.template_version } : {}),
         }),
       )
       const result = await onSuccess?.(partialContent.value)

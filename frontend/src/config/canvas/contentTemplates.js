@@ -26,9 +26,11 @@ export function validateProductContentTemplates(value) {
   if (typeof visual.config.business_instruction !== 'string' || visual.config.business_instruction.length > 6000) return '商品图种业务指令无效'
   const templates = storyboard.config?.templates
   const durations = storyboard.config?.durations
+  const continuity = storyboard.config?.continuity
+  if (storyboard.config?.schema_version !== 2) return '商品分镜模板版本无效'
   if (!Array.isArray(templates) || templates.length !== 1 || templates[0]?.id !== 'ugc-seeding' || !validText(templates[0]?.label, 64) || !validText(templates[0]?.description, 255)) return '商品分镜模板无效'
   if (!Array.isArray(durations) || !durations.length || durations.some((item) => !allowedDurations.has(item))) return '商品分镜时长无效'
-  if (!validText(storyboard.config.business_instruction)) return '商品分镜业务指令无效'
+  if (!continuity || !['cut', 'extend'].every((key) => validText(continuity[key]?.label, 32) && validText(continuity[key]?.description, 120))) return '商品分镜衔接配置无效'
   return ''
 }
 

@@ -5,8 +5,8 @@ import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
 import { productPromptContext } from '../../config/canvas/ecommerce'
 import {
-  buildProductStoryboardPrompt,
   buildStoryboardReferenceManifest,
+  buildProductStoryboardRequest,
   getStoryboardDurations,
   getStoryboardProductLimit,
   getStoryboardTemplates,
@@ -188,18 +188,19 @@ async function submitTask() {
   })) return
   if (existingGeneratedNodes.value.length) store.deleteNodes(existingGeneratedNodes.value)
 
-  const references = referenceManifest.value.references
   updateNodeData(props.nodeId, { templateVersion: template.value.version })
-  await runTextTask(streamReversePrompt, {
-    workspace_id: store.workspaceId,
-    node_id: props.nodeId,
+  await runTextTask(streamReversePrompt, buildProductStoryboardRequest({
+    workspaceId: store.workspaceId,
+    nodeId: props.nodeId,
     model: selectedTextModel.value.id,
-    media_type: 'image',
-    media_url: references[0]?.url,
-    media_urls: references.slice(1).map((reference) => reference.url),
-    prompt: buildProductStoryboardPrompt(productContext.value, props.data, videoAspectRatios.value, template.value),
-    response_mode: 'product_storyboard_plan',
-  }, {
+    template: template.value,
+    productContext: productContext.value,
+    duration: props.data.duration,
+    videoAspectRatio: props.data.videoAspectRatio,
+    characterReferences: characterReferences.value,
+    productReferences: productReferences.value,
+    userRequirement: props.data.prompt,
+  }), {
     failureMessage: '商品分镜方案生成失败',
     onSuccess: (content) => {
       const plan = parseProductStoryboardPlan(content, template.value)

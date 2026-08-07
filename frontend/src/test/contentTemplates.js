@@ -3,7 +3,7 @@ import { useContentTemplatesStore } from '../stores/contentTemplates'
 export const contentTemplatesFixture = {
   product_visual: {
     key: 'product_visual',
-    version: 1,
+    version: 2,
     enabled: true,
     config: {
       groups: [
@@ -20,9 +20,13 @@ export const contentTemplatesFixture = {
     version: 1,
     enabled: true,
     config: {
+      schema_version: 2,
       templates: [{ id: 'ugc-seeding', label: 'UGC 种草', description: '用户视角真实分享体验', enabled: true }],
       durations: [15, 30, 45, 60],
-      business_instruction: '以真实用户体验分享为主，不设置复杂剧情，不使用广告腔，开头尽快出现商品并通过实际操作和试吃表达感受。',
+      continuity: {
+        cut: { label: '独立新段', description: '不引用上一段视频' },
+        extend: { label: '延续上段', description: '引用上一段视频保持连续性' },
+      },
     },
   },
 }

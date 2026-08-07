@@ -36,7 +36,7 @@ export async function streamGeneration(path, payload, onDelta, onMeta, errorLabe
   function consume(line) {
     if (!line) return
     const event = JSON.parse(line)
-    if (event.type === 'meta') onMeta?.(event.task_id)
+    if (event.type === 'meta') onMeta?.(event.task_id, event)
     else if (event.type === 'delta') onDelta(event.content)
     else if (event.type === 'error') throw new Error(event.message || errorLabel)
     else if (event.type === 'done') completed = true

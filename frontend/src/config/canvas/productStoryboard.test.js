@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest'
-import { createHash } from 'node:crypto'
 import {
-  buildProductStoryboardPrompt,
   buildStoryboardReferenceManifest,
+  buildProductStoryboardRequest,
   createStoryboardTemplates,
   getStoryboardDurations,
   getStoryboardProductLimit,
@@ -18,7 +17,6 @@ import { modelCapabilitiesFixture } from '../../test/modelCapabilities'
 import { contentTemplatesFixture } from '../../test/contentTemplates'
 import { normalizeImageModels } from '../imageModels'
 import { normalizeVideoModels } from '../videoModels'
-import ugcGolden from '../../../../contracts/ugc-storyboard-v1-golden.json'
 
 const imageModels = normalizeImageModels(modelCapabilitiesFixture.image)
 const defaultImageModel = imageModels.find(({ id }) => id === modelCapabilitiesFixture.image.default_model)
@@ -52,20 +50,6 @@ function planJson(overrides = {}) {
 }
 
 describe('product storyboard planning', () => {
-  it('matches the accepted UGC prompt byte for byte', () => {
-    for (const item of ugcGolden.cases) {
-      const prompt = buildProductStoryboardPrompt(item.product_context, {
-        duration: item.duration,
-        videoAspectRatio: item.video_aspect_ratio,
-        characterReferences: Array.from({ length: item.character_count }, () => ({ url: 'https://example.com/character.png' })),
-        productReferences: Array.from({ length: item.product_count }, () => ({ url: 'https://example.com/product.png' })),
-        prompt: item.user_requirement,
-      }, ugcGolden.supported_aspect_ratios, ugcGolden.template)
-      expect(prompt.length, item.name).toBe(item.length)
-      expect(createHash('sha256').update(prompt).digest('hex'), item.name).toBe(item.sha256)
-    }
-  })
-
   it('only exposes the UGC seeding template', () => {
     expect(storyboardTemplates).toEqual([{ id: 'ugc-seeding', label: 'UGC 种草', description: '用户视角真实分享体验', enabled: true }])
     expect(createStoryboardTemplates(template)).toEqual(storyboardTemplates)
@@ -90,28 +74,27 @@ describe('product storyboard planning', () => {
     expect(getStoryboardProductLimit(3)).toBe(3)
   })
 
-  it('gives GPT-5.6 Sol the complete UGC image and video contract', () => {
-    const prompt = buildProductStoryboardPrompt('商品名称：测试商品\n核心卖点：口感顺滑', {
+  it('builds a structured server-side template request without a full prompt', () => {
+    const request = buildProductStoryboardRequest({
+      workspaceId: 'workspace-1',
+      nodeId: 'storyboard-1',
+      model: 'gpt-5.6-sol',
+      template,
+      productContext: '商品名称：测试商品',
       duration: 30,
       videoAspectRatio: '9:16',
       characterReferences: [{ url: 'https://example.com/character.png' }],
       productReferences: [{ url: 'https://example.com/product.png' }],
-      prompt: '场景在家庭餐桌和办公室之间切换',
-    }, videoAspectRatios, template)
-    expect(prompt).toContain('只保留“UGC 种草”这一种内容')
-    expect(prompt).toContain('全程由人物本人或同行者真实手持手机拍摄')
-    expect(prompt).toContain('前置广角')
-    expect(prompt).toContain('后置1倍主摄')
-    expect(prompt).toContain('不使用三脚架、稳定器、滑轨、机械推镜')
-    expect(prompt).toContain('镜头之间直接硬切')
-    expect(prompt).toContain('生图prompt要求')
-    expect(prompt).toContain('生视频prompt要求')
-    expect(prompt).toContain('3列×2行')
-    expect(prompt).toContain('每个小格保持9:16视频画幅')
-    expect(prompt).toContain('图片1是角色1参考图。图片2是商品参考图。')
-    expect(prompt).toContain('图片1是本段分镜图，图片2是角色1参考图，图片3是商品参考图。')
-    expect(prompt).toContain('segments必须恰好2条')
-    expect(prompt).toContain('templateId必须始终为“ugc-seeding”')
+      userRequirement: '家庭场景',
+    })
+    expect(request).not.toHaveProperty('prompt')
+    expect(request.media_url).toBe('https://example.com/character.png')
+    expect(request.media_urls).toEqual(['https://example.com/product.png'])
+    expect(request.template_context).toEqual(expect.objectContaining({
+      character_count: 1,
+      product_count: 1,
+      user_requirement: '家庭场景',
+    }))
   })
 
   it('preserves GPT-generated prompts without program camera or reference rewrites', () => {

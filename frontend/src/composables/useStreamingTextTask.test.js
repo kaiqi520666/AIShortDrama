@@ -19,7 +19,7 @@ describe('streaming text task', () => {
     authStore.refreshCredits = vi.fn().mockResolvedValue()
     const { runTextTask } = useStreamingTextTask('node-1')
     const streamer = vi.fn(async (_payload, onDelta, onMeta) => {
-      onMeta('task-1')
+      onMeta('task-1', { template_version: 3 })
       onDelta('你好')
       onDelta('世界')
     })
@@ -29,7 +29,7 @@ describe('streaming text task', () => {
     })
 
     expect(content).toBe('你好世界')
-    expect(updateNodeData).toHaveBeenCalledWith('node-1', expect.objectContaining({ generationTaskId: 'task-1' }))
+    expect(updateNodeData).toHaveBeenCalledWith('node-1', expect.objectContaining({ generationTaskId: 'task-1', templateVersion: 3 }))
     expect(updateNodeData).toHaveBeenLastCalledWith('node-1', expect.objectContaining({ result: '你好世界', status: 'ready' }))
     expect(authStore.refreshCredits).toHaveBeenCalledOnce()
   })
