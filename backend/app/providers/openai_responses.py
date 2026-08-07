@@ -18,7 +18,17 @@ APPAREL_PROFILE_PROMPT = """识别图片中所有可独立穿戴的服饰与配�
 
 
 class OpenAIResponsesError(RuntimeError):
-    pass
+    def __init__(
+        self,
+        message: str,
+        retryable: bool = False,
+        status_code: int | None = None,
+        request_id: str | None = None,
+    ):
+        super().__init__(message)
+        self.retryable = retryable
+        self.status_code = status_code
+        self.request_id = request_id
 
 
 class OpenAIResponsesProvider:
@@ -103,10 +113,15 @@ class OpenAIResponsesProvider:
         received_content = False
         received_done = False
         async with self.client.stream("POST", self.endpoint, json=payload) as response:
+            request_id = response.headers.get("x-request-id") or response.headers.get(
+                "request-id"
+            )
             if response.status_code >= 400:
-                detail = (await response.aread()).decode("utf-8", errors="replace")[:500]
                 raise OpenAIResponsesError(
-                    f"Responses 请求失败（{response.status_code}）{': ' + detail if detail else ''}"
+                    await self._response_error_message(response),
+                    retryable=response.status_code == 429 or response.status_code >= 500,
+                    status_code=response.status_code,
+                    request_id=request_id,
                 )
             events = self._iter_sse_data(response.aiter_bytes())
             try:
@@ -132,13 +147,19 @@ class OpenAIResponsesProvider:
                     elif event_type in {"response.failed", "response.incomplete", "error"}:
                         error = event.get("error") or {}
                         message = error.get("message") if isinstance(error, dict) else str(error)
-                        raise OpenAIResponsesError(message or "Responses 生成失败")
+                        raise OpenAIResponsesError(
+                            message or "Responses 生成失败",
+                            request_id=request_id,
+                        )
                     elif event_type == "response.completed":
                         response_data = event.get("response") or {}
                         if response_data.get("error"):
                             error = response_data["error"]
                             message = error.get("message") if isinstance(error, dict) else str(error)
-                            raise OpenAIResponsesError(message or "Responses 生成失败")
+                            raise OpenAIResponsesError(
+                                message or "Responses 生成失败",
+                                request_id=request_id,
+                            )
                         received_done = True
             finally:
                 await events.aclose()
@@ -147,6 +168,23 @@ class OpenAIResponsesProvider:
             raise OpenAIResponsesError("Responses 未返回有效内容")
         if not received_done:
             raise OpenAIResponsesError("Responses 流式响应未正常结束")
+
+    @staticmethod
+    async def _response_error_message(response: httpx.Response) -> str:
+        try:
+            payload = json.loads(await response.aread())
+        except (ValueError, UnicodeDecodeError):
+            return f"Responses 请求失败（{response.status_code}）"
+        error = payload.get("error") if isinstance(payload, dict) else None
+        if isinstance(error, dict):
+            message = error.get("message") or error.get("detail")
+            if isinstance(message, str) and message:
+                return message
+        if isinstance(payload, dict):
+            message = payload.get("message") or payload.get("detail")
+            if isinstance(message, str) and message:
+                return message
+        return f"Responses 请求失败（{response.status_code}）"
 
     @staticmethod
     async def _iter_sse_data(chunks: AsyncIterable[bytes]) -> AsyncIterator[str]:

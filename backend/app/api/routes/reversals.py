@@ -16,6 +16,7 @@ from app.core.errors import (
     NotFoundError,
     ServiceUnavailableError,
     RequestError,
+    diagnostic_snapshot,
     public_error_message,
 )
 from app.core.identity import get_current_user_id
@@ -105,7 +106,12 @@ async def stream_reverse_prompt(
     except RuntimeError as exc:
         message = public_error_message(exc, "反推服务暂时不可用")
         logger.exception("Reverse prompt provider initialization failed", extra={"task_id": str(task.id)})
-        await fail_task(task.id, "failed", message)
+        await fail_task(
+            task.id,
+            "failed",
+            message,
+            diagnostic_snapshot(exc, "submit"),
+        )
         raise ServiceUnavailableError(message) from exc
 
     async def events():
@@ -144,7 +150,12 @@ async def stream_reverse_prompt(
         except Exception as exc:
             message = public_error_message(exc, "反推服务暂时不可用")
             logger.exception("Reverse prompt stream failed", extra={"task_id": str(task.id)})
-            await fail_task(task.id, "failed", message)
+            await fail_task(
+                task.id,
+                "failed",
+                message,
+                diagnostic_snapshot(exc, "submit"),
+            )
             yield json.dumps({"type": "error", "message": message}, ensure_ascii=False) + "\n"
 
     return StreamingResponse(

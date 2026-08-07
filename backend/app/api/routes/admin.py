@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import uuid
 from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, Depends, Query, Request
@@ -8,7 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import hash_password
 from app.core.database import get_db
-from app.core.errors import NotFoundError, RequestError, ServiceUnavailableError
+from app.core.errors import (
+    NotFoundError,
+    RequestError,
+    ServiceUnavailableError,
+    diagnostic_snapshot,
+)
 from app.core.identity import get_current_admin
 from app.core.model_capabilities import get_model_capability
 from app.models import (
@@ -22,6 +28,7 @@ from app.models import (
     RechargeTier,
     User,
 )
+from app.providers.toapis import ToApisError, ToApisProvider
 from app.schemas.admin import (
     AdminResetPasswordRequest,
     BillingPolicyUpdateRequest,
@@ -49,6 +56,7 @@ from app.services.content_templates import (
 from app.services.recharge import RechargeError, order_data, tier_data, validate_tiers
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def page_data(page: int, page_size: int, total: int, items: list[dict]) -> dict:
@@ -61,6 +69,57 @@ def user_data(user: User) -> dict:
 
 def rule_data(rule: ModelPriceRule) -> dict:
     return {"id": str(rule.id), **price_snapshot(rule), "created_at": rule.created_at.isoformat(), "updated_at": rule.updated_at.isoformat()}
+
+
+def task_summary_data(task: GenerationTask, user: User) -> dict:
+    diagnostic = task.diagnostic_snapshot or {}
+    diagnostic_summary = {
+        key: (
+            diagnostic.get(key)[:160]
+            if key == "provider_message" and isinstance(diagnostic.get(key), str)
+            else diagnostic.get(key)
+        )
+        for key in (
+            "stage",
+            "category",
+            "provider_status",
+            "provider_message",
+            "retryable",
+        )
+        if diagnostic.get(key) is not None
+    }
+    return {
+        "id": str(task.id),
+        "user": {"id": str(user.id), "username": user.username, "email": user.email},
+        "task_type": task.task_type,
+        "provider": task.provider,
+        "model": task.model,
+        "status": task.status,
+        "progress": task.progress,
+        "provider_task_id": task.provider_task_id,
+        "frozen_credits": task.frozen_credits,
+        "charged_credits": task.charged_credits,
+        "credit_status": task.credit_status,
+        "error_message": task.error_message,
+        "diagnostic_summary": diagnostic_summary or None,
+        "created_at": task.created_at.isoformat(),
+        "finished_at": task.finished_at.isoformat() if task.finished_at else None,
+    }
+
+
+def task_detail_data(task: GenerationTask, user: User) -> dict:
+    return {
+        **task_summary_data(task, user),
+        "workspace_id": str(task.workspace_id),
+        "node_id": task.node_id,
+        "diagnostic_snapshot": task.diagnostic_snapshot,
+        "request_snapshot": task.request_snapshot,
+        "pricing_snapshot": task.pricing_snapshot,
+        "result": task.result,
+        "retry_count": task.retry_count,
+        "started_at": task.started_at.isoformat() if task.started_at else None,
+        "updated_at": task.updated_at.isoformat(),
+    }
 
 
 @router.get("/dashboard")
@@ -480,15 +539,73 @@ async def list_tasks(
     statement = select(GenerationTask, User).join(User, User.id == GenerationTask.user_id).where(*filters)
     total = int(await db.scalar(select(func.count()).select_from(GenerationTask).join(User).where(*filters)) or 0)
     rows = (await db.execute(statement.order_by(GenerationTask.created_at.desc()).offset((page - 1) * page_size).limit(page_size))).all()
-    items = [{
-        "id": str(task.id), "user": {"id": str(user.id), "username": user.username, "email": user.email},
-        "task_type": task.task_type, "provider": task.provider, "model": task.model, "status": task.status,
-        "progress": task.progress, "frozen_credits": task.frozen_credits, "charged_credits": task.charged_credits,
-        "credit_status": task.credit_status, "request_snapshot": task.request_snapshot, "pricing_snapshot": task.pricing_snapshot,
-        "result": task.result, "error_message": task.error_message, "created_at": task.created_at.isoformat(),
-        "finished_at": task.finished_at.isoformat() if task.finished_at else None,
-    } for task, user in rows]
+    items = [task_summary_data(task, user) for task, user in rows]
     return success(page_data(page, page_size, total, items))
+
+
+@router.get("/tasks/{task_id}")
+async def get_task_detail(
+    task_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+):
+    row = (
+        await db.execute(
+            select(GenerationTask, User)
+            .join(User, User.id == GenerationTask.user_id)
+            .where(GenerationTask.id == task_id)
+        )
+    ).one_or_none()
+    if not row:
+        raise NotFoundError("生成任务不存在")
+    return success(task_detail_data(*row))
+
+
+@router.post("/tasks/{task_id}/provider-status")
+async def get_task_provider_status(
+    task_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+):
+    task = await db.get(GenerationTask, task_id)
+    if not task:
+        raise NotFoundError("生成任务不存在")
+    if not task.provider_task_id:
+        raise RequestError("该任务没有 Provider 任务 ID，无法查询上游状态")
+    if task.provider != "toapis" or task.task_type not in {"image", "video"}:
+        raise RequestError("该任务暂不支持查询上游状态")
+
+    try:
+        async with ToApisProvider() as provider:
+            fetch = (
+                provider.get_image_task
+                if task.task_type == "image"
+                else provider.get_video_task
+            )
+            state = await fetch(task.provider_task_id)
+    except Exception as exc:
+        logger.exception(
+            "Admin provider status query failed",
+            extra={"task_id": str(task.id)},
+        )
+        raise ServiceUnavailableError("上游状态查询失败，请稍后重试") from exc
+
+    error = state.get("error") or {}
+    error_message = error.get("message") if isinstance(error, dict) else str(error)
+    safe_message = (
+        diagnostic_snapshot(ToApisError(error_message), "poll")["provider_message"]
+        if error_message
+        else None
+    )
+    return success(
+        {
+            "provider_task_id": task.provider_task_id,
+            "status": state.get("status") or "unknown",
+            "progress": max(0, min(100, int(state.get("progress") or 0))),
+            "error_message": safe_message,
+            "checked_at": datetime.now(UTC).isoformat(),
+        }
+    )
 
 
 @router.get("/audits")

@@ -4,11 +4,12 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
+import app.api.routes.admin as admin_routes
 from app.core.auth import hash_password
 from app.core.database import SessionLocal
-from app.core.identity import get_current_admin
+from app.core.identity import DEFAULT_WORKSPACE_ID, get_current_admin
 from app.main import app
-from app.models import AdminAuditLog, User
+from app.models import AdminAuditLog, GenerationTask, User, Workspace
 
 
 @pytest.mark.asyncio
@@ -66,5 +67,94 @@ async def test_admin_cannot_demote_or_disable_self():
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             assert (await client.post(f"/api/admin/users/{admin_id}/role", json={"role": "user", "reason": "测试"})).status_code == 422
             assert (await client.post(f"/api/admin/users/{admin_id}/status", json={"status": "disabled", "reason": "测试"})).status_code == 422
+    finally:
+        app.dependency_overrides.pop(get_current_admin, None)
+
+
+@pytest.mark.asyncio
+async def test_admin_task_list_is_lightweight_and_detail_has_diagnostics(monkeypatch):
+    async with SessionLocal() as db:
+        workspace = await db.get(Workspace, DEFAULT_WORKSPACE_ID)
+        admin = await db.get(User, workspace.user_id)
+        admin.role = "admin"
+        task = GenerationTask(
+            user_id=admin.id,
+            workspace_id=workspace.id,
+            node_id="admin-task-detail",
+            task_type="video",
+            provider="toapis",
+            model="seedance-2-mini",
+            status="failed",
+            provider_task_id="provider-task-123",
+            request_snapshot={"prompt": "private prompt"},
+            pricing_snapshot={"credits": 10},
+            result={"type": "video"},
+            error_message="视频生成服务暂时不可用",
+            diagnostic_snapshot={
+                "stage": "submit",
+                "category": "upstream_http",
+                "provider_status": 524,
+                "provider_message": "upstream request timeout",
+                "provider_request_id": "req-123",
+                "exception_type": "ToApisError",
+                "retryable": True,
+                "occurred_at": "2026-08-06T18:23:49Z",
+            },
+        )
+        db.add(task)
+        await db.commit()
+        task_id = task.id
+
+    app.dependency_overrides[get_current_admin] = lambda: admin
+    try:
+        async with AsyncClient(
+            transport=ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            listed = await client.get("/api/admin/tasks")
+            assert listed.status_code == 200
+            item = next(
+                item for item in listed.json()["data"]["items"] if item["id"] == str(task_id)
+            )
+            assert item["provider_task_id"] == "provider-task-123"
+            assert item["diagnostic_summary"]["provider_status"] == 524
+            assert "request_snapshot" not in item
+            assert "pricing_snapshot" not in item
+            assert "result" not in item
+
+            detailed = await client.get(f"/api/admin/tasks/{task_id}")
+            assert detailed.status_code == 200
+            data = detailed.json()["data"]
+            assert data["diagnostic_snapshot"]["provider_request_id"] == "req-123"
+            assert data["request_snapshot"] == {"prompt": "private prompt"}
+            assert data["pricing_snapshot"] == {"credits": 10}
+            assert data["result"] == {"type": "video"}
+
+            class FakeProvider:
+                async def __aenter__(self):
+                    return self
+
+                async def __aexit__(self, *_):
+                    pass
+
+                async def get_video_task(self, provider_task_id):
+                    assert provider_task_id == "provider-task-123"
+                    return {
+                        "status": "failed",
+                        "progress": 65,
+                        "error": {"message": "内容审核拒绝"},
+                    }
+
+            monkeypatch.setattr(admin_routes, "ToApisProvider", FakeProvider)
+            refreshed = await client.post(
+                f"/api/admin/tasks/{task_id}/provider-status"
+            )
+            assert refreshed.status_code == 200
+            assert refreshed.json()["data"] | {"checked_at": None} == {
+                "provider_task_id": "provider-task-123",
+                "status": "failed",
+                "progress": 65,
+                "error_message": "内容审核拒绝",
+                "checked_at": None,
+            }
     finally:
         app.dependency_overrides.pop(get_current_admin, None)

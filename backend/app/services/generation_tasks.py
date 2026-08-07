@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.model_capabilities import get_model_capability
+from app.core.errors import diagnostic_snapshot
 from app.models import GenerationTask, Workspace
 from app.services.admin_configuration import ensure_model_enabled
 from app.schemas.generation import (
@@ -221,6 +222,7 @@ async def _create_task(
     except Exception as exc:
         task.status = "failed"
         task.error_message = "任务入队失败"
+        task.diagnostic_snapshot = diagnostic_snapshot(exc, "enqueue")
         task.finished_at = datetime.now(UTC)
         await refund_task_credits(db, task, "任务入队失败，退还冻结积分")
         await db.commit()

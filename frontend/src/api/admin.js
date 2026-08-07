@@ -76,6 +76,14 @@ export async function getAdminTasks(params) {
   return (await apiClient.get('/admin/tasks', { params })).data
 }
 
+export async function getAdminTask(taskId) {
+  return (await apiClient.get(`/admin/tasks/${taskId}`)).data
+}
+
+export async function getAdminTaskProviderStatus(taskId) {
+  return (await apiClient.post(`/admin/tasks/${taskId}/provider-status`)).data
+}
+
 export async function getAdminAudits(params) {
   return (await apiClient.get('/admin/audits', { params })).data
 }

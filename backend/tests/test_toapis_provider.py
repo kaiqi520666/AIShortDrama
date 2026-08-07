@@ -114,6 +114,7 @@ async def test_http_error_preserves_top_level_provider_message():
         transport=httpx.MockTransport(
             lambda _request: httpx.Response(
                 400,
+                headers={"x-request-id": "req-invalid-reference"},
                 json={"code": "invalid_parameter", "message": "参考图片不符合要求"},
             )
         )
@@ -122,5 +123,7 @@ async def test_http_error_preserves_top_level_provider_message():
         with pytest.raises(ToApisError, match="参考图片不符合要求（invalid_parameter）") as exc_info:
             await provider.submit_video({"model": "seedance-2-mini"})
         assert exc_info.value.public_message == "上游服务暂时不可用，请稍后重试"
+        assert exc_info.value.status_code == 400
+        assert exc_info.value.request_id == "req-invalid-reference"
     finally:
         await provider.client.aclose()

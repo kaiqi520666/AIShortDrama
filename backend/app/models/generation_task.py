@@ -43,6 +43,7 @@ class GenerationTask(Base):
     credit_status: Mapped[str] = mapped_column(String(20), server_default=text("'none'"))
     result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     error_message: Mapped[str | None] = mapped_column(Text)
+    diagnostic_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     retry_count: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

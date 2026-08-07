@@ -10,7 +10,7 @@ from typing import Any, Protocol
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import ServiceUnavailableError, public_error_message
+from app.core.errors import ServiceUnavailableError, diagnostic_snapshot, public_error_message
 from app.models import GenerationTask, Workspace
 from app.providers.openai_responses import OpenAIResponsesProvider
 from app.schemas.generation import TextGenerationRequest
@@ -42,7 +42,7 @@ class TextGenerationService:
         self,
         provider_factory: Callable[[], TextProvider] | None = None,
         complete_task: Callable[[uuid.UUID, str], Awaitable[None]] = complete_text_task,
-        fail_task_handler: Callable[[uuid.UUID, str, str], Awaitable[None]] = fail_task,
+        fail_task_handler: Callable[..., Awaitable[None]] = fail_task,
     ):
         self.provider_factory = provider_factory or OpenAIResponsesProvider
         self.complete_task = complete_task
@@ -90,7 +90,12 @@ class TextGenerationService:
         except Exception as exc:
             message = public_error_message(exc, "文本生成服务暂时不可用")
             logger.exception("Text generation provider initialization failed", extra={"task_id": str(task.id)})
-            await self.fail_task(task.id, "failed", message)
+            await self.fail_task(
+                task.id,
+                "failed",
+                message,
+                diagnostic_snapshot(exc, "submit"),
+            )
             raise ServiceUnavailableError(message) from exc
         return PreparedTextGeneration(task=task, provider=provider)
 
@@ -114,13 +119,20 @@ class TextGenerationService:
             yield '{"type":"done"}\n'
         except asyncio.CancelledError:
             await self.fail_task(
-                prepared.task.id, "cancelled", "客户端已中断文本任务"
+                prepared.task.id,
+                "cancelled",
+                "客户端已中断文本任务",
             )
             raise
         except Exception as exc:
             message = public_error_message(exc, "文本生成服务暂时不可用")
             logger.exception("Text generation stream failed", extra={"task_id": str(prepared.task.id)})
-            await self.fail_task(prepared.task.id, "failed", message)
+            await self.fail_task(
+                prepared.task.id,
+                "failed",
+                message,
+                diagnostic_snapshot(exc, "submit"),
+            )
             yield json.dumps(
                 {"type": "error", "message": message}, ensure_ascii=False
             ) + "\n"

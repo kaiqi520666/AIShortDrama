@@ -61,7 +61,12 @@ class FakeVideoProvider:
 
 class FailingVideoProvider:
     async def submit_video(self, _payload):
-        raise ToApisError("完整上游错误", status_code=400)
+        raise ToApisError(
+            "完整上游错误",
+            status_code=524,
+            request_id="req-video-failure",
+            retryable=True,
+        )
 
 
 async def default_workspace_owner():
@@ -177,3 +182,13 @@ async def test_video_generation_hides_provider_detail_from_node():
         failed = await db.get(GenerationTask, task_id)
         assert failed.status == "failed"
         assert failed.error_message == "视频生成服务暂时不可用"
+        assert failed.diagnostic_snapshot == {
+            "stage": "submit",
+            "category": "upstream_http",
+            "provider_status": 524,
+            "provider_message": "完整上游错误",
+            "provider_request_id": "req-video-failure",
+            "exception_type": "ToApisError",
+            "retryable": True,
+            "occurred_at": failed.diagnostic_snapshot["occurred_at"],
+        }

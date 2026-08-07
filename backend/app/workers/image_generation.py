@@ -3,7 +3,7 @@ import uuid
 from datetime import UTC, datetime
 
 from app.core.database import SessionLocal
-from app.core.errors import public_error_message
+from app.core.errors import diagnostic_snapshot, public_error_message
 from app.models import GenerationTask
 from app.providers.toapis import ToApisError, ToApisProvider
 from app.services.storage import OssStorage
@@ -43,6 +43,7 @@ async def run_image_generation(
         await db.commit()
 
     owns_provider = provider is None
+    stage = "submit"
     try:
         provider = provider or ToApisProvider()
         storage = storage or OssStorage()
@@ -51,6 +52,7 @@ async def run_image_generation(
         if not provider_task_id:
             raise ToApisError("ToAPIs 未返回任务 ID")
         await update_task(task_uuid, provider_task_id=provider_task_id)
+        stage = "poll"
         state = await poll_generation(
             provider.get_image_task,
             provider_task_id,
@@ -60,12 +62,25 @@ async def run_image_generation(
             max_polls,
         )
         urls = result_urls(state, "图片")
-        await complete_task(task_uuid, "image", await storage.store_remote_images(task_id, urls))
+        stage = "storage"
+        stored_images = await storage.store_remote_images(task_id, urls)
+        stage = "billing"
+        await complete_task(task_uuid, "image", stored_images)
     except GenerationPollTimeout as exc:
-        await fail_task(task_uuid, "timeout", str(exc))
+        await fail_task(
+            task_uuid,
+            "timeout",
+            str(exc),
+            diagnostic_snapshot(exc, "poll"),
+        )
     except Exception as exc:
         logger.exception("Image generation failed", extra={"task_id": str(task_uuid)})
-        await fail_task(task_uuid, "failed", public_error_message(exc, "图片生成服务暂时不可用"))
+        await fail_task(
+            task_uuid,
+            "failed",
+            public_error_message(exc, "图片生成服务暂时不可用"),
+            diagnostic_snapshot(exc, stage),
+        )
         raise
     finally:
         if owns_provider and provider:

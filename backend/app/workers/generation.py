@@ -8,6 +8,7 @@ from urllib.parse import urlparse
 from sqlalchemy import select
 
 from app.core.database import SessionLocal
+from app.core.errors import diagnostic_snapshot
 from app.models import Asset, GenerationTask, Workspace
 from app.providers.toapis import ToApisError
 from app.services.billing import refund_task_credits, settle_task_credits
@@ -143,7 +144,12 @@ async def complete_task(
         await db.commit()
 
 
-async def fail_task(task_id: uuid.UUID, status: str, message: str) -> None:
+async def fail_task(
+    task_id: uuid.UUID,
+    status: str,
+    message: str,
+    diagnostic: dict[str, Any] | None = None,
+) -> None:
     async with SessionLocal() as db:
         task = await db.scalar(
             select(GenerationTask).where(GenerationTask.id == task_id).with_for_update()
@@ -152,6 +158,7 @@ async def fail_task(task_id: uuid.UUID, status: str, message: str) -> None:
             return
         task.status = status
         task.error_message = message[:2000]
+        task.diagnostic_snapshot = diagnostic
         task.finished_at = datetime.now(UTC)
         await refund_task_credits(db, task, f"{message[:220]}，退还冻结积分")
         await db.commit()
@@ -185,4 +192,10 @@ async def compensate_stale_generation_tasks(_ctx) -> None:
             )
         )
     for task_id in task_ids:
-        await fail_task(task_id, "timeout", "生成任务超时")
+        error = GenerationPollTimeout("生成任务超时")
+        await fail_task(
+            task_id,
+            "timeout",
+            str(error),
+            diagnostic_snapshot(error, "poll"),
+        )

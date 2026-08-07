@@ -5,7 +5,7 @@ import uuid
 from datetime import UTC, datetime
 
 from app.core.database import SessionLocal
-from app.core.errors import public_error_message
+from app.core.errors import diagnostic_snapshot, public_error_message
 from app.models import GenerationTask
 from app.providers.volcengine_audio import VolcengineAudioError, VolcengineAudioProvider
 from app.services.storage import OssStorage
@@ -43,12 +43,14 @@ async def run_audio_generation(
         await db.commit()
 
     owns_provider = provider is None
+    stage = "submit"
     try:
         provider = provider or VolcengineAudioProvider()
         storage = storage or OssStorage()
         response = await provider.synthesize(payload)
         audio_format = payload["audio_config"]["format"]
         await update_task(task_uuid, progress=90)
+        stage = "storage"
         if response.get("url"):
             urls = await storage.store_remote_audios(task_id, [response["url"]], audio_format)
         elif response.get("audio"):
@@ -63,6 +65,7 @@ async def run_audio_generation(
         original_duration = response.get("original_duration")
         if not isinstance(original_duration, (int, float)) or original_duration <= 0:
             raise VolcengineAudioError("火山音频接口未返回有效计费时长")
+        stage = "billing"
         await complete_task(
             task_uuid,
             "audio",
@@ -73,7 +76,12 @@ async def run_audio_generation(
         )
     except Exception as exc:
         logger.exception("Audio generation failed", extra={"task_id": str(task_uuid)})
-        await fail_task(task_uuid, "failed", public_error_message(exc, "音频生成服务暂时不可用"))
+        await fail_task(
+            task_uuid,
+            "failed",
+            public_error_message(exc, "音频生成服务暂时不可用"),
+            diagnostic_snapshot(exc, stage),
+        )
         raise
     finally:
         if owns_provider and provider:

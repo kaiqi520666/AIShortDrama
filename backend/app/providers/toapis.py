@@ -6,10 +6,17 @@ from app.core.config import get_settings
 
 
 class ToApisError(RuntimeError):
-    def __init__(self, message: str, retryable: bool = False, status_code: int | None = None):
+    def __init__(
+        self,
+        message: str,
+        retryable: bool = False,
+        status_code: int | None = None,
+        request_id: str | None = None,
+    ):
         super().__init__(message)
         self.retryable = retryable
         self.status_code = status_code
+        self.request_id = request_id
 
     @property
     def public_message(self) -> str:
@@ -88,6 +95,7 @@ class ToApisProvider:
                 self._error_message(response),
                 retryable=response.status_code == 429 or response.status_code >= 500,
                 status_code=response.status_code,
+                request_id=self._request_id(response),
             ) from exc
         data = response.json()
         if not isinstance(data, dict):
@@ -122,3 +130,14 @@ class ToApisProvider:
         except ValueError:
             pass
         return f"ToAPIs 请求失败（{response.status_code}）"
+
+    @staticmethod
+    def _request_id(response: httpx.Response) -> str | None:
+        return next(
+            (
+                response.headers.get(name)
+                for name in ("x-request-id", "request-id", "x-amzn-requestid", "cf-ray")
+                if response.headers.get(name)
+            ),
+            None,
+        )

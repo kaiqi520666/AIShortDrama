@@ -183,6 +183,8 @@ async def test_generation_returns_503_and_refunds_when_enqueue_fails(
         task = await db.scalar(select(GenerationTask).where(GenerationTask.node_id == node_id))
         user = await db.get(User, generation_user_id)
         assert (task.status, task.credit_status) == ("failed", "refunded")
+        assert task.diagnostic_snapshot["stage"] == "enqueue"
+        assert task.diagnostic_snapshot["category"] == "queue"
         assert user.credit_frozen == 0
 
 
