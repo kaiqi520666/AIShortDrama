@@ -1,15 +1,20 @@
-export const storyboardTemplates = [
-  { id: "ugc-seeding", label: "UGC 种草", description: "用户视角真实分享体验" },
-];
+import { requireTemplate } from './contentTemplates'
 
-export const storyboardTemplateRules = {
-  "ugc-seeding": "以真实用户体验分享为主，不设置复杂剧情，不使用广告腔，开头尽快出现商品并通过实际操作和试吃表达感受。",
-};
-
-export const storyboardDurations = [15, 30, 45, 60];
 export const storyboardSegmentShotCount = 6;
 export const MAX_STORYBOARD_REFERENCES = 6;
 export const MAX_STORYBOARD_CHARACTERS = 3;
+
+function storyboardConfig(template) {
+  return requireTemplate(template, '商品分镜模板').config
+}
+
+export function getStoryboardTemplates(template) {
+  return storyboardConfig(template).templates.map((item) => ({ ...item }))
+}
+
+export function getStoryboardDurations(template) {
+  return [...storyboardConfig(template).durations]
+}
 
 export function normalizeStoryboardCharacters(value) {
   return (Array.isArray(value) ? value : value ? [value] : [])
@@ -30,13 +35,13 @@ export function getStoryboardProductLimit(characterCount = 0) {
   return Math.max(0, MAX_STORYBOARD_REFERENCES - count);
 }
 
-export function createStoryboardTemplates() {
-  return storyboardTemplates.map((item) => ({ ...item, enabled: true }));
+export function createStoryboardTemplates(template) {
+  return getStoryboardTemplates(template);
 }
 
-export function storyboardSegmentCount(duration) {
+export function storyboardSegmentCount(duration, durations) {
   const seconds = Number(duration);
-  return storyboardDurations.includes(seconds) ? seconds / 15 : 1;
+  return durations.includes(seconds) ? seconds / 15 : 1;
 }
 
 export function storyboardShotCount(duration) {
@@ -98,10 +103,12 @@ function buildSpeakerInstructions(characterCount) {
   return `共有${characterCount}个指定角色，每个角色只能对应自己的参考图，不得新增人物。${speakers}。每个镜头都要有与当前动作相关的自然分享或连续画外音，人物未露脸、手部特写和商品特写也不能停止分享。对白必须使用中文双引号，禁止写“台词：”，禁止背诵式广告口号。`;
 }
 
-export function buildProductStoryboardPrompt(productContext, _templates, data = {}, supportedAspectRatios = []) {
+export function buildProductStoryboardPrompt(productContext, data = {}, supportedAspectRatios = [], template) {
+  const config = storyboardConfig(template);
+  const storyboardDurations = getStoryboardDurations(template);
   const requestedDuration = Number(data.duration);
-  const totalDuration = storyboardDurations.includes(requestedDuration) ? requestedDuration : 15;
-  const segments = storyboardSegmentCount(totalDuration);
+  const totalDuration = storyboardDurations.includes(requestedDuration) ? requestedDuration : storyboardDurations[0];
+  const segments = storyboardSegmentCount(totalDuration, storyboardDurations);
   const ratio = supportedAspectRatios.includes(data.videoAspectRatio)
     ? data.videoAspectRatio
     : supportedAspectRatios.includes("9:16") ? "9:16" : supportedAspectRatios[0];
@@ -126,7 +133,7 @@ export function buildProductStoryboardPrompt(productContext, _templates, data = 
 商品资料：
 ${context}
 
-内容方向：以真实用户的日常体验分享为主，开头尽快出现商品，不设置复杂连续剧情；通过拿取、开盖、搅拌、舀取、拉丝、试吃等具体动作表达携带、质地、口感和使用便利性。不要夸大功效，不使用广告腔，不长时间正面陈列包装文字。${ugcStyleInstructions}
+内容方向：${config.business_instruction}${ugcStyleInstructions}
 ${buildSpeakerInstructions(characters.length)}
 
 生图prompt要求：生成一张${grid.columns}列×${grid.rows}行的六格UGC分镜板，按从左到右、从上到下对应镜头1至镜头6，每个小格保持${ratio}视频画幅。每格是像真实iPhone生活视频截取的未调色原始帧，明确写出人物动作、地点、商品状态、画面构图和实际拍法；六格之间场景或动作要有区别。分镜板只允许出现“镜头1”至“镜头6”作为格子标签，不要时长、字幕、价格、二维码、水印、额外Logo或其他可识别文字。包装文字无法准确复现时，让文字区域侧置、手部遮挡或轻微虚化，不要乱码。生图prompt禁止写对白、音效和背景音乐。
@@ -138,7 +145,8 @@ ${segmentRules}${extra}
 严格只输出一个JSON对象，不要Markdown、解释或额外文本，格式必须符合：${schema}。templateId必须始终为“ugc-seeding”，title必须为“UGC 种草”，segments必须恰好${segments}条且按顺序。每个segment的duration必须为15、shotCount必须为6、segmentIndex必须连续；第一段continuityMode必须为“cut”，后续段落只能为“extend”或“cut”。每条prompt和videoPrompt都必须完整写出镜头1、镜头2、镜头3、镜头4、镜头5、镜头6，不能合并、省略或输出空镜头。每条videoPrompt至少包含六句与镜头动作对应的自然对白或连续画外音。JSON字符串中的对白双引号必须正确转义，确保整个结果可被JSON.parse直接解析。商品结构、颜色、材质、包装和人物身份必须稳定，不得新增人物、商品或文字。`;
 }
 
-export function parseProductStoryboardPlan(content, _templates, _characterReferences = [], _productReferenceCount = 1) {
+export function parseProductStoryboardPlan(content, template) {
+  const storyboardDurations = getStoryboardDurations(template);
   const source = String(content || "")
     .trim()
     .replace(/^```(?:json)?\s*/i, "")
@@ -156,7 +164,7 @@ export function parseProductStoryboardPlan(content, _templates, _characterRefere
     throw new Error("商品分镜方案必须为 UGC 种草 JSON 对象");
   }
   const totalDuration = Number(parsed.totalDuration || parsed.duration || parsed.segments.length * 15);
-  const expectedSegments = storyboardSegmentCount(totalDuration);
+  const expectedSegments = storyboardSegmentCount(totalDuration, storyboardDurations);
   if (parsed.segments.length !== expectedSegments) throw new Error(`商品分镜段落数量应为 ${expectedSegments} 条`);
   const segments = parsed.segments.map((segment, index) => {
     const segmentIndex = Number(segment?.segmentIndex);

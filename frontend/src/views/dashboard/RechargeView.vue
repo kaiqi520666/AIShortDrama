@@ -16,7 +16,7 @@ const authStore = useAuthStore()
 const toast = useGlobalToast()
 const { confirm } = useGlobalConfirm()
 const config = ref(null)
-const amount = ref('35')
+const amount = ref('')
 const order = ref(null)
 const loading = ref(true)
 const creating = ref(false)
@@ -26,11 +26,11 @@ let pollStartedAt = 0
 
 const amountCents = computed(() => Number(amount.value) * 100)
 const validAmount = computed(() => Number.isInteger(Number(amount.value))
-  && amountCents.value >= (config.value?.min_amount_cents ?? 3500)
-  && amountCents.value <= (config.value?.max_amount_cents ?? 350000))
+  && amountCents.value >= (config.value?.recharge_min_cents ?? config.value?.min_amount_cents ?? 0)
+  && amountCents.value <= (config.value?.recharge_max_cents ?? config.value?.max_amount_cents ?? 0))
 const activeTier = computed(() => [...(config.value?.tiers || [])]
   .reverse().find((tier) => tier.min_amount_cents <= amountCents.value))
-const baseCredits = computed(() => validAmount.value ? Math.floor(amountCents.value * 1000 / 3500) : 0)
+const baseCredits = computed(() => validAmount.value ? Math.floor(amountCents.value * config.value.unit_credits / config.value.unit_amount_cents) : 0)
 const bonusCredits = computed(() => Math.floor(baseCredits.value * (activeTier.value?.bonus_rate_bps || 0) / 10000))
 const totalCredits = computed(() => baseCredits.value + bonusCredits.value)
 
@@ -107,6 +107,7 @@ onMounted(async () => {
     const result = await getRechargeConfig()
     if (result.code !== 0) throw new Error(result.message)
     config.value = result.data
+    amount.value = String((result.data.recharge_min_cents ?? result.data.min_amount_cents) / 100)
     if (route.query.order) {
       await refreshOrder()
       if (order.value?.status === 'pending') startPolling()
@@ -122,19 +123,19 @@ onBeforeUnmount(stopPolling)
 
 <template>
   <section class="account-content recharge-page">
-    <header class="account-section-heading"><h1>积分充值</h1><p>1000 积分 = 35 元，充值越多赠送越多</p></header>
+    <header class="account-section-heading"><h1>积分充值</h1><p>{{ config ? `${config.unit_credits} 积分 = ${config.unit_amount_cents / 100} 元，充值越多赠送越多` : '正在加载充值政策' }}</p></header>
     <EmptyState v-if="loading" loading title="正在加载充值配置" />
     <div v-else-if="config" class="recharge-layout">
       <section class="recharge-panel">
-        <div class="recharge-panel__title"><div><span>选择金额</span><small>单笔支持 35–3500 元整数金额</small></div><WalletCards :size="20" /></div>
+        <div class="recharge-panel__title"><div><span>选择金额</span><small>单笔支持 {{ config.recharge_min_cents / 100 }}–{{ config.recharge_max_cents / 100 }} 元整数金额</small></div><WalletCards :size="20" /></div>
         <div class="recharge-tiers">
           <button v-for="tier in config.tiers" :key="tier.id" type="button" :class="{ active: Number(amount) === tier.min_amount_cents / 100 }" @click="setAmount(tier.min_amount_cents)">
             <strong>¥{{ tier.min_amount_cents / 100 }}</strong>
             <span>{{ tier.bonus_rate_bps ? `赠送 ${tier.bonus_rate_bps / 100}%` : '基础档' }}</span>
           </button>
         </div>
-        <label class="recharge-custom"><span>自定义金额</span><div><b>¥</b><AppInput v-model="amount" type="number" min="35" max="3500" step="1" /></div></label>
-        <p v-if="amount && !validAmount" class="recharge-error">请输入 35–3500 之间的整数金额</p>
+        <label class="recharge-custom"><span>自定义金额</span><div><b>¥</b><AppInput v-model="amount" type="number" :min="config.recharge_min_cents / 100" :max="config.recharge_max_cents / 100" step="1" /></div></label>
+        <p v-if="amount && !validAmount" class="recharge-error">请输入 {{ config.recharge_min_cents / 100 }}–{{ config.recharge_max_cents / 100 }} 之间的整数金额</p>
         <div class="recharge-summary">
           <div><span>基础积分</span><strong>{{ baseCredits }}</strong></div>
           <div><span>赠送积分</span><strong class="is-bonus">+{{ bonusCredits }}</strong></div>

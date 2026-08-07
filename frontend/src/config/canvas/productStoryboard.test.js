@@ -3,16 +3,18 @@ import {
   buildProductStoryboardPrompt,
   buildStoryboardReferenceManifest,
   createStoryboardTemplates,
+  getStoryboardDurations,
   getStoryboardProductLimit,
+  getStoryboardTemplates,
   MAX_STORYBOARD_REFERENCES,
   parseProductStoryboardPlan,
   recommendStoryboardSettings,
   storyboardGrid,
   storyboardSegmentCount,
   storyboardShotCount,
-  storyboardTemplates,
 } from './productStoryboard'
 import { modelCapabilitiesFixture } from '../../test/modelCapabilities'
+import { contentTemplatesFixture } from '../../test/contentTemplates'
 import { normalizeImageModels } from '../imageModels'
 import { normalizeVideoModels } from '../videoModels'
 
@@ -20,6 +22,9 @@ const imageModels = normalizeImageModels(modelCapabilitiesFixture.image)
 const defaultImageModel = imageModels.find(({ id }) => id === modelCapabilitiesFixture.image.default_model)
 const videoModels = normalizeVideoModels(modelCapabilitiesFixture.video)
 const videoAspectRatios = videoModels.find(({ id }) => id === modelCapabilitiesFixture.video.default_model).aspectRatios
+const template = contentTemplatesFixture.product_storyboard
+const storyboardTemplates = getStoryboardTemplates(template)
+const storyboardDurations = getStoryboardDurations(template)
 
 const shotText = (prefix = '') => Array.from({ length: 6 }, (_, index) => `${prefix}镜头${index + 1}：具体动作`).join('；')
 
@@ -46,15 +51,15 @@ function planJson(overrides = {}) {
 
 describe('product storyboard planning', () => {
   it('only exposes the UGC seeding template', () => {
-    expect(storyboardTemplates).toEqual([{ id: 'ugc-seeding', label: 'UGC 种草', description: '用户视角真实分享体验' }])
-    expect(createStoryboardTemplates()).toEqual([{ ...storyboardTemplates[0], enabled: true }])
+    expect(storyboardTemplates).toEqual([{ id: 'ugc-seeding', label: 'UGC 种草', description: '用户视角真实分享体验', enabled: true }])
+    expect(createStoryboardTemplates(template)).toEqual(storyboardTemplates)
   })
 
   it('keeps the six-shot storyboard layout and supported durations', () => {
     expect([4, 6, 9, 12, 15].map(storyboardShotCount)).toEqual([2, 3, 4, 6, 6])
     expect(storyboardGrid(15, '9:16')).toEqual({ shots: 6, columns: 3, rows: 2 })
     expect(storyboardGrid(15, '16:9')).toEqual({ shots: 6, columns: 2, rows: 3 })
-    expect(storyboardSegmentCount(30)).toBe(2)
+    expect(storyboardSegmentCount(30, storyboardDurations)).toBe(2)
     expect(videoAspectRatios).toEqual(['21:9', '16:9', '4:3', '1:1', '3:4', '9:16'])
   })
 
@@ -70,13 +75,13 @@ describe('product storyboard planning', () => {
   })
 
   it('gives GPT-5.6 Sol the complete UGC image and video contract', () => {
-    const prompt = buildProductStoryboardPrompt('商品名称：测试商品\n核心卖点：口感顺滑', [storyboardTemplates[0]], {
+    const prompt = buildProductStoryboardPrompt('商品名称：测试商品\n核心卖点：口感顺滑', {
       duration: 30,
       videoAspectRatio: '9:16',
       characterReferences: [{ url: 'https://example.com/character.png' }],
       productReferences: [{ url: 'https://example.com/product.png' }],
       prompt: '场景在家庭餐桌和办公室之间切换',
-    }, videoAspectRatios)
+    }, videoAspectRatios, template)
     expect(prompt).toContain('只保留“UGC 种草”这一种内容')
     expect(prompt).toContain('全程由人物本人或同行者真实手持手机拍摄')
     expect(prompt).toContain('前置广角')
@@ -96,7 +101,7 @@ describe('product storyboard planning', () => {
   it('preserves GPT-generated prompts without program camera or reference rewrites', () => {
     const exactPrompt = shotText('镜头动作：')
     const exactVideo = `图片1是本段分镜图。${shotText('角色1说道："自然分享"；')}`
-    const plan = parseProductStoryboardPlan(planJson({ prompt: exactPrompt, videoPrompt: exactVideo }), [storyboardTemplates[0]])
+    const plan = parseProductStoryboardPlan(planJson({ prompt: exactPrompt, videoPrompt: exactVideo }), template)
     expect(plan.templateId).toBe('ugc-seeding')
     expect(plan.segments[0].prompt).toBe(exactPrompt)
     expect(plan.segments[0].videoPrompt).toBe(exactVideo)
@@ -113,14 +118,14 @@ describe('product storyboard planning', () => {
       endingState: '结束口感评价',
       continuityMode: 'extend',
     })
-    const plan = parseProductStoryboardPlan(JSON.stringify(parsed), [storyboardTemplates[0]])
+    const plan = parseProductStoryboardPlan(JSON.stringify(parsed), template)
     expect(plan.segments.map((segment) => segment.continuityMode)).toEqual(['cut', 'extend'])
     expect(plan.segments).toHaveLength(2)
   })
 
   it('rejects non-UGC or incomplete plans', () => {
-    expect(() => parseProductStoryboardPlan(JSON.stringify({ templateId: 'other', segments: [] }), [storyboardTemplates[0]])).toThrow('UGC')
-    expect(() => parseProductStoryboardPlan(planJson({ prompt: '镜头1：动作；镜头2：动作；镜头3：动作', videoPrompt: shotText() }), [storyboardTemplates[0]])).toThrow('必须包含镜头1至镜头6')
+    expect(() => parseProductStoryboardPlan(JSON.stringify({ templateId: 'other', segments: [] }), template)).toThrow('UGC')
+    expect(() => parseProductStoryboardPlan(planJson({ prompt: '镜头1：动作；镜头2：动作；镜头3：动作', videoPrompt: shotText() }), template)).toThrow('必须包含镜头1至镜头6')
   })
 
   it('recommends image settings from duration and aspect ratio', () => {

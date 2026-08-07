@@ -5,11 +5,12 @@ import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
 import { maxProductReferenceImages } from '../../config/canvas/connectionRules'
 import { productPromptContext } from '../../config/canvas/ecommerce'
-import { buildProductVisualPrompt, parseProductVisualPlan, productVisualGroups } from '../../config/canvas/productVisual'
+import { buildProductVisualPrompt, getProductVisualGroups, parseProductVisualPlan } from '../../config/canvas/productVisual'
 import { normalizeImageSettings } from '../../config/imageModels'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
+import { useContentTemplatesStore } from '../../stores/contentTemplates'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
 import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import AppButton from '../ui/AppButton.vue'
@@ -25,6 +26,7 @@ const props = defineProps({
 const groupIcons = { basic: Box, marketing: BadgeCheck, detail: ScanSearch, trust: Package }
 const store = useCanvasStore()
 const capabilityStore = useModelCapabilitiesStore()
+const contentTemplateStore = useContentTemplatesStore()
 const authStore = useAuthStore()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
@@ -46,7 +48,12 @@ const selectedImageSettings = computed(() => normalizeImageSettings({
 }, capabilityStore.imageModels, capabilityStore.defaultImageModel))
 const selectedTextModel = computed(() => capabilityStore.textModels.find((model) => model.id === props.data.textModel) || capabilityStore.defaultTextModel)
 const selectedItems = computed(() => (props.data.items || []).filter((item) => item.enabled))
-const prompt = computed(() => buildProductVisualPrompt(productContext.value, selectedItems.value, props.data))
+const template = computed(() => contentTemplateStore.templates?.product_visual)
+const templateEnabled = computed(() => Boolean(template.value?.enabled))
+const productVisualGroups = computed(() => templateEnabled.value ? getProductVisualGroups(template.value) : [])
+const prompt = computed(() => templateEnabled.value
+  ? buildProductVisualPrompt(productContext.value, selectedItems.value, props.data, template.value)
+  : '')
 const running = computed(() => props.data.status === 'generating')
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedTextModel.value.id))
 const insufficientCredits = computed(() => (authStore.user?.credit_balance || 0) < estimatedCredits.value)
@@ -55,7 +62,9 @@ const imageModelOptions = computed(() => capabilityStore.imageModels.map(({ id, 
 const textModelOptions = computed(() => capabilityStore.textModels.map(({ id, label }) => ({ value: id, label })))
 const ratioOptions = computed(() => selectedImageSettings.value.model.aspectRatios.map((value) => ({ value, label: value })))
 const resolutionOptions = computed(() => selectedImageSettings.value.model.resolutions.map((value) => ({ value, label: value })))
-const message = computed(() => failure.value || props.data.generationError || (!productNode.value
+const message = computed(() => failure.value || props.data.generationError || (!templateEnabled.value
+  ? '商品图种模板已停用'
+  : !productNode.value
   ? '请先连接商品资料节点'
   : !allReferenceImages.value.length
     ? '请先上传商品参考图'
@@ -68,7 +77,7 @@ const message = computed(() => failure.value || props.data.generationError || (!
         : insufficientCredits.value
           ? `积分不足，本次需要 ${estimatedCredits.value} 积分`
           : ''))
-const canSubmit = computed(() => !running.value && productNode.value && referenceImage.value && productContext.value && selectedItems.value.length && !insufficientCredits.value)
+const canSubmit = computed(() => templateEnabled.value && !running.value && productNode.value && referenceImage.value && productContext.value && selectedItems.value.length && !insufficientCredits.value)
 
 function updateItem(id, enabled) {
   failure.value = ''
@@ -95,6 +104,7 @@ async function submitTask() {
     confirmText: '继续生成',
   })) return
 
+  updateNodeData(props.nodeId, { templateVersion: template.value.version })
   await runTextTask(streamReversePrompt, {
     workspace_id: store.workspaceId,
     node_id: props.nodeId,

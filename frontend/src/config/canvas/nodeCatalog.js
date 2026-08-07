@@ -72,7 +72,7 @@ export const nodeCatalog = {
     workspaces: ['ecommerce'], order: { ecommerce: 0 }, businessCreator: 'product',
     inputs: ['image'], outputs: ['product_visual', 'product_storyboard', 'image', 'video'],
     inputLimits: { image: { max: 6, message: '商品创作节点最多连接 6 张参考图片' } },
-    createData: ({ number, models }) => ({
+    createData: ({ number, models, templates }) => ({
       title: `商品创作 ${number}`,
       status: 'empty',
       workflowStep: 'recognition',
@@ -81,7 +81,8 @@ export const nodeCatalog = {
       imageModel: models.image.id,
       aspectRatio: models.image.defaultAspectRatio,
       resolution: models.image.defaultResolution,
-      items: createProductVisualItems(),
+      items: createProductVisualItems(templates.product_visual),
+      templateVersion: templates.product_visual.version,
       prompt: '',
       product: {
         name: '', brand: '', category: '', price: '', specifications: '', packagingType: '', productDimensions: '',
@@ -96,9 +97,10 @@ export const nodeCatalog = {
     workspaces: ['ecommerce'], order: { ecommerce: 1 },
     inputs: ['product'], outputs: ['image'],
     inputLimits: { product: { max: 1, message: '商品出图节点只能连接 1 个商品资料' } },
-    createData: ({ number, models }) => ({
+    createData: ({ number, models, templates }) => ({
       title: `商品出图 ${number}`, status: 'empty', textModel: models.text.id, imageModel: models.image.id,
-      aspectRatio: models.image.defaultAspectRatio, resolution: models.image.defaultResolution, items: createProductVisualItems(),
+      aspectRatio: models.image.defaultAspectRatio, resolution: models.image.defaultResolution,
+      items: createProductVisualItems(templates.product_visual), templateVersion: templates.product_visual.version,
     }),
   },
   product_storyboard: {
@@ -108,9 +110,10 @@ export const nodeCatalog = {
     workspaces: ['ecommerce'], order: { ecommerce: 2 },
     inputs: ['product'], outputs: ['image'],
     inputLimits: { product: { max: 1, message: '商品分镜节点只能连接 1 个商品创作' } },
-    createData: ({ number, models }) => ({
+    createData: ({ number, models, templates }) => ({
       title: `商品分镜 ${number}`, status: 'empty', textModel: models.text.id, duration: 30,
-      videoAspectRatio: '9:16', templateId: 'ugc-seeding', templates: createStoryboardTemplates(),
+      videoAspectRatio: '9:16', templateId: 'ugc-seeding', templates: createStoryboardTemplates(templates.product_storyboard),
+      templateVersion: templates.product_storyboard.version,
       productReferences: [], characterReferences: [], prompt: '', generatedNodeIds: [],
     }),
   },
@@ -191,9 +194,9 @@ export function getNodeDescriptor(type) {
   return descriptor
 }
 
-export function createNodeData(type, number, source, models) {
+export function createNodeData(type, number, source, models, templates = {}) {
   if (!models?.text || !models.image || !models.video || !models.audio) throw new Error('模型能力尚未加载')
-  return getNodeDescriptor(type).createData({ number, source, models })
+  return getNodeDescriptor(type).createData({ number, source, models, templates })
 }
 
 export function getReversePrompt(type) {

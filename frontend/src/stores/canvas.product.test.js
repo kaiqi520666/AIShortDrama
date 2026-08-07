@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { seedModelCapabilities } from '../test/modelCapabilities'
+import { seedContentTemplates } from '../test/contentTemplates'
 import { useCanvasStore } from './canvas'
 
 beforeEach(() => {
   setActivePinia(createPinia())
   seedModelCapabilities()
+  seedContentTemplates()
 })
 
 describe('canvas product workflows', () => {

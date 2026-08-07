@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { seedModelCapabilities } from '../test/modelCapabilities'
+import { seedContentTemplates } from '../test/contentTemplates'
 import { useCanvasStore } from './canvas'
 
 const readyNode = { id: 'text-1', type: 'text', position: { x: 0, y: 0 }, data: { status: 'ready' } }
@@ -8,6 +9,7 @@ const readyNode = { id: 'text-1', type: 'text', position: { x: 0, y: 0 }, data: 
 beforeEach(() => {
   setActivePinia(createPinia())
   seedModelCapabilities()
+  seedContentTemplates()
 })
 
 describe('canvas grouping and duplication', () => {

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CURRENT_CANVAS_SCHEMA_VERSION, migrateCanvas } from './migrations'
+import { contentTemplatesFixture } from '../../test/contentTemplates'
 
 describe('canvas migrations', () => {
   it('fills missing storyboard fields without overwriting saved values', () => {
@@ -9,12 +10,12 @@ describe('canvas migrations', () => {
         { id: 'a', type: 'product_storyboard', data: {} },
         { id: 'b', type: 'product_storyboard', data: { textModel: 'custom', templateId: 'saved', templates: [{ id: 'saved' }] } },
       ],
-    }, 'gpt-5.6-sol')
+    }, 'gpt-5.6-sol', contentTemplatesFixture)
 
     expect(migrated.schema_version).toBe(CURRENT_CANVAS_SCHEMA_VERSION)
     expect(migrated.nodes[0].data).toEqual(expect.objectContaining({ textModel: expect.any(String), templateId: 'ugc-seeding', templates: expect.any(Array) }))
-    expect(migrated.nodes[1].data).toEqual({ textModel: 'custom', templateId: 'saved', templates: [{ id: 'saved' }] })
-    expect(migrateCanvas(migrated, 'gpt-5.6-sol')).toEqual(migrated)
+    expect(migrated.nodes[1].data).toEqual(expect.objectContaining({ textModel: 'custom', templateId: 'saved', templates: [{ id: 'saved' }], templateVersion: 1 }))
+    expect(migrateCanvas(migrated, 'gpt-5.6-sol', contentTemplatesFixture)).toEqual(migrated)
   })
 
   it('rejects canvases created by a newer client', () => {

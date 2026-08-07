@@ -5,6 +5,7 @@ import { isNodeTypeAvailable } from '../config/canvas/nodePacks'
 import { CURRENT_CANVAS_SCHEMA_VERSION, migrateCanvas } from '../config/canvas/migrations'
 import { saveWorkspaceCanvas } from '../api/workspaces'
 import { useModelCapabilitiesStore } from './modelCapabilities'
+import { useContentTemplatesStore } from './contentTemplates'
 import {
   canvasBusinessActions,
   createBusinessNodeChain,
@@ -23,6 +24,12 @@ function modelDefaults() {
     video: capabilities.defaultVideoModel,
     audio: capabilities.audioCapability,
   }
+}
+
+function contentTemplates(required = false) {
+  const templates = useContentTemplatesStore().templates
+  if (!templates && required) throw new Error('商品模板尚未加载')
+  return templates
 }
 
 function stripTransientNodes(nodes = [], edges = [], groups = []) {
@@ -77,7 +84,11 @@ export const useCanvasStore = defineStore('canvas', {
         canvas = legacy
         this.legacyImportPending = true
       }
-      canvas = migrateCanvas(canvas, modelDefaults().text.id)
+      canvas = migrateCanvas(
+        canvas,
+        modelDefaults().text.id,
+        this.workspaceType === 'ecommerce' ? contentTemplates(true) : undefined,
+      )
       const persistent = stripTransientNodes(canvas.nodes, canvas.edges, canvas.groups)
       this.nodes = JSON.parse(JSON.stringify(persistent.nodes))
       this.edges = JSON.parse(JSON.stringify(persistent.edges))
@@ -185,7 +196,8 @@ export const useCanvasStore = defineStore('canvas', {
       const number = this.sequence++
       const id = `${type}-${number}`
       this.nodes.forEach((node) => { node.selected = false })
-      const data = createNodeData(type, number, source, modelDefaults())
+      const needsTemplates = ['product', 'product_visual', 'product_storyboard'].includes(type)
+      const data = createNodeData(type, number, source, modelDefaults(), contentTemplates(needsTemplates))
       if (type === 'video') Object.assign(data, storyboardVideoData(source, modelDefaults().video) || {})
       this.nodes.push({
         id,

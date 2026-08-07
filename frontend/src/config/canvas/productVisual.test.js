@@ -1,9 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { buildProductVisualPrompt, parseProductVisualPlan, productVisualTypes } from './productVisual'
+import { buildProductVisualPrompt, createProductVisualItems, parseProductVisualPlan } from './productVisual'
+import { contentTemplatesFixture } from '../../test/contentTemplates'
+
+const template = contentTemplatesFixture.product_visual
+const productVisualTypes = createProductVisualItems(template)
 
 describe('product visual planning', () => {
   it('builds one bounded multimodal prompt for all selected types', () => {
-    const prompt = buildProductVisualPrompt('商品名称：测试商品\n核心卖点：轻便耐用'.repeat(200), productVisualTypes, { aspectRatio: '16:9', resolution: '2K' })
+    const prompt = buildProductVisualPrompt('商品名称：测试商品\n核心卖点：轻便耐用'.repeat(200), productVisualTypes, { aspectRatio: '16:9', resolution: '2K' }, template)
 
     expect(prompt.length).toBeLessThanOrEqual(3000)
     expect(prompt).toContain('white-bg=白底图')

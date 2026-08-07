@@ -5,7 +5,7 @@ function isCancelled(error) {
   return error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError'
 }
 
-export function useWorkspaceCanvasSession({ workspaceStore, capabilityStore, loading, toast }) {
+export function useWorkspaceCanvasSession({ workspaceStore, capabilityStore, contentTemplateStore, loading, toast }) {
   const loadError = ref('')
   let controller = null
   let loadingId = null
@@ -38,6 +38,7 @@ export function useWorkspaceCanvasSession({ workspaceStore, capabilityStore, loa
           : workspaceStore.fetch(workspaceId, { signal: controller.signal }),
         capabilityStore.load(),
       ])
+      if (workspace?.workspace_type === 'ecommerce') await contentTemplateStore.load()
       return currentSequence === requestSequence ? workspace : null
     } catch (error) {
       if (currentSequence === requestSequence && !isCancelled(error)) {

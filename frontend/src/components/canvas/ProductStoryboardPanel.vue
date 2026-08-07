@@ -7,21 +7,22 @@ import { productPromptContext } from '../../config/canvas/ecommerce'
 import {
   buildProductStoryboardPrompt,
   buildStoryboardReferenceManifest,
+  getStoryboardDurations,
   getStoryboardProductLimit,
+  getStoryboardTemplates,
   MAX_STORYBOARD_CHARACTERS,
   MAX_STORYBOARD_REFERENCES,
   parseProductStoryboardPlan,
   recommendStoryboardSettings,
-  storyboardDurations,
   storyboardSegmentCount,
   storyboardShotCount,
-  storyboardTemplates,
 } from '../../config/canvas/productStoryboard'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
 import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
 import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
+import { useContentTemplatesStore } from '../../stores/contentTemplates'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import AppAssetPickerModal from '../assets/AppAssetPickerModal.vue'
 import AppButton from '../ui/AppButton.vue'
@@ -36,6 +37,7 @@ const props = defineProps({
 
 const store = useCanvasStore()
 const capabilityStore = useModelCapabilitiesStore()
+const contentTemplateStore = useContentTemplatesStore()
 const authStore = useAuthStore()
 const { confirm } = useGlobalConfirm()
 const { updateNodeData } = useVueFlow()
@@ -50,9 +52,13 @@ const productNode = computed(() => store.incomingNodes(props.nodeId).find((node)
 const referenceManifest = computed(() => buildStoryboardReferenceManifest(props.data.characterReferences, props.data.productReferences))
 const productReferences = computed(() => referenceManifest.value.products)
 const productContext = computed(() => productPromptContext(productNode.value?.data.product))
-const ugcTemplate = storyboardTemplates[0]
+const template = computed(() => contentTemplateStore.templates?.product_storyboard)
+const templateEnabled = computed(() => Boolean(template.value?.enabled && template.value?.config?.templates?.[0]?.enabled))
+const storyboardTemplates = computed(() => templateEnabled.value ? getStoryboardTemplates(template.value) : [])
+const storyboardDurations = computed(() => templateEnabled.value ? getStoryboardDurations(template.value) : [])
+const ugcTemplate = computed(() => storyboardTemplates.value[0])
 const selectedTextModel = computed(() => capabilityStore.textModels.find((model) => model.id === props.data.textModel) || capabilityStore.defaultTextModel)
-const segmentCount = computed(() => storyboardSegmentCount(props.data.duration))
+const segmentCount = computed(() => storyboardSegmentCount(props.data.duration, storyboardDurations.value))
 const shots = computed(() => storyboardShotCount(15))
 const recommended = computed(() => recommendStoryboardSettings(15, props.data.videoAspectRatio, capabilityStore.defaultImageModel))
 const running = computed(() => props.data.status === 'generating')
@@ -65,14 +71,16 @@ const ratioOptions = computed(() => videoAspectRatios.value.map((value) => ({ va
 const characterReferences = computed(() => referenceManifest.value.characters)
 const totalReferenceCount = computed(() => characterReferences.value.length + productReferences.value.length)
 const productLimit = computed(() => getStoryboardProductLimit(characterReferences.value.length))
-const message = computed(() => failure.value || props.data.generationError || (!productNode.value
+const message = computed(() => failure.value || props.data.generationError || (!templateEnabled.value
+  ? '商品分镜模板已停用'
+  : !productNode.value
   ? '请先连接商品创作节点'
   : !productReferences.value.length
     ? '请先选择商品参考图'
     : !productContext.value
       ? '请先完成商品识别'
       : insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
-const canSubmit = computed(() => !running.value && productNode.value && productReferences.value.length && productContext.value && !insufficientCredits.value)
+const canSubmit = computed(() => templateEnabled.value && !running.value && productNode.value && productReferences.value.length && productContext.value && !insufficientCredits.value)
 
 function updateData(value) {
   failure.value = ''
@@ -181,6 +189,7 @@ async function submitTask() {
   if (existingGeneratedNodes.value.length) store.deleteNodes(existingGeneratedNodes.value)
 
   const references = referenceManifest.value.references
+  updateNodeData(props.nodeId, { templateVersion: template.value.version })
   await runTextTask(streamReversePrompt, {
     workspace_id: store.workspaceId,
     node_id: props.nodeId,
@@ -188,12 +197,12 @@ async function submitTask() {
     media_type: 'image',
     media_url: references[0]?.url,
     media_urls: references.slice(1).map((reference) => reference.url),
-    prompt: buildProductStoryboardPrompt(productContext.value, [ugcTemplate], props.data, videoAspectRatios.value),
+    prompt: buildProductStoryboardPrompt(productContext.value, props.data, videoAspectRatios.value, template.value),
     response_mode: 'product_storyboard_plan',
   }, {
     failureMessage: '商品分镜方案生成失败',
     onSuccess: (content) => {
-      const plan = parseProductStoryboardPlan(content, [ugcTemplate], characterReferences.value, productReferences.value.length)
+      const plan = parseProductStoryboardPlan(content, template.value)
       const generatedNodeIds = store.addProductStoryboardNodes(
         props.nodeId,
         productNode.value.id,
@@ -249,7 +258,7 @@ async function submitTask() {
       <header class="storyboard-section-header"><span><Clapperboard :size="14" />内容类型</span><small>固定</small></header>
       <div class="storyboard-template-grid storyboard-template-grid--fixed">
         <div class="storyboard-template-option storyboard-template-option--fixed active">
-          <span><strong>UGC 种草</strong><small>iPhone 原相机、手持手机、真实体验分享</small></span>
+          <span><strong>{{ ugcTemplate?.label }}</strong><small>{{ ugcTemplate?.description }}</small></span>
         </div>
       </div>
     </section>

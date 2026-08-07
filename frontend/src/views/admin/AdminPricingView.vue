@@ -8,9 +8,11 @@ import AppDataTable from '../../components/ui/AppDataTable.vue'
 import AppInput from '../../components/ui/AppInput.vue'
 import AppSelect from '../../components/ui/AppSelect.vue'
 import { useGlobalToast } from '../../composables/useGlobalUI'
+import { useAdminMutation } from '../../composables/useAdminMutation'
 import { getApiErrorMessage } from '../../utils/apiError'
 
 const toast = useGlobalToast()
+const { confirmMutation } = useAdminMutation()
 const loading = ref(false)
 const items = ref([])
 const dialog = reactive({ rule: null, reason: '', submitting: false, form: {} })
@@ -32,7 +34,8 @@ async function submit() {
   dialog.submitting = true
   try {
     const form = dialog.form
-    const payload = { reason: dialog.reason, provider: form.provider, media_type: form.media_type, model: form.model, specification: form.specification, billing_unit: form.billing_unit, cost_per_unit: numberOrNull(form.cost_per_unit), input_cost_per_million: numberOrNull(form.input_cost_per_million), output_cost_per_million: numberOrNull(form.output_cost_per_million), base_credits: numberOrNull(form.base_credits), freeze_credits: numberOrNull(form.freeze_credits), multiplier: Number(form.multiplier), enabled: form.enabled === 'true' }
+    const payload = { reason: dialog.reason, cost_per_unit: numberOrNull(form.cost_per_unit), input_cost_per_million: numberOrNull(form.input_cost_per_million), output_cost_per_million: numberOrNull(form.output_cost_per_million), base_credits: numberOrNull(form.base_credits), freeze_credits: numberOrNull(form.freeze_credits), multiplier: Number(form.multiplier), enabled: form.enabled === 'true' }
+    if (!await confirmMutation({ title: '更新计费规则', message: `${dialog.rule.model} · ${dialog.rule.specification || '默认规格'}` })) return
     const result = await updateAdminPricing(dialog.rule.id, payload); if (result.code !== 0) throw new Error(result.message)
     dialog.rule = null; toast.success('计费规则已更新'); await load()
   } catch (error) { toast.error(getApiErrorMessage(error, '保存失败')) } finally { dialog.submitting = false }
@@ -52,6 +55,6 @@ onMounted(load)
       <template #cell-enabled="{ item: rule }"><span class="admin-status" :class="rule.enabled ? 'is-active' : 'is-disabled'">{{ rule.enabled ? '启用' : '停用' }}</span></template>
       <template #cell-actions="{ item: rule }"><AppButton size="sm" variant="soft" @click="open(rule)"><Pencil :size="14" />编辑</AppButton></template>
     </AppDataTable>
-    <AdminDialog v-if="dialog.rule" v-model:reason="dialog.reason" title="编辑计费规则" :description="dialog.rule.model" :submitting="dialog.submitting" @close="dialog.rule = null" @submit="submit"><div class="admin-form-grid"><label class="admin-field"><span>供应商</span><AppInput v-model="dialog.form.provider" required /></label><label class="admin-field"><span>模型</span><AppInput v-model="dialog.form.model" required /></label><label class="admin-field"><span>媒体类型</span><AppSelect v-model="dialog.form.media_type" :options="mediaOptions" aria-label="媒体类型" /></label><label class="admin-field"><span>规格</span><AppInput v-model="dialog.form.specification" /></label><label class="admin-field"><span>计费单位</span><AppInput v-model="dialog.form.billing_unit" required /></label><label class="admin-field"><span>成本价</span><AppInput v-model="dialog.form.cost_per_unit" type="number" min="0" step="0.000001" /></label><label class="admin-field"><span>输入/百万 Token</span><AppInput v-model="dialog.form.input_cost_per_million" type="number" min="0" step="0.000001" /></label><label class="admin-field"><span>输出/百万 Token</span><AppInput v-model="dialog.form.output_cost_per_million" type="number" min="0" step="0.000001" /></label><label class="admin-field"><span>基础积分</span><AppInput v-model="dialog.form.base_credits" type="number" min="0" /></label><label class="admin-field"><span>冻结积分</span><AppInput v-model="dialog.form.freeze_credits" type="number" min="0" /></label><label class="admin-field"><span>倍率</span><AppInput v-model="dialog.form.multiplier" type="number" min="0.001" max="100" step="0.001" required /></label><label class="admin-field"><span>状态</span><AppSelect v-model="dialog.form.enabled" :options="enabledOptions" aria-label="启用状态" /></label></div></AdminDialog>
+    <AdminDialog v-if="dialog.rule" v-model:reason="dialog.reason" title="编辑计费规则" :description="`${dialog.rule.model} · ${dialog.rule.media_type} · ${dialog.rule.specification || '默认规格'}`" :submitting="dialog.submitting" @close="dialog.rule = null" @submit="submit"><div class="admin-form-grid"><label class="admin-field"><span>成本价</span><AppInput v-model="dialog.form.cost_per_unit" type="number" min="0" step="0.000001" /></label><label class="admin-field"><span>输入/百万 Token</span><AppInput v-model="dialog.form.input_cost_per_million" type="number" min="0" step="0.000001" /></label><label class="admin-field"><span>输出/百万 Token</span><AppInput v-model="dialog.form.output_cost_per_million" type="number" min="0" step="0.000001" /></label><label class="admin-field"><span>基础积分</span><AppInput v-model="dialog.form.base_credits" type="number" min="0" /></label><label class="admin-field"><span>冻结积分</span><AppInput v-model="dialog.form.freeze_credits" type="number" min="0" /></label><label class="admin-field"><span>倍率</span><AppInput v-model="dialog.form.multiplier" type="number" min="0.001" max="100" step="0.001" required /></label><label class="admin-field"><span>状态</span><AppSelect v-model="dialog.form.enabled" :options="enabledOptions" aria-label="启用状态" /></label></div></AdminDialog>
   </section>
 </template>

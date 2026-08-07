@@ -8,9 +8,11 @@ import AppDataTable from '../../components/ui/AppDataTable.vue'
 import AppInput from '../../components/ui/AppInput.vue'
 import AppSelect from '../../components/ui/AppSelect.vue'
 import { useGlobalToast } from '../../composables/useGlobalUI'
+import { useAdminMutation } from '../../composables/useAdminMutation'
 import { getApiErrorMessage } from '../../utils/apiError'
 
 const toast = useGlobalToast()
+const { confirmMutation } = useAdminMutation()
 const loading = ref(false)
 const data = reactive({ items: [], page: 1, page_size: 20, total: 0 })
 const filters = reactive({ q: '', status: 'all', role: 'all' })
@@ -44,6 +46,10 @@ function close() { if (!dialog.submitting) dialog.type = '' }
 function title() { return ({ credits: '调整积分', role: '修改角色', status: dialog.value === 'disabled' ? '停用用户' : '启用用户', password: '重置密码' })[dialog.type] }
 
 async function submit() {
+  if (!await confirmMutation({
+    title: title(),
+    message: `${dialog.user.username} · ${dialog.user.email}`,
+  })) return
   dialog.submitting = true
   try {
     const payload = { reason: dialog.reason }

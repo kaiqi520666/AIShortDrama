@@ -1,8 +1,9 @@
 <script setup>
 import { computed } from 'vue'
 import { Clapperboard, Package } from 'lucide-vue-next'
-import { storyboardSegmentCount, storyboardShotCount } from '../../config/canvas/productStoryboard'
+import { getStoryboardDurations, storyboardSegmentCount, storyboardShotCount } from '../../config/canvas/productStoryboard'
 import { useCanvasStore } from '../../stores/canvas'
+import { useContentTemplatesStore } from '../../stores/contentTemplates'
 import StructuredNodeShell from './StructuredNodeShell.vue'
 
 const props = defineProps({
@@ -13,8 +14,12 @@ const props = defineProps({
 })
 
 const store = useCanvasStore()
+const contentTemplateStore = useContentTemplatesStore()
 const productNode = computed(() => store.incomingNodes(props.id).find((node) => node.type === 'product'))
-const segmentCount = computed(() => storyboardSegmentCount(props.data.duration))
+const segmentCount = computed(() => storyboardSegmentCount(
+  props.data.duration,
+  getStoryboardDurations(contentTemplateStore.templates.product_storyboard),
+))
 </script>
 
 <template>
