@@ -48,10 +48,6 @@ export async function getAdminContentTemplate(key) {
   return (await apiClient.get(`/admin/content-templates/${key}`)).data
 }
 
-export async function getAdminContentTemplates() {
-  return (await apiClient.get('/admin/content-templates')).data
-}
-
 export async function updateAdminContentTemplate(key, payload) {
   return (await apiClient.put(`/admin/content-templates/${key}`, payload)).data
 }

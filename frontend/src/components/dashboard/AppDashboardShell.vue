@@ -1,5 +1,5 @@
 <script setup>
-import { ClipboardList, CreditCard, FileText, History, Images, LayoutDashboard, PanelsTopLeft, ReceiptText, Tags, UsersRound } from 'lucide-vue-next'
+import { ClipboardList, CreditCard, FileText, History, Image, Images, LayoutDashboard, PanelsTopLeft, ReceiptText, Tags, UsersRound } from 'lucide-vue-next'
 import AppBrand from '../ui/AppBrand.vue'
 import AppHeaderAccountControls from '../ui/AppHeaderAccountControls.vue'
 
@@ -24,7 +24,8 @@ const adminItems = [
   { id: 'admin-users', label: '用户管理', icon: UsersRound, to: { name: 'admin-users' } },
   { id: 'admin-models', label: '模型管理', icon: PanelsTopLeft, to: { name: 'admin-models' } },
   { id: 'admin-pricing', label: '模型计费', icon: Tags, to: { name: 'admin-pricing' } },
-  { id: 'admin-templates', label: '内容模板', icon: FileText, to: { name: 'admin-templates' } },
+  { id: 'admin-image-settings', label: '出图设置', icon: Image, to: { name: 'admin-image-product' } },
+  { id: 'admin-commerce-templates', label: '电商模板', icon: FileText, to: { name: 'admin-commerce-ugc' } },
   { id: 'admin-reference-assets', label: '系统素材库', icon: Images, to: { name: 'admin-reference-assets' } },
   { id: 'admin-tasks', label: '生成任务', icon: ClipboardList, to: { name: 'admin-tasks' } },
   { id: 'admin-audits', label: '操作审计', icon: History, to: { name: 'admin-audits' } },

@@ -1,11 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { Check, CircleAlert, RefreshCw } from 'lucide-vue-next'
-import {
-  getAdminContentTemplate,
-  getAdminContentTemplates,
-  updateAdminContentTemplate,
-} from '../../api/admin'
+import { getAdminContentTemplate, updateAdminContentTemplate } from '../../api/admin'
 import AppButton from '../../components/ui/AppButton.vue'
 import AppInput from '../../components/ui/AppInput.vue'
 import AppTabs from '../../components/ui/AppTabs.vue'
@@ -15,7 +11,21 @@ import { useAdminMutation } from '../../composables/useAdminMutation'
 import { useGlobalToast } from '../../composables/useGlobalUI'
 import { getApiErrorMessage } from '../../utils/apiError'
 
+const props = defineProps({
+  templateKey: { type: String, required: true },
+  section: { type: String, required: true },
+})
+
 const durationOptions = [15, 30, 45, 60]
+const commerceOptions = [
+  { value: 'product_storyboard', label: 'UGC 种草', to: { name: 'admin-commerce-ugc' } },
+  { value: 'commerce_drama', label: '短剧带货', to: { name: 'admin-commerce-drama' } },
+]
+const templateLabels = {
+  product_visual: '商品出图',
+  product_storyboard: 'UGC 种草',
+  commerce_drama: '短剧带货',
+}
 const promptFields = {
   product_storyboard: [
     ['director_role', '导演角色', ''],
@@ -42,64 +52,43 @@ const promptFields = {
 
 const toast = useGlobalToast()
 const { confirmMutation } = useAdminMutation()
-const catalog = ref([])
-const currentKey = ref('product_visual')
 const form = ref(null)
 const loading = ref(false)
 const saving = ref(false)
 const error = ref('')
 const reason = ref('')
+let loadSequence = 0
 
-const groups = computed(() => {
-  const result = []
-  for (const item of catalog.value) {
-    let group = result.find((entry) => entry.id === item.group)
-    if (!group) {
-      group = { id: item.group, label: item.group_label, options: [] }
-      result.push(group)
-    }
-    group.options.push({ value: item.key, label: item.label })
-  }
-  return result
-})
-const currentCatalogItem = computed(() => catalog.value.find((item) => item.key === currentKey.value))
-const isUgc = computed(() => currentKey.value === 'product_storyboard')
-const isDrama = computed(() => currentKey.value === 'commerce_drama')
-const currentPromptFields = computed(() => promptFields[currentKey.value] || [])
+const isImageSettings = computed(() => props.section === 'image')
+const isUgc = computed(() => props.templateKey === 'product_storyboard')
+const isDrama = computed(() => props.templateKey === 'commerce_drama')
+const currentPromptFields = computed(() => promptFields[props.templateKey] || [])
+const pageCopy = computed(() => isImageSettings.value
+  ? { eyebrow: 'IMAGE SETTINGS', title: '出图设置', description: '管理商品出图类型、默认选项和业务指令。' }
+  : { eyebrow: 'COMMERCE TEMPLATE', title: '电商模板', description: '管理 UGC 种草和短剧带货的内容工作流。' })
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value))
 }
 
-async function loadCatalog() {
-  const result = await getAdminContentTemplates()
-  if (result.code !== 0) throw new Error(result.message)
-  catalog.value = result.data
-  if (!catalog.value.some((item) => item.key === currentKey.value)) {
-    currentKey.value = catalog.value[0]?.key || ''
-  }
-}
-
 async function load() {
+  const sequence = ++loadSequence
   loading.value = true
   error.value = ''
+  form.value = null
   try {
-    if (!catalog.value.length) await loadCatalog()
-    const result = await getAdminContentTemplate(currentKey.value)
+    const result = await getAdminContentTemplate(props.templateKey)
     if (result.code !== 0) throw new Error(result.message)
+    if (sequence !== loadSequence) return
     form.value = clone(result.data)
     reason.value = ''
   } catch (requestError) {
-    error.value = getApiErrorMessage(requestError, '内容模板加载失败')
+    if (sequence !== loadSequence) return
+    error.value = getApiErrorMessage(requestError, `${templateLabels[props.templateKey]}加载失败`)
     toast.error(error.value)
   } finally {
-    loading.value = false
+    if (sequence === loadSequence) loading.value = false
   }
-}
-
-async function reloadAll() {
-  catalog.value = []
-  await load()
 }
 
 function toggleDuration(duration, checked) {
@@ -110,57 +99,52 @@ function toggleDuration(duration, checked) {
 }
 
 async function save() {
-  const item = currentCatalogItem.value
+  const label = templateLabels[props.templateKey]
   const payload = { enabled: isDrama.value ? false : form.value.enabled, config: form.value.config, reason: reason.value }
   if (!await confirmMutation({
-    title: '更新内容模板',
-    message: `${item?.label || currentKey.value}将升级到下一版本，并仅用于后续新节点与新生成。`,
+    title: `更新${label}`,
+    message: `${label}将升级到下一版本，并仅用于后续新节点与新生成。`,
   })) return
   saving.value = true
   try {
-    const result = await updateAdminContentTemplate(currentKey.value, payload)
+    const result = await updateAdminContentTemplate(props.templateKey, payload)
     if (result.code !== 0) throw new Error(result.message)
     form.value = clone(result.data)
-    const index = catalog.value.findIndex((entry) => entry.key === currentKey.value)
-    if (index >= 0) catalog.value[index] = { ...catalog.value[index], ...clone(result.data) }
     reason.value = ''
-    toast.success('内容模板已更新')
+    toast.success(`${label}已更新`)
   } catch (requestError) {
-    toast.error(getApiErrorMessage(requestError, '内容模板保存失败'))
+    toast.error(getApiErrorMessage(requestError, `${label}保存失败`))
   } finally {
     saving.value = false
   }
 }
 
-watch(currentKey, load)
+watch(() => props.templateKey, load)
 onMounted(load)
 </script>
 
 <template>
   <section class="admin-page">
     <header class="admin-page__header">
-      <div><span>CONTENT TEMPLATE</span><h1>内容模板</h1><p>管理商品图片模板和内容创作模板，配置仅影响后续生成。</p></div>
-      <b v-if="form">版本 v{{ form.version }}</b>
+      <div><span>{{ pageCopy.eyebrow }}</span><h1>{{ pageCopy.title }}</h1><p>{{ pageCopy.description }}</p></div>
+      <b v-if="form">{{ templateLabels[templateKey] }} · v{{ form.version }}</b>
     </header>
 
-    <nav v-if="catalog.length" class="admin-template-nav" aria-label="内容模板分类">
-      <section v-for="group in groups" :key="group.id">
-        <span>{{ group.label }}</span>
-        <AppTabs v-model="currentKey" :options="group.options" :aria-label="group.label" />
-      </section>
+    <nav v-if="!isImageSettings" class="admin-template-subnav" aria-label="电商模板类型">
+      <AppTabs :model-value="templateKey" :options="commerceOptions" aria-label="电商模板类型" />
     </nav>
 
-    <EmptyState v-if="error" tone="error" title="内容模板加载失败" :description="error"><AppButton variant="primary" @click="reloadAll">重新加载</AppButton></EmptyState>
-    <EmptyState v-else-if="loading || !form" loading title="正在加载内容模板" />
+    <EmptyState v-if="error" tone="error" :title="`${templateLabels[templateKey]}加载失败`" :description="error"><AppButton variant="primary" @click="load">重新加载</AppButton></EmptyState>
+    <EmptyState v-else-if="loading || !form" loading :title="`正在加载${templateLabels[templateKey]}`" />
     <form v-else class="admin-template-form" @submit.prevent="save">
       <div class="admin-template-form__top">
-        <label class="admin-check" :class="{ 'is-disabled': isDrama }"><input v-model="form.enabled" type="checkbox" :disabled="isDrama" /><span>模板启用</span></label>
+        <label class="admin-check" :class="{ 'is-disabled': isDrama }"><input v-model="form.enabled" type="checkbox" :disabled="isDrama" /><span>{{ isImageSettings ? '设置启用' : '模板启用' }}</span></label>
         <small>保存后只影响后续新节点和新生成，已有画布不会被覆盖。</small>
       </div>
 
       <div v-if="isDrama" class="admin-template-notice" role="status"><CircleAlert :size="17" /><div><strong>流程待接入</strong><span>当前仅允许维护草稿区块，生成器接入前不能启用。</span></div></div>
 
-      <template v-if="currentKey === 'product_visual'">
+      <template v-if="isImageSettings">
         <section v-for="group in form.config.groups" :key="group.id" class="admin-template-block">
           <header><AppInput v-model="group.label" maxlength="64" :aria-label="`${group.id} 分组名称`" /><small>{{ group.id }}</small></header>
           <div class="admin-template-items">
@@ -171,7 +155,7 @@ onMounted(load)
             </label>
           </div>
         </section>
-        <label class="admin-field"><span>业务指令块</span><AppTextarea v-model="form.config.business_instruction" rows="6" maxlength="6000" placeholder="可选：补充商品图种的业务要求" /></label>
+        <label class="admin-field"><span>业务指令块</span><AppTextarea v-model="form.config.business_instruction" rows="6" maxlength="6000" placeholder="可选：补充商品出图的业务要求" /></label>
       </template>
 
       <template v-else>
@@ -189,7 +173,7 @@ onMounted(load)
         </section>
 
         <section class="admin-template-block">
-          <header><strong>允许总时长</strong><small>UGC 固定以 15 秒为分段单位</small></header>
+          <header><strong>允许总时长</strong><small>{{ isUgc ? '固定以 15 秒为分段单位' : '草稿可预设候选时长' }}</small></header>
           <div class="admin-duration-options"><label v-for="duration in durationOptions" :key="duration" class="admin-check"><input type="checkbox" :checked="form.config.durations.includes(duration)" @change="toggleDuration(duration, $event.target.checked)" /><span>{{ duration }} 秒</span></label></div>
         </section>
 
@@ -197,7 +181,7 @@ onMounted(load)
         <label v-if="isUgc" class="admin-field"><span>Provider 系统指令</span><AppTextarea v-model="form.config.provider_instruction" rows="4" maxlength="2000" required /></label>
 
         <section class="admin-template-block">
-          <header><strong>Prompt 区块</strong><small>动态变量不可删除、改名或新增</small></header>
+          <header><strong>Prompt 区块</strong><small>{{ isUgc ? '动态变量不可删除、改名或新增' : '生成流程接入前仅保存草稿' }}</small></header>
           <div class="admin-prompt-blocks">
             <label v-for="([key, label, variables]) in currentPromptFields" :key="key" class="admin-field">
               <span>{{ label }}<code v-if="variables">{{ variables }}</code></span>
@@ -217,7 +201,7 @@ onMounted(load)
       </template>
 
       <label class="admin-field"><span>操作原因</span><AppInput v-model="reason" maxlength="255" required placeholder="填写本次调整原因" /></label>
-      <div class="admin-form-actions"><AppButton type="submit" variant="primary" :disabled="saving || !reason.trim()">{{ saving ? '保存中…' : '保存内容模板' }}</AppButton><AppButton type="button" variant="soft" :disabled="saving" @click="load"><RefreshCw :size="15" />恢复已保存版本</AppButton></div>
+      <div class="admin-form-actions"><AppButton type="submit" variant="primary" :disabled="saving || !reason.trim()">{{ saving ? '保存中…' : `保存${templateLabels[templateKey]}` }}</AppButton><AppButton type="button" variant="soft" :disabled="saving" @click="load"><RefreshCw :size="15" />恢复已保存版本</AppButton></div>
     </form>
   </section>
 </template>

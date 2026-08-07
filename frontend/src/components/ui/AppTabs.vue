@@ -16,12 +16,14 @@ const emit = defineEmits(['update:modelValue'])
     <AppButton
       v-for="option in options"
       :key="option.value"
+      :as="option.to ? 'RouterLink' : 'button'"
+      :to="option.to"
       type="button"
       role="tab"
       :disabled="option.disabled"
       :aria-selected="modelValue === option.value"
       :class="{ active: modelValue === option.value }"
-      @click="emit('update:modelValue', option.value)"
+      @click="!option.to && emit('update:modelValue', option.value)"
     >
       <component :is="option.icon" v-if="option.icon" :size="14" />
       {{ option.label }}
