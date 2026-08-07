@@ -181,9 +181,9 @@ onMounted(load)
 
         <section class="admin-template-block">
           <header><strong>JSON 输出协议</strong><small>协议由生成器固定，后台不可修改</small></header>
-          <div class="admin-continuity-row">
+          <div class="admin-protocol-row">
             <code>{{ isUgc ? 'ugc-seeding' : form.config.output_protocol_id }}</code>
-            <span>{{ isUgc ? '每段 15 秒，每段 6 镜头，输出 prompt / videoPrompt' : '包含剧情角色、剧情节拍、商品植入及每段 6 镜头提示词' }}</span>
+            <p>{{ isUgc ? '每段 15 秒，每段 6 镜头，输出 prompt / videoPrompt' : '包含剧情角色、剧情节拍、商品植入及每段 6 镜头提示词' }}</p>
           </div>
         </section>
 
