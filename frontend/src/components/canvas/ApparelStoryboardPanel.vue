@@ -4,6 +4,7 @@ import { ArrowUp, Clapperboard, Coins, FileText, Images, LoaderCircle, Shirt } f
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
 import { apparelPromptContext } from '../../config/canvas/apparel'
+import { resolveOutfitReference } from '../../config/canvas/outfit'
 import { buildOutfitStoryboardRequest, parseOutfitStoryboardPlan } from '../../config/canvas/outfitStoryboard'
 import { recommendStoryboardSettings, storyboardSegmentCount } from '../../config/canvas/productStoryboard'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
@@ -37,6 +38,7 @@ const apparelNode = computed(() => outfitNode.value && store.incomingNodeByHandl
 const garmentNode = computed(() => apparelNode.value && store.incomingNodes(apparelNode.value.id).find((node) => node.type === 'image' && node.data.asset))
 const modelNode = computed(() => outfitNode.value && store.incomingNodeByHandle(outfitNode.value.id, 'model'))
 const sceneNode = computed(() => store.incomingNodeByHandle(props.nodeId, 'scene'))
+const outfitReference = computed(() => resolveOutfitReference(outfitNode.value?.data, store.nodes))
 const apparelContext = computed(() => apparelPromptContext(apparelNode.value?.data))
 const template = computed(() => contentTemplateStore.templates?.apparel_showcase)
 const templateEnabled = computed(() => Boolean(template.value?.enabled))
@@ -52,7 +54,7 @@ const estimatedCredits = computed(() => authStore.estimateCredits('text', select
 const insufficientCredits = computed(() => estimatedCredits.value !== null && (authStore.user?.credit_balance || 0) < estimatedCredits.value)
 const textModelOptions = computed(() => capabilityStore.textModels.map(({ id, label }) => ({ value: id, label })))
 const sourceItems = computed(() => [
-  { label: '模特试穿总览', asset: outfitNode.value?.data.outfitBoardAsset, required: true },
+  { label: '试穿定妆图', asset: outfitReference.value.asset, required: true },
   { label: '场景参考', asset: sceneNode.value?.data.asset, required: false },
 ])
 const message = computed(() => {
@@ -61,11 +63,11 @@ const message = computed(() => {
   if (!outfitNode.value) return legacyApparelNode.value
     ? '这是旧版服饰分镜，请新建模特试穿节点并连接到试穿输入'
     : '请先连接模特试穿节点'
-  if (!outfitNode.value.data.outfitBoardAsset) return '请先完成六视角试穿总览'
+  if (!outfitReference.value.asset) return '请先生成试穿定妆图'
   if (!garmentNode.value?.data.asset || !modelNode.value?.data.asset || !apparelContext.value) return '模特试穿的服饰或模特资料不完整'
   return insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''
 })
-const canSubmit = computed(() => templateEnabled.value && !running.value && outfitNode.value?.data.outfitBoardAsset && garmentNode.value?.data.asset && modelNode.value?.data.asset && apparelContext.value && !insufficientCredits.value)
+const canSubmit = computed(() => templateEnabled.value && !running.value && outfitReference.value.asset && garmentNode.value?.data.asset && modelNode.value?.data.asset && apparelContext.value && !insufficientCredits.value)
 
 function updateData(value) {
   failure.value = ''
@@ -93,7 +95,7 @@ async function submitTask() {
     nodeId: props.nodeId,
     model: selectedTextModel.value.id,
     template: template.value,
-    outfitBoardUrl: outfitNode.value.data.outfitBoardAsset,
+    outfitReferenceUrl: outfitReference.value.asset,
     garmentUrl: garmentNode.value.data.asset,
     modelUrl: modelNode.value.data.asset,
     sceneUrl: sceneNode.value?.data.asset,
@@ -107,7 +109,8 @@ async function submitTask() {
       const plan = parseOutfitStoryboardPlan(content, template.value)
       const generatedNodeIds = store.addOutfitStoryboardNodes(
         props.nodeId,
-        outfitNode.value.id,
+        outfitReference.value.node?.id,
+        { url: outfitReference.value.asset, assetId: outfitReference.value.assetId },
         sceneNode.value?.id,
         plan,
         { model: capabilityStore.defaultImageModel.id, aspectRatio: recommended.value.aspectRatio, resolution: recommended.value.resolution },

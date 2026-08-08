@@ -451,64 +451,26 @@
   display: grid;
   gap: 8px;
 }
-.outfit-board-preview {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 5px;
-  margin-top: 9px;
-}
-.outfit-board-cell {
+.outfit-reference-preview {
   position: relative;
   display: grid;
-  min-width: 0;
-  aspect-ratio: 9 / 12;
+  min-height: 240px;
+  aspect-ratio: 9 / 16;
   place-items: center;
   overflow: hidden;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 4px;
-  background: var(--color-surface-raised);
-  color: var(--color-text-muted);
-}
-.outfit-board-cell img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.outfit-board-cell > span {
-  font-size: 12px;
-  font-weight: 650;
-}
-.outfit-board-cell small {
-  position: absolute;
-  right: 3px;
-  bottom: 3px;
-  left: 3px;
-  overflow: hidden;
-  padding: 2px 3px;
-  border-radius: 3px;
-  background: rgb(0 0 0 / 55%);
-  color: #fff;
-  font-size: 12px;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.outfit-board-result {
-  position: relative;
-  display: block;
-  aspect-ratio: 9 / 16;
-  overflow: hidden;
+  gap: 6px;
+  margin-top: 9px;
   border: 1px solid var(--color-border-subtle);
   border-radius: 5px;
   background: var(--color-surface-raised);
+  color: var(--color-text-muted);
 }
-.outfit-board-result img {
-  display: block;
+.outfit-reference-preview img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
-.outfit-board-result > span {
+.outfit-reference-preview > span {
   position: absolute;
   right: 6px;
   bottom: 6px;
@@ -520,15 +482,15 @@
   font-size: 12px;
   text-align: center;
 }
-.outfit-board-status {
-  display: block;
-  margin-top: 6px;
-  color: var(--color-text-muted);
-  font-size: 12px;
-  line-height: 1.4;
+.outfit-reference-preview.empty {
+  align-content: center;
 }
-.outfit-board-status.error {
-  color: var(--color-danger);
+.outfit-reference-preview.empty strong {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+}
+.outfit-reference-preview.empty small {
+  font-size: 12px;
 }
 .outfit-source {
   display: grid;

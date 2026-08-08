@@ -123,12 +123,11 @@ export const apparelActions = {
     return [imageId, videoId]
   },
 
-  addOutfitStoryboardNodes(plannerId, outfitId, sceneId, plans, settings) {
+  addOutfitStoryboardNodes(plannerId, outfitReferenceId, outfitReference, sceneId, plans, settings) {
     const planner = this.nodes.find((node) => node.id === plannerId)
     if (!planner || !plans?.segments?.length) return []
-    const outfit = this.nodes.find((node) => node.id === outfitId)
-    const board = outfit?.data.outfitBoardAsset
-      ? { url: outfit.data.outfitBoardAsset, assetId: outfit.data.outfitBoardAssetId || null }
+    const reference = outfitReference?.url
+      ? { url: outfitReference.url, assetId: outfitReference.assetId || null }
       : null
     const segmentNodeIds = []
     let previousVideoId = null
@@ -152,7 +151,7 @@ export const apparelActions = {
         storyboardDuration: 15,
         storyboardVideoAspectRatio: planner.data.videoAspectRatio,
         storyboardShotCount: 6,
-        storyboardOutfitBoard: board,
+        ...(outfitReferenceId ? {} : { storyboardOutfitReference: reference }),
         storyboardRequiresRegistration: true,
         storyboardContinuityMode: segment.continuityMode,
         storyboardPlotGoal: segment.plotGoal,
@@ -165,7 +164,7 @@ export const apparelActions = {
         ...settings,
       }
       this.addEdge({ source: plannerId, target: imageId })
-      this.addEdge({ source: outfitId, target: imageId })
+      if (outfitReferenceId) this.addEdge({ source: outfitReferenceId, target: imageId })
       if (sceneId) this.addEdge({ source: sceneId, target: imageId })
       const videoId = this.addNode('video', {
         x: planner.position.x + 1010 + index * 900,
@@ -187,7 +186,6 @@ export const apparelActions = {
         storyboardPlotGoal: segment.plotGoal,
         storyboardOpeningState: segment.openingState,
         storyboardEndingState: segment.endingState,
-        storyboardOutfitBoard: board,
         storyboardRequiresRegistration: true,
         storyboardDuration: 15,
         videoPrompt: segment.videoPrompt,
@@ -203,7 +201,7 @@ export const apparelActions = {
     })
     planner.data = {
       ...planner.data,
-      storyboardOutfitBoard: board,
+      storyboardOutfitReference: reference,
       globalScript: plans.globalScript,
       segmentNodeIds,
       generatedNodeIds: segmentNodeIds.flatMap(({ imageId, videoId }) => [imageId, videoId]),
@@ -212,34 +210,24 @@ export const apparelActions = {
     return planner.data.generatedNodeIds
   },
 
-  addOutfitVisualNodes(outfitId, garmentId, modelId, plans, settings) {
+  addOutfitVisualNode(outfitId, garmentId, modelId, prompt, settings) {
     const outfit = this.nodes.find((node) => node.id === outfitId)
-    if (!outfit || !plans.length) return []
-    const columns = Math.min(3, plans.length)
-    const ids = plans.map((plan, index) => {
-      const id = this.addNode('image', {
-        x: outfit.position.x + 500 + (index % columns) * 440,
-        y: outfit.position.y + Math.floor(index / columns) * 340,
-      })
-      const node = this.nodes.find((item) => item.id === id)
-      node.data = {
-        ...node.data,
-        title: plan.label,
-        outfitSourceId: outfitId,
-        outfitMaterialId: plan.id,
-        outfitMaterialCategory: plan.category,
-        outfitMaterialCategoryLabel: plan.categoryLabel,
-        resourceType: 'outfit-material',
-        prompt: plan.prompt,
-        promptParts: [{ type: 'text', value: plan.prompt }],
-        ...settings,
-      }
-      this.addEdge({ source: outfitId, target: id })
-      this.addEdge({ source: garmentId, target: id })
-      this.addEdge({ source: modelId, target: id })
-      return id
-    })
-    this.selectNodes(ids.slice(0, 1))
-    return ids
+    if (!outfit || !prompt?.trim()) return
+    const id = this.addNode('image', { x: outfit.position.x + 500, y: outfit.position.y })
+    const node = this.nodes.find((item) => item.id === id)
+    node.data = {
+      ...node.data,
+      title: '试穿定妆图',
+      outfitSourceId: outfitId,
+      resourceType: 'outfit-reference',
+      prompt,
+      promptParts: [{ type: 'text', value: prompt }],
+      ...settings,
+    }
+    this.addEdge({ source: outfitId, target: id })
+    this.addEdge({ source: garmentId, target: id })
+    this.addEdge({ source: modelId, target: id })
+    this.selectNodes([id])
+    return id
   },
 }

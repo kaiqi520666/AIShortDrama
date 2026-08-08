@@ -68,6 +68,19 @@ def load_product_visual_migration():
     return module
 
 
+def load_apparel_visual_migration():
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "alembic"
+        / "versions"
+        / "q7h9j1l3n5o6_simplify_apparel_try_on.py"
+    )
+    spec = importlib.util.spec_from_file_location("apparel_visual_migration", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def product_visual_config():
     group_labels = {
         "basic": "基础展示",
@@ -129,6 +142,34 @@ def test_product_visual_migration_preserves_operator_fields_and_is_idempotent():
     assert merged["provider_instruction"] == migration.PROVIDER_INSTRUCTION
     assert merged["prompt_blocks"] == migration.PROMPT_BLOCKS
     assert migration.merge_product_visual_config(merged) == merged
+
+
+def test_apparel_visual_migration_preserves_operator_fields_and_is_idempotent():
+    migration = load_apparel_visual_migration()
+    existing = {
+        "schema_version": 1,
+        "groups": [{"id": "views", "items": migration.OLD_VIEWS}],
+        "selected_view_ids": ["front", "back"],
+        "business_instruction": "已验证试穿要求",
+        "prompt_blocks": {"fidelity_rules": "已验证服饰保真规则"},
+    }
+
+    merged = migration.simplify_apparel_visual_config(existing)
+
+    assert merged["schema_version"] == 2
+    assert merged["output_protocol_id"] == "apparel-visual-v2"
+    assert merged["business_instruction"] == "已验证试穿要求"
+    assert merged["prompt_blocks"]["fidelity_rules"] == "已验证服饰保真规则"
+    assert "groups" not in merged
+    assert "selected_view_ids" not in merged
+    assert migration.simplify_apparel_visual_config(merged) == merged
+
+    defaults = migration.simplify_apparel_visual_config({
+        "business_instruction": migration.OLD_BUSINESS_INSTRUCTION,
+        "prompt_blocks": {"fidelity_rules": migration.OLD_FIDELITY_RULES},
+    })
+    assert defaults["business_instruction"] == migration.BUSINESS_INSTRUCTION
+    assert defaults["prompt_blocks"]["fidelity_rules"] == migration.FIDELITY_RULES
 
 
 def test_product_visual_builder_matches_accepted_frontend_prompt_byte_for_byte():
@@ -266,20 +307,20 @@ def test_commerce_drama_validation_rejects_changed_protocol_or_placeholders():
         validate_template_config(COMMERCE_DRAMA_KEY, config, enabled=True)
 
 
-def test_apparel_visual_builder_uses_configured_views_and_server_prompt():
+def test_apparel_visual_builder_creates_one_server_prompt():
     config = default_apparel_visual_config()
     validated = validate_template_config(APPAREL_VISUAL_KEY, config, enabled=True)
     prompt = build_apparel_visual_prompt(validated, {
         "apparel_context": "单品1：白色衬衫（面料：棉）",
-        "selected_view_ids": ["front", "fabric"],
         "aspect_ratio": "9:16",
         "resolution": "1K",
         "user_requirement": "自然日光",
     })
-    assert "front=正面全身、fabric=面料细节" in prompt
+    assert "一张正面全身试穿定妆图" in prompt
     assert "图片1是服饰参考图，图片2是模特参考图" in prompt
     assert "用户补充要求：自然日光" in prompt
-    assert '"id":"视角ID"' in prompt
+    assert '"prompt":"图片提示词"' in prompt
+    assert "不生成六宫格、多视角拼图" in prompt
 
 
 def test_apparel_showcase_builder_creates_four_segment_contract():
@@ -298,4 +339,5 @@ def test_apparel_showcase_builder_creates_four_segment_contract():
     assert "segments必须恰好4条" in prompt
     assert "实际生视频参考顺序：图片1是本段分镜图；" in prompt
     assert "图片2是六格试穿总览" not in prompt
+    assert "图片1是试穿定妆图" in prompt
     assert "用户补充要求：最后在街景收尾" in prompt

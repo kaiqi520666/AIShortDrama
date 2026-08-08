@@ -14,21 +14,14 @@ from app.core.errors import (
     NotFoundError,
     RequestError,
     ServiceUnavailableError,
-    UpstreamMediaError,
     public_error_message,
 )
 from app.core.identity import get_current_user_id
 from app.models import Asset
 from app.providers.toapis import ToApisProvider
-from app.schemas.asset import AssetPrivateAvatarRequest, AssetUpdate, ComposeImageBoardRequest
+from app.schemas.asset import AssetPrivateAvatarRequest, AssetUpdate
 from app.schemas.response import success
-from app.services.image_processing import (
-    OutfitBoardDownloadError,
-    compose_outfit_board,
-    download_outfit_board_images,
-)
 from app.services.private_avatar import PrivateAvatarService
-from app.services.storage import OssStorage
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -99,94 +92,6 @@ async def list_assets(
         query = query.limit(limit)
     assets = (await db.scalars(query)).all()
     return success([asset_payload(item) for item in assets])
-
-
-@router.post("/compose-board")
-async def compose_board(
-    payload: ComposeImageBoardRequest,
-    db: AsyncSession = Depends(get_db),
-    user_id: uuid.UUID = Depends(get_current_user_id),
-):
-    try:
-        workspace_id = uuid.UUID(payload.workspace_id)
-        asset_uuid_list = [uuid.UUID(asset_id) for asset_id in payload.asset_ids]
-    except ValueError:
-        raise RequestError("工作台或图片资产 ID 无效")
-
-    assets = (
-        await db.scalars(
-            select(Asset).where(
-                Asset.id.in_(asset_uuid_list),
-                Asset.user_id == user_id,
-                Asset.workspace_id == workspace_id,
-                Asset.media_type == "image",
-                Asset.deleted_at.is_(None),
-            )
-        )
-    ).all()
-    by_id = {str(asset.id): asset for asset in assets}
-    if len(by_id) != 6 or any(asset_id not in by_id for asset_id in payload.asset_ids):
-        raise RequestError("只能合成当前工作台中属于自己的 6 张图片")
-
-    stream = None
-    images = []
-    storage = None
-    object_key = None
-    committed = False
-    try:
-        async with httpx.AsyncClient(timeout=60, follow_redirects=True) as client:
-            images = await download_outfit_board_images(
-                [by_id[asset_id].url for asset_id in payload.asset_ids], client
-            )
-        stream, width, height = compose_outfit_board(images)
-        object_key = f"generations/images/outfit-board-{uuid.uuid4()}.jpg"
-        storage = OssStorage()
-        url = await storage.store_upload(object_key, stream, "image/jpeg")
-        board = Asset(
-            user_id=user_id,
-            workspace_id=workspace_id,
-            node_id=payload.node_id,
-            media_type="image",
-            source_type="composition",
-            name="服饰穿搭参考总览",
-            object_key=object_key,
-            url=url,
-            mime_type="image/jpeg",
-            byte_size=stream.getbuffer().nbytes,
-            width=width,
-            height=height,
-            asset_metadata={
-                "type": "outfit-board",
-                "source_asset_ids": payload.asset_ids,
-                "layout": "2x3",
-                "aspect_ratio": "9:16",
-            },
-        )
-        db.add(board)
-        await db.commit()
-        committed = True
-        await db.refresh(board)
-        return success(asset_payload(board))
-    except Exception as exc:
-        if not committed:
-            await db.rollback()
-            if object_key and storage:
-                try:
-                    await storage.delete_object(object_key)
-                except Exception:
-                    logger.exception("Failed to delete orphan outfit board object", extra={"object_key": object_key})
-        if isinstance(exc, OutfitBoardDownloadError):
-            error_type = UpstreamMediaError if exc.status_code == 502 else RequestError
-            raise error_type(str(exc)) from exc
-        logger.exception("Failed to compose outfit board")
-        raise ServiceUnavailableError(
-            public_error_message(exc, "服饰总览图服务暂时不可用")
-        ) from exc
-    finally:
-        for image in images:
-            image.close()
-        if stream:
-            stream.close()
 
 
 @router.patch("/{asset_id}")

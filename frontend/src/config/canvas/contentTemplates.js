@@ -5,7 +5,6 @@ const visualItemIds = {
   detail: ['detail-zoom', 'specs-info', 'tech-specs', 'manufacturing', 'ingredients'],
   trust: ['brand-story', 'freebies', 'warranty', 'usage-tips'],
 }
-const apparelVisualItemIds = ['front', 'three-quarter', 'back', 'turn', 'fabric', 'lifestyle']
 const allowedDurations = new Set([15, 30, 45, 60])
 const dramaDurations = new Set([30, 45, 60])
 
@@ -30,11 +29,7 @@ export function validateProductContentTemplates(value) {
     if (!Array.isArray(group.items) || group.items.map((item) => item?.id).join('|') !== expected.join('|')) return '商品图种模板无效'
     if (group.items.some((item) => !validText(item?.label, 64) || typeof item.default_enabled !== 'boolean')) return '商品图种模板无效'
   }
-  const apparelGroups = apparelVisual.config?.groups
-  if (apparelVisual.config?.schema_version !== 1 || apparelVisual.config?.output_protocol_id !== 'apparel-visual-v1') return '服饰试穿模板版本无效'
-  if (!Array.isArray(apparelGroups) || apparelGroups.length !== 1 || apparelGroups[0]?.id !== 'views') return '服饰试穿视角配置无效'
-  if (apparelGroups[0].items?.map((item) => item?.id).join('|') !== apparelVisualItemIds.join('|')) return '服饰试穿视角配置无效'
-  if (!validText(apparelGroups[0].label, 64) || apparelGroups[0].items.some((item) => !validText(item?.label, 64) || typeof item.default_enabled !== 'boolean')) return '服饰试穿视角配置无效'
+  if (apparelVisual.config?.schema_version !== 2 || apparelVisual.config?.output_protocol_id !== 'apparel-visual-v2') return '服饰试穿模板版本无效'
   const templates = storyboard.config?.templates
   const durations = storyboard.config?.durations
   const continuity = storyboard.config?.continuity

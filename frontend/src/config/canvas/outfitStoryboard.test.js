@@ -12,7 +12,7 @@ describe('apparel storyboard prompts', () => {
       nodeId: 'storyboard-1',
       model: 'gpt-5.6-sol',
       template,
-      outfitBoardUrl: 'https://example.com/board.png',
+      outfitReferenceUrl: 'https://example.com/try-on.png',
       garmentUrl: 'https://example.com/garment.png',
       modelUrl: 'https://example.com/model.png',
       sceneUrl: 'https://example.com/scene.png',

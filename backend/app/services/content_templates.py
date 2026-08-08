@@ -15,7 +15,7 @@ UGC_STORYBOARD_KEY = "product_storyboard"
 COMMERCE_DRAMA_KEY = "commerce_drama"
 APPAREL_SHOWCASE_KEY = "apparel_showcase"
 PRODUCT_VISUAL_PROTOCOL_ID = "product-visual-v1"
-APPAREL_VISUAL_PROTOCOL_ID = "apparel-visual-v1"
+APPAREL_VISUAL_PROTOCOL_ID = "apparel-visual-v2"
 STORYBOARD_TEMPLATE_ID = "ugc-seeding"
 COMMERCE_DRAMA_TEMPLATE_ID = "commerce-drama"
 COMMERCE_DRAMA_PROTOCOL_ID = "commerce-drama-v1"
@@ -49,30 +49,28 @@ PRODUCT_VISUAL_PLACEHOLDERS = {
     "output_protocol": set(),
 }
 
-APPAREL_VISUAL_GROUPS = {
-    "views": ("front", "three-quarter", "back", "turn", "fabric", "lifestyle"),
-}
 APPAREL_VISUAL_PROVIDER_INSTRUCTION = (
-    "你是专业的中文服饰试穿视觉策划师。严格保持参考服饰和模特身份一致，并按用户指定的 JSON 数组输出，"
+    "你是专业的中文服饰试穿视觉策划师。严格保持参考服饰和模特身份一致，并按用户指定的 JSON 对象输出，"
     "不解释，不使用 Markdown。"
 )
 APPAREL_VISUAL_PROMPT_BLOCKS = {
     "task_instruction": (
-        "图片1是服饰参考图，图片2是模特参考图。请为以下试穿视角分别生成一条中文图片提示词：{views}。"
-        "统一画面规格：{aspect_ratio}，{resolution}。"
+        "图片1是服饰参考图，图片2是模特参考图。请生成一条中文图片提示词，将图片1中的完整服饰准确穿到"
+        "图片2的模特身上，输出一张正面全身试穿定妆图。统一画面规格：{aspect_ratio}，{resolution}。"
     ),
     "fidelity_rules": (
-        "所有视角必须保持同一模特的脸部、发型、体型和肤色一致；严格保持服饰类别、颜色、图案、Logo、"
-        "面料、版型、长度、开合方式和工艺细节，不新增或删除单品，不改变真实穿着层级。"
+        "保持模特的脸部、发型、体型、肤色和身份一致；严格保持服饰类别、颜色、图案、Logo、面料、版型、"
+        "长度、开合方式和工艺细节，不新增或删除单品，不改变真实穿着层级。模特自然站立，手臂不遮挡服饰，"
+        "人物从头到脚完整可见，背景简洁，光线自然，适合作为后续服饰分镜和视频的一致性参考。"
     ),
     "output_protocol": (
-        '严格输出 JSON 数组，格式为 [{"id":"视角ID","prompt":"提示词"}]。'
-        "每个视角必须且只能出现一次，顺序与请求一致。每条提示词必须明确引用图片1服饰和图片2模特，"
-        "只描述该视角特有的姿态、构图、场景、光线和服饰展示重点，不解释，不使用 Markdown。"
+        '严格输出 JSON 对象，格式为 {"prompt":"图片提示词"}。提示词必须明确引用图片1服饰和图片2模特，'
+        "完整描述人物、服饰、姿态、构图、背景和光线，不生成六宫格、多视角拼图、文字、字幕或水印，"
+        "不解释，不使用 Markdown。"
     ),
 }
 APPAREL_VISUAL_PLACEHOLDERS = {
-    "task_instruction": {"views", "aspect_ratio", "resolution"},
+    "task_instruction": {"aspect_ratio", "resolution"},
     "fidelity_rules": set(),
     "output_protocol": set(),
 }
@@ -89,7 +87,7 @@ APPAREL_SHOWCASE_BLOCKS = (
     "forbidden_rules",
 )
 APPAREL_SHOWCASE_PROVIDER_INSTRUCTION = (
-    "你是专业的中文服饰展示分镜导演。根据服饰试穿总览、服饰原图、模特原图和可选场景参考，生成可直接用于"
+    "你是专业的中文服饰展示分镜导演。根据试穿定妆图、服饰原图、模特原图和可选场景参考，生成可直接用于"
     "生图和 Seedance 2 视频生成的服饰展示方案。严格按指定 JSON 输出协议返回合法 JSON 对象，不解释，"
     "不使用 Markdown。"
 )
@@ -116,7 +114,7 @@ APPAREL_SHOWCASE_PROMPT_BLOCKS = {
     ),
     "image_rules": (
         "生图prompt要求：生成一张{columns}列×{rows}行的六格服饰展示分镜板，按从左到右、从上到下对应"
-        "镜头1至镜头6，每格保持{ratio}视频画幅。图片1是六格试穿总览，图片2为可选场景参考。分镜板只允许"
+        "镜头1至镜头6，每格保持{ratio}视频画幅。图片1是试穿定妆图，图片2为可选场景参考。分镜板只允许"
         "出现镜头1至镜头6标签，不生成字幕、水印、价格、二维码或额外Logo，prompt不得包含对白和声音。"
     ),
     "video_rules": (
@@ -362,22 +360,8 @@ def default_product_visual_prompt_config() -> dict[str, Any]:
 
 def default_apparel_visual_config() -> dict[str, Any]:
     return {
-        "schema_version": 1,
-        "groups": [
-            {
-                "id": "views",
-                "label": "六视角试穿",
-                "items": [
-                    {"id": "front", "label": "正面全身", "default_enabled": True},
-                    {"id": "three-quarter", "label": "45°侧面", "default_enabled": True},
-                    {"id": "back", "label": "背面展示", "default_enabled": True},
-                    {"id": "turn", "label": "动态转身", "default_enabled": True},
-                    {"id": "fabric", "label": "面料细节", "default_enabled": True},
-                    {"id": "lifestyle", "label": "场景试穿", "default_enabled": True},
-                ],
-            }
-        ],
-        "business_instruction": "生成同一模特、同一服饰的六视角试穿素材，优先保证服饰与人物一致性。",
+        "schema_version": 2,
+        "business_instruction": "生成一张可确认服饰与模特一致性的正面全身试穿定妆图，供后续分镜和视频使用。",
         "provider_instruction": APPAREL_VISUAL_PROVIDER_INSTRUCTION,
         "output_protocol_id": APPAREL_VISUAL_PROTOCOL_ID,
         "prompt_blocks": deepcopy(APPAREL_VISUAL_PROMPT_BLOCKS),
@@ -402,7 +386,7 @@ def default_apparel_showcase_config() -> dict[str, Any]:
     return {
         "schema_version": 1,
         "label": "服饰展示",
-        "description": "基于模特试穿总览生成多段服饰展示分镜与视频",
+        "description": "基于试穿定妆图生成多段服饰展示分镜与视频",
         "durations": [15, 30, 45, 60],
         "provider_instruction": APPAREL_SHOWCASE_PROVIDER_INSTRUCTION,
         "output_protocol_id": APPAREL_SHOWCASE_PROTOCOL_ID,
@@ -445,11 +429,17 @@ async def get_product_templates(db: AsyncSession) -> dict[str, dict[str, Any]]:
     result = {}
     for template in templates:
         data = template_data(template)
-        if template.key in {PRODUCT_VISUAL_KEY, APPAREL_VISUAL_KEY}:
+        if template.key == PRODUCT_VISUAL_KEY:
             config = template.config
             data["config"] = {
                 "schema_version": config["schema_version"],
                 "groups": deepcopy(config["groups"]),
+                "output_protocol_id": config["output_protocol_id"],
+            }
+        elif template.key == APPAREL_VISUAL_KEY:
+            config = template.config
+            data["config"] = {
+                "schema_version": config["schema_version"],
                 "output_protocol_id": config["output_protocol_id"],
             }
         elif template.key == UGC_STORYBOARD_KEY:
@@ -586,41 +576,16 @@ def _validate_product_visual(value: dict[str, Any], _enabled: bool) -> dict[str,
 
 
 def _validate_apparel_visual(value: dict[str, Any], _enabled: bool) -> dict[str, Any]:
-    groups = value.get("groups")
-    if not isinstance(groups, list) or len(groups) != 1 or not isinstance(groups[0], dict):
-        raise ValueError("服饰试穿视角配置无效")
-    group = groups[0]
-    items = group.get("items")
-    item_ids = [item.get("id") if isinstance(item, dict) else None for item in items or []]
-    if group.get("id") != "views" or item_ids != list(APPAREL_VISUAL_GROUPS["views"]):
-        raise ValueError("服饰试穿视角 ID 不允许修改或删除")
-    if not all(isinstance(item, dict) for item in items):
-        raise ValueError("服饰试穿视角配置无效")
-    result_items = [
-        {
-            "id": item["id"],
-            "label": _text(item.get("label"), "试穿视角名称", max_length=64),
-            "default_enabled": bool(item.get("default_enabled")),
-        }
-        for item in items
-    ]
-    if not all(item["default_enabled"] for item in result_items):
-        raise ValueError("六个试穿视角必须全部启用")
     blocks = value.get("prompt_blocks")
     if (
-        value.get("schema_version") != 1
+        value.get("schema_version") != 2
         or value.get("output_protocol_id") != APPAREL_VISUAL_PROTOCOL_ID
         or not isinstance(blocks, dict)
         or set(blocks) != set(APPAREL_VISUAL_PROMPT_BLOCKS)
     ):
         raise ValueError("服饰试穿模板配置无效")
     return {
-        "schema_version": 1,
-        "groups": [{
-            "id": "views",
-            "label": _text(group.get("label"), "试穿视角分组名称", max_length=64),
-            "items": result_items,
-        }],
+        "schema_version": 2,
         "business_instruction": _text(
             value.get("business_instruction", ""),
             "服饰试穿业务指令",
@@ -799,24 +764,13 @@ def build_product_visual_prompt(config: dict[str, Any], context: dict[str, Any])
 
 def build_apparel_visual_prompt(config: dict[str, Any], context: dict[str, Any]) -> str:
     validated = _validate_apparel_visual(config, True)
-    selected_ids = context["selected_view_ids"]
-    if not isinstance(selected_ids, list) or not selected_ids or len(selected_ids) != len(set(selected_ids)):
-        raise ValueError("服饰试穿视角无效")
-    items = {
-        item["id"]: item["label"]
-        for group in validated["groups"]
-        for item in group["items"]
-    }
-    if any(item_id not in items for item_id in selected_ids):
-        raise ValueError("服饰试穿视角无效")
-    views = "、".join(f"{item_id}={items[item_id]}" for item_id in selected_ids)
     blocks = validated["prompt_blocks"]
     instruction = validated["business_instruction"]
     business_line = f"\n业务要求：{instruction}" if instruction else ""
     user_requirement = context.get("user_requirement", "").strip()
     user_line = f"\n用户补充要求：{user_requirement}" if user_requirement else ""
     return (
-        f"{blocks['task_instruction'].format(views=views, aspect_ratio=context['aspect_ratio'], resolution=context['resolution'])}"
+        f"{blocks['task_instruction'].format(aspect_ratio=context['aspect_ratio'], resolution=context['resolution'])}"
         f"{business_line}\n"
         f"服饰资料：\n{context['apparel_context']}{user_line}\n"
         f"{blocks['fidelity_rules']}\n{blocks['output_protocol']}"
@@ -853,9 +807,9 @@ def build_apparel_showcase_prompt(config: dict[str, Any], context: dict[str, Any
         "镜头1至镜头6；plotGoal、openingState和endingState不能为空。"
     )
     return (
-        "本次文本分析参考图顺序：图片1是六格试穿总览，图片2是服饰原图，图片3是模特原图"
+        "本次文本分析参考图顺序：图片1是试穿定妆图，图片2是服饰原图，图片3是模特原图"
         f"{scene_reference}。\n"
-        f"实际生图参考顺序：图片1是六格试穿总览{scene_generation}。\n"
+        f"实际生图参考顺序：图片1是试穿定妆图{scene_generation}。\n"
         "实际生视频参考顺序：图片1是本段分镜图；extend段还会引用上一段视频。\n\n"
         f"服饰资料：\n{context['apparel_context']}\n\n"
         f"创作方向：{blocks['creative_direction']}\n\n"

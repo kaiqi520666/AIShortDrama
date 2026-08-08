@@ -55,13 +55,13 @@ export function useGenerationContext({
       type: 'image',
       data: { title: reference.name, asset: reference.url },
     }))
-    const outfitBoard = props.data.storyboardOutfitBoard?.url ? [{
-      id: 'storyboard-outfit-board',
+    const legacyOutfitReference = (props.data.storyboardOutfitReference || props.data.storyboardOutfitBoard)?.url ? [{
+      id: 'storyboard-outfit-reference',
       type: 'image',
-      data: { title: '模特试穿参考总览', asset: props.data.storyboardOutfitBoard.url },
+      data: { title: '试穿定妆图', asset: (props.data.storyboardOutfitReference || props.data.storyboardOutfitBoard).url },
     }] : []
     return isStoryboardImage.value
-      ? [...outfitBoard, ...connectedReferences.value, ...characters, ...productReferences]
+      ? [...legacyOutfitReference, ...connectedReferences.value, ...characters, ...productReferences]
       : [...connectedReferences.value, ...characters, ...productReferences]
   })
   const disabledReferenceIds = computed(() => new Set(props.data.disabledReferenceIds || []))

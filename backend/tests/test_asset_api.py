@@ -1,19 +1,13 @@
 from datetime import datetime, timezone
-from io import BytesIO
-from types import SimpleNamespace
-import uuid
 
 import httpx
 import pytest
 from httpx import ASGITransport, AsyncClient
-from PIL import Image
 from app.api.routes import assets as assets_module
 from app.core.database import SessionLocal
-from app.core.errors import ServiceUnavailableError
 from app.core.identity import DEFAULT_WORKSPACE_ID
 from app.main import app
 from app.models import Asset
-from app.schemas.asset import ComposeImageBoardRequest
 from app.services.private_avatar import PrivateAvatarService
 
 
@@ -34,17 +28,6 @@ class FakePrivateAvatarProvider:
 
     async def get_private_avatar(self, _asset_id):
         return {"asset_id": "pa_storyboard", "status": self.status}
-
-
-class FakeBoardStorage:
-    def __init__(self):
-        self.deleted = []
-
-    async def store_upload(self, _object_key, _stream, _content_type):
-        return "https://example.com/outfit-board.jpg"
-
-    async def delete_object(self, object_key):
-        self.deleted.append(object_key)
 
 
 @pytest.mark.asyncio
@@ -225,120 +208,3 @@ async def test_register_and_refresh_storyboard_private_avatar(monkeypatch, overr
         "asset_url": "asset://pa_storyboard",
         "status": "active",
     }
-
-
-@pytest.mark.asyncio
-async def test_compose_outfit_board(monkeypatch, override_business_user):
-    asset_ids = []
-    image_buffer = BytesIO()
-    Image.new("RGB", (120, 220), "#d9e7ff").save(image_buffer, "PNG")
-    image_bytes = image_buffer.getvalue()
-
-    def upstream(_request):
-        return httpx.Response(200, content=image_bytes, headers={"Content-Type": "image/png"})
-
-    original_client = httpx.AsyncClient
-    monkeypatch.setattr(
-        assets_module.httpx,
-        "AsyncClient",
-        lambda **kwargs: original_client(transport=httpx.MockTransport(upstream), **kwargs),
-    )
-    monkeypatch.setattr(assets_module, "OssStorage", FakeBoardStorage)
-
-    async with SessionLocal() as db:
-        for index in range(6):
-            asset = Asset(
-                user_id=override_business_user,
-                workspace_id=DEFAULT_WORKSPACE_ID,
-                media_type="image",
-                source_type="generation",
-                name=f"穿搭参考 {index + 1}",
-                url=f"https://example.com/source-{index + 1}.png",
-            )
-            db.add(asset)
-            await db.flush()
-            asset_ids.append(str(asset.id))
-        await db.commit()
-
-    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-        response = await client.post(
-            "/api/assets/compose-board",
-            json={
-                "workspace_id": str(DEFAULT_WORKSPACE_ID),
-                "node_id": "outfit-1",
-                "asset_ids": asset_ids,
-            },
-        )
-
-    payload = response.json()["data"]
-    assert response.status_code == 200
-    assert payload["width"] == 2048
-    assert payload["height"] == 3640
-    assert payload["metadata"] == {
-        "type": "outfit-board",
-        "source_asset_ids": asset_ids,
-        "layout": "2x3",
-        "aspect_ratio": "9:16",
-    }
-
-
-@pytest.mark.asyncio
-async def test_compose_outfit_board_removes_uploaded_object_when_database_commit_fails(monkeypatch):
-    image_buffer = BytesIO()
-    Image.new("RGB", (120, 220), "#d9e7ff").save(image_buffer, "PNG")
-    image_bytes = image_buffer.getvalue()
-    workspace_id = uuid.uuid4()
-    user_id = uuid.uuid4()
-    source_assets = [
-        Asset(
-            id=uuid.uuid4(),
-            user_id=user_id,
-            workspace_id=workspace_id,
-            media_type="image",
-            source_type="generation",
-            name=f"穿搭参考 {index + 1}",
-            url=f"https://example.com/source-{index + 1}.png",
-        )
-        for index in range(6)
-    ]
-    storage = FakeBoardStorage()
-
-    class FailedCommitDb:
-        rolled_back = False
-
-        async def scalars(self, _query):
-            return SimpleNamespace(all=lambda: source_assets)
-
-        def add(self, _board):
-            pass
-
-        async def commit(self):
-            raise RuntimeError("database unavailable")
-
-        async def rollback(self):
-            self.rolled_back = True
-
-    def upstream(_request):
-        return httpx.Response(200, content=image_bytes, headers={"Content-Type": "image/png"})
-
-    original_client = httpx.AsyncClient
-    monkeypatch.setattr(
-        assets_module.httpx,
-        "AsyncClient",
-        lambda **kwargs: original_client(transport=httpx.MockTransport(upstream), **kwargs),
-    )
-    monkeypatch.setattr(assets_module, "OssStorage", lambda: storage)
-    db = FailedCommitDb()
-
-    with pytest.raises(ServiceUnavailableError, match="服饰总览图服务暂时不可用"):
-        await assets_module.compose_board(
-            ComposeImageBoardRequest(
-                workspace_id=str(workspace_id),
-                node_id="outfit-1",
-                asset_ids=[str(asset.id) for asset in source_assets],
-            ),
-            db,
-            user_id,
-        )
-    assert db.rolled_back
-    assert len(storage.deleted) == 1

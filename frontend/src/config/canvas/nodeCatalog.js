@@ -2,7 +2,6 @@ import { emptyCharacterProfile } from './character'
 import { emptyWorld } from './drama'
 import { createStoryboardTemplates } from './productStoryboard'
 import { createProductVisualItems } from './productVisual'
-import { resolveOutfitMaterials } from './outfit'
 
 const reversePrompts = {
   image: '根据图片生成结构化中文提示词，包括主体描述、环境、光影、镜头语言、风格关键词。',
@@ -130,8 +129,8 @@ export const nodeCatalog = {
     }),
   },
   outfit: {
-    type: 'outfit', label: '模特试穿', model: '', hint: '将已识别服饰穿到指定模特并生成六视角参考图板',
-    setting: '服饰识别 + 模特图 · 6 格 9:16 / 1K', iconName: 'Shirt',
+    type: 'outfit', label: '模特试穿', model: '', hint: '将已识别服饰穿到指定模特并生成试穿定妆图',
+    setting: '服饰识别 + 模特图 · 9:16 / 1K', iconName: 'Shirt',
     componentName: 'OutfitNode', panelName: 'OutfitPanel', panelHeight: 470,
     workspaces: ['ecommerce'], order: { ecommerce: 4 }, businessCreator: 'outfit',
     inputs: ['apparel', 'image'], outputs: ['image', 'apparel_storyboard'],
@@ -141,12 +140,12 @@ export const nodeCatalog = {
     },
     createData: ({ number, models, templates }) => ({
       title: `模特试穿 ${number}`, status: 'empty', textModel: models.text.id, imageModel: models.image.id,
-      aspectRatio: '9:16', resolution: '1K', moduleIds: resolveOutfitMaterials(templates.apparel_visual).map((item) => item.id),
-      templateVersion: templates.apparel_visual.version, customRequirement: '', generatedNodeIds: [],
+      aspectRatio: '9:16', resolution: '1K', templateVersion: templates.apparel_visual.version,
+      customRequirement: '', generatedNodeIds: [],
     }),
   },
   apparel_storyboard: {
-    type: 'apparel_storyboard', label: '服饰分镜', model: '', hint: '基于模特试穿总览生成多段服饰展示故事板与视频',
+    type: 'apparel_storyboard', label: '服饰分镜', model: '', hint: '基于试穿定妆图生成多段服饰展示故事板与视频',
     setting: '模特试穿 + 可选场景 · 15 秒分段', iconName: 'Clapperboard', componentName: 'ApparelStoryboardNode',
     panelName: 'ApparelStoryboardPanel', panelHeight: 470,
     workspaces: ['ecommerce'], order: { ecommerce: 5 }, businessCreator: 'apparelStoryboard',

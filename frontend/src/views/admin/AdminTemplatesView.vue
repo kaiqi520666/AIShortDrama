@@ -38,7 +38,7 @@ const promptFields = {
     ['output_protocol', '输出与内容规则', ''],
   ],
   apparel_visual: [
-    ['task_instruction', '任务说明', '{views} {aspect_ratio} {resolution}'],
+    ['task_instruction', '任务说明', '{aspect_ratio} {resolution}'],
     ['fidelity_rules', '服饰与模特一致性', ''],
     ['output_protocol', '输出与内容规则', ''],
   ],
@@ -176,15 +176,19 @@ onMounted(load)
       </div>
 
       <template v-if="isImageSettings">
-        <section v-for="group in form.config.groups" :key="group.id" class="admin-template-block">
+        <section v-for="group in form.config.groups || []" :key="group.id" class="admin-template-block">
           <header><AppInput v-model="group.label" maxlength="64" :aria-label="`${group.id} 分组名称`" /><small>{{ group.id }}</small></header>
           <div class="admin-template-items">
             <label v-for="item in group.items" :key="item.id" class="admin-template-item">
               <AppInput v-model="item.label" maxlength="64" :aria-label="`${item.id} 图种名称`" />
               <span>{{ item.id }}</span>
-              <span class="admin-check"><input v-model="item.default_enabled" type="checkbox" :disabled="templateKey === 'apparel_visual'" /><i><Check :size="13" /></i>{{ templateKey === 'apparel_visual' ? '固定启用' : '默认启用' }}</span>
+              <span class="admin-check"><input v-model="item.default_enabled" type="checkbox" /><i><Check :size="13" /></i>默认启用</span>
             </label>
           </div>
+        </section>
+        <section v-if="templateKey === 'apparel_visual'" class="admin-template-block">
+          <header><strong>输出目标</strong><small>固定生成一张图片</small></header>
+          <div class="admin-protocol-row"><code>正面全身</code><p>生成一张试穿定妆图，作为后续服饰分镜和视频的一致性参考。</p></div>
         </section>
         <label class="admin-field"><span>业务指令块</span><AppTextarea v-model="form.config.business_instruction" rows="6" maxlength="6000" :placeholder="templateKey === 'apparel_visual' ? '可选：补充服饰试穿的业务要求' : '可选：补充商品出图的业务要求'" /></label>
         <section class="admin-template-block">
@@ -199,7 +203,7 @@ onMounted(load)
         </section>
         <section class="admin-template-block">
           <header><strong>JSON 输出协议</strong><small>协议由生成器固定，后台不可修改</small></header>
-          <div class="admin-protocol-row"><code>{{ form.config.output_protocol_id }}</code><p>{{ templateKey === 'apparel_visual' ? '按所选视角输出 id / prompt 数组，视角必须完整且顺序一致。' : '按所选图种输出 type / prompt 数组，图种必须完整且顺序一致。' }}</p></div>
+          <div class="admin-protocol-row"><code>{{ form.config.output_protocol_id }}</code><p>{{ templateKey === 'apparel_visual' ? '输出包含单条 prompt 的 JSON 对象。' : '按所选图种输出 type / prompt 数组，图种必须完整且顺序一致。' }}</p></div>
         </section>
       </template>
 
@@ -229,7 +233,7 @@ onMounted(load)
           <header><strong>JSON 输出协议</strong><small>协议由生成器固定，后台不可修改</small></header>
           <div class="admin-protocol-row">
             <code>{{ isUgc ? 'ugc-seeding' : form.config.output_protocol_id }}</code>
-            <p>{{ isUgc ? '每段 15 秒，每段 6 镜头，输出 prompt / videoPrompt' : isApparelShowcase ? '基于试穿总览生成多段服饰展示，每段固定 6 镜头' : '包含剧情角色、剧情节拍、商品植入及每段 6 镜头提示词' }}</p>
+            <p>{{ isUgc ? '每段 15 秒，每段 6 镜头，输出 prompt / videoPrompt' : isApparelShowcase ? '基于试穿定妆图生成多段服饰展示，每段固定 6 镜头' : '包含剧情角色、剧情节拍、商品植入及每段 6 镜头提示词' }}</p>
           </div>
         </section>
 

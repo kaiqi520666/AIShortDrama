@@ -1,21 +1,3 @@
-import { requireTemplate } from './contentTemplates'
-
-function apparelVisualGroups(template) {
-  return requireTemplate(template, '服饰试穿设置').config.groups
-}
-
-export function resolveOutfitMaterials(template, selectedIds = null) {
-  const selected = selectedIds ? new Set(selectedIds) : null
-  return apparelVisualGroups(template).flatMap((group) => group.items
-    .filter((item) => selected ? selected.has(item.id) : item.default_enabled)
-    .map((item) => ({
-      id: item.id,
-      label: item.label,
-      category: group.id,
-      categoryLabel: group.label,
-    })))
-}
-
 export function buildApparelVisualRequest({
   workspaceId,
   nodeId,
@@ -23,7 +5,6 @@ export function buildApparelVisualRequest({
   garmentUrl,
   modelUrl,
   apparelContext,
-  selectedViewIds,
   aspectRatio,
   resolution,
   templateVersion,
@@ -41,7 +22,6 @@ export function buildApparelVisualRequest({
     template_version: templateVersion,
     template_context: {
       apparel_context: apparelContext,
-      selected_view_ids: selectedViewIds,
       aspect_ratio: aspectRatio,
       resolution,
       reference_count: 2,
@@ -50,23 +30,31 @@ export function buildApparelVisualRequest({
   }
 }
 
-export function parseOutfitPlan(content, materials) {
-  const source = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
-  const start = source.indexOf('[')
-  const end = source.lastIndexOf(']')
-  if (start < 0 || end <= start) throw new Error('未生成有效的试穿素材方案')
-
-  let parsed
+export function parseOutfitPrompt(content) {
+  const source = String(content || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
+  const start = source.indexOf('{')
+  const end = source.lastIndexOf('}')
+  if (start < 0 || end <= start) throw new Error('未生成有效的试穿定妆方案')
   try {
-    parsed = JSON.parse(source.slice(start, end + 1))
+    const prompt = JSON.parse(source.slice(start, end + 1))?.prompt?.trim()
+    if (prompt) return prompt
   } catch {
-    throw new Error('试穿素材方案格式异常')
+    // Fall through to the stable user-facing error.
   }
-  if (!Array.isArray(parsed)) throw new Error('试穿素材方案格式异常')
+  throw new Error('试穿定妆方案格式异常')
+}
 
-  const prompts = new Map(parsed.map((item) => [item?.id || item?.type, typeof item?.prompt === 'string' ? item.prompt.trim() : '']))
-  const plans = materials.map((material) => ({ ...material, prompt: prompts.get(material.id) || '' }))
-  const missing = plans.filter((plan) => !plan.prompt).map((plan) => plan.label)
-  if (missing.length) throw new Error(`试穿素材方案缺少：${missing.join('、')}`)
-  return plans
+export function resolveOutfitReference(outfitData = {}, nodes = []) {
+  const generated = (outfitData.generatedNodeIds || [])
+    .map((id) => nodes.find((node) => node.id === id))
+    .filter(Boolean)
+  const node = generated.find((item) => item.data.resourceType === 'outfit-reference')
+    || (generated.length === 1 && !generated[0].data.outfitMaterialId ? generated[0] : null)
+  if (node) return { node, asset: node.data.asset || '', assetId: node.data.assetId || null, legacy: false }
+  return {
+    node: null,
+    asset: outfitData.outfitBoardAsset || '',
+    assetId: outfitData.outfitBoardAssetId || null,
+    legacy: Boolean(outfitData.outfitBoardAsset),
+  }
 }

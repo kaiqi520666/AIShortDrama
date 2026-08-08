@@ -85,10 +85,9 @@ def apparel_visual_payload(**overrides):
         "media_urls": ["https://example.com/model.png"],
         "response_mode": "outfit_visual_plan",
         "template_key": "apparel_visual",
-        "template_version": 1,
+        "template_version": 2,
         "template_context": {
             "apparel_context": "单品1：白色衬衫",
-            "selected_view_ids": ["front", "three-quarter", "back", "turn", "fabric", "lifestyle"],
             "aspect_ratio": "9:16",
             "resolution": "1K",
             "reference_count": 2,
@@ -112,7 +111,7 @@ def apparel_storyboard_payload(**overrides):
         ],
         "response_mode": "apparel_storyboard_plan",
         "template_key": "apparel_showcase",
-        "template_version": 1,
+        "template_version": 2,
         "template_context": {
             "apparel_context": "单品1：白色衬衫",
             "duration": 30,

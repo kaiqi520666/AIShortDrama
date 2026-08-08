@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { Clapperboard, Images, Shirt } from 'lucide-vue-next'
 import { useCanvasStore } from '../../stores/canvas'
+import { resolveOutfitReference } from '../../config/canvas/outfit'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import StructuredNodeShell from './StructuredNodeShell.vue'
 
@@ -16,9 +17,10 @@ const store = useCanvasStore()
 const targetHandles = [{ id: 'outfit', top: '48%' }, { id: 'scene', top: '78%' }]
 const outfitNode = computed(() => store.incomingNodeByHandle(props.id, 'outfit'))
 const sceneNode = computed(() => store.incomingNodeByHandle(props.id, 'scene'))
+const outfitReference = computed(() => resolveOutfitReference(outfitNode.value?.data, store.nodes))
 const generatedCount = computed(() => (props.data.generatedNodeIds || []).filter((id) => store.nodes.some((node) => node.id === id)).length)
 const inputs = computed(() => [
-  { label: '模特试穿', icon: Shirt, asset: outfitNode.value?.data.outfitBoardAsset },
+  { label: '试穿定妆', icon: Shirt, asset: outfitReference.value.asset },
   { label: '场景', icon: Images, asset: sceneNode.value?.data.asset },
 ])
 </script>

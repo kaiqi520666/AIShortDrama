@@ -5,7 +5,7 @@ export function buildOutfitStoryboardRequest({
   nodeId,
   model,
   template,
-  outfitBoardUrl,
+  outfitReferenceUrl,
   garmentUrl,
   modelUrl,
   sceneUrl,
@@ -14,7 +14,7 @@ export function buildOutfitStoryboardRequest({
   videoAspectRatio,
   userRequirement,
 }) {
-  const references = [outfitBoardUrl, garmentUrl, modelUrl, ...(sceneUrl ? [sceneUrl] : [])]
+  const references = [outfitReferenceUrl, garmentUrl, modelUrl, ...(sceneUrl ? [sceneUrl] : [])]
   return {
     workspace_id: workspaceId,
     node_id: nodeId,

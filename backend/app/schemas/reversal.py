@@ -43,19 +43,10 @@ class ApparelVisualTemplateContext(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     apparel_context: str = Field(max_length=6000)
-    selected_view_ids: list[str] = Field(min_length=1, max_length=6)
     aspect_ratio: str = Field(pattern=r"^\d{1,3}:\d{1,3}$")
     resolution: str = Field(pattern=r"^\d{1,3}[Kk]$")
     reference_count: Literal[2]
     user_requirement: str = Field(default="", max_length=600)
-
-    @model_validator(mode="after")
-    def validate_view_ids(self):
-        if len(self.selected_view_ids) != len(set(self.selected_view_ids)) or any(
-            not 1 <= len(item) <= 32 for item in self.selected_view_ids
-        ):
-            raise ValueError("服饰试穿视角无效")
-        return self
 
 
 class ApparelStoryboardTemplateContext(BaseModel):

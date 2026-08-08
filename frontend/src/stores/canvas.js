@@ -246,8 +246,8 @@ export const useCanvasStore = defineStore('canvas', {
     addStoryboardVideoNode(...args) {
       return canvasBusinessActions.addStoryboardVideoNode.apply(this, args)
     },
-    addOutfitVisualNodes(...args) {
-      return canvasBusinessActions.addOutfitVisualNodes.apply(this, args)
+    addOutfitVisualNode(...args) {
+      return canvasBusinessActions.addOutfitVisualNode.apply(this, args)
     },
     addCharacterVisualNodes(...args) {
       return canvasBusinessActions.addCharacterVisualNodes.apply(this, args)

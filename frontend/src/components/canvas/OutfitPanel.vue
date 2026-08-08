@@ -1,10 +1,10 @@
 <script setup>
 import { computed } from 'vue'
-import { ArrowUp, Coins, FileText, Images, LoaderCircle, Shirt, UserRound } from 'lucide-vue-next'
+import { ArrowUp, Coins, FileText, Image, LoaderCircle, Shirt, UserRound } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
 import { apparelPromptContext } from '../../config/canvas/apparel'
-import { buildApparelVisualRequest, parseOutfitPlan, resolveOutfitMaterials } from '../../config/canvas/outfit'
+import { buildApparelVisualRequest, parseOutfitPrompt } from '../../config/canvas/outfit'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
 import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import { useAuthStore } from '../../stores/auth'
@@ -39,7 +39,6 @@ const templateEnabled = computed(() => Boolean(template.value?.enabled))
 const selectedImageSettings = computed(() => ({ model: { id: 'gpt-image-2' }, aspectRatio: '9:16', resolution: '1K' }))
 const selectedTextModel = computed(() => capabilityStore.textModels.find((model) => model.id === props.data.textModel) || capabilityStore.defaultTextModel)
 const customRequirement = computed(() => props.data.customRequirement || '')
-const selectedMaterials = computed(() => templateEnabled.value ? resolveOutfitMaterials(template.value, props.data.moduleIds) : [])
 const running = computed(() => props.data.status === 'generating')
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedTextModel.value.id))
 const insufficientCredits = computed(() => (authStore.user?.credit_balance || 0) < estimatedCredits.value)
@@ -52,10 +51,9 @@ const message = computed(() => {
   if (!garmentNode.value?.data.asset) return '请先上传服饰参考图'
   if (!apparelContext.value) return '请先完成服饰识别并启用至少一件单品'
   if (!modelNode.value?.data.asset) return '请先选择模特参考图'
-  if (!selectedMaterials.value.length) return '服饰试穿视角配置无效'
   return insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''
 })
-const canSubmit = computed(() => templateEnabled.value && !running.value && garmentNode.value?.data.asset && apparelContext.value && modelNode.value?.data.asset && selectedMaterials.value.length && !insufficientCredits.value)
+const canSubmit = computed(() => templateEnabled.value && !running.value && garmentNode.value?.data.asset && apparelContext.value && modelNode.value?.data.asset && !insufficientCredits.value)
 const sourceItems = computed(() => [
   { label: '服饰识别', icon: Shirt, asset: garmentNode.value?.data.asset, title: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件已启用` : '尚未连接' },
   { label: '模特参考图', icon: UserRound, asset: modelNode.value?.data.asset, title: modelNode.value?.data.title || '尚未选择' },
@@ -70,7 +68,7 @@ async function submitTask() {
   if (!canSubmit.value) return
   if (existingGeneratedNodes.value.length && !await confirm({
     title: '重新生成模特试穿',
-      message: '将重新生成固定六格参考图，已有图片节点不会删除。',
+    message: '将创建新的试穿定妆图，已有图片节点继续保留在画布中。',
     confirmText: '继续生成',
   })) return
 
@@ -80,14 +78,8 @@ async function submitTask() {
     imageModel: 'gpt-image-2',
     aspectRatio: '9:16',
     resolution: '1K',
-    moduleIds: selectedMaterials.value.map((item) => item.id),
     templateVersion: template.value.version,
     generatedNodeIds: [],
-    outfitBoardAsset: '',
-    outfitBoardAssetId: null,
-    outfitBoardSourceKey: '',
-    outfitBoardStatus: '',
-    outfitBoardError: '',
   })
   await runTextTask(streamReversePrompt, buildApparelVisualRequest({
     workspaceId: store.workspaceId,
@@ -96,7 +88,6 @@ async function submitTask() {
     garmentUrl: garmentNode.value.data.asset,
     modelUrl: modelNode.value.data.asset,
     apparelContext: apparelContext.value,
-    selectedViewIds: selectedMaterials.value.map((item) => item.id),
     aspectRatio: selectedImageSettings.value.aspectRatio,
     resolution: selectedImageSettings.value.resolution,
     templateVersion: template.value.version,
@@ -105,14 +96,14 @@ async function submitTask() {
     failureMessage: '模特试穿方案生成失败',
     onSuccess: (content) => {
       const settings = selectedImageSettings.value
-      const generatedNodeIds = store.addOutfitVisualNodes(
+      const generatedNodeId = store.addOutfitVisualNode(
         props.nodeId,
         garmentNode.value.id,
         modelNode.value.id,
-        parseOutfitPlan(content, selectedMaterials.value),
+        parseOutfitPrompt(content),
         { model: settings.model.id, aspectRatio: settings.aspectRatio, resolution: settings.resolution, outfitApparelId: apparelNode.value.id },
       )
-      return { generatedNodeIds }
+      return { generatedNodeIds: generatedNodeId ? [generatedNodeId] : [] }
     },
   })
 }
@@ -124,7 +115,7 @@ defineExpose({ submitTask })
   <section class="generation-panel outfit-panel nodrag nowheel" @pointerdown.stop>
     <header class="product-visual-panel-header">
       <span><Shirt :size="16" />模特试穿</span>
-      <small>已选 {{ selectedMaterials.length }} 项</small>
+      <small>1 张定妆图</small>
     </header>
 
     <div class="outfit-panel-references">
@@ -137,17 +128,14 @@ defineExpose({ submitTask })
       </div>
     </div>
 
-    <section class="outfit-material-section outfit-reference-board-config">
-      <h3><Images :size="14" />六视角试穿图板</h3>
-      <p>自动生成 2×3 竖版参考图，全部完成后供服饰分镜使用。</p>
-      <div class="outfit-reference-plan-list">
-        <span v-for="(item, index) in selectedMaterials" :key="item.id"><b>{{ index + 1 }}</b>{{ item.label }}</span>
-      </div>
+    <section class="outfit-material-section outfit-reference-config">
+      <h3><Image :size="14" />试穿定妆图</h3>
+      <p>正面全身、自然站立、简洁背景，作为后续分镜和视频的一致性参考。</p>
       <AppTextarea
         :model-value="customRequirement"
         rows="2"
         maxlength="600"
-        placeholder="补充统一风格或场景要求（不改变服饰与模特）"
+        placeholder="可选：补充背景、光线或模特姿态要求"
         @input="updateData({ customRequirement: $event.target.value })"
       />
     </section>

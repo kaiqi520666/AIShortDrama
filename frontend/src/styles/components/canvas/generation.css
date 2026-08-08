@@ -623,39 +623,12 @@
   flex: none;
   resize: none;
 }
-.outfit-reference-board-config {
+.outfit-reference-config {
   align-content: start;
 }
-.outfit-reference-board-config > p {
+.outfit-reference-config > p {
   margin: -2px 0 2px;
   color: var(--color-text-muted);
-  font-size: 12px;
-}
-.outfit-reference-plan-list {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-}
-.outfit-reference-plan-list > span {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 7px;
-  border: 1px solid var(--color-border-subtle);
-  border-radius: 5px;
-  color: var(--color-text-secondary);
-  font-size: 12px;
-}
-.outfit-reference-plan-list b {
-  display: grid;
-  width: 17px;
-  height: 17px;
-  flex: none;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--color-surface-raised);
-  color: var(--node-accent);
   font-size: 12px;
 }
 .outfit-fixed-settings {

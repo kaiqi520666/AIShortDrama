@@ -183,7 +183,8 @@ async def test_content_template_version_is_validated_and_published(override_busi
         assert "prompt_blocks" not in published.json()["data"]["product_storyboard"]["config"]
         assert published.json()["data"]["commerce_drama"]["config"]["output_protocol_id"] == "commerce-drama-v1"
         assert "prompt_blocks" not in published.json()["data"]["commerce_drama"]["config"]
-        assert published.json()["data"]["apparel_visual"]["config"]["output_protocol_id"] == "apparel-visual-v1"
+        assert published.json()["data"]["apparel_visual"]["config"]["output_protocol_id"] == "apparel-visual-v2"
+        assert "groups" not in published.json()["data"]["apparel_visual"]["config"]
         assert "prompt_blocks" not in published.json()["data"]["apparel_visual"]["config"]
         assert published.json()["data"]["apparel_showcase"]["config"]["durations"] == [15, 30, 45, 60]
         assert "prompt_blocks" not in published.json()["data"]["apparel_showcase"]["config"]
