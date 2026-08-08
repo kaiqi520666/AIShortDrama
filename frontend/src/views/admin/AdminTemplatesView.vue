@@ -27,6 +27,10 @@ const templateLabels = {
   commerce_drama: '短剧带货',
 }
 const promptFields = {
+  product_visual: [
+    ['task_instruction', '任务说明', '{types} {aspect_ratio} {resolution}'],
+    ['output_protocol', '输出与内容规则', ''],
+  ],
   product_storyboard: [
     ['director_role', '导演角色', ''],
     ['shooting_style', '拍摄风格', ''],
@@ -155,6 +159,20 @@ onMounted(load)
           </div>
         </section>
         <label class="admin-field"><span>业务指令块</span><AppTextarea v-model="form.config.business_instruction" rows="6" maxlength="6000" placeholder="可选：补充商品出图的业务要求" /></label>
+        <section class="admin-template-block">
+          <header><strong>模型提示词</strong><small>动态变量不可删除、改名或新增</small></header>
+          <label class="admin-field"><span>Provider 系统指令</span><AppTextarea v-model="form.config.provider_instruction" rows="4" maxlength="2000" required /></label>
+          <div class="admin-prompt-blocks">
+            <label v-for="([key, label, variables]) in currentPromptFields" :key="key" class="admin-field">
+              <span>{{ label }}<code v-if="variables">{{ variables }}</code></span>
+              <AppTextarea v-model="form.config.prompt_blocks[key]" rows="6" maxlength="12000" required />
+            </label>
+          </div>
+        </section>
+        <section class="admin-template-block">
+          <header><strong>JSON 输出协议</strong><small>协议由生成器固定，后台不可修改</small></header>
+          <div class="admin-protocol-row"><code>{{ form.config.output_protocol_id }}</code><p>按所选图种输出 type / prompt 数组，图种必须完整且顺序一致。</p></div>
+        </section>
       </template>
 
       <template v-else>

@@ -92,7 +92,7 @@ async function submitTask() {
     media_url: garmentNode.value.data.asset,
     media_urls: [modelNode.value.data.asset],
     prompt: prompt.value,
-    response_mode: 'product_visual_plan',
+    response_mode: 'outfit_visual_plan',
   }, {
     failureMessage: '穿搭方案生成失败',
     onSuccess: (content) => {

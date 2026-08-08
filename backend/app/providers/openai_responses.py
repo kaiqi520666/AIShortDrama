@@ -81,7 +81,7 @@ class OpenAIResponsesProvider:
         system_prompts = {
             "product_profile": "你是专业的中文商品视觉识别助手。严格按用户指定的 JSON 结构输出，不解释，不使用 Markdown。",
             "apparel_profile": "你是专业的中文服饰视觉识别助手。严格按用户指定的 JSON 结构输出，不解释，不使用 Markdown。",
-            "product_visual_plan": "你是专业的中文电商视觉策划师。严格按用户指定的 JSON 数组输出，不解释，不使用 Markdown。",
+            "outfit_visual_plan": "你是专业的中文电商视觉策划师。严格按用户指定的 JSON 数组输出，不解释，不使用 Markdown。",
             "product_storyboard_plan": "你是专业的中文电商UGC种草分镜策划师。完整执行用户提示词，并严格按其中指定的 JSON 结构输出，不解释，不使用 Markdown。",
             "apparel_storyboard_plan": "你是专业的中文服饰短视频分镜策划师。严格按用户指定的 JSON 对象输出，不解释，不使用 Markdown。",
             "character_profile": "你是专业的中文短剧角色设定师。严格按用户指定的 JSON 结构输出，不解释，不使用 Markdown。",

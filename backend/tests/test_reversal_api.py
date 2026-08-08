@@ -52,18 +52,38 @@ def storyboard_payload(**overrides):
     return payload
 
 
-def test_product_visual_plan_requires_prompt():
+def product_visual_payload(**overrides):
     payload = {
         "workspace_id": str(DEFAULT_WORKSPACE_ID),
         "node_id": "product-visual-1",
         "model": "gpt-5.6-sol",
         "media_type": "image",
-        "media_url": "https://example.com/product.png",
+        "media_url": "https://example.com/product-1.png",
+        "media_urls": ["https://example.com/product-2.png"],
         "response_mode": "product_visual_plan",
+        "template_key": "product_visual",
+        "template_version": 2,
+        "template_context": {
+            "product_context": "商品名称：测试商品",
+            "selected_type_ids": ["white-bg", "core-selling"],
+            "aspect_ratio": "16:9",
+            "resolution": "2K",
+            "reference_count": 2,
+        },
     }
-    with pytest.raises(ValidationError, match="提示词不能为空"):
-        ReversePromptRequest(**payload)
-    assert ReversePromptRequest(**{**payload, "prompt": "生成出图方案"}).response_mode == "product_visual_plan"
+    payload.update(overrides)
+    return payload
+
+
+def test_product_visual_plan_requires_server_template():
+    payload = product_visual_payload()
+    assert ReversePromptRequest(**payload).template_key == "product_visual"
+    with pytest.raises(ValidationError, match="服务端模板"):
+        ReversePromptRequest(**{**payload, "prompt": "生成出图方案"})
+    with pytest.raises(ValidationError, match="参考图数量不一致"):
+        ReversePromptRequest(**product_visual_payload(
+            template_context={**payload["template_context"], "reference_count": 1}
+        ))
 
 
 def test_reverse_prompt_accepts_additional_media_urls():
@@ -75,7 +95,7 @@ def test_reverse_prompt_accepts_additional_media_urls():
         media_url="https://example.com/garment.png",
         media_urls=["https://example.com/model.png"],
         prompt="生成穿搭方案",
-        response_mode="product_visual_plan",
+        response_mode="outfit_visual_plan",
     )
     assert [str(url) for url in payload.media_urls] == ["https://example.com/model.png"]
 
@@ -241,6 +261,37 @@ async def test_stream_reverse_prompt_keeps_content_over_3000_characters(monkeypa
         assert task.result["content"] == "".join(chunks)
         assert task.prompt == FakeProvider.last_kwargs["prompt"]
         assert task.request_snapshot["template_key"] == "product_storyboard"
+
+
+@pytest.mark.asyncio
+async def test_product_visual_stream_uses_server_template(monkeypatch):
+    monkeypatch.setattr(reversals_route, "OpenAIResponsesProvider", FakeProvider)
+    async with SessionLocal() as db:
+        template = await db.get(ContentTemplate, "product_visual")
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post(
+            "/api/reversals/stream",
+            json=product_visual_payload(template_version=template.version),
+        )
+
+    assert response.status_code == 200
+    events = [json.loads(line) for line in response.text.splitlines()]
+    assert events[0] == {
+        "type": "meta",
+        "task_id": events[0]["task_id"],
+        "template_key": "product_visual",
+        "template_version": template.version,
+        "output_protocol_id": "product-visual-v1",
+    }
+    assert "white-bg=白底图、core-selling=核心卖点" in FakeProvider.last_kwargs["prompt"]
+    assert FakeProvider.last_kwargs["instructions"].startswith(
+        "你是专业的中文电商视觉策划师"
+    )
+    async with SessionLocal() as db:
+        task = await db.get(GenerationTask, uuid.UUID(events[0]["task_id"]))
+        assert task.prompt == FakeProvider.last_kwargs["prompt"]
+        assert task.request_snapshot["template_key"] == "product_visual"
+        assert "prompt" not in task.request_snapshot
 
 
 @pytest.mark.asyncio

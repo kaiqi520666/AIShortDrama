@@ -1,18 +1,38 @@
 import { describe, expect, it } from 'vitest'
-import { buildProductVisualPrompt, createProductVisualItems, parseProductVisualPlan } from './productVisual'
+import { buildProductVisualRequest, createProductVisualItems, parseProductVisualPlan } from './productVisual'
 import { contentTemplatesFixture } from '../../test/contentTemplates'
 
 const template = contentTemplatesFixture.product_visual
 const productVisualTypes = createProductVisualItems(template)
 
 describe('product visual planning', () => {
-  it('builds one bounded multimodal prompt for all selected types', () => {
-    const prompt = buildProductVisualPrompt('商品名称：测试商品\n核心卖点：轻便耐用'.repeat(200), productVisualTypes, { aspectRatio: '16:9', resolution: '2K' }, template)
+  it('derives selectable items from the public template', () => {
+    expect(productVisualTypes[0]).toEqual({ id: 'white-bg', label: '白底图', enabled: true })
+    expect(productVisualTypes.at(-1)).toEqual({ id: 'usage-tips', label: '使用建议', enabled: false })
+  })
 
-    expect(prompt.length).toBeLessThanOrEqual(3000)
-    expect(prompt).toContain('white-bg=白底图')
-    expect(prompt).toContain('usage-tips=使用建议')
-    expect(prompt).toContain('16:9，2K')
+  it('builds a structured server-template request without a prompt', () => {
+    const request = buildProductVisualRequest({
+      workspaceId: 'workspace-1',
+      nodeId: 'visual-1',
+      model: 'gpt-5.6-sol',
+      referenceUrls: ['https://example.com/1.png', 'https://example.com/2.png'],
+      productContext: '商品名称：测试商品',
+      selectedTypeIds: ['white-bg', 'core-selling'],
+      aspectRatio: '16:9',
+      resolution: '2K',
+      templateVersion: 3,
+    })
+
+    expect(request).not.toHaveProperty('prompt')
+    expect(request.template_key).toBe('product_visual')
+    expect(request.template_context).toEqual({
+      product_context: '商品名称：测试商品',
+      selected_type_ids: ['white-bg', 'core-selling'],
+      aspect_ratio: '16:9',
+      resolution: '2K',
+      reference_count: 2,
+    })
   })
 
   it('parses and orders generated prompts by the selected types', () => {

@@ -16,13 +16,36 @@ export function createProductVisualItems(template) {
   })))
 }
 
-export function buildProductVisualPrompt(productContext, items, settings = {}, template) {
-  const record = requireTemplate(template, '商品图种模板')
-  const types = items.map((item) => `${item.id}=${item.label}`).join('、')
-  const instruction = record.config.business_instruction.trim()
-  const prefix = `请根据参考商品图片和商品资料，为以下图种分别生成一条中文图片提示词：${types}。统一画面规格：${settings.aspectRatio || '1:1'}，${settings.resolution || '1K'}。${instruction ? `\n业务要求：${instruction}` : ''}\n商品资料：\n`
-  const suffix = `\n严格输出 JSON 数组，格式为 [{"type":"图种ID","prompt":"提示词"}]。每个图种必须且只能出现一次，顺序与请求一致。每条提示词不超过 100 个中文字符，只描述该图种特有的构图、场景、光线、视角与文案布局，不重复商品资料，不虚构图片和资料中没有的商品事实，不解释，不使用 Markdown。`
-  return `${prefix}${productContext.slice(0, Math.max(0, 3000 - prefix.length - suffix.length))}${suffix}`
+export function buildProductVisualRequest({
+  workspaceId,
+  nodeId,
+  model,
+  referenceUrls,
+  productContext,
+  selectedTypeIds,
+  aspectRatio,
+  resolution,
+  templateVersion,
+}) {
+  const [mediaUrl, ...mediaUrls] = referenceUrls
+  return {
+    workspace_id: workspaceId,
+    node_id: nodeId,
+    model,
+    media_type: 'image',
+    media_url: mediaUrl,
+    ...(mediaUrls.length ? { media_urls: mediaUrls } : {}),
+    response_mode: 'product_visual_plan',
+    template_key: 'product_visual',
+    template_version: templateVersion,
+    template_context: {
+      product_context: productContext,
+      selected_type_ids: selectedTypeIds,
+      aspect_ratio: aspectRatio,
+      resolution,
+      reference_count: referenceUrls.length,
+    },
+  }
 }
 
 export function parseProductVisualPlan(content, items) {

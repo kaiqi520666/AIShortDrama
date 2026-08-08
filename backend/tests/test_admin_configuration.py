@@ -171,7 +171,13 @@ async def test_content_template_version_is_validated_and_published(override_busi
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             published = await client.get("/api/content-templates/product")
         assert published.status_code == 200
-        assert published.json()["data"]["product_visual"]["config"]["groups"][0]["label"] == "测试基础展示"
+        visual_config = published.json()["data"]["product_visual"]["config"]
+        assert visual_config["groups"][0]["label"] == "测试基础展示"
+        assert visual_config["schema_version"] == 2
+        assert visual_config["output_protocol_id"] == "product-visual-v1"
+        assert "provider_instruction" not in visual_config
+        assert "prompt_blocks" not in visual_config
+        assert "business_instruction" not in visual_config
         assert "prompt_blocks" not in published.json()["data"]["product_storyboard"]["config"]
         assert published.json()["data"]["commerce_drama"]["config"]["output_protocol_id"] == "commerce-drama-v1"
         assert "prompt_blocks" not in published.json()["data"]["commerce_drama"]["config"]

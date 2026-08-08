@@ -1,4 +1,5 @@
 from copy import deepcopy
+import re
 from string import Formatter
 from typing import Any, Callable
 
@@ -11,6 +12,7 @@ from app.models import ContentTemplate
 PRODUCT_VISUAL_KEY = "product_visual"
 UGC_STORYBOARD_KEY = "product_storyboard"
 COMMERCE_DRAMA_KEY = "commerce_drama"
+PRODUCT_VISUAL_PROTOCOL_ID = "product-visual-v1"
 STORYBOARD_TEMPLATE_ID = "ugc-seeding"
 COMMERCE_DRAMA_TEMPLATE_ID = "commerce-drama"
 COMMERCE_DRAMA_PROTOCOL_ID = "commerce-drama-v1"
@@ -21,6 +23,25 @@ PRODUCT_VISUAL_GROUPS = {
     "marketing": ("core-selling", "use-scenario", "ambient-scene", "contrast-effect"),
     "detail": ("detail-zoom", "specs-info", "tech-specs", "manufacturing", "ingredients"),
     "trust": ("brand-story", "freebies", "warranty", "usage-tips"),
+}
+PRODUCT_VISUAL_PROVIDER_INSTRUCTION = (
+    "你是专业的中文电商视觉策划师。严格按用户指定的 JSON 数组输出，不解释，不使用 Markdown。"
+)
+PRODUCT_VISUAL_PROMPT_BLOCKS = {
+    "task_instruction": (
+        "请根据参考商品图片和商品资料，为以下图种分别生成一条中文图片提示词：{types}。"
+        "统一画面规格：{aspect_ratio}，{resolution}。"
+    ),
+    "output_protocol": (
+        '严格输出 JSON 数组，格式为 [{"type":"图种ID","prompt":"提示词"}]。'
+        "每个图种必须且只能出现一次，顺序与请求一致。每条提示词不超过 100 个中文字符，只描述该图种"
+        "特有的构图、场景、光线、视角与文案布局，不重复商品资料，不虚构图片和资料中没有的商品事实，"
+        "不解释，不使用 Markdown。"
+    ),
+}
+PRODUCT_VISUAL_PLACEHOLDERS = {
+    "task_instruction": {"types", "aspect_ratio", "resolution"},
+    "output_protocol": set(),
 }
 
 UGC_PROVIDER_INSTRUCTION = (
@@ -216,6 +237,15 @@ def default_ugc_config() -> dict[str, Any]:
     }
 
 
+def default_product_visual_prompt_config() -> dict[str, Any]:
+    return {
+        "schema_version": 2,
+        "provider_instruction": PRODUCT_VISUAL_PROVIDER_INSTRUCTION,
+        "output_protocol_id": PRODUCT_VISUAL_PROTOCOL_ID,
+        "prompt_blocks": deepcopy(PRODUCT_VISUAL_PROMPT_BLOCKS),
+    }
+
+
 def default_commerce_drama_config() -> dict[str, Any]:
     return {
         "schema_version": 2,
@@ -264,7 +294,14 @@ async def get_product_templates(db: AsyncSession) -> dict[str, dict[str, Any]]:
     result = {}
     for template in templates:
         data = template_data(template)
-        if template.key == UGC_STORYBOARD_KEY:
+        if template.key == PRODUCT_VISUAL_KEY:
+            config = template.config
+            data["config"] = {
+                "schema_version": config["schema_version"],
+                "groups": deepcopy(config["groups"]),
+                "output_protocol_id": config["output_protocol_id"],
+            }
+        elif template.key == UGC_STORYBOARD_KEY:
             config = template.config
             data["config"] = {
                 "schema_version": config["schema_version"],
@@ -311,6 +348,10 @@ def _validate_continuity(value: Any) -> dict[str, dict[str, str]]:
 
 def _validate_prompt_block(key: str, value: Any, expected_placeholders: set[str]) -> str:
     text = _text(value, "Prompt 区块", max_length=12_000)
+    if not expected_placeholders:
+        if re.search(r"\{[A-Za-z_][A-Za-z0-9_]*\}", text):
+            raise ValueError(f"{key} 动态变量无效")
+        return text
     try:
         placeholders = {
             field_name
@@ -354,13 +395,32 @@ def _validate_product_visual(value: dict[str, Any], _enabled: bool) -> dict[str,
         )
     if not any(item["default_enabled"] for group in result_groups for item in group["items"]):
         raise ValueError("至少保留一个默认图种")
+    blocks = value.get("prompt_blocks")
+    if (
+        value.get("schema_version") != 2
+        or value.get("output_protocol_id") != PRODUCT_VISUAL_PROTOCOL_ID
+        or not isinstance(blocks, dict)
+        or set(blocks) != set(PRODUCT_VISUAL_PROMPT_BLOCKS)
+    ):
+        raise ValueError("商品出图模板配置无效")
     return {
+        "schema_version": 2,
         "groups": result_groups,
         "business_instruction": _text(
             value.get("business_instruction", ""),
             "商品图种业务指令",
             required=False,
         ),
+        "provider_instruction": _text(
+            value.get("provider_instruction"), "模型角色指令", max_length=2000
+        ),
+        "output_protocol_id": PRODUCT_VISUAL_PROTOCOL_ID,
+        "prompt_blocks": {
+            key: _validate_prompt_block(
+                key, blocks[key], PRODUCT_VISUAL_PLACEHOLDERS[key]
+            )
+            for key in PRODUCT_VISUAL_PROMPT_BLOCKS
+        },
     }
 
 
@@ -455,6 +515,34 @@ def _storyboard_grid(ratio: str) -> tuple[int, int]:
     if width <= 0 or height <= 0:
         raise ValueError("视频画幅比例无效")
     return (3, 2) if width / height <= 1 else (2, 3)
+
+
+def build_product_visual_prompt(config: dict[str, Any], context: dict[str, Any]) -> str:
+    validated = _validate_product_visual(config, True)
+    selected_ids = context["selected_type_ids"]
+    if not isinstance(selected_ids, list) or not selected_ids or len(selected_ids) != len(set(selected_ids)):
+        raise ValueError("商品出图类型无效")
+    items = {
+        item["id"]: item["label"]
+        for group in validated["groups"]
+        for item in group["items"]
+    }
+    if any(item_id not in items for item_id in selected_ids):
+        raise ValueError("商品出图类型无效")
+    types = "、".join(f"{item_id}={items[item_id]}" for item_id in selected_ids)
+    blocks = validated["prompt_blocks"]
+    prefix = blocks["task_instruction"].format(
+        types=types,
+        aspect_ratio=context["aspect_ratio"],
+        resolution=context["resolution"],
+    )
+    instruction = validated["business_instruction"]
+    if instruction:
+        prefix += f"\n业务要求：{instruction}"
+    prefix += "\n商品资料：\n"
+    suffix = f"\n{blocks['output_protocol']}"
+    product_context = context["product_context"]
+    return f"{prefix}{product_context[:max(0, 3000 - len(prefix) - len(suffix))]}{suffix}"
 
 
 def _reference_instructions(character_count: int, product_count: int) -> tuple[str, str]:
@@ -624,6 +712,7 @@ def build_commerce_drama_prompt(config: dict[str, Any], context: dict[str, Any])
 
 
 TEMPLATE_BUILDERS = {
+    PRODUCT_VISUAL_KEY: build_product_visual_prompt,
     UGC_STORYBOARD_KEY: build_ugc_storyboard_prompt,
     COMMERCE_DRAMA_KEY: build_commerce_drama_prompt,
 }

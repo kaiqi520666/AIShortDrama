@@ -5,7 +5,7 @@ import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
 import { maxProductReferenceImages } from '../../config/canvas/connectionRules'
 import { productPromptContext } from '../../config/canvas/ecommerce'
-import { buildProductVisualPrompt, getProductVisualGroups, parseProductVisualPlan } from '../../config/canvas/productVisual'
+import { buildProductVisualRequest, getProductVisualGroups, parseProductVisualPlan } from '../../config/canvas/productVisual'
 import { normalizeImageSettings } from '../../config/imageModels'
 import { useAuthStore } from '../../stores/auth'
 import { useCanvasStore } from '../../stores/canvas'
@@ -51,9 +51,6 @@ const selectedItems = computed(() => (props.data.items || []).filter((item) => i
 const template = computed(() => contentTemplateStore.templates?.product_visual)
 const templateEnabled = computed(() => Boolean(template.value?.enabled))
 const productVisualGroups = computed(() => templateEnabled.value ? getProductVisualGroups(template.value) : [])
-const prompt = computed(() => templateEnabled.value
-  ? buildProductVisualPrompt(productContext.value, selectedItems.value, props.data, template.value)
-  : '')
 const running = computed(() => props.data.status === 'generating')
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedTextModel.value.id))
 const insufficientCredits = computed(() => (authStore.user?.credit_balance || 0) < estimatedCredits.value)
@@ -105,18 +102,17 @@ async function submitTask() {
   })) return
 
   updateNodeData(props.nodeId, { templateVersion: template.value.version })
-  await runTextTask(streamReversePrompt, {
-    workspace_id: store.workspaceId,
-    node_id: props.nodeId,
+  await runTextTask(streamReversePrompt, buildProductVisualRequest({
+    workspaceId: store.workspaceId,
+    nodeId: props.nodeId,
     model: selectedTextModel.value.id,
-    media_type: 'image',
-    media_url: referenceImage.value.data.asset,
-    ...(referenceImages.value.length > 1
-      ? { media_urls: referenceImages.value.slice(1).map((reference) => reference.data.asset) }
-      : {}),
-    prompt: prompt.value,
-    response_mode: 'product_visual_plan',
-  }, {
+    referenceUrls: referenceImages.value.map((reference) => reference.data.asset),
+    productContext: productContext.value,
+    selectedTypeIds: selectedItems.value.map((item) => item.id),
+    aspectRatio: selectedImageSettings.value.aspectRatio,
+    resolution: selectedImageSettings.value.resolution,
+    templateVersion: template.value.version,
+  }), {
     failureMessage: '商品出图方案生成失败',
     onSuccess: (content) => {
       const settings = selectedImageSettings.value

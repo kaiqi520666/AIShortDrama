@@ -21,6 +21,24 @@ class StoryboardTemplateContext(BaseModel):
         return self
 
 
+class ProductVisualTemplateContext(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    product_context: str = Field(max_length=6000)
+    selected_type_ids: list[str] = Field(min_length=1, max_length=17)
+    aspect_ratio: str = Field(pattern=r"^\d{1,3}:\d{1,3}$")
+    resolution: str = Field(pattern=r"^\d{1,3}[Kk]$")
+    reference_count: int = Field(ge=1, le=6)
+
+    @model_validator(mode="after")
+    def validate_type_ids(self):
+        if len(self.selected_type_ids) != len(set(self.selected_type_ids)) or any(
+            not 1 <= len(item) <= 32 for item in self.selected_type_ids
+        ):
+            raise ValueError("商品出图类型无效")
+        return self
+
+
 class ReversePromptRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -31,14 +49,17 @@ class ReversePromptRequest(BaseModel):
     media_url: AnyHttpUrl
     media_urls: list[AnyHttpUrl] = Field(default_factory=list, max_length=9)
     prompt: str = Field(default="", max_length=6000)
-    template_key: Literal["product_storyboard", "commerce_drama"] | None = None
+    template_key: Literal[
+        "product_visual", "product_storyboard", "commerce_drama"
+    ] | None = None
     template_version: int | None = Field(default=None, ge=1)
-    template_context: StoryboardTemplateContext | None = None
+    template_context: StoryboardTemplateContext | ProductVisualTemplateContext | None = None
     response_mode: Literal[
         "prompt",
         "product_profile",
         "apparel_profile",
         "product_visual_plan",
+        "outfit_visual_plan",
         "product_storyboard_plan",
         "apparel_storyboard_plan",
         "character_profile",
@@ -48,10 +69,26 @@ class ReversePromptRequest(BaseModel):
     @model_validator(mode="after")
     def validate_prompt(self):
         storyboard_mode = self.response_mode == "product_storyboard_plan"
-        if storyboard_mode:
+        product_visual_mode = self.response_mode == "product_visual_plan"
+        if product_visual_mode:
+            if self.prompt.strip():
+                raise ValueError("商品出图 Prompt 必须由服务端模板生成")
+            if (
+                self.template_key != "product_visual"
+                or not self.template_version
+                or not isinstance(self.template_context, ProductVisualTemplateContext)
+            ):
+                raise ValueError("商品出图模板参数不完整")
+            if 1 + len(self.media_urls) != self.template_context.reference_count:
+                raise ValueError("商品出图参考图数量不一致")
+        elif storyboard_mode:
             if self.prompt.strip():
                 raise ValueError("商品分镜 Prompt 必须由服务端模板生成")
-            if not self.template_key or not self.template_version or not self.template_context:
+            if (
+                self.template_key not in {"product_storyboard", "commerce_drama"}
+                or not self.template_version
+                or not isinstance(self.template_context, StoryboardTemplateContext)
+            ):
                 raise ValueError("商品分镜模板参数不完整")
             reference_count = 1 + len(self.media_urls)
             expected_count = (
@@ -64,9 +101,14 @@ class ReversePromptRequest(BaseModel):
         if self.response_mode not in {
             "product_profile",
             "apparel_profile",
+            "product_visual_plan",
             "product_storyboard_plan",
         } and not self.prompt.strip():
             raise ValueError("提示词不能为空")
-        if self.response_mode in {"product_profile", "product_storyboard_plan"} and len(self.media_urls) > 5:
+        if self.response_mode in {
+            "product_profile",
+            "product_visual_plan",
+            "product_storyboard_plan",
+        } and len(self.media_urls) > 5:
             raise ValueError("商品创作最多支持 6 张参考图片")
         return self

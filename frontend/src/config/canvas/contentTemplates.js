@@ -18,6 +18,7 @@ export function validateProductContentTemplates(value) {
   const drama = value?.commerce_drama
   if (!visual || !storyboard || !drama || [visual, storyboard, drama].some((item) => typeof item.version !== 'number' || typeof item.enabled !== 'boolean')) return '商品模板响应无效'
   const groups = visual.config?.groups
+  if (visual.config?.schema_version !== 2 || visual.config?.output_protocol_id !== 'product-visual-v1') return '商品图种模板版本无效'
   if (!Array.isArray(groups) || groups.length !== visualGroupIds.length) return '商品图种模板无效'
   for (const group of groups) {
     if (!visualGroupIds.includes(group?.id) || !validText(group?.label, 64)) return '商品图种模板无效'
@@ -25,7 +26,6 @@ export function validateProductContentTemplates(value) {
     if (!Array.isArray(group.items) || group.items.map((item) => item?.id).join('|') !== expected.join('|')) return '商品图种模板无效'
     if (group.items.some((item) => !validText(item?.label, 64) || typeof item.default_enabled !== 'boolean')) return '商品图种模板无效'
   }
-  if (typeof visual.config.business_instruction !== 'string' || visual.config.business_instruction.length > 6000) return '商品图种业务指令无效'
   const templates = storyboard.config?.templates
   const durations = storyboard.config?.durations
   const continuity = storyboard.config?.continuity

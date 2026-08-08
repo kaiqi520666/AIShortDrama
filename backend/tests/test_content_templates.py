@@ -7,9 +7,13 @@ import pytest
 
 from app.services.content_templates import (
     COMMERCE_DRAMA_KEY,
+    PRODUCT_VISUAL_GROUPS,
+    PRODUCT_VISUAL_KEY,
     UGC_STORYBOARD_KEY,
+    build_product_visual_prompt,
     build_commerce_drama_prompt,
     default_commerce_drama_config,
+    default_product_visual_prompt_config,
     default_ugc_config,
     build_ugc_storyboard_prompt,
     validate_template_config,
@@ -43,6 +47,113 @@ def load_commerce_drama_migration():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def load_product_visual_migration():
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "alembic"
+        / "versions"
+        / "n5f7h9j1l3m4_migrate_product_visual_prompt.py"
+    )
+    spec = importlib.util.spec_from_file_location("product_visual_migration", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def product_visual_config():
+    group_labels = {
+        "basic": "基础展示",
+        "marketing": "营销卖点",
+        "detail": "详情说明",
+        "trust": "信任保障",
+    }
+    item_labels = {
+        "white-bg": "白底图",
+        "first-screen": "首屏主视觉",
+        "multi-angle": "多角度",
+        "series-show": "系列 SKU",
+        "core-selling": "核心卖点",
+        "use-scenario": "使用场景",
+        "ambient-scene": "氛围场景",
+        "contrast-effect": "效果对比",
+        "detail-zoom": "细节图",
+        "specs-info": "规格尺寸",
+        "tech-specs": "参数表",
+        "manufacturing": "工艺",
+        "ingredients": "成分",
+        "brand-story": "品牌故事",
+        "freebies": "配件 / 赠品",
+        "warranty": "售后保障",
+        "usage-tips": "使用建议",
+    }
+    return {
+        **default_product_visual_prompt_config(),
+        "groups": [
+            {
+                "id": group_id,
+                "label": group_labels[group_id],
+                "items": [
+                    {
+                        "id": item_id,
+                        "label": item_labels[item_id],
+                        "default_enabled": item_id == "white-bg",
+                    }
+                    for item_id in item_ids
+                ],
+            }
+            for group_id, item_ids in PRODUCT_VISUAL_GROUPS.items()
+        ],
+        "business_instruction": "",
+    }
+
+
+def test_product_visual_migration_preserves_operator_fields_and_is_idempotent():
+    migration = load_product_visual_migration()
+    existing = {
+        "groups": [{"id": "custom", "label": "已调整", "items": []}],
+        "business_instruction": "已验证业务要求",
+    }
+
+    merged = migration.merge_product_visual_config(existing)
+
+    assert merged["groups"] == existing["groups"]
+    assert merged["business_instruction"] == "已验证业务要求"
+    assert merged["provider_instruction"] == migration.PROVIDER_INSTRUCTION
+    assert merged["prompt_blocks"] == migration.PROMPT_BLOCKS
+    assert migration.merge_product_visual_config(merged) == merged
+
+
+def test_product_visual_builder_matches_accepted_frontend_prompt_byte_for_byte():
+    config = product_visual_config()
+    context = {
+        "product_context": "商品名称：测试商品",
+        "selected_type_ids": ["white-bg", "core-selling"],
+        "aspect_ratio": "16:9",
+        "resolution": "2K",
+        "reference_count": 2,
+    }
+    expected = (
+        "请根据参考商品图片和商品资料，为以下图种分别生成一条中文图片提示词："
+        "white-bg=白底图、core-selling=核心卖点。统一画面规格：16:9，2K。\n"
+        "商品资料：\n商品名称：测试商品\n"
+        '严格输出 JSON 数组，格式为 [{"type":"图种ID","prompt":"提示词"}]。'
+        "每个图种必须且只能出现一次，顺序与请求一致。每条提示词不超过 100 个中文字符，只描述该图种"
+        "特有的构图、场景、光线、视角与文案布局，不重复商品资料，不虚构图片和资料中没有的商品事实，"
+        "不解释，不使用 Markdown。"
+    )
+
+    assert build_product_visual_prompt(config, context) == expected
+
+
+def test_product_visual_validation_rejects_changed_placeholders():
+    config = product_visual_config()
+    config["prompt_blocks"]["task_instruction"] = config["prompt_blocks"][
+        "task_instruction"
+    ].replace("{types}", "{unknown}")
+    with pytest.raises(ValueError, match="动态变量"):
+        validate_template_config(PRODUCT_VISUAL_KEY, config, enabled=True)
 
 
 def test_ugc_template_migration_preserves_existing_operator_fields():
