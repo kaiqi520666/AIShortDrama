@@ -402,14 +402,16 @@
 .outfit-panel {
   display: flex;
   width: min(640px, calc(100vw - 32px));
-  height: min(460px, calc(100vh - 32px));
+  height: auto;
+  min-height: 0;
   flex-direction: column;
   padding: 16px 18px 14px;
 }
 .apparel-panel {
   display: flex;
   width: min(680px, calc(100vw - 32px));
-  height: min(440px, calc(100vh - 32px));
+  height: auto;
+  min-height: 0;
   flex-direction: column;
   padding: 16px 18px 14px;
 }
@@ -451,8 +453,9 @@
 }
 .apparel-items-section {
   display: grid;
+  height: 220px;
   min-height: 0;
-  flex: 1;
+  flex: none;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 8px;
   padding: 10px 0;
@@ -578,11 +581,10 @@
 .outfit-material-section {
   display: grid;
   min-height: 0;
-  flex: 1;
+  flex: none;
   gap: 8px;
   padding: 12px 3px 11px 0;
-  overflow-y: auto;
-  scrollbar-width: thin;
+  overflow-y: visible;
 }
 .outfit-material-section h3 {
   display: flex;
@@ -612,16 +614,12 @@
   flex: none;
 }
 .outfit-reference-config {
-  grid-template-rows: auto auto minmax(104px, 1fr);
-  align-content: stretch;
+  align-content: start;
 }
 .outfit-reference-config > p {
   margin: -2px 0 2px;
   color: var(--color-text-muted);
   font-size: 12px;
-}
-.generation-panel .outfit-reference-config > .ui-textarea {
-  height: 100%;
 }
 .outfit-fixed-settings {
   display: grid;
