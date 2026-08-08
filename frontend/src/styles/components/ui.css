@@ -390,6 +390,20 @@
 :where(.ui-input, .ui-textarea)::placeholder {
   color: var(--color-text-muted);
 }
+:where(.ui-textarea, .prompt-editor-content)::-webkit-resizer {
+  border-radius: 5px 0 0;
+  background:
+    linear-gradient(
+      135deg,
+      transparent 0 44%,
+      var(--color-text-muted) 45% 51%,
+      transparent 52% 61%,
+      var(--color-text-muted) 62% 68%,
+      transparent 69%
+    ),
+    var(--color-surface-raised);
+  box-shadow: 0 0 0 1px var(--color-border-subtle) inset;
+}
 .ui-tabs {
   display: inline-grid;
   grid-auto-columns: minmax(0, 1fr);
