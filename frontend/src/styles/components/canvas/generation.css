@@ -39,7 +39,6 @@
 }
 .world-creation-stage > .ui-textarea {
   width: 100%;
-  height: 84px;
   margin: 0 0 8px;
 }
 .product-creation-stage {
@@ -74,7 +73,6 @@
 }
 .character-profile-panel > .ui-textarea {
   width: 100%;
-  height: 84px;
   margin: 0 0 8px;
 }
 .reference-item.optional {
@@ -398,12 +396,8 @@
 }
 .storyboard-extra-input.ui-textarea {
   width: 100%;
-  height: 108px;
-  min-height: 76px;
-  max-height: 260px;
   flex: none;
   margin-bottom: 8px;
-  resize: vertical;
 }
 .outfit-panel {
   display: flex;
@@ -531,11 +525,8 @@
 }
 .apparel-extra.ui-textarea {
   width: 100%;
-  height: 50px;
-  min-height: 50px;
   flex: none;
   margin: 0 0 8px;
-  resize: none;
 }
 .outfit-panel-references {
   display: grid;
@@ -618,10 +609,7 @@
   gap: 5px;
 }
 .outfit-material-section .ui-textarea {
-  height: 58px;
-  min-height: 58px;
   flex: none;
-  resize: none;
 }
 .outfit-reference-config {
   align-content: start;
@@ -815,9 +803,14 @@
   margin: 11px 0 8px;
 }
 .prompt-editor-content {
-  min-height: 92px;
-  max-height: 180px;
+  box-sizing: border-box;
+  width: 100%;
+  height: 104px;
+  min-height: 104px;
+  max-height: 320px;
+  resize: vertical;
   overflow-y: auto;
+  padding: 2px;
   outline: 0;
   color: var(--color-text-primary);
   font-size: 14px;
@@ -907,11 +900,13 @@
   text-align: center;
   font-size: 13px;
 }
-.generation-panel textarea {
+.generation-panel .ui-textarea {
   display: block;
   width: 100%;
-  height: 92px;
-  resize: none;
+  height: 104px;
+  min-height: 104px;
+  max-height: 320px;
+  resize: vertical;
   overflow-y: auto;
   margin: 11px 0 8px;
   padding: 2px;
@@ -924,7 +919,7 @@
   scrollbar-width: thin;
   scrollbar-color: var(--color-text-muted) transparent;
 }
-.generation-panel textarea::placeholder {
+.generation-panel .ui-textarea::placeholder {
   color: var(--color-text-muted);
 }
 .storyboard-prompt-tabs {

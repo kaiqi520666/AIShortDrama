@@ -594,7 +594,8 @@
 }
 .product-node-content .ui-textarea {
   height: 72px;
-  resize: none;
+  max-height: 320px;
+  resize: vertical;
 }
 .world-result-fields {
   display: grid;
