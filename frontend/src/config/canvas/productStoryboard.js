@@ -138,8 +138,12 @@ export function buildProductStoryboardRequest({
 
 export function parseProductStoryboardPlan(content, template) {
   const storyboardDurations = getStoryboardDurations(template);
-  const expectedTemplateId = template.key === 'commerce_drama' ? 'commerce-drama' : 'ugc-seeding';
-  const templateLabel = template.key === 'commerce_drama' ? '短剧带货' : 'UGC 种草';
+  const expectedTemplateId = template.key === 'commerce_drama'
+    ? 'commerce-drama'
+    : template.key === 'apparel_showcase' ? 'apparel-showcase' : 'ugc-seeding';
+  const templateLabel = template.key === 'commerce_drama'
+    ? '短剧带货'
+    : template.key === 'apparel_showcase' ? '服饰展示' : 'UGC 种草';
   const source = String(content || "")
     .trim()
     .replace(/^```(?:json)?\s*/i, "")

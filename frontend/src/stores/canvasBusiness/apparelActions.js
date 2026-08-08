@@ -25,23 +25,25 @@ export function createOutfitChain(position, sourceId) {
 
 export function createApparelStoryboardChain(position, sourceId, skipStoryboardInputs) {
   const source = this.nodes.find((node) => node.id === sourceId)
-  if (skipStoryboardInputs || (sourceId && source?.type !== 'apparel')) return { handled: false }
-  const apparelId = source?.type === 'apparel'
-    ? source.id
-    : this.addNode('apparel', { x: position.x - 520, y: position.y - 220 })
-  const roleId = this.addNode('image', { x: position.x - 520, y: position.y + 120 })
-  const role = this.nodes.find((node) => node.id === roleId)
-  role.data = { ...role.data, title: '角色节点', assetSource: 'upload', resourceType: 'model', inputRole: 'role' }
-  const sceneId = this.addNode('image', { x: position.x - 520, y: position.y + 390 })
+  if (skipStoryboardInputs || (sourceId && !['apparel', 'outfit'].includes(source?.type))) return { handled: false }
+  let outfitId = source?.type === 'outfit' ? source.id : null
+  if (!outfitId && source?.type === 'apparel') {
+    const modelId = this.addNode('image', { x: position.x - 980, y: position.y + 100 })
+    const model = this.nodes.find((node) => node.id === modelId)
+    model.data = { ...model.data, title: '模特参考图', assetSource: 'upload', resourceType: 'model' }
+    outfitId = this.addNode('outfit', { x: position.x - 500, y: position.y - 120 }, source.id)
+    const apparelEdge = this.edges.find((edge) => edge.source === source.id && edge.target === outfitId)
+    if (apparelEdge) apparelEdge.targetHandle = 'apparel'
+    this.edges.push(createCanvasEdge(`edge-${crypto.randomUUID()}`, modelId, outfitId, 'model'))
+  }
+  if (!outfitId) outfitId = this.addNode('outfit', { x: position.x - 520, y: position.y - 140 })
+  const sceneId = this.addNode('image', { x: position.x - 520, y: position.y + 310 })
   const scene = this.nodes.find((node) => node.id === sceneId)
   scene.data = { ...scene.data, title: '场景节点', assetSource: 'upload', resourceType: 'asset', inputRole: 'scene' }
-  const storyboardId = this.addNode('apparel_storyboard', position, apparelId, true)
-  const apparelEdge = this.edges.find((edge) => edge.source === apparelId && edge.target === storyboardId)
-  if (apparelEdge) apparelEdge.targetHandle = 'apparel'
-  this.edges.push(
-    createCanvasEdge(`edge-${crypto.randomUUID()}`, roleId, storyboardId, 'model'),
-    createCanvasEdge(`edge-${crypto.randomUUID()}`, sceneId, storyboardId, 'scene'),
-  )
+  const storyboardId = this.addNode('apparel_storyboard', position, outfitId, true)
+  const outfitEdge = this.edges.find((edge) => edge.source === outfitId && edge.target === storyboardId)
+  if (outfitEdge) outfitEdge.targetHandle = 'outfit'
+  this.edges.push(createCanvasEdge(`edge-${crypto.randomUUID()}`, sceneId, storyboardId, 'scene'))
   this.selectNodes([storyboardId])
   return { handled: true, id: storyboardId }
 }
@@ -121,7 +123,7 @@ export const apparelActions = {
     return [imageId, videoId]
   },
 
-  addOutfitStoryboardNodes(plannerId, outfitId, plans, settings) {
+  addOutfitStoryboardNodes(plannerId, outfitId, sceneId, plans, settings) {
     const planner = this.nodes.find((node) => node.id === plannerId)
     if (!planner || !plans?.segments?.length) return []
     const outfit = this.nodes.find((node) => node.id === outfitId)
@@ -142,6 +144,7 @@ export const apparelActions = {
         title: `${plans.title || '服饰分镜'} ${segmentIndex} · 分镜`,
         storyboardSourceId: plannerId,
         storyboardTemplateId: plans.templateId,
+        storyboardTemplateKey: planner.data.templateKey || 'apparel_showcase',
         storyboardTemplateLabel: plans.title,
         storyboardGlobalScript: plans.globalScript,
         storyboardSegmentIndex: segmentIndex,
@@ -163,6 +166,7 @@ export const apparelActions = {
       }
       this.addEdge({ source: plannerId, target: imageId })
       this.addEdge({ source: outfitId, target: imageId })
+      if (sceneId) this.addEdge({ source: sceneId, target: imageId })
       const videoId = this.addNode('video', {
         x: planner.position.x + 1010 + index * 900,
         y: planner.position.y,
@@ -174,6 +178,7 @@ export const apparelActions = {
         storyboardSourceId: plannerId,
         storyboardImageId: imageId,
         storyboardTemplateId: plans.templateId,
+        storyboardTemplateKey: planner.data.templateKey || 'apparel_showcase',
         storyboardTemplateLabel: plans.title,
         storyboardGlobalScript: plans.globalScript,
         storyboardSegmentIndex: segmentIndex,

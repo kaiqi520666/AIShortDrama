@@ -39,6 +39,35 @@ class ProductVisualTemplateContext(BaseModel):
         return self
 
 
+class ApparelVisualTemplateContext(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    apparel_context: str = Field(max_length=6000)
+    selected_view_ids: list[str] = Field(min_length=1, max_length=6)
+    aspect_ratio: str = Field(pattern=r"^\d{1,3}:\d{1,3}$")
+    resolution: str = Field(pattern=r"^\d{1,3}[Kk]$")
+    reference_count: Literal[2]
+    user_requirement: str = Field(default="", max_length=600)
+
+    @model_validator(mode="after")
+    def validate_view_ids(self):
+        if len(self.selected_view_ids) != len(set(self.selected_view_ids)) or any(
+            not 1 <= len(item) <= 32 for item in self.selected_view_ids
+        ):
+            raise ValueError("服饰试穿视角无效")
+        return self
+
+
+class ApparelStoryboardTemplateContext(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    apparel_context: str = Field(max_length=6000)
+    duration: int
+    video_aspect_ratio: str = Field(min_length=3, max_length=16)
+    scene_count: int = Field(ge=0, le=1)
+    user_requirement: str = Field(default="", max_length=600)
+
+
 class ReversePromptRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -50,10 +79,20 @@ class ReversePromptRequest(BaseModel):
     media_urls: list[AnyHttpUrl] = Field(default_factory=list, max_length=9)
     prompt: str = Field(default="", max_length=6000)
     template_key: Literal[
-        "product_visual", "product_storyboard", "commerce_drama"
+        "product_visual",
+        "apparel_visual",
+        "product_storyboard",
+        "commerce_drama",
+        "apparel_showcase",
     ] | None = None
     template_version: int | None = Field(default=None, ge=1)
-    template_context: StoryboardTemplateContext | ProductVisualTemplateContext | None = None
+    template_context: (
+        StoryboardTemplateContext
+        | ProductVisualTemplateContext
+        | ApparelVisualTemplateContext
+        | ApparelStoryboardTemplateContext
+        | None
+    ) = None
     response_mode: Literal[
         "prompt",
         "product_profile",
@@ -70,6 +109,8 @@ class ReversePromptRequest(BaseModel):
     def validate_prompt(self):
         storyboard_mode = self.response_mode == "product_storyboard_plan"
         product_visual_mode = self.response_mode == "product_visual_plan"
+        apparel_visual_mode = self.response_mode == "outfit_visual_plan"
+        apparel_storyboard_mode = self.response_mode == "apparel_storyboard_plan"
         if product_visual_mode:
             if self.prompt.strip():
                 raise ValueError("商品出图 Prompt 必须由服务端模板生成")
@@ -81,6 +122,17 @@ class ReversePromptRequest(BaseModel):
                 raise ValueError("商品出图模板参数不完整")
             if 1 + len(self.media_urls) != self.template_context.reference_count:
                 raise ValueError("商品出图参考图数量不一致")
+        elif apparel_visual_mode:
+            if self.prompt.strip():
+                raise ValueError("服饰试穿 Prompt 必须由服务端模板生成")
+            if (
+                self.template_key != "apparel_visual"
+                or not self.template_version
+                or not isinstance(self.template_context, ApparelVisualTemplateContext)
+            ):
+                raise ValueError("服饰试穿模板参数不完整")
+            if 1 + len(self.media_urls) != self.template_context.reference_count:
+                raise ValueError("服饰试穿参考图数量不一致")
         elif storyboard_mode:
             if self.prompt.strip():
                 raise ValueError("商品分镜 Prompt 必须由服务端模板生成")
@@ -96,13 +148,26 @@ class ReversePromptRequest(BaseModel):
             )
             if reference_count != expected_count:
                 raise ValueError("商品分镜参考图数量不一致")
+        elif apparel_storyboard_mode:
+            if self.prompt.strip():
+                raise ValueError("服饰分镜 Prompt 必须由服务端模板生成")
+            if (
+                self.template_key != "apparel_showcase"
+                or not self.template_version
+                or not isinstance(self.template_context, ApparelStoryboardTemplateContext)
+            ):
+                raise ValueError("服饰分镜模板参数不完整")
+            if 1 + len(self.media_urls) != 3 + self.template_context.scene_count:
+                raise ValueError("服饰分镜参考图数量不一致")
         elif any((self.template_key, self.template_version, self.template_context)):
             raise ValueError("当前任务不支持内容模板参数")
         if self.response_mode not in {
             "product_profile",
             "apparel_profile",
             "product_visual_plan",
+            "outfit_visual_plan",
             "product_storyboard_plan",
+            "apparel_storyboard_plan",
         } and not self.prompt.strip():
             raise ValueError("提示词不能为空")
         if self.response_mode in {

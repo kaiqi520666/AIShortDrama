@@ -2,6 +2,7 @@ import { emptyCharacterProfile } from './character'
 import { emptyWorld } from './drama'
 import { createStoryboardTemplates } from './productStoryboard'
 import { createProductVisualItems } from './productVisual'
+import { resolveOutfitMaterials } from './outfit'
 
 const reversePrompts = {
   image: '根据图片生成结构化中文提示词，包括主体描述、环境、光影、镜头语言、风格关键词。',
@@ -118,42 +119,45 @@ export const nodeCatalog = {
     }),
   },
   apparel: {
-    type: 'apparel', label: '服饰资料', model: '', hint: '识别并编辑单品与整套搭配资料',
+    type: 'apparel', label: '服饰识别', model: '', hint: '识别并确认单品与整套服饰资料',
     placeholder: '补充识别重点，例如重点区分配饰、鞋履或面料…', setting: '服饰图 + AI 识别', iconName: 'Shirt',
     componentName: 'ApparelNode', panelName: 'ApparelPanel', panelHeight: 440,
     workspaces: ['ecommerce'], order: { ecommerce: 3 }, businessCreator: 'apparel',
     inputs: ['image'], outputs: ['outfit', 'apparel_storyboard'],
     createData: ({ number, models }) => ({
-      title: `服饰资料 ${number}`, status: 'empty', model: models.text.id,
+      title: `服饰识别 ${number}`, status: 'empty', model: models.text.id,
       compositionType: 'single', summary: '', items: [], prompt: '',
     }),
   },
   outfit: {
-    type: 'outfit', label: '服饰穿搭', model: '', hint: '生成固定六格 9:16 / 1K 穿搭参考图板',
-    setting: '服饰资料 + 模特图 · 6 格 9:16 / 1K', iconName: 'Shirt',
+    type: 'outfit', label: '模特试穿', model: '', hint: '将已识别服饰穿到指定模特并生成六视角参考图板',
+    setting: '服饰识别 + 模特图 · 6 格 9:16 / 1K', iconName: 'Shirt',
     componentName: 'OutfitNode', panelName: 'OutfitPanel', panelHeight: 470,
     workspaces: ['ecommerce'], order: { ecommerce: 4 }, businessCreator: 'outfit',
     inputs: ['apparel', 'image'], outputs: ['image', 'apparel_storyboard'],
     inputLimits: {
-      apparel: { max: 1, message: '服饰穿搭节点只能连接 1 个服饰资料' },
-      image: { max: 1, message: '服饰穿搭节点只能连接 1 张模特图' },
+      apparel: { max: 1, message: '模特试穿节点只能连接 1 个服饰识别' },
+      image: { max: 1, message: '模特试穿节点只能连接 1 张模特图' },
     },
-    createData: ({ number, models }) => ({
-      title: `服饰穿搭 ${number}`, status: 'empty', textModel: models.text.id, imageModel: models.image.id,
-      aspectRatio: '9:16', resolution: '1K', moduleIds: ['front', 'three-quarter', 'back', 'turn', 'fabric', 'lifestyle'],
-      customRequirement: '', generatedNodeIds: [],
+    createData: ({ number, models, templates }) => ({
+      title: `模特试穿 ${number}`, status: 'empty', textModel: models.text.id, imageModel: models.image.id,
+      aspectRatio: '9:16', resolution: '1K', moduleIds: resolveOutfitMaterials(templates.apparel_visual).map((item) => item.id),
+      templateVersion: templates.apparel_visual.version, customRequirement: '', generatedNodeIds: [],
     }),
   },
   apparel_storyboard: {
-    type: 'apparel_storyboard', label: '服饰分镜', model: '', hint: '自动创建服饰、角色和场景输入，生成故事板',
-    setting: '自动创建 3 个输入节点', iconName: 'Clapperboard', componentName: 'ApparelStoryboardNode',
+    type: 'apparel_storyboard', label: '服饰分镜', model: '', hint: '基于模特试穿总览生成多段服饰展示故事板与视频',
+    setting: '模特试穿 + 可选场景 · 15 秒分段', iconName: 'Clapperboard', componentName: 'ApparelStoryboardNode',
     panelName: 'ApparelStoryboardPanel', panelHeight: 470,
     workspaces: ['ecommerce'], order: { ecommerce: 5 }, businessCreator: 'apparelStoryboard',
-    inputs: ['apparel', 'image'], outputs: ['image'],
-    inputLimits: { apparel: { max: 1, message: '服饰分镜节点只能连接 1 个服饰资料' } },
-    createData: ({ number, models }) => ({
+    inputs: ['outfit', 'apparel', 'image'], outputs: ['image'],
+    inputLimits: {
+      outfit: { max: 1, message: '服饰分镜节点只能连接 1 个模特试穿' },
+      apparel: { max: 1, message: '服饰分镜节点只能连接 1 个服饰资料' },
+    },
+    createData: ({ number, models, templates }) => ({
       title: `服饰分镜 ${number}`, status: 'empty', textModel: models.text.id, videoModel: models.video.id,
-      duration: models.video.defaultDuration, videoAspectRatio: models.video.defaultAspectRatio,
+      duration: 30, videoAspectRatio: '9:16', templateKey: 'apparel_showcase', templateVersion: templates.apparel_showcase.version,
       videoResolution: models.video.defaultResolution, generateAudio: true, prompt: '', generatedNodeIds: [],
     }),
   },

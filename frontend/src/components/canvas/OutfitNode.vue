@@ -4,7 +4,8 @@ import { CheckCircle2, Shirt, UserRound } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { composeImageBoard } from '../../api/assets'
 import { useCanvasStore } from '../../stores/canvas'
-import { outfitMaterials } from '../../config/canvas/outfit'
+import { useContentTemplatesStore } from '../../stores/contentTemplates'
+import { resolveOutfitMaterials } from '../../config/canvas/outfit'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import StructuredNodeShell from './StructuredNodeShell.vue'
@@ -17,6 +18,7 @@ const props = defineProps({
 })
 
 const store = useCanvasStore()
+const contentTemplateStore = useContentTemplatesStore()
 const { updateNodeData } = useVueFlow()
 const composing = ref(false)
 const targetHandles = [{ id: 'apparel', top: '48%' }, { id: 'model', top: '78%' }]
@@ -25,7 +27,7 @@ const apparelNode = computed(() => store.incomingNodeByHandle(props.id, 'apparel
 const apparelReference = computed(() => apparelNode.value && store.incomingNodes(apparelNode.value.id).find((node) => node.type === 'image'))
 const modelNode = computed(() => store.incomingNodeByHandle(props.id, 'model'))
 const generatedNodes = computed(() => (props.data.generatedNodeIds || []).map((id) => store.nodes.find((node) => node.id === id)).filter(Boolean))
-const boardItems = computed(() => outfitMaterials.map((item) => ({
+const boardItems = computed(() => resolveOutfitMaterials(contentTemplateStore.templates.apparel_visual, props.data.moduleIds).map((item) => ({
   ...item,
   node: generatedNodes.value.find((node) => node.data.outfitMaterialId === item.id),
 })))
@@ -33,7 +35,7 @@ const readyCount = computed(() => boardItems.value.filter((item) => item.node?.d
 const readyAssets = computed(() => boardItems.value.map((item) => item.node?.data).filter((data) => data?.asset && data.assetId))
 const sourceKey = computed(() => readyAssets.value.map((data) => data.assetId).join('|'))
 const inputs = computed(() => [
-  { id: 'apparel', label: '服饰资料', icon: Shirt, node: apparelNode.value, asset: apparelReference.value?.data.asset, description: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件已启用` : '等待连接资料' },
+  { id: 'apparel', label: '服饰识别', icon: Shirt, node: apparelNode.value, asset: apparelReference.value?.data.asset, description: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件已启用` : '等待连接资料' },
   { id: 'model', label: '模特参考图', icon: UserRound, node: modelNode.value, asset: modelNode.value?.data.asset, description: modelNode.value?.data.title || '等待选择图片' },
 ])
 
@@ -65,7 +67,7 @@ watch(sourceKey, composeBoard, { immediate: true })
   <StructuredNodeShell :id="id" :type="type" :data="data" :icon="Shirt" :selected="selected" :target-handles="targetHandles">
     <div class="outfit-node-content nowheel">
       <div class="structured-node-summary">
-        <span><Shirt :size="15" />穿搭素材</span>
+        <span><Shirt :size="15" />模特试穿</span>
         <small>6 格 · {{ readyCount }}/6 就绪</small>
       </div>
       <div class="outfit-sources">
@@ -79,7 +81,7 @@ watch(sourceKey, composeBoard, { immediate: true })
         </div>
       </div>
       <div v-if="data.outfitBoardAsset" class="outfit-board-preview outfit-board-result">
-        <img :src="buildOssImageUrl(data.outfitBoardAsset, { width: 360, quality: 82 })" alt="服饰穿搭参考总览" referrerpolicy="no-referrer" />
+        <img :src="buildOssImageUrl(data.outfitBoardAsset, { width: 360, quality: 82 })" alt="模特试穿参考总览" referrerpolicy="no-referrer" />
         <span>{{ data.outfitBoardStatus === 'generating' ? '正在合成总览图…' : '2K · 9:16 总览图' }}</span>
       </div>
       <div v-else class="outfit-board-preview">

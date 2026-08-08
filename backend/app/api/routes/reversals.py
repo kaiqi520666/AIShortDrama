@@ -25,8 +25,8 @@ from app.providers.openai_responses import OpenAIResponsesProvider
 from app.schemas.reversal import ReversePromptRequest
 from app.services.billing import BillingError, InsufficientCredits, freeze_task_credits
 from app.services.content_templates import (
-    PRODUCT_VISUAL_KEY,
     TEMPLATE_BUILDERS,
+    TEMPLATE_DEFINITIONS,
     UGC_STORYBOARD_KEY,
 )
 from app.workers.generation import complete_text_task, fail_task
@@ -57,11 +57,8 @@ async def stream_reverse_prompt(
         template_label = (
             template.config.get("templates", [{}])[0].get("label")
             if template.key == UGC_STORYBOARD_KEY
-            else (
-                "商品出图"
-                if template.key == PRODUCT_VISUAL_KEY
-                else template.config.get("label")
-            )
+            else template.config.get("label")
+            or TEMPLATE_DEFINITIONS.get(template.key, {}).get("label")
         ) or "商品模板"
         if not template.enabled or not option_enabled:
             raise ConflictError(f"{template_label}模板已停用，请重新加载")

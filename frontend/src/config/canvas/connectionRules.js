@@ -15,13 +15,17 @@ export function getConnectionError(sourceType, targetType, incomingTypes = [], w
   const limit = getNodeDescriptor(targetType).inputLimits?.[sourceType]
   if (limit && incomingTypes.filter((type) => type === sourceType).length >= limit.max) return limit.message
   if (targetType === 'apparel_storyboard') {
+    if (sourceType === 'outfit') {
+      if (targetHandle && targetHandle !== 'outfit') return '模特试穿请连接到试穿输入'
+      if (incomingTypes.includes('outfit')) return '服饰分镜节点只能连接 1 个模特试穿'
+    }
     if (sourceType === 'apparel') {
       if (targetHandle && targetHandle !== 'apparel') return '服饰资料请连接到服饰输入'
       if (incomingTypes.includes('apparel')) return '服饰分镜节点只能连接 1 个服饰资料'
     }
-    if (sourceType === 'image' && !targetHandle) return '图片请连接到模特或场景输入'
+    if (sourceType === 'image' && !targetHandle) return '图片请连接到场景输入'
     if (sourceType === 'image' && targetHandle) {
-      if (!['model', 'scene'].includes(targetHandle)) return '图片请连接到模特或场景输入'
+      if (targetHandle !== 'scene') return '图片请连接到场景输入'
       if (incomingConnections.some((connection) => connection.targetHandle === targetHandle)) return `${targetHandle === 'model' ? '模特' : '场景'}图片只能连接 1 张`
     }
   }
@@ -33,11 +37,8 @@ export function getConnectionError(sourceType, targetType, incomingTypes = [], w
 
 export function inferTargetHandle(source, targetType, incomingConnections = []) {
   if (!source || targetType !== 'apparel_storyboard') return undefined
+  if (source.type === 'outfit') return 'outfit'
   if (source.type === 'apparel') return 'apparel'
   if (source.type !== 'image') return undefined
-  const preferred = source.data?.inputRole === 'scene' || source.data?.resourceType === 'scene'
-    ? 'scene'
-    : source.data?.inputRole === 'role' || source.data?.resourceType === 'model' ? 'model' : ''
-  if (preferred && !incomingConnections.some((connection) => connection.targetHandle === preferred)) return preferred
-  return ['model', 'scene'].find((handle) => !incomingConnections.some((connection) => connection.targetHandle === handle))
+  return incomingConnections.some((connection) => connection.targetHandle === 'scene') ? undefined : 'scene'
 }

@@ -86,7 +86,7 @@ defineExpose({ submitTask })
 <template>
   <section class="generation-panel apparel-panel nodrag nowheel" @pointerdown.stop>
     <header class="product-visual-panel-header">
-      <span><Shirt :size="16" />服饰资料</span>
+      <span><Shirt :size="16" />服饰识别</span>
       <small>{{ items.length ? `${items.length} 件单品` : '等待识别' }}</small>
     </header>
 
@@ -130,7 +130,7 @@ defineExpose({ submitTask })
       <AppSelect :model-value="selectedModel.id" :options="modelOptions" aria-label="文本模型" @update:model-value="updateData({ model: $event })" />
       <span class="panel-divider"></span>
       <span class="task-credit-cost"><Coins :size="14" />本次 {{ estimatedCredits }} 积分</span>
-      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '识别中' : '识别服饰资料'" @click="submitTask">
+      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '识别中' : '识别服饰'" @click="submitTask">
         <LoaderCircle v-if="running" class="run-task-spinner" :size="18" />
         <ArrowUp v-else :size="18" />
       </AppButton>

@@ -30,6 +30,27 @@ export const contentTemplatesFixture = {
       },
     },
   },
+  apparel_visual: {
+    key: 'apparel_visual',
+    version: 1,
+    enabled: true,
+    config: {
+      schema_version: 1,
+      groups: [{
+        id: 'views',
+        label: '六视角试穿',
+        items: [
+          { id: 'front', label: '正面全身', default_enabled: true },
+          { id: 'three-quarter', label: '45°侧面', default_enabled: true },
+          { id: 'back', label: '背面展示', default_enabled: true },
+          { id: 'turn', label: '动态转身', default_enabled: true },
+          { id: 'fabric', label: '面料细节', default_enabled: true },
+          { id: 'lifestyle', label: '场景试穿', default_enabled: true },
+        ],
+      }],
+      output_protocol_id: 'apparel-visual-v1',
+    },
+  },
   commerce_drama: {
     key: 'commerce_drama',
     version: 2,
@@ -40,6 +61,22 @@ export const contentTemplatesFixture = {
       description: '通过剧情内容完成商品植入与转化',
       durations: [30, 45, 60],
       output_protocol_id: 'commerce-drama-v1',
+      continuity: {
+        cut: { label: '独立新段', description: '不引用上一段视频' },
+        extend: { label: '延续上段', description: '引用上一段视频保持连续性' },
+      },
+    },
+  },
+  apparel_showcase: {
+    key: 'apparel_showcase',
+    version: 1,
+    enabled: true,
+    config: {
+      schema_version: 1,
+      label: '服饰展示',
+      description: '基于模特试穿总览生成多段服饰展示分镜与视频',
+      durations: [15, 30, 45, 60],
+      output_protocol_id: 'apparel-showcase-v1',
       continuity: {
         cut: { label: '独立新段', description: '不引用上一段视频' },
         extend: { label: '延续上段', description: '引用上一段视频保持连续性' },

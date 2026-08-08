@@ -17,18 +17,29 @@ const props = defineProps({
 })
 
 const durationOptions = [15, 30, 45, 60]
+const imageOptions = [
+  { value: 'product_visual', label: '商品出图', to: { name: 'admin-image-product' } },
+  { value: 'apparel_visual', label: '服饰试穿', to: { name: 'admin-image-apparel' } },
+]
 const commerceOptions = [
   { value: 'product_storyboard', label: 'UGC 种草', to: { name: 'admin-commerce-ugc' } },
   { value: 'commerce_drama', label: '短剧带货', to: { name: 'admin-commerce-drama' } },
 ]
 const templateLabels = {
   product_visual: '商品出图',
+  apparel_visual: '服饰试穿',
   product_storyboard: 'UGC 种草',
   commerce_drama: '短剧带货',
+  apparel_showcase: '服饰展示',
 }
 const promptFields = {
   product_visual: [
     ['task_instruction', '任务说明', '{types} {aspect_ratio} {resolution}'],
+    ['output_protocol', '输出与内容规则', ''],
+  ],
+  apparel_visual: [
+    ['task_instruction', '任务说明', '{views} {aspect_ratio} {resolution}'],
+    ['fidelity_rules', '服饰与模特一致性', ''],
     ['output_protocol', '输出与内容规则', ''],
   ],
   product_storyboard: [
@@ -52,6 +63,17 @@ const promptFields = {
     ['continuity_rules', '连续性规则', ''],
     ['forbidden_rules', '禁止项', ''],
   ],
+  apparel_showcase: [
+    ['creative_direction', '创作方向', ''],
+    ['segment_structure', '分段结构', '{segment_count}'],
+    ['apparel_fidelity_rules', '服饰一致性', ''],
+    ['model_consistency_rules', '模特一致性', ''],
+    ['shot_rules', '镜头规则', ''],
+    ['image_rules', '生图规则', '{columns} {rows} {ratio}'],
+    ['video_rules', '视频规则', '{ratio}'],
+    ['continuity_rules', '连续性规则', ''],
+    ['forbidden_rules', '禁止项', ''],
+  ],
 }
 
 const toast = useGlobalToast()
@@ -66,11 +88,14 @@ let loadSequence = 0
 const isImageSettings = computed(() => props.section === 'image')
 const isUgc = computed(() => props.templateKey === 'product_storyboard')
 const isDrama = computed(() => props.templateKey === 'commerce_drama')
+const isApparelShowcase = computed(() => props.templateKey === 'apparel_showcase')
 const currentPromptFields = computed(() => promptFields[props.templateKey] || [])
 const visibleDurationOptions = computed(() => isDrama.value ? durationOptions.slice(1) : durationOptions)
-const pageCopy = computed(() => isImageSettings.value
-  ? { eyebrow: 'IMAGE SETTINGS', title: '出图设置', description: '管理商品出图类型、默认选项和业务指令。' }
-  : { eyebrow: 'COMMERCE TEMPLATE', title: '电商模板', description: '管理 UGC 种草和短剧带货的内容工作流。' })
+const pageCopy = computed(() => {
+  if (isImageSettings.value) return { eyebrow: 'IMAGE SETTINGS', title: '出图设置', description: '管理商品出图与服饰试穿的视觉生成规则。' }
+  if (isApparelShowcase.value) return { eyebrow: 'APPAREL TEMPLATE', title: '服饰模板', description: '管理服饰展示的分镜结构、视频规则和连续性。' }
+  return { eyebrow: 'COMMERCE TEMPLATE', title: '电商模板', description: '管理 UGC 种草和短剧带货的内容工作流。' }
+})
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value))
@@ -135,7 +160,10 @@ onMounted(load)
       <b v-if="form">{{ templateLabels[templateKey] }} · v{{ form.version }}</b>
     </header>
 
-    <nav v-if="!isImageSettings" class="admin-template-subnav" aria-label="电商模板类型">
+    <nav v-if="isImageSettings" class="admin-template-subnav" aria-label="出图设置类型">
+      <AppTabs :model-value="templateKey" :options="imageOptions" aria-label="出图设置类型" />
+    </nav>
+    <nav v-else-if="!isApparelShowcase" class="admin-template-subnav" aria-label="电商模板类型">
       <AppTabs :model-value="templateKey" :options="commerceOptions" aria-label="电商模板类型" />
     </nav>
 
@@ -154,11 +182,11 @@ onMounted(load)
             <label v-for="item in group.items" :key="item.id" class="admin-template-item">
               <AppInput v-model="item.label" maxlength="64" :aria-label="`${item.id} 图种名称`" />
               <span>{{ item.id }}</span>
-              <span class="admin-check"><input v-model="item.default_enabled" type="checkbox" /><i><Check :size="13" /></i>默认启用</span>
+              <span class="admin-check"><input v-model="item.default_enabled" type="checkbox" :disabled="templateKey === 'apparel_visual'" /><i><Check :size="13" /></i>{{ templateKey === 'apparel_visual' ? '固定启用' : '默认启用' }}</span>
             </label>
           </div>
         </section>
-        <label class="admin-field"><span>业务指令块</span><AppTextarea v-model="form.config.business_instruction" rows="6" maxlength="6000" placeholder="可选：补充商品出图的业务要求" /></label>
+        <label class="admin-field"><span>业务指令块</span><AppTextarea v-model="form.config.business_instruction" rows="6" maxlength="6000" :placeholder="templateKey === 'apparel_visual' ? '可选：补充服饰试穿的业务要求' : '可选：补充商品出图的业务要求'" /></label>
         <section class="admin-template-block">
           <header><strong>模型提示词</strong><small>动态变量不可删除、改名或新增</small></header>
           <label class="admin-field"><span>Provider 系统指令</span><AppTextarea v-model="form.config.provider_instruction" rows="4" maxlength="2000" required /></label>
@@ -171,13 +199,13 @@ onMounted(load)
         </section>
         <section class="admin-template-block">
           <header><strong>JSON 输出协议</strong><small>协议由生成器固定，后台不可修改</small></header>
-          <div class="admin-protocol-row"><code>{{ form.config.output_protocol_id }}</code><p>按所选图种输出 type / prompt 数组，图种必须完整且顺序一致。</p></div>
+          <div class="admin-protocol-row"><code>{{ form.config.output_protocol_id }}</code><p>{{ templateKey === 'apparel_visual' ? '按所选视角输出 id / prompt 数组，视角必须完整且顺序一致。' : '按所选图种输出 type / prompt 数组，图种必须完整且顺序一致。' }}</p></div>
         </section>
       </template>
 
       <template v-else>
         <section class="admin-template-block">
-          <header><strong>{{ isUgc ? 'UGC 种草基础信息' : '短剧带货基础信息' }}</strong><small>{{ isUgc ? form.config.templates[0].id : 'commerce_drama' }}</small></header>
+          <header><strong>{{ isUgc ? 'UGC 种草基础信息' : `${templateLabels[templateKey]}基础信息` }}</strong><small>{{ isUgc ? form.config.templates[0].id : form.config.output_protocol_id }}</small></header>
           <div v-if="isUgc" class="admin-form-grid">
             <label class="admin-field"><span>模板名称</span><AppInput v-model="form.config.templates[0].label" maxlength="64" /></label>
             <label class="admin-field"><span>模板描述</span><AppInput v-model="form.config.templates[0].description" maxlength="255" /></label>
@@ -201,7 +229,7 @@ onMounted(load)
           <header><strong>JSON 输出协议</strong><small>协议由生成器固定，后台不可修改</small></header>
           <div class="admin-protocol-row">
             <code>{{ isUgc ? 'ugc-seeding' : form.config.output_protocol_id }}</code>
-            <p>{{ isUgc ? '每段 15 秒，每段 6 镜头，输出 prompt / videoPrompt' : '包含剧情角色、剧情节拍、商品植入及每段 6 镜头提示词' }}</p>
+            <p>{{ isUgc ? '每段 15 秒，每段 6 镜头，输出 prompt / videoPrompt' : isApparelShowcase ? '基于试穿总览生成多段服饰展示，每段固定 6 镜头' : '包含剧情角色、剧情节拍、商品植入及每段 6 镜头提示词' }}</p>
           </div>
         </section>
 

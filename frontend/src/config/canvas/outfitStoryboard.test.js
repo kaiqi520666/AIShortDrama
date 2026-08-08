@@ -1,39 +1,44 @@
 import { describe, expect, it } from 'vitest'
-import { buildOutfitStoryboardPrompt, getApparelVideoSettings, outfitStoryboardTemplate, parseOutfitStoryboardPlan } from './outfitStoryboard'
-import { modelCapabilitiesFixture } from '../../test/modelCapabilities'
-import { normalizeImageModels } from '../imageModels'
-import { normalizeVideoModels } from '../videoModels'
+import { buildOutfitStoryboardRequest, parseOutfitStoryboardPlan } from './outfitStoryboard'
+import { contentTemplatesFixture } from '../../test/contentTemplates'
 
-const videoModels = normalizeVideoModels(modelCapabilitiesFixture.video)
-const imageModels = normalizeImageModels(modelCapabilitiesFixture.image)
-const capabilities = {
-  videoModels,
-  defaultVideoModel: videoModels.find(({ id }) => id === modelCapabilitiesFixture.video.default_model),
-  defaultImageModel: imageModels.find(({ id }) => id === modelCapabilitiesFixture.image.default_model),
-}
+const template = contentTemplatesFixture.apparel_showcase
+const shots = Array.from({ length: 6 }, (_, index) => `镜头${index + 1}：展示动作`).join('；')
 
 describe('apparel storyboard prompts', () => {
-  it('names the three apparel references and uses the selected video duration', () => {
-    const prompt = buildOutfitStoryboardPrompt('服饰类型：整套搭配\n单品1：蕾丝衬衫（颜色：粉色；面料：蕾丝）', { duration: 8, videoAspectRatio: '9:16' }, capabilities)
-    expect(prompt).toContain('图片1是服饰参考图，图片2是角色（模特）参考图，图片3是场景参考图')
-    expect(prompt).toContain('单品1：蕾丝衬衫')
-    expect(prompt).toContain('一张静态 3 列 × 1 行')
-    expect(prompt).toContain('严格输出一个 JSON 对象')
+  it('builds a structured multi-segment request with an optional scene', () => {
+    const request = buildOutfitStoryboardRequest({
+      workspaceId: 'workspace-1',
+      nodeId: 'storyboard-1',
+      model: 'gpt-5.6-sol',
+      template,
+      outfitBoardUrl: 'https://example.com/board.png',
+      garmentUrl: 'https://example.com/garment.png',
+      modelUrl: 'https://example.com/model.png',
+      sceneUrl: 'https://example.com/scene.png',
+      apparelContext: '单品1：白色衬衫',
+      duration: 30,
+      videoAspectRatio: '9:16',
+      userRequirement: '自然行走',
+    })
+    expect(request).not.toHaveProperty('prompt')
+    expect(request.media_urls).toHaveLength(3)
+    expect(request.template_context).toEqual(expect.objectContaining({ duration: 30, scene_count: 1 }))
   })
 
-  it('parses one static storyboard prompt and one speech-free video prompt', () => {
+  it('parses 15-second segments with cut and extend continuity', () => {
     const plan = parseOutfitStoryboardPlan(JSON.stringify({
-      templateId: outfitStoryboardTemplate.id,
+      templateId: 'apparel-showcase',
       title: '服饰展示',
-      duration: 10,
-      shotCount: 4,
-      storyboardPrompt: '镜头1正面站姿，展示版型；镜头2侧面走动，展示垂坠；镜头3转身展示背面；镜头4抬手展示袖口。',
-      videoPrompt: '图片1是分镜故事板，图片2是服饰参考图，图片3是模特参考图，图片4是场景参考图。镜头1固定镜头展示正面版型，镜头2缓慢跟拍展示走动效果，镜头3转身展示背面，镜头4抬手展示袖口，保留脚步声。',
-    }), 10, {}, capabilities)
-    expect(plan.duration).toBe(10)
-    expect(plan.shotCount).toBe(4)
-    expect(plan.storyboardPrompt).toContain('无文字')
-    expect(plan.videoPrompt).toContain('不生成台词')
-    expect(getApparelVideoSettings({ duration: 10 }, capabilities).duration).toBe(10)
+      globalScript: '先展示整体，再展示动态细节',
+      totalDuration: 30,
+      segments: [
+        { segmentIndex: 1, duration: 15, shotCount: 6, plotGoal: '整体造型', openingState: '模特入场', endingState: '正面定格', continuityMode: 'cut', prompt: shots, videoPrompt: shots },
+        { segmentIndex: 2, duration: 15, shotCount: 6, plotGoal: '动态细节', openingState: '承接定格', endingState: '转身收尾', continuityMode: 'extend', prompt: shots, videoPrompt: shots },
+      ],
+    }), template)
+    expect(plan.totalDuration).toBe(30)
+    expect(plan.segments).toHaveLength(2)
+    expect(plan.segments[1].continuityMode).toBe('extend')
   })
 })

@@ -6,16 +6,22 @@ from pathlib import Path
 import pytest
 
 from app.services.content_templates import (
+    APPAREL_SHOWCASE_KEY,
+    APPAREL_VISUAL_KEY,
     COMMERCE_DRAMA_KEY,
     PRODUCT_VISUAL_GROUPS,
     PRODUCT_VISUAL_KEY,
     UGC_STORYBOARD_KEY,
-    build_product_visual_prompt,
+    build_apparel_showcase_prompt,
+    build_apparel_visual_prompt,
     build_commerce_drama_prompt,
+    build_product_visual_prompt,
+    build_ugc_storyboard_prompt,
+    default_apparel_showcase_config,
+    default_apparel_visual_config,
     default_commerce_drama_config,
     default_product_visual_prompt_config,
     default_ugc_config,
-    build_ugc_storyboard_prompt,
     validate_template_config,
 )
 
@@ -258,3 +264,38 @@ def test_commerce_drama_validation_rejects_changed_protocol_or_placeholders():
     config["prompt_blocks"]["story_structure"] = "共{unknown}段"
     with pytest.raises(ValueError, match="动态变量"):
         validate_template_config(COMMERCE_DRAMA_KEY, config, enabled=True)
+
+
+def test_apparel_visual_builder_uses_configured_views_and_server_prompt():
+    config = default_apparel_visual_config()
+    validated = validate_template_config(APPAREL_VISUAL_KEY, config, enabled=True)
+    prompt = build_apparel_visual_prompt(validated, {
+        "apparel_context": "单品1：白色衬衫（面料：棉）",
+        "selected_view_ids": ["front", "fabric"],
+        "aspect_ratio": "9:16",
+        "resolution": "1K",
+        "user_requirement": "自然日光",
+    })
+    assert "front=正面全身、fabric=面料细节" in prompt
+    assert "图片1是服饰参考图，图片2是模特参考图" in prompt
+    assert "用户补充要求：自然日光" in prompt
+    assert '"id":"视角ID"' in prompt
+
+
+def test_apparel_showcase_builder_creates_four_segment_contract():
+    config = default_apparel_showcase_config()
+    validated = validate_template_config(APPAREL_SHOWCASE_KEY, config, enabled=True)
+    prompt = build_apparel_showcase_prompt(validated, {
+        "apparel_context": "单品1：白色衬衫",
+        "duration": 60,
+        "video_aspect_ratio": "9:16",
+        "scene_count": 1,
+        "user_requirement": "最后在街景收尾",
+    })
+    assert "全片共4个15秒展示段" in prompt
+    assert "图片4是场景参考图" in prompt
+    assert '"templateId":"apparel-showcase"' in prompt
+    assert "segments必须恰好4条" in prompt
+    assert "实际生视频参考顺序：图片1是本段分镜图；" in prompt
+    assert "图片2是六格试穿总览" not in prompt
+    assert "用户补充要求：最后在街景收尾" in prompt

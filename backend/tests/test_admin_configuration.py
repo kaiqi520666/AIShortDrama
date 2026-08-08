@@ -145,8 +145,10 @@ async def test_content_template_version_is_validated_and_published(override_busi
             assert catalog.status_code == 200
             assert [(item["key"], item["status"]) for item in catalog.json()["data"]] == [
                 ("product_visual", "active"),
+                ("apparel_visual", "active"),
                 ("product_storyboard", "active"),
                 ("commerce_drama", "active"),
+                ("apparel_showcase", "active"),
             ]
             fetched = await client.get("/api/admin/content-templates/product_visual")
             assert fetched.status_code == 200
@@ -181,6 +183,10 @@ async def test_content_template_version_is_validated_and_published(override_busi
         assert "prompt_blocks" not in published.json()["data"]["product_storyboard"]["config"]
         assert published.json()["data"]["commerce_drama"]["config"]["output_protocol_id"] == "commerce-drama-v1"
         assert "prompt_blocks" not in published.json()["data"]["commerce_drama"]["config"]
+        assert published.json()["data"]["apparel_visual"]["config"]["output_protocol_id"] == "apparel-visual-v1"
+        assert "prompt_blocks" not in published.json()["data"]["apparel_visual"]["config"]
+        assert published.json()["data"]["apparel_showcase"]["config"]["durations"] == [15, 30, 45, 60]
+        assert "prompt_blocks" not in published.json()["data"]["apparel_showcase"]["config"]
     finally:
         app.dependency_overrides.pop(get_current_admin, None)
 

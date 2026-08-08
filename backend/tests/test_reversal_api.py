@@ -75,6 +75,56 @@ def product_visual_payload(**overrides):
     return payload
 
 
+def apparel_visual_payload(**overrides):
+    payload = {
+        "workspace_id": str(DEFAULT_WORKSPACE_ID),
+        "node_id": "outfit-1",
+        "model": "gpt-5.6-sol",
+        "media_type": "image",
+        "media_url": "https://example.com/garment.png",
+        "media_urls": ["https://example.com/model.png"],
+        "response_mode": "outfit_visual_plan",
+        "template_key": "apparel_visual",
+        "template_version": 1,
+        "template_context": {
+            "apparel_context": "单品1：白色衬衫",
+            "selected_view_ids": ["front", "three-quarter", "back", "turn", "fabric", "lifestyle"],
+            "aspect_ratio": "9:16",
+            "resolution": "1K",
+            "reference_count": 2,
+            "user_requirement": "自然日光",
+        },
+    }
+    payload.update(overrides)
+    return payload
+
+
+def apparel_storyboard_payload(**overrides):
+    payload = {
+        "workspace_id": str(DEFAULT_WORKSPACE_ID),
+        "node_id": "apparel-storyboard-1",
+        "model": "gpt-5.6-sol",
+        "media_type": "image",
+        "media_url": "https://example.com/board.png",
+        "media_urls": [
+            "https://example.com/garment.png",
+            "https://example.com/model.png",
+        ],
+        "response_mode": "apparel_storyboard_plan",
+        "template_key": "apparel_showcase",
+        "template_version": 1,
+        "template_context": {
+            "apparel_context": "单品1：白色衬衫",
+            "duration": 30,
+            "video_aspect_ratio": "9:16",
+            "scene_count": 0,
+            "user_requirement": "",
+        },
+    }
+    payload.update(overrides)
+    return payload
+
+
 def test_product_visual_plan_requires_server_template():
     payload = product_visual_payload()
     assert ReversePromptRequest(**payload).template_key == "product_visual"
@@ -87,16 +137,7 @@ def test_product_visual_plan_requires_server_template():
 
 
 def test_reverse_prompt_accepts_additional_media_urls():
-    payload = ReversePromptRequest(
-        workspace_id=DEFAULT_WORKSPACE_ID,
-        node_id="outfit-1",
-        model="gpt-5.6-sol",
-        media_type="image",
-        media_url="https://example.com/garment.png",
-        media_urls=["https://example.com/model.png"],
-        prompt="生成穿搭方案",
-        response_mode="outfit_visual_plan",
-    )
+    payload = ReversePromptRequest(**apparel_visual_payload())
     assert [str(url) for url in payload.media_urls] == ["https://example.com/model.png"]
 
 
@@ -168,15 +209,7 @@ def test_reverse_prompt_accepts_product_storyboard_mode():
     assert drama_payload.template_key == "commerce_drama"
     with pytest.raises(ValidationError, match="服务端模板"):
         ReversePromptRequest(**storyboard_payload(prompt="生成商品分镜"))
-    apparel_payload = ReversePromptRequest(
-        workspace_id=DEFAULT_WORKSPACE_ID,
-        node_id="apparel-storyboard-1",
-        model="gpt-5.6-sol",
-        media_type="image",
-        media_url="https://example.com/product.png",
-        prompt="生成服饰分镜",
-        response_mode="apparel_storyboard_plan",
-    )
+    apparel_payload = ReversePromptRequest(**apparel_storyboard_payload())
     assert apparel_payload.response_mode == "apparel_storyboard_plan"
 
 

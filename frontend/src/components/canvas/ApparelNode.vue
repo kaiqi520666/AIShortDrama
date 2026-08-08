@@ -21,7 +21,7 @@ const enabledItems = computed(() => (props.data.items || []).filter((item) => it
   <StructuredNodeShell :id="id" :type="type" :data="data" :icon="Shirt" :selected="selected" has-target>
     <div class="apparel-node-content nowheel">
       <div class="structured-node-summary">
-        <span><Shirt :size="15" />服饰资料</span>
+        <span><Shirt :size="15" />服饰识别</span>
         <small>{{ data.compositionType === 'set' ? '整套' : '单品' }} · {{ enabledItems.length }} 件</small>
       </div>
       <div class="outfit-source" :class="{ empty: !reference?.data.asset }">

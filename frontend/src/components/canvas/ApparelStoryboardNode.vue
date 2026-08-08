@@ -1,9 +1,7 @@
 <script setup>
 import { computed } from 'vue'
-import { Clapperboard, Images, Shirt, UserRound } from 'lucide-vue-next'
+import { Clapperboard, Images, Shirt } from 'lucide-vue-next'
 import { useCanvasStore } from '../../stores/canvas'
-import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
-import { getApparelVideoSettings } from '../../config/canvas/outfitStoryboard'
 import { buildOssImageUrl } from '../../utils/ossImage'
 import StructuredNodeShell from './StructuredNodeShell.vue'
 
@@ -15,28 +13,14 @@ const props = defineProps({
 })
 
 const store = useCanvasStore()
-const capabilityStore = useModelCapabilitiesStore()
-const targetHandles = [
-  { id: 'apparel', top: '38%' },
-  { id: 'model', top: '61%' },
-  { id: 'scene', top: '84%' },
-]
-
-const apparelNode = computed(() => store.incomingNodeByHandle(props.id, 'apparel'))
-const garmentNode = computed(() => apparelNode.value && store.incomingNodes(apparelNode.value.id).find((node) => node.type === 'image'))
-const modelNode = computed(() => store.incomingNodeByHandle(props.id, 'model'))
+const targetHandles = [{ id: 'outfit', top: '48%' }, { id: 'scene', top: '78%' }]
+const outfitNode = computed(() => store.incomingNodeByHandle(props.id, 'outfit'))
 const sceneNode = computed(() => store.incomingNodeByHandle(props.id, 'scene'))
 const generatedCount = computed(() => (props.data.generatedNodeIds || []).filter((id) => store.nodes.some((node) => node.id === id)).length)
-const settings = computed(() => getApparelVideoSettings(props.data, {
-  videoModels: capabilityStore.videoModels,
-  defaultVideoModel: capabilityStore.defaultVideoModel,
-}))
 const inputs = computed(() => [
-  { label: '服饰', icon: Shirt, node: apparelNode.value, asset: garmentNode.value?.data.asset },
-  { label: '模特', icon: UserRound, node: modelNode.value, asset: modelNode.value?.data.asset },
-  { label: '场景', icon: Images, node: sceneNode.value, asset: sceneNode.value?.data.asset },
+  { label: '模特试穿', icon: Shirt, asset: outfitNode.value?.data.outfitBoardAsset },
+  { label: '场景', icon: Images, asset: sceneNode.value?.data.asset },
 ])
-const connectedCount = computed(() => inputs.value.filter((item) => item.asset).length)
 </script>
 
 <template>
@@ -56,7 +40,7 @@ const connectedCount = computed(() => inputs.value.filter((item) => item.asset).
         </div>
       </div>
       <div class="product-creation-settings-summary storyboard-node-summary apparel-storyboard-node-summary">
-        <span>{{ settings.duration }} 秒</span><span>{{ connectedCount }}/3 素材</span>
+        <span>{{ data.duration }} 秒</span><span>{{ Number(data.duration || 15) / 15 }} 段</span>
       </div>
     </div>
   </StructuredNodeShell>

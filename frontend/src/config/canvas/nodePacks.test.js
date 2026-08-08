@@ -59,13 +59,15 @@ describe('canvas node packs', () => {
     expect(canConnect('apparel', 'outfit', 'ecommerce')).toBe(true)
     expect(canConnect('image', 'outfit', 'ecommerce')).toBe(true)
     expect(canConnect('outfit', 'image', 'ecommerce')).toBe(true)
+    expect(canConnect('outfit', 'apparel_storyboard', 'ecommerce')).toBe(true)
     expect(canConnect('apparel', 'apparel_storyboard', 'ecommerce')).toBe(true)
     expect(canConnect('image', 'apparel_storyboard', 'ecommerce')).toBe(true)
     expect(canConnect('apparel_storyboard', 'image', 'ecommerce')).toBe(true)
     expect(getConnectionError('apparel', 'outfit', ['apparel'], 'ecommerce')).toContain('只能连接 1 个')
     expect(getConnectionError('image', 'outfit', ['image'], 'ecommerce')).toContain('只能连接 1 张')
     expect(getConnectionError('apparel', 'apparel_storyboard', ['apparel'], 'ecommerce', 'apparel')).toContain('只能连接 1 个')
-    expect(getConnectionError('image', 'apparel_storyboard', ['image'], 'ecommerce', 'model', [{ type: 'image', targetHandle: 'model' }])).toContain('模特')
+    expect(getConnectionError('outfit', 'apparel_storyboard', ['outfit'], 'ecommerce', 'outfit')).toContain('只能连接 1 个')
+    expect(getConnectionError('image', 'apparel_storyboard', ['image'], 'ecommerce', 'scene', [{ type: 'image', targetHandle: 'scene' }])).toContain('场景')
   })
 
   it('keeps existing media connection rules', () => {

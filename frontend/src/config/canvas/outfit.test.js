@@ -1,34 +1,44 @@
 import { describe, expect, it } from 'vitest'
-import { buildOutfitPlanPrompt, outfitMaterialGroups, outfitMaterials, parseOutfitPlan, resolveOutfitMaterials } from './outfit'
+import { buildApparelVisualRequest, parseOutfitPlan, resolveOutfitMaterials } from './outfit'
+import { contentTemplatesFixture } from '../../test/contentTemplates'
+
+const template = contentTemplatesFixture.apparel_visual
 
 describe('outfit planning', () => {
-  it('provides categorized reusable material modules', () => {
-    expect(outfitMaterialGroups.map((group) => group.label)).toEqual(['固定六格参考图板'])
-    expect(outfitMaterials).toHaveLength(6)
-    expect(outfitMaterials.map((item) => item.id)).toEqual(['front', 'three-quarter', 'back', 'turn', 'fabric', 'lifestyle'])
-  })
-
-  it('always returns the fixed six reference views', () => {
-    const materials = resolveOutfitMaterials(['front', 'street'], '突出秋季氛围')
-    const prompt = buildOutfitPlanPrompt(materials, '突出秋季氛围', { aspectRatio: '3:4', resolution: '2K' }, '单品1：白色衬衫')
-
+  it('derives the fixed six views from the apparel visual template', () => {
+    const materials = resolveOutfitMaterials(template)
     expect(materials).toHaveLength(6)
     expect(materials.map((item) => item.id)).toEqual(['front', 'three-quarter', 'back', 'turn', 'fabric', 'lifestyle'])
-    expect(prompt).toContain('统一补充要求：突出秋季氛围')
-    expect(prompt).toContain('统一画面规格：9:16，1K')
-    expect(prompt).toContain('单品1：白色衬衫')
-    expect(prompt).toContain('不描述说话、台词、音效、运镜或连续动作')
+    expect(materials[0]).toEqual(expect.objectContaining({ label: '正面全身', categoryLabel: '六视角试穿' }))
   })
 
-  it('keeps the fixed views when no custom requirement is provided', () => {
-    expect(resolveOutfitMaterials()).toHaveLength(6)
+  it('builds a structured server-template request without a prompt', () => {
+    const request = buildApparelVisualRequest({
+      workspaceId: 'workspace-1',
+      nodeId: 'outfit-1',
+      model: 'gpt-5.6-sol',
+      garmentUrl: 'https://example.com/garment.png',
+      modelUrl: 'https://example.com/model.png',
+      apparelContext: '单品1：白色衬衫',
+      selectedViewIds: ['front', 'back'],
+      aspectRatio: '9:16',
+      resolution: '1K',
+      templateVersion: 3,
+      userRequirement: '自然日光',
+    })
+    expect(request).not.toHaveProperty('prompt')
+    expect(request.template_key).toBe('apparel_visual')
+    expect(request.template_context).toEqual(expect.objectContaining({
+      selected_view_ids: ['front', 'back'],
+      reference_count: 2,
+      user_requirement: '自然日光',
+    }))
   })
 
-  it('parses one prompt for every requested module', () => {
-    const materials = resolveOutfitMaterials()
-    const content = JSON.stringify(materials.map((item) => ({ type: item.id, prompt: `${item.label}穿搭` })))
+  it('parses one prompt for every requested view', () => {
+    const materials = resolveOutfitMaterials(template)
+    const content = JSON.stringify(materials.map((item) => ({ id: item.id, prompt: `${item.label}试穿` })))
     expect(parseOutfitPlan(content, materials)).toHaveLength(6)
-    expect(parseOutfitPlan(content, materials)[0]).toEqual(expect.objectContaining({ id: 'front', prompt: '正面全身穿搭' }))
+    expect(parseOutfitPlan(content, materials)[0]).toEqual(expect.objectContaining({ id: 'front', prompt: '正面全身试穿' }))
   })
-
 })

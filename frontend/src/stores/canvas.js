@@ -196,7 +196,7 @@ export const useCanvasStore = defineStore('canvas', {
       const number = this.sequence++
       const id = `${type}-${number}`
       this.nodes.forEach((node) => { node.selected = false })
-      const needsTemplates = ['product', 'product_visual', 'product_storyboard'].includes(type)
+      const needsTemplates = ['product', 'product_visual', 'product_storyboard', 'outfit', 'apparel_storyboard'].includes(type)
       const data = createNodeData(type, number, source, modelDefaults(), contentTemplates(needsTemplates))
       if (type === 'video') Object.assign(data, storyboardVideoData(source, modelDefaults().video) || {})
       this.nodes.push({
