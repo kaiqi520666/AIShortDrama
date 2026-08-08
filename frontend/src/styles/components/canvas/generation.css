@@ -612,12 +612,16 @@
   flex: none;
 }
 .outfit-reference-config {
-  align-content: start;
+  grid-template-rows: auto auto minmax(104px, 1fr);
+  align-content: stretch;
 }
 .outfit-reference-config > p {
   margin: -2px 0 2px;
   color: var(--color-text-muted);
   font-size: 12px;
+}
+.generation-panel .outfit-reference-config > .ui-textarea {
+  height: 100%;
 }
 .outfit-fixed-settings {
   display: grid;
