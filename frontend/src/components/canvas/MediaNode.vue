@@ -229,7 +229,7 @@ const { resume: resumeGenerationPolling } = useNodeGenerationPolling({
       </AppButton>
     </div>
 
-    <Handle v-if="!data.workflowId && (type !== 'text' || textMode)" id="source" type="source" :position="Position.Right" />
+    <Handle v-if="type !== 'text' || textMode" id="source" type="source" :position="Position.Right" :connectable-start="!data.workflowId" />
 
     <AppAssetPickerModal
       v-if="assetPickerOpen"

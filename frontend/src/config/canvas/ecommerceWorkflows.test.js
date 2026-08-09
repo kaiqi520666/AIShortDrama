@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { BASIC_NODE_TYPES, getNodeMenuGroups } from './ecommerceWorkflows'
+import { nodeDefinitions } from './nodeDefinitions'
+import { BASIC_NODE_TYPES, getNodeMenuGroups, resolveNodeMenuGroups } from './ecommerceWorkflows'
 
 describe('ecommerce workflow menus', () => {
   it('shows four basic nodes and two workflows in the global menu', () => {
@@ -23,5 +24,14 @@ describe('ecommerce workflow menus', () => {
       sourceType: 'image',
       sourceWorkflowId: 'workflow-1',
     })).toEqual([])
+  })
+
+  it('preserves workflow ids while attaching node presentation metadata', () => {
+    const groups = resolveNodeMenuGroups(getNodeMenuGroups('ecommerce'), nodeDefinitions)
+    const workflows = groups.find((group) => group.id === 'workflows').options
+
+    expect(workflows.map((option) => option.type)).toEqual(['product', 'apparel'])
+    expect(workflows.map((option) => option.nodeType)).toEqual(['product', 'outfit'])
+    expect(workflows.every((option) => option.icon)).toBe(true)
   })
 })

@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { getNodeMenuGroups } from '../../config/canvas/ecommerceWorkflows'
+import { getNodeMenuGroups, resolveNodeMenuGroups } from '../../config/canvas/ecommerceWorkflows'
 import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
 import { useCanvasStore } from '../../stores/canvas'
 import AppButton from '../ui/AppButton.vue'
@@ -14,18 +14,11 @@ defineEmits(['select'])
 
 const store = useCanvasStore()
 const source = computed(() => store.nodes.find((node) => node.id === props.sourceId))
-const groups = computed(() => getNodeMenuGroups(store.workspaceType, {
+const groups = computed(() => resolveNodeMenuGroups(getNodeMenuGroups(store.workspaceType, {
   contextual: props.contextual,
   sourceType: source.value?.type,
   sourceWorkflowId: source.value?.data.workflowId,
-}).map((group) => ({
-  ...group,
-  options: group.options.map((option) => ({
-    ...option,
-    ...nodeDefinitions[option.nodeType || option.type],
-    label: option.label || nodeDefinitions[option.type].label,
-  })),
-})))
+}), nodeDefinitions))
 </script>
 
 <template>

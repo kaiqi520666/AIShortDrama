@@ -50,3 +50,13 @@ export function getNodeMenuGroups(workspaceType, { contextual = false, sourceTyp
   })
   return groups
 }
+
+export function resolveNodeMenuGroups(groups, definitions) {
+  return groups.map((group) => ({
+    ...group,
+    options: group.options.map((option) => {
+      const definition = definitions[option.nodeType || option.type]
+      return { ...definition, ...option, label: option.label || definition.label }
+    }),
+  }))
+}
