@@ -15,7 +15,7 @@ defineEmits(['select', 'close'])
 <template>
   <div class="menu-backdrop" @pointerdown.self="$emit('close')">
     <AppMenu class="node-create-menu" :class="{ 'node-create-menu--anchor': placement === 'anchor' }" :style="{ left: `${point.x}px`, top: `${point.y}px` }">
-      <p>{{ contextual ? '引用该节点生成' : '添加节点' }}</p>
+      <p v-if="contextual">引用该节点生成</p>
       <NodeTypeMenu :contextual="contextual" :source-id="sourceId" @select="$emit('select', $event)" />
     </AppMenu>
   </div>
