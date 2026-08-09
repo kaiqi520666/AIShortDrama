@@ -3,7 +3,7 @@ import { canConnect, getConnectionError, inferTargetHandle } from '../config/can
 import { createNodeData, getNodeDescriptor, getReversePrompt } from '../config/canvas/nodeCatalog'
 import { isNodeTypeAvailable } from '../config/canvas/nodePacks'
 import { CURRENT_CANVAS_SCHEMA_VERSION, migrateCanvas } from '../config/canvas/migrations'
-import { ECOMMERCE_WORKFLOWS } from '../config/canvas/ecommerceWorkflows'
+import { ECOMMERCE_WORKFLOWS, isEditableProductConnection } from '../config/canvas/ecommerceWorkflows'
 import { saveWorkspaceCanvas } from '../api/workspaces'
 import { useModelCapabilitiesStore } from './modelCapabilities'
 import { useContentTemplatesStore } from './contentTemplates'
@@ -241,7 +241,9 @@ export const useCanvasStore = defineStore('canvas', {
       const target = this.nodes.find((node) => node.id === connection.target)
       if (!source || !target || source.id === target.id || !canConnect(source.type, target.type, this.workspaceType)) return false
       const endpointWorkflowIds = [source.data?.workflowId, target.data?.workflowId].filter(Boolean)
-      if (endpointWorkflowIds.length && (!connection.workflowId || endpointWorkflowIds.some((id) => id !== connection.workflowId))) return false
+      const editableProductConnection = isEditableProductConnection(source, target)
+      if (endpointWorkflowIds.length && !editableProductConnection
+        && (!connection.workflowId || endpointWorkflowIds.some((id) => id !== connection.workflowId))) return false
       const incomingConnections = this.edges
         .filter((edge) => edge.target === target.id)
         .map((edge) => ({ targetHandle: edge.targetHandle, type: this.nodes.find((node) => node.id === edge.source)?.type }))

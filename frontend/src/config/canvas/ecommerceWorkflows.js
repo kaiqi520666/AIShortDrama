@@ -30,6 +30,17 @@ export function assignWorkflowEdges(edges, workflowId, nodeIds) {
   })
 }
 
+export function isEditableProductConnection(source, target) {
+  if (!source || !target) return false
+  if (source.type === 'image' && target.data?.workflowRole === 'product') {
+    return !source.data?.workflowId || source.data.workflowId === target.data.workflowId
+  }
+  if (source.data?.workflowRole === 'product' && target.type === 'product_storyboard') {
+    return !target.data?.workflowId || target.data.workflowId === source.data.workflowId
+  }
+  return false
+}
+
 export function getNodeMenuGroups(workspaceType, { contextual = false, sourceType = '', sourceWorkflowId = '' } = {}) {
   if (workspaceType !== 'ecommerce') {
     const options = getNodeTypes(workspaceType)

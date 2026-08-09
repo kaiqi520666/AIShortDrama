@@ -130,7 +130,11 @@ describe('canvas connections and node packs', () => {
     const managedEdge = store.edges[0]
     const basicId = store.addNode('image', { x: -900, y: 0 })
 
-    expect(store.addEdge({ source: basicId, target: productId })).toBe(false)
+    expect(store.addEdge({ source: basicId, target: productId })).toBe(true)
+    const extraStoryboardId = store.addNode('product_storyboard', { x: 900, y: 500 }, null, true)
+    expect(store.addEdge({ source: productId, target: extraStoryboardId })).toBe(true)
+    expect(store.edges.find((edge) => edge.source === basicId && edge.target === productId)).not.toHaveProperty('workflowId')
+    expect(store.edges.find((edge) => edge.source === productId && edge.target === extraStoryboardId)).not.toHaveProperty('workflowId')
     expect(store.deleteEdge(managedEdge.id)).toBe(false)
     expect(store.deleteNode(storyboard.id)).toBe('workflow_locked')
     expect(store.deleteNode(productId)).toBe('workflow_root')
@@ -140,7 +144,7 @@ describe('canvas connections and node packs', () => {
     expect(store.groupSelected()).toBe(false)
 
     expect(store.deleteWorkflow(workflowId)).toBe(true)
-    expect(store.nodes.map((node) => node.id)).toEqual([basicId])
+    expect(store.nodes.map((node) => node.id)).toEqual([basicId, extraStoryboardId])
     expect(store.edges).toEqual([])
   })
 

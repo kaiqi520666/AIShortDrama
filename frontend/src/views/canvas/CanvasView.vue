@@ -16,6 +16,7 @@ import AppInput from '../../components/ui/AppInput.vue'
 import AppMenu from '../../components/ui/AppMenu.vue'
 import AppTooltip from '../../components/ui/AppTooltip.vue'
 import { canConnect, getConnectionError, inferTargetHandle } from '../../config/canvas/connectionRules'
+import { isEditableProductConnection } from '../../config/canvas/ecommerceWorkflows'
 import { getNodeRegistry, nodeRegistry } from '../../config/canvas/nodeRegistry'
 import { getNodeTypes } from '../../config/canvas/nodePacks'
 import { useGlobalConfirm, useGlobalToast } from '../../composables/useGlobalUI'
@@ -172,13 +173,14 @@ function createNode(option) {
 
 function handleConnectStart({ nodeId, handleType }) {
   const node = nodes.value.find((item) => item.id === nodeId)
-  connectionSource.value = handleType === 'source' && !node?.data.workflowId ? nodeId : null
+  const sourceConnectable = !node?.data.workflowId || node.data.workflowRole === 'product'
+  connectionSource.value = handleType === 'source' && sourceConnectable ? nodeId : null
 }
 
 function handleConnect(connection) {
   const source = nodes.value.find((node) => node.id === connection.source)
   const target = nodes.value.find((node) => node.id === connection.target)
-  if (source?.data.workflowId || target?.data.workflowId) {
+  if ((source?.data.workflowId || target?.data.workflowId) && !isEditableProductConnection(source, target)) {
     connectionSource.value = null
     return toast.warning('自动流程节点的连接由系统管理')
   }
@@ -195,9 +197,9 @@ function handleConnect(connection) {
 
 function connectSelected() {
   if (selectedNodes.value.length !== 2) return toast.warning('请选择两个节点后连接')
-  if (selectedNodes.value.some((node) => node.data?.workflowId)) return toast.warning('自动流程节点的连接由系统管理')
   let [source, target] = [...selectedNodes.value].sort((a, b) => a.position.x - b.position.x)
   if (!canConnect(source.type, target.type, store.workspaceType) && canConnect(target.type, source.type, store.workspaceType)) [source, target] = [target, source]
+  if ((source.data?.workflowId || target.data?.workflowId) && !isEditableProductConnection(source, target)) return toast.warning('自动流程节点的连接由系统管理')
   const incomingConnections = store.edges
     .filter((edge) => edge.target === target.id)
     .map((edge) => ({ targetHandle: edge.targetHandle, type: nodes.value.find((node) => node.id === edge.source)?.type }))

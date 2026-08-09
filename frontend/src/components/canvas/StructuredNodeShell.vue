@@ -40,6 +40,6 @@ const { updateNodeData } = useVueFlow()
       <span v-if="handle.label" class="structured-node-handle-label" :style="{ top: handle.top }">{{ handle.label }}</span>
     </template>
     <div class="node-body structured-node-body"><slot /></div>
-    <Handle v-if="hasSource" id="source" type="source" :position="Position.Right" :connectable-start="!data.workflowId" />
+    <Handle v-if="hasSource" id="source" type="source" :position="Position.Right" :connectable-start="!data.workflowId || data.workflowRole === 'product'" />
   </div>
 </template>

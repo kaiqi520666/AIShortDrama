@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { nodeDefinitions } from './nodeDefinitions'
-import { BASIC_NODE_TYPES, getNodeMenuGroups, resolveNodeMenuGroups } from './ecommerceWorkflows'
+import { BASIC_NODE_TYPES, getNodeMenuGroups, isEditableProductConnection, resolveNodeMenuGroups } from './ecommerceWorkflows'
 
 describe('ecommerce workflow menus', () => {
   it('shows four basic nodes and two workflows in the global menu', () => {
@@ -33,5 +33,24 @@ describe('ecommerce workflow menus', () => {
     expect(workflows.map((option) => option.type)).toEqual(['product', 'apparel'])
     expect(workflows.map((option) => option.nodeType)).toEqual(['product', 'outfit'])
     expect(workflows.every((option) => option.icon)).toBe(true)
+  })
+
+  it('allows only the editable connections around product creation', () => {
+    const product = { type: 'product', data: { workflowId: 'workflow-1', workflowRole: 'product' } }
+
+    expect(isEditableProductConnection({ type: 'image', data: {} }, product)).toBe(true)
+    expect(isEditableProductConnection(product, { type: 'product_storyboard', data: {} })).toBe(true)
+    expect(isEditableProductConnection(
+      { type: 'image', data: { workflowId: 'workflow-2' } },
+      product,
+    )).toBe(false)
+    expect(isEditableProductConnection(product, {
+      type: 'product_storyboard',
+      data: { workflowId: 'workflow-2' },
+    })).toBe(false)
+    expect(isEditableProductConnection({ type: 'image', data: {} }, {
+      type: 'outfit',
+      data: { workflowId: 'workflow-1', workflowRole: 'outfit' },
+    })).toBe(false)
   })
 })
