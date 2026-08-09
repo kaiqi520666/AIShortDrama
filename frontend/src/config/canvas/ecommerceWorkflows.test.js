@@ -26,6 +26,18 @@ describe('ecommerce workflow menus', () => {
     })).toEqual([])
   })
 
+  it('offers only product storyboard from the product creation output', () => {
+    expect(getNodeMenuGroups('ecommerce', {
+      contextual: true,
+      sourceType: 'product',
+      sourceWorkflowId: 'workflow-1',
+    })).toEqual([{
+      id: 'product-workflow',
+      label: '',
+      options: [{ kind: 'node', type: 'product_storyboard' }],
+    }])
+  })
+
   it('preserves workflow ids while attaching node presentation metadata', () => {
     const groups = resolveNodeMenuGroups(getNodeMenuGroups('ecommerce'), nodeDefinitions)
     const workflows = groups.find((group) => group.id === 'workflows').options

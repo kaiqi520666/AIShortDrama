@@ -49,6 +49,9 @@ export function getNodeMenuGroups(workspaceType, { contextual = false, sourceTyp
     return options.length ? [{ id: 'nodes', label: '', options }] : []
   }
 
+  if (contextual && sourceType === 'product') {
+    return [{ id: 'product-workflow', label: '', options: [{ kind: 'node', type: 'product_storyboard' }] }]
+  }
   if (contextual && sourceWorkflowId) return []
   const basicOptions = BASIC_NODE_TYPES
     .filter((type) => !contextual || canConnect(sourceType, type, workspaceType))
