@@ -3,6 +3,7 @@ import { canConnect, getConnectionError, inferTargetHandle } from '../config/can
 import { createNodeData, getNodeDescriptor, getReversePrompt } from '../config/canvas/nodeCatalog'
 import { isNodeTypeAvailable } from '../config/canvas/nodePacks'
 import { CURRENT_CANVAS_SCHEMA_VERSION, migrateCanvas } from '../config/canvas/migrations'
+import { ECOMMERCE_WORKFLOWS } from '../config/canvas/ecommerceWorkflows'
 import { saveWorkspaceCanvas } from '../api/workspaces'
 import { useModelCapabilitiesStore } from './modelCapabilities'
 import { useContentTemplatesStore } from './contentTemplates'
@@ -42,6 +43,15 @@ function stripTransientNodes(nodes = [], edges = [], groups = []) {
       .map((group) => ({ ...group, nodeIds: group.nodeIds.filter((id) => !transientIds.has(id)) }))
       .filter((group) => group.nodeIds.length > 1),
   }
+}
+
+function removeCanvasNodes(store, nodeIds) {
+  const removedIds = new Set(nodeIds)
+  store.nodes = store.nodes.filter((node) => !removedIds.has(node.id))
+  store.edges = store.edges.filter((edge) => !removedIds.has(edge.source) && !removedIds.has(edge.target))
+  store.groups = store.groups
+    .map((group) => ({ ...group, nodeIds: group.nodeIds.filter((nodeId) => !removedIds.has(nodeId)) }))
+    .filter((group) => group.nodeIds.length > 1)
 }
 
 export const useCanvasStore = defineStore('canvas', {
@@ -84,11 +94,12 @@ export const useCanvasStore = defineStore('canvas', {
         canvas = legacy
         this.legacyImportPending = true
       }
-      canvas = migrateCanvas(
-        canvas,
-        modelDefaults().text.id,
-        this.workspaceType === 'ecommerce' ? contentTemplates(true) : undefined,
-      )
+      const sourceSchemaVersion = Number(canvas.schema_version || 1)
+      canvas = migrateCanvas(canvas, {
+        workspaceType: this.workspaceType,
+        models: modelDefaults(),
+        templates: this.workspaceType === 'ecommerce' ? contentTemplates(true) : undefined,
+      })
       const persistent = stripTransientNodes(canvas.nodes, canvas.edges, canvas.groups)
       this.nodes = JSON.parse(JSON.stringify(persistent.nodes))
       this.edges = JSON.parse(JSON.stringify(persistent.edges))
@@ -98,7 +109,11 @@ export const useCanvasStore = defineStore('canvas', {
       this.viewportData = { x: 0, y: 0, zoom: 1, ...(canvas.viewport || {}) }
       this.saveStatus = 'saved'
       this.ready = true
-      if (this.legacyImportPending || persistent.removed) await this.saveCanvas().catch(() => {})
+      const shouldPersistWorkflowMigration = this.workspaceType === 'ecommerce'
+        && sourceSchemaVersion < CURRENT_CANVAS_SCHEMA_VERSION
+      if (this.legacyImportPending || persistent.removed || shouldPersistWorkflowMigration) {
+        await this.saveCanvas().catch(() => {})
+      }
     },
     readLegacyCanvas() {
       try {
@@ -112,7 +127,7 @@ export const useCanvasStore = defineStore('canvas', {
       return {
         schema_version: CURRENT_CANVAS_SCHEMA_VERSION,
         nodes: persistent.nodes.map(({ id, type, position, data }) => ({ id, type, position, data })),
-        edges: persistent.edges.map(({ id, source, target, sourceHandle, targetHandle, type }) => ({ id, source, target, ...(sourceHandle ? { sourceHandle } : {}), ...(targetHandle ? { targetHandle } : {}), type: type || 'cinematic' })),
+        edges: persistent.edges.map(({ id, source, target, sourceHandle, targetHandle, type, workflowId }) => ({ id, source, target, ...(sourceHandle ? { sourceHandle } : {}), ...(targetHandle ? { targetHandle } : {}), ...(workflowId ? { workflowId } : {}), type: type || 'cinematic' })),
         groups: persistent.groups,
         sequence: this.sequence,
         group_sequence: this.groupSequence,
@@ -212,11 +227,21 @@ export const useCanvasStore = defineStore('canvas', {
       }
       return id
     },
+    addEcommerceWorkflow(type, position) {
+      if (this.workspaceType !== 'ecommerce') return
+      const workflow = ECOMMERCE_WORKFLOWS.find((item) => item.id === type)
+      if (!workflow) return
+      return workflow.id === 'apparel'
+        ? this.addNode('apparel_storyboard', position)
+        : this.addNode(workflow.nodeType, position)
+    },
     addEdge(connection) {
       if (this.edges.some((edge) => edge.source === connection.source && edge.target === connection.target)) return false
       const source = this.nodes.find((node) => node.id === connection.source)
       const target = this.nodes.find((node) => node.id === connection.target)
       if (!source || !target || source.id === target.id || !canConnect(source.type, target.type, this.workspaceType)) return false
+      const endpointWorkflowIds = [source.data?.workflowId, target.data?.workflowId].filter(Boolean)
+      if (endpointWorkflowIds.length && (!connection.workflowId || endpointWorkflowIds.some((id) => id !== connection.workflowId))) return false
       const incomingConnections = this.edges
         .filter((edge) => edge.target === target.id)
         .map((edge) => ({ targetHandle: edge.targetHandle, type: this.nodes.find((node) => node.id === edge.source)?.type }))
@@ -289,7 +314,10 @@ export const useCanvasStore = defineStore('canvas', {
       this.selectNodes([id])
     },
     deleteEdge(id) {
-      this.edges = this.edges.filter((edge) => edge.id !== id)
+      const edge = this.edges.find((item) => item.id === id)
+      if (!edge || edge.workflowId) return false
+      this.edges = this.edges.filter((item) => item.id !== id)
+      return true
     },
     selectNodes(nodeIds) {
       this.nodes.forEach((node) => { node.selected = nodeIds.includes(node.id) })
@@ -309,7 +337,7 @@ export const useCanvasStore = defineStore('canvas', {
       const image = this.nodes.find((node) => node.id === video.data.storyboardImageId)
       if (image) image.data.storyboardContinuityMode = nextMode
       this.edges = this.edges.filter((edge) => !(edge.target === videoId && this.nodes.find((node) => node.id === edge.source)?.type === 'video'))
-      if (nextMode === 'extend' && previous) this.addEdge({ source: previous.id, target: videoId })
+      if (nextMode === 'extend' && previous) this.addEdge({ source: previous.id, target: videoId, ...(video.data.workflowId ? { workflowId: video.data.workflowId } : {}) })
       return true
     },
     confirmStoryboardSegment(videoId) {
@@ -359,6 +387,7 @@ export const useCanvasStore = defineStore('canvas', {
     },
     groupSelected() {
       const selectedIds = this.nodes.filter((node) => node.selected).map((node) => node.id)
+      if (this.nodes.some((node) => selectedIds.includes(node.id) && node.data?.workflowId)) return false
       if (selectedIds.length < 2) return
       const touched = this.groups.filter((group) => group.nodeIds.some((id) => selectedIds.includes(id)))
       const mergedIds = new Set([...selectedIds, ...touched.flatMap((group) => group.nodeIds)])
@@ -390,7 +419,7 @@ export const useCanvasStore = defineStore('canvas', {
     duplicateNodes(nodeIds, positions = {}) {
       const sourceIds = new Set(nodeIds)
       const sources = this.nodes.filter((node) => sourceIds.has(node.id))
-      if (!sources.length) return []
+      if (!sources.length || sources.some((node) => node.data?.workflowId)) return []
       const idMap = new Map()
       this.nodes.forEach((node) => { node.selected = false })
       const copies = sources.map((source) => {
@@ -430,19 +459,35 @@ export const useCanvasStore = defineStore('canvas', {
       if (node && title.trim()) node.data.title = title.trim()
     },
     deleteNodes(nodeIds) {
-      const removedIds = new Set(nodeIds)
-      this.nodes = this.nodes.filter((node) => !removedIds.has(node.id))
-      this.edges = this.edges.filter((edge) => !removedIds.has(edge.source) && !removedIds.has(edge.target))
-      this.groups = this.groups
-        .map((group) => ({ ...group, nodeIds: group.nodeIds.filter((nodeId) => !removedIds.has(nodeId)) }))
-        .filter((group) => group.nodeIds.length > 1)
+      if (this.nodes.some((node) => nodeIds.includes(node.id) && node.data?.workflowId)) return false
+      removeCanvasNodes(this, nodeIds)
+      return true
+    },
+    deleteGeneratedNodes(nodeIds) {
+      const allowedRoles = new Set(['product_visual_result', 'outfit_reference', 'storyboard_image', 'storyboard_video'])
+      const nodes = this.nodes.filter((node) => nodeIds.includes(node.id))
+      if (nodes.some((node) => node.data?.workflowId && !allowedRoles.has(node.data.workflowRole))) return false
+      removeCanvasNodes(this, nodeIds)
+      return true
     },
     deleteNode(id) {
+      const node = this.nodes.find((item) => item.id === id)
+      if (!node) return false
+      if (node.data?.workflowId) return node.data.workflowRoot ? 'workflow_root' : 'workflow_locked'
       this.deleteNodes([id])
+      return true
+    },
+    deleteWorkflow(workflowId) {
+      if (!workflowId) return false
+      const nodeIds = this.nodes.filter((node) => node.data?.workflowId === workflowId).map((node) => node.id)
+      if (!nodeIds.length) return false
+      removeCanvasNodes(this, nodeIds)
+      return true
     },
     deleteGroup(id) {
       const group = this.groups.find((item) => item.id === id)
       if (!group) return
+      if (this.nodes.some((node) => group.nodeIds.includes(node.id) && node.data?.workflowId)) return false
       const nodeIds = new Set(group.nodeIds)
       this.nodes = this.nodes.filter((node) => !nodeIds.has(node.id))
       this.edges = this.edges.filter((edge) => !nodeIds.has(edge.source) && !nodeIds.has(edge.target))

@@ -336,7 +336,7 @@
 .node-create-menu {
   padding: 10px;
 }
-.node-create-menu > button {
+.node-create-menu .node-menu-group > button {
   min-height: 44px;
 }
 .node-create-menu .menu-icon {

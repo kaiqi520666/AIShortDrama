@@ -14,12 +14,18 @@
 .node-create-menu--anchor {
   transform: translate(-50%, -100%);
 }
-.node-create-menu > p {
+.node-create-menu > p,
+.node-menu-group > p {
   margin: 2px 8px 9px;
   color: var(--color-text-muted);
   font-size: 12px;
 }
-.node-create-menu > button {
+.node-menu-group + .node-menu-group {
+  margin-top: 8px;
+  padding-top: 9px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+.node-menu-group > button {
   display: flex;
   width: 100%;
   align-items: center;
@@ -31,7 +37,7 @@
   text-align: left;
   cursor: pointer;
 }
-.node-create-menu > button:hover {
+.node-menu-group > button:hover {
   background: var(--color-border-strong);
 }
 .menu-icon {

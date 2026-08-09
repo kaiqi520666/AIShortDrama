@@ -37,7 +37,6 @@ const legacyApparelNode = computed(() => store.incomingNodeByHandle(props.nodeId
 const apparelNode = computed(() => outfitNode.value && store.incomingNodeByHandle(outfitNode.value.id, 'apparel'))
 const garmentNode = computed(() => apparelNode.value && store.incomingNodes(apparelNode.value.id).find((node) => node.type === 'image' && node.data.asset))
 const modelNode = computed(() => outfitNode.value && store.incomingNodeByHandle(outfitNode.value.id, 'model'))
-const sceneNode = computed(() => store.incomingNodeByHandle(props.nodeId, 'scene'))
 const outfitReference = computed(() => resolveOutfitReference(outfitNode.value?.data, store.nodes))
 const apparelContext = computed(() => apparelPromptContext(apparelNode.value?.data))
 const template = computed(() => contentTemplateStore.templates?.apparel_showcase)
@@ -55,16 +54,15 @@ const insufficientCredits = computed(() => estimatedCredits.value !== null && (a
 const textModelOptions = computed(() => capabilityStore.textModels.map(({ id, label }) => ({ value: id, label })))
 const sourceItems = computed(() => [
   { label: '试穿定妆图', asset: outfitReference.value.asset, required: true },
-  { label: '场景参考', asset: sceneNode.value?.data.asset, required: false },
 ])
 const message = computed(() => {
   if (failure.value || props.data.generationError) return failure.value || props.data.generationError
   if (!templateEnabled.value) return '服饰展示模板已停用'
   if (!outfitNode.value) return legacyApparelNode.value
-    ? '这是旧版服饰分镜，请新建模特试穿节点并连接到试穿输入'
-    : '请先连接模特试穿节点'
+    ? '这是旧版服饰分镜，请新建服饰穿搭流程'
+    : '请先连接服饰穿搭节点'
   if (!outfitReference.value.asset) return '请先生成试穿定妆图'
-  if (!garmentNode.value?.data.asset || !modelNode.value?.data.asset || !apparelContext.value) return '模特试穿的服饰或模特资料不完整'
+  if (!garmentNode.value?.data.asset || !modelNode.value?.data.asset || !apparelContext.value) return '服饰穿搭的服饰或模特资料不完整'
   return insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''
 })
 const canSubmit = computed(() => templateEnabled.value && !running.value && outfitReference.value.asset && garmentNode.value?.data.asset && modelNode.value?.data.asset && apparelContext.value && !insufficientCredits.value)
@@ -81,7 +79,7 @@ async function submitTask() {
     message: '将删除当前服饰分镜链，并按新的时长和要求重新创建。',
     confirmText: '继续生成',
   })) return
-  if (existingGeneratedNodes.value.length) store.deleteNodes(existingGeneratedNodes.value)
+  if (existingGeneratedNodes.value.length) store.deleteGeneratedNodes(existingGeneratedNodes.value)
 
   updateNodeData(props.nodeId, {
     status: 'generating',
@@ -98,7 +96,6 @@ async function submitTask() {
     outfitReferenceUrl: outfitReference.value.asset,
     garmentUrl: garmentNode.value.data.asset,
     modelUrl: modelNode.value.data.asset,
-    sceneUrl: sceneNode.value?.data.asset,
     apparelContext: apparelContext.value,
     duration: selectedDuration.value,
     videoAspectRatio: props.data.videoAspectRatio,
@@ -111,7 +108,7 @@ async function submitTask() {
         props.nodeId,
         outfitReference.value.node?.id,
         { url: outfitReference.value.asset, assetId: outfitReference.value.assetId },
-        sceneNode.value?.id,
+        null,
         plan,
         { model: capabilityStore.defaultImageModel.id, aspectRatio: recommended.value.aspectRatio, resolution: recommended.value.resolution },
       )

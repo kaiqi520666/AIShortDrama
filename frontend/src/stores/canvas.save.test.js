@@ -52,6 +52,35 @@ describe('canvas transient uploads', () => {
 })
 
 describe('canvas version conflicts', () => {
+  it('persists an ecommerce v4 migration immediately', async () => {
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1',
+      version: 4,
+      workspace_type: 'ecommerce',
+      canvas: { schema_version: 3, nodes: [], edges: [], groups: [], sequence: 1 },
+    })
+
+    expect(saveWorkspaceCanvas).toHaveBeenCalledOnce()
+    expect(saveWorkspaceCanvas).toHaveBeenCalledWith('workspace-1', expect.objectContaining({ schema_version: 4, version: 4 }))
+    expect(store.workspaceVersion).toBe(5)
+  })
+
+  it('keeps a local ecommerce migration and exposes an automatic-save failure', async () => {
+    saveWorkspaceCanvas.mockRejectedValueOnce(new Error('offline'))
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1',
+      version: 4,
+      workspace_type: 'ecommerce',
+      canvas: { schema_version: 3, nodes: [], edges: [], groups: [], sequence: 1 },
+    })
+
+    expect(store.ready).toBe(true)
+    expect(store.saveStatus).toBe('failed')
+    expect(store.canvasPayload().schema_version).toBe(4)
+  })
+
   it('forwards and updates the workspace version after a save', async () => {
     const store = useCanvasStore()
     await store.loadWorkspace({

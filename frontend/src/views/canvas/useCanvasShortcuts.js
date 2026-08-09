@@ -15,6 +15,7 @@ export function useCanvasShortcuts({
   ungroupSelected,
   duplicateSelected,
   connectSelected,
+  deleteSelected,
   zoomIn,
   zoomOut,
   eventTarget = globalThis.window,
@@ -52,6 +53,10 @@ export function useCanvasShortcuts({
       event.preventDefault()
       fitView({ padding: 0.24, duration: 350 })
       return
+    }
+    if (!command && !event.altKey && (key === 'backspace' || key === 'delete')) {
+      event.preventDefault()
+      return deleteSelected?.()
     }
     if (!command || event.altKey) return
     if (['z', 'y', 'g', 'd', 'l', 'enter', '0', '=', '+', '-'].includes(key)) event.preventDefault()

@@ -110,7 +110,7 @@
 }
 .model-menu > .ui-button,
 .prompt-reference-menu > .ui-button,
-.node-create-menu > .ui-button,
+.node-create-menu .node-menu-group > .ui-button,
 .context-menu > .ui-button {
   width: 100%;
   justify-content: flex-start;

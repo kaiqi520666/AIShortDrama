@@ -29,7 +29,7 @@ const inputs = computed(() => [
   <StructuredNodeShell :id="id" :type="type" :data="data" :icon="Shirt" :selected="selected" :target-handles="targetHandles">
     <div class="outfit-node-content nowheel">
       <div class="structured-node-summary">
-        <span><Shirt :size="15" />模特试穿</span>
+        <span><Shirt :size="15" />服饰穿搭</span>
         <small>{{ reference.asset ? '定妆图已就绪' : '等待生成' }}</small>
       </div>
       <div class="outfit-sources">

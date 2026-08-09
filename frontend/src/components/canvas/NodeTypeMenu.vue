@@ -1,8 +1,7 @@
 <script setup>
 import { computed } from 'vue'
-import { canConnect } from '../../config/canvas/connectionRules'
+import { getNodeMenuGroups } from '../../config/canvas/ecommerceWorkflows'
 import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
-import { getNodeTypes } from '../../config/canvas/nodePacks'
 import { useCanvasStore } from '../../stores/canvas'
 import AppButton from '../ui/AppButton.vue'
 
@@ -15,15 +14,26 @@ defineEmits(['select'])
 
 const store = useCanvasStore()
 const source = computed(() => store.nodes.find((node) => node.id === props.sourceId))
-const options = computed(() => getNodeTypes(store.workspaceType)
-  .filter((type) => !['product_visual', 'outfit'].includes(type))
-  .filter((type) => !props.contextual || canConnect(source.value?.type, type, store.workspaceType))
-  .map((type) => nodeDefinitions[type]))
+const groups = computed(() => getNodeMenuGroups(store.workspaceType, {
+  contextual: props.contextual,
+  sourceType: source.value?.type,
+  sourceWorkflowId: source.value?.data.workflowId,
+}).map((group) => ({
+  ...group,
+  options: group.options.map((option) => ({
+    ...option,
+    ...nodeDefinitions[option.nodeType || option.type],
+    label: option.label || nodeDefinitions[option.type].label,
+  })),
+})))
 </script>
 
 <template>
-  <AppButton v-for="option in options" :key="option.type" :class="`node-option--${option.type}`" @click="$emit('select', option.type)">
-    <span class="menu-icon"><component :is="option.icon" :size="17" /></span>
-    <strong>{{ option.label }}</strong>
-  </AppButton>
+  <section v-for="group in groups" :key="group.id" class="node-menu-group">
+    <p v-if="group.label">{{ group.label }}</p>
+    <AppButton v-for="option in group.options" :key="`${option.kind}-${option.type}`" :class="`node-option--${option.nodeType || option.type}`" @click="$emit('select', { kind: option.kind, type: option.type })">
+      <span class="menu-icon"><component :is="option.icon" :size="17" /></span>
+      <strong>{{ option.label }}</strong>
+    </AppButton>
+  </section>
 </template>

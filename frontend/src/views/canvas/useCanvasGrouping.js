@@ -38,6 +38,7 @@ export function useCanvasGrouping({
   const groupDrag = ref(null)
   let nodeDragCopy = null
   const selectedNodes = computed(() => nodes.value.filter((node) => node.selected))
+  const selectedContainsWorkflow = computed(() => selectedNodes.value.some((node) => node.data?.workflowId))
   const selectedNode = computed(() => selectedNodes.value.length === 1 ? selectedNodes.value[0] : null)
   const selectedGroup = computed(() => groups.value.find((group) => group.id === activeGroupId.value)
     || groups.value.find((group) => group.nodeIds.length === selectedNodes.value.length
@@ -46,6 +47,11 @@ export function useCanvasGrouping({
     && group.nodeIds.length > selectedNodes.value.length
     && selectedNodes.value.every((node) => group.nodeIds.includes(node.id))))
   const contextNodeIds = computed(() => contextMenu.value?.nodeIds || [])
+  const contextWorkflowNodes = computed(() => nodes.value.filter((node) => contextNodeIds.value.includes(node.id) && node.data?.workflowId))
+  const contextContainsWorkflow = computed(() => contextWorkflowNodes.value.length > 0)
+  const contextWorkflowRoot = computed(() => contextNodeIds.value.length === 1 && contextWorkflowNodes.value[0]?.data.workflowRoot
+    ? contextWorkflowNodes.value[0]
+    : null)
   const contextCompleteGroup = computed(() => groups.value.find((group) => contextNodeIds.value.length > 1
     && group.nodeIds.length === contextNodeIds.value.length
     && group.nodeIds.every((id) => contextNodeIds.value.includes(id))))
@@ -94,6 +100,7 @@ export function useCanvasGrouping({
   }
 
   function groupContextNodes() {
+    if (contextContainsWorkflow.value) return
     store.selectNodes(contextNodeIds.value)
     store.groupSelected()
     contextMenu.value = null
@@ -111,23 +118,47 @@ export function useCanvasGrouping({
   }
 
   function duplicateContextNodes() {
+    if (contextContainsWorkflow.value) return
     if (contextNodeIds.value.length > 1) store.duplicateNodes(contextNodeIds.value)
     else store.duplicateWithInputs(contextNodeIds.value[0])
     activeGroupId.value = null
     contextMenu.value = null
   }
 
-  async function deleteContextNodes() {
-    const nodeIds = [...contextNodeIds.value]
-    contextMenu.value = null
+  async function deleteNodeIds(nodeIds) {
+    const workflowNodes = nodes.value.filter((node) => nodeIds.includes(node.id) && node.data?.workflowId)
+    if (workflowNodes.length) {
+      const root = nodeIds.length === 1 && workflowNodes[0]?.data.workflowRoot ? workflowNodes[0] : null
+      if (!root || !await confirm({
+        title: `删除整个${root.data.workflowType === 'product' ? '商品创作' : '服饰穿搭'}流程`,
+        message: '将删除这条流程在画布中的全部节点和生成结果，素材库文件不会删除。',
+        confirmText: '删除整个流程',
+        tone: 'danger',
+      })) return false
+      store.deleteWorkflow(root.data.workflowId)
+      activeGroupId.value = null
+      return true
+    }
     if (nodeIds.length > 1 && !await confirm({
       title: '删除所选节点',
       message: `确定删除选中的 ${nodeIds.length} 个节点吗？`,
       confirmText: '删除',
       tone: 'danger',
-    })) return
+    })) return false
     store.deleteNodes(nodeIds)
     activeGroupId.value = null
+    return true
+  }
+
+  async function deleteContextNodes() {
+    const nodeIds = [...contextNodeIds.value]
+    contextMenu.value = null
+    await deleteNodeIds(nodeIds)
+  }
+
+  async function deleteSelectedNodes() {
+    if (!selectedNodes.value.length) return
+    await deleteNodeIds(selectedNodes.value.map((node) => node.id))
   }
 
   function moveGroup(event) {
@@ -237,10 +268,13 @@ export function useCanvasGrouping({
   return {
     activeGroupId,
     selectedNodes,
+    selectedContainsWorkflow,
     selectedNode,
     selectedGroup,
     selectedPartialGroup,
     contextNodeIds,
+    contextContainsWorkflow,
+    contextWorkflowRoot,
     contextCompleteGroup,
     contextPartialGroup,
     selectionFrameStyle,
@@ -254,6 +288,7 @@ export function useCanvasGrouping({
     removeContextNodesFromGroup,
     duplicateContextNodes,
     deleteContextNodes,
+    deleteSelectedNodes,
     handleCanvasPointerDown,
     handleNodeDragStart,
     handleNodeDragStop,

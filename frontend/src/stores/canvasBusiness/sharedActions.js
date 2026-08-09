@@ -1,11 +1,13 @@
 import { normalizeStoryboardCharacters } from '../../config/canvas/productStoryboard'
+import { assignWorkflowNode } from '../../config/canvas/ecommerceWorkflows'
 import { useModelCapabilitiesStore } from '../modelCapabilities'
 
-export const createCanvasEdge = (id, source, target, targetHandle) => ({
+export const createCanvasEdge = (id, source, target, targetHandle, workflowId) => ({
   id,
   source,
   target,
   ...(targetHandle ? { targetHandle } : {}),
+  ...(workflowId ? { workflowId } : {}),
   type: 'cinematic',
 })
 
@@ -39,6 +41,7 @@ export function createStoryboardSegmentChain({
 }) {
   const planner = this.nodes.find((node) => node.id === plannerId)
   if (!planner || !plan?.segments?.length) return []
+  const workflowId = planner.data.workflowId
   const segmentNodeIds = []
   let previousVideoId = null
   plan.segments.forEach((segment, index) => {
@@ -78,13 +81,14 @@ export function createStoryboardSegmentChain({
       segmentLocked: segmentIndex > 1,
       ...settings,
     }
-    this.addEdge({ source: plannerId, target: imageId })
-    sourceIds.forEach((sourceId) => this.addEdge({ source: sourceId, target: imageId }))
+    if (workflowId) assignWorkflowNode(image, workflowId, planner.data.workflowType, 'storyboard_image')
+    this.addEdge({ source: plannerId, target: imageId, ...(workflowId ? { workflowId } : {}) })
+    sourceIds.forEach((sourceId) => this.addEdge({ source: sourceId, target: imageId, ...(workflowId ? { workflowId } : {}) }))
 
     const videoId = this.addNode('video', {
       x: planner.position.x + 1010 + index * 900,
       y: planner.position.y,
-    }, imageId)
+    })
     const video = this.nodes.find((node) => node.id === videoId)
     video.data = {
       ...video.data,
@@ -95,8 +99,10 @@ export function createStoryboardSegmentChain({
       promptParts: [{ type: 'text', value: segment.videoPrompt }],
       segmentLocked: true,
     }
+    if (workflowId) assignWorkflowNode(video, workflowId, planner.data.workflowType, 'storyboard_video')
+    this.addEdge({ source: imageId, target: videoId, ...(workflowId ? { workflowId } : {}) })
     if (segment.continuityMode === 'extend' && previousVideoId) {
-      this.addEdge({ source: previousVideoId, target: videoId })
+      this.addEdge({ source: previousVideoId, target: videoId, ...(workflowId ? { workflowId } : {}) })
     }
     segmentNodeIds.push({ segmentIndex, imageId, videoId })
     previousVideoId = videoId
@@ -121,9 +127,13 @@ export const sharedActions = {
       this.selectNodes([existing.id])
       return existing.id
     }
-    const id = this.addNode('video', { x: image.position.x + 500, y: image.position.y }, imageId)
+    const id = this.addNode('video', { x: image.position.x + 500, y: image.position.y })
     const node = this.nodes.find((item) => item.id === id)
     if (!node) return
+    const workflowId = image.data.workflowId
+    if (workflowId) assignWorkflowNode(node, workflowId, image.data.workflowType, 'storyboard_video')
+    this.addEdge({ source: imageId, target: id, ...(workflowId ? { workflowId } : {}) })
+    Object.assign(node.data, storyboardVideoData(image, useModelCapabilitiesStore().defaultVideoModel))
     node.data.title = `${image.data.storyboardTemplateLabel || '商品分镜'}视频`
     this.selectNodes([id])
     return id

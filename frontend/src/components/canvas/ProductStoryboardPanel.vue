@@ -197,7 +197,7 @@ async function submitTask() {
     message: `将使用${selectedTemplateOption.value.label}替换当前分镜链，已有节点会被移除。`,
     confirmText: '继续生成',
   })) return
-  if (existingGeneratedNodes.value.length) store.deleteNodes(existingGeneratedNodes.value)
+  if (existingGeneratedNodes.value.length) store.deleteGeneratedNodes(existingGeneratedNodes.value)
 
   updateNodeData(props.nodeId, {
     templateKey: template.value.key,

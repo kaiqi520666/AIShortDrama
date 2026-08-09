@@ -56,10 +56,13 @@ const assetsVisible = ref(false)
 const {
   activeGroupId,
   selectedNodes,
+  selectedContainsWorkflow,
   selectedNode,
   selectedGroup,
   selectedPartialGroup,
   contextNodeIds,
+  contextContainsWorkflow,
+  contextWorkflowRoot,
   contextCompleteGroup,
   contextPartialGroup,
   selectionFrameStyle,
@@ -73,6 +76,7 @@ const {
   removeContextNodesFromGroup,
   duplicateContextNodes,
   deleteContextNodes,
+  deleteSelectedNodes,
   handleCanvasPointerDown,
   handleNodeDragStart,
   handleNodeDragStop,
@@ -160,18 +164,24 @@ function openPaneCreateMenu(event) {
   }
 }
 
-function createNode(type) {
-  store.addNode(type, createMenu.value.position, createMenu.value.sourceId)
+function createNode(option) {
+  if (option.kind === 'workflow') store.addEcommerceWorkflow(option.type, createMenu.value.position)
+  else store.addNode(option.type, createMenu.value.position, createMenu.value.sourceId)
   createMenu.value = null
 }
 
 function handleConnectStart({ nodeId, handleType }) {
-  connectionSource.value = handleType === 'source' ? nodeId : null
+  const node = nodes.value.find((item) => item.id === nodeId)
+  connectionSource.value = handleType === 'source' && !node?.data.workflowId ? nodeId : null
 }
 
 function handleConnect(connection) {
   const source = nodes.value.find((node) => node.id === connection.source)
   const target = nodes.value.find((node) => node.id === connection.target)
+  if (source?.data.workflowId || target?.data.workflowId) {
+    connectionSource.value = null
+    return toast.warning('自动流程节点的连接由系统管理')
+  }
   const incomingConnections = store.edges
     .filter((edge) => edge.target === target?.id)
     .map((edge) => ({ targetHandle: edge.targetHandle, type: nodes.value.find((node) => node.id === edge.source)?.type }))
@@ -185,6 +195,7 @@ function handleConnect(connection) {
 
 function connectSelected() {
   if (selectedNodes.value.length !== 2) return toast.warning('请选择两个节点后连接')
+  if (selectedNodes.value.some((node) => node.data?.workflowId)) return toast.warning('自动流程节点的连接由系统管理')
   let [source, target] = [...selectedNodes.value].sort((a, b) => a.position.x - b.position.x)
   if (!canConnect(source.type, target.type, store.workspaceType) && canConnect(target.type, source.type, store.workspaceType)) [source, target] = [target, source]
   const incomingConnections = store.edges
@@ -211,7 +222,17 @@ function handleConnectEnd(event) {
 
 function openEdgeContextMenu({ event, edge }) {
   event.preventDefault()
+  if (edge.workflowId) return toast.warning('自动流程连接不可删除')
   contextMenu.value = { x: event.clientX, y: event.clientY, edgeId: edge.id }
+}
+
+function handleNodeContextMenu(payload) {
+  if (payload.node.data?.workflowId) {
+    payload.event.preventDefault()
+    if (!payload.node.data.workflowRoot) return
+    store.selectNodes([payload.node.id])
+  }
+  openContextMenu(payload)
 }
 
 function runContextAction(action) {
@@ -233,9 +254,23 @@ function toggleToolMenu() {
   toolMenuOpen.value = !toolMenuOpen.value
 }
 
-function createPaneNode(type) {
-  store.addNode(type, contextMenu.value.position)
+function createPaneNode(option) {
+  if (option.kind === 'workflow') store.addEcommerceWorkflow(option.type, contextMenu.value.position)
+  else store.addNode(option.type, contextMenu.value.position)
   contextMenu.value = null
+}
+
+async function deleteAssetNode(id) {
+  const node = nodes.value.find((item) => item.id === id)
+  if (!node?.data.workflowId) return store.deleteNode(id)
+  if (!node.data.workflowRoot) return toast.warning('请从商品创作或服饰穿搭主节点删除整个流程')
+  const approved = await confirm({
+    title: `删除整个${node.data.workflowType === 'product' ? '商品创作' : '服饰穿搭'}流程`,
+    message: '将删除这条流程在画布中的全部节点和生成结果，素材库文件不会删除。',
+    confirmText: '删除整个流程',
+    tone: 'danger',
+  })
+  if (approved) store.deleteWorkflow(node.data.workflowId)
 }
 
 const submenuOpensLeft = computed(() => (contextMenu.value?.x || 0) + 478 > window.innerWidth)
@@ -255,6 +290,7 @@ useCanvasShortcuts({
   ungroupSelected,
   duplicateSelected: () => store.duplicateSelected(),
   connectSelected,
+  deleteSelected: deleteSelectedNodes,
   zoomIn,
   zoomOut,
 })
@@ -354,7 +390,7 @@ onBeforeUnmount(() => {
       :min-zoom="0.1"
       :max-zoom="8"
       :connection-radius="28"
-      :delete-key-code="['Backspace', 'Delete']"
+      :delete-key-code="null"
       class="creative-flow"
       :class="{ 'drop-active': canvasDropActive }"
       @dragover="handleCanvasDragOver"
@@ -371,7 +407,7 @@ onBeforeUnmount(() => {
       :nodes-draggable="canvasTool === 'move'"
       :select-nodes-on-drag="canvasTool === 'move'"
       :pan-on-drag="canvasTool === 'hand' ? [0, 1] : [1]"
-      @node-context-menu="openContextMenu"
+      @node-context-menu="handleNodeContextMenu"
       @selection-context-menu="openSelectionContextMenu"
       @edge-context-menu="openEdgeContextMenu"
       @pane-context-menu="openPaneCreateMenu"
@@ -403,7 +439,7 @@ onBeforeUnmount(() => {
     />
 
     <Transition name="asset-sidebar">
-      <AssetDrawer v-if="assetsVisible" :nodes="nodes" :groups="groups" :active-group-id="selectedGroup?.id" @focus="focusNode" @focus-group="focusGroup" @rename-node="store.renameNode" @rename-group="store.renameGroup" @delete-node="store.deleteNode" @delete-group="store.deleteGroup" @close="assetsVisible = false" />
+      <AssetDrawer v-if="assetsVisible" :nodes="nodes" :groups="groups" :active-group-id="selectedGroup?.id" @focus="focusNode" @focus-group="focusGroup" @rename-node="store.renameNode" @rename-group="store.renameGroup" @delete-node="deleteAssetNode" @delete-group="store.deleteGroup" @close="assetsVisible = false" />
     </Transition>
 
     <aside class="canvas-side-tools">
@@ -425,7 +461,7 @@ onBeforeUnmount(() => {
         @keydown.stop
       />
       <span>{{ selectedGroup ? selectedGroup.nodeIds.length : selectedNodes.length }} 个节点</span>
-      <AppButton v-if="selectedNodes.length > 1 && !selectedGroup && !selectedPartialGroup" size="sm" title="编组" @click="store.groupSelected"><Group :size="15" />编组</AppButton>
+      <AppButton v-if="selectedNodes.length > 1 && !selectedGroup && !selectedPartialGroup && !selectedContainsWorkflow" size="sm" title="编组" @click="store.groupSelected"><Group :size="15" />编组</AppButton>
       <AppButton v-if="selectedPartialGroup" size="sm" title="移出编组" @click="ungroupSelected"><Ungroup :size="15" />移出编组</AppButton>
       <AppButton v-if="selectedGroup" size="sm" title="取消编组" @click="ungroupSelected"><Ungroup :size="15" />取消编组</AppButton>
     </div>
@@ -488,12 +524,12 @@ onBeforeUnmount(() => {
         <AppButton @click="pasteFromMenu"><Clipboard :size="15" /><span>粘贴</span><kbd>Ctrl+V</kbd></AppButton>
       </template>
       <template v-else>
-        <AppButton v-if="contextNodeIds.length > 1 && !contextCompleteGroup && !contextPartialGroup" @click="groupContextNodes"><Group :size="15" />编组</AppButton>
+        <AppButton v-if="contextNodeIds.length > 1 && !contextCompleteGroup && !contextPartialGroup && !contextContainsWorkflow" @click="groupContextNodes"><Group :size="15" />编组</AppButton>
         <AppButton v-if="contextCompleteGroup" @click="ungroupContextNodes"><Ungroup :size="15" />取消编组</AppButton>
         <AppButton v-if="contextPartialGroup" @click="removeContextNodesFromGroup"><Ungroup :size="15" />移出编组</AppButton>
-        <AppButton @click="duplicateContextNodes"><Copy :size="15" />创建副本</AppButton>
+        <AppButton v-if="!contextContainsWorkflow" @click="duplicateContextNodes"><Copy :size="15" />创建副本</AppButton>
         <span v-if="contextNodeIds.length > 1" class="context-menu-divider"></span>
-        <AppButton variant="danger" @click="deleteContextNodes"><Trash2 :size="15" />{{ contextNodeIds.length > 1 ? `删除所选（${contextNodeIds.length}）` : '删除' }}</AppButton>
+        <AppButton v-if="!contextContainsWorkflow || contextWorkflowRoot" variant="danger" @click="deleteContextNodes"><Trash2 :size="15" />{{ contextWorkflowRoot ? '删除整个流程' : contextNodeIds.length > 1 ? `删除所选（${contextNodeIds.length}）` : '删除' }}</AppButton>
       </template>
     </AppMenu>
   </main>

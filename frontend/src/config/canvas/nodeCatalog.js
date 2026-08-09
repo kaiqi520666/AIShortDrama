@@ -129,29 +129,29 @@ export const nodeCatalog = {
     }),
   },
   outfit: {
-    type: 'outfit', label: '模特试穿', model: '', hint: '将已识别服饰穿到指定模特并生成试穿定妆图',
+    type: 'outfit', label: '服饰穿搭', model: '', hint: '将已识别服饰穿到指定模特并生成试穿定妆图',
     setting: '服饰识别 + 模特图 · 9:16 / 1K', iconName: 'Shirt',
     componentName: 'OutfitNode', panelName: 'OutfitPanel', panelHeight: 470,
     workspaces: ['ecommerce'], order: { ecommerce: 4 }, businessCreator: 'outfit',
     inputs: ['apparel', 'image'], outputs: ['image', 'apparel_storyboard'],
     inputLimits: {
-      apparel: { max: 1, message: '模特试穿节点只能连接 1 个服饰识别' },
-      image: { max: 1, message: '模特试穿节点只能连接 1 张模特图' },
+      apparel: { max: 1, message: '服饰穿搭节点只能连接 1 个服饰识别' },
+      image: { max: 1, message: '服饰穿搭节点只能连接 1 张模特图' },
     },
     createData: ({ number, models, templates }) => ({
-      title: `模特试穿 ${number}`, status: 'empty', textModel: models.text.id, imageModel: models.image.id,
+      title: `服饰穿搭 ${number}`, status: 'empty', textModel: models.text.id, imageModel: models.image.id,
       aspectRatio: '9:16', resolution: '1K', templateVersion: templates.apparel_visual.version,
       customRequirement: '', generatedNodeIds: [],
     }),
   },
   apparel_storyboard: {
     type: 'apparel_storyboard', label: '服饰分镜', model: '', hint: '基于试穿定妆图生成多段服饰展示故事板与视频',
-    setting: '模特试穿 + 可选场景 · 15 秒分段', iconName: 'Clapperboard', componentName: 'ApparelStoryboardNode',
+    setting: '试穿定妆图 · 15 秒分段', iconName: 'Clapperboard', componentName: 'ApparelStoryboardNode',
     panelName: 'ApparelStoryboardPanel', panelHeight: 470,
     workspaces: ['ecommerce'], order: { ecommerce: 5 }, businessCreator: 'apparelStoryboard',
     inputs: ['outfit', 'apparel', 'image'], outputs: ['image'],
     inputLimits: {
-      outfit: { max: 1, message: '服饰分镜节点只能连接 1 个模特试穿' },
+      outfit: { max: 1, message: '服饰分镜节点只能连接 1 个服饰穿搭' },
       apparel: { max: 1, message: '服饰分镜节点只能连接 1 个服饰资料' },
     },
     createData: ({ number, models, templates }) => ({

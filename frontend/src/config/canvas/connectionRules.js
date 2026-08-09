@@ -16,8 +16,8 @@ export function getConnectionError(sourceType, targetType, incomingTypes = [], w
   if (limit && incomingTypes.filter((type) => type === sourceType).length >= limit.max) return limit.message
   if (targetType === 'apparel_storyboard') {
     if (sourceType === 'outfit') {
-      if (targetHandle && targetHandle !== 'outfit') return '模特试穿请连接到试穿输入'
-      if (incomingTypes.includes('outfit')) return '服饰分镜节点只能连接 1 个模特试穿'
+      if (targetHandle && targetHandle !== 'outfit') return '服饰穿搭请连接到穿搭输入'
+      if (incomingTypes.includes('outfit')) return '服饰分镜节点只能连接 1 个服饰穿搭'
     }
     if (sourceType === 'apparel') {
       if (targetHandle && targetHandle !== 'apparel') return '服饰资料请连接到服饰输入'

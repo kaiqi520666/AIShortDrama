@@ -67,7 +67,7 @@ function updateData(value) {
 async function submitTask() {
   if (!canSubmit.value) return
   if (existingGeneratedNodes.value.length && !await confirm({
-    title: '重新生成模特试穿',
+    title: '重新生成服饰穿搭',
     message: '将创建新的试穿定妆图，已有图片节点继续保留在画布中。',
     confirmText: '继续生成',
   })) return
@@ -93,7 +93,7 @@ async function submitTask() {
     templateVersion: template.value.version,
     userRequirement: customRequirement.value,
   }), {
-    failureMessage: '模特试穿方案生成失败',
+    failureMessage: '服饰穿搭方案生成失败',
     onSuccess: (content) => {
       const settings = selectedImageSettings.value
       const generatedNodeId = store.addOutfitVisualNode(
@@ -114,7 +114,7 @@ defineExpose({ submitTask })
 <template>
   <section class="generation-panel outfit-panel nodrag nowheel" @pointerdown.stop>
     <header class="product-visual-panel-header">
-      <span><Shirt :size="16" />模特试穿</span>
+      <span><Shirt :size="16" />服饰穿搭</span>
       <small>1 张定妆图</small>
     </header>
 
@@ -148,7 +148,7 @@ defineExpose({ submitTask })
       <AppSelect :model-value="selectedTextModel.id" :options="textModelOptions" aria-label="文本模型" @update:model-value="updateData({ textModel: $event })" />
       <span class="panel-divider"></span>
       <span class="task-credit-cost"><Coins :size="14" />本次 {{ estimatedCredits }} 积分</span>
-      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '生成中' : '生成模特试穿'" @click="submitTask">
+      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '生成中' : '生成服饰穿搭'" @click="submitTask">
         <LoaderCircle v-if="running" class="run-task-spinner" :size="18" />
         <ArrowUp v-else :size="18" />
       </AppButton>

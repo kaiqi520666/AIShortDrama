@@ -2,14 +2,23 @@ import {
   buildStoryboardReferenceManifest,
   storyboardShotCount,
 } from '../../config/canvas/productStoryboard'
+import { assignWorkflowEdges, assignWorkflowNode, createWorkflowId } from '../../config/canvas/ecommerceWorkflows'
 import { createStoryboardSegmentChain } from './sharedActions'
 
 export function createProductChain(position, sourceId) {
   if (sourceId) return { handled: false }
+  const workflowId = createWorkflowId('product')
   const imageId = this.addNode('image', { x: position.x - 460, y: position.y + 3 })
   const image = this.nodes.find((node) => node.id === imageId)
   image.data = { ...image.data, title: '商品参考图', assetSource: 'upload' }
-  return { handled: true, id: this.addNode('product', position, imageId) }
+  const productId = this.addNode('product', position, imageId)
+  const storyboardId = this.addNode('product_storyboard', { x: position.x + 520, y: position.y }, productId)
+  assignWorkflowNode(image, workflowId, 'product', 'product_reference')
+  assignWorkflowNode(this.nodes.find((node) => node.id === productId), workflowId, 'product', 'product', true)
+  assignWorkflowNode(this.nodes.find((node) => node.id === storyboardId), workflowId, 'product', 'storyboard')
+  assignWorkflowEdges(this.edges, workflowId, [imageId, productId, storyboardId])
+  this.selectNodes([imageId])
+  return { handled: true, id: productId }
 }
 
 export const productActions = {
@@ -33,9 +42,11 @@ export const productActions = {
         aspectRatio: settings.aspectRatio,
         resolution: settings.resolution,
       }
-      this.addEdge({ source: plannerId, target: id })
-      references.forEach((referenceId) => this.addEdge({ source: referenceId, target: id }))
-      this.addEdge({ source: productId, target: id })
+      const workflowId = planner.data.workflowId
+      if (workflowId) assignWorkflowNode(node, workflowId, planner.data.workflowType, 'product_visual_result')
+      this.addEdge({ source: plannerId, target: id, ...(workflowId ? { workflowId } : {}) })
+      references.forEach((referenceId) => this.addEdge({ source: referenceId, target: id, ...(workflowId ? { workflowId } : {}) }))
+      this.addEdge({ source: productId, target: id, ...(workflowId ? { workflowId } : {}) })
       return id
     })
     this.selectNodes(ids.slice(0, 1))
@@ -86,8 +97,10 @@ export const productActions = {
         promptParts: [{ type: 'text', value: plan.prompt }],
         ...settings,
       }
-      this.addEdge({ source: plannerId, target: id })
-      this.addEdge({ source: productId, target: id })
+      const workflowId = planner.data.workflowId
+      if (workflowId) assignWorkflowNode(node, workflowId, planner.data.workflowType, 'storyboard_image')
+      this.addEdge({ source: plannerId, target: id, ...(workflowId ? { workflowId } : {}) })
+      this.addEdge({ source: productId, target: id, ...(workflowId ? { workflowId } : {}) })
       return id
     })
     this.selectNodes(ids.slice(0, 1))

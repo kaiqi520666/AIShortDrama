@@ -119,6 +119,44 @@ describe('canvas grouping and duplication', () => {
 })
 
 describe('canvas connections and node packs', () => {
+  it('locks automatic workflow nodes and edges while keeping basic nodes editable', async () => {
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1', version: 1, workspace_type: 'ecommerce', canvas: { schema_version: 4, nodes: [], edges: [], groups: [], sequence: 1 },
+    })
+    const productId = store.addEcommerceWorkflow('product', { x: 0, y: 0 })
+    const workflowId = store.nodes.find((node) => node.id === productId).data.workflowId
+    const storyboard = store.nodes.find((node) => node.data.workflowRole === 'storyboard')
+    const managedEdge = store.edges[0]
+    const basicId = store.addNode('image', { x: -900, y: 0 })
+
+    expect(store.addEdge({ source: basicId, target: productId })).toBe(false)
+    expect(store.deleteEdge(managedEdge.id)).toBe(false)
+    expect(store.deleteNode(storyboard.id)).toBe('workflow_locked')
+    expect(store.deleteNode(productId)).toBe('workflow_root')
+    expect(store.deleteNodes([storyboard.id])).toBe(false)
+    expect(store.duplicateNodes([productId])).toEqual([])
+    store.selectNodes([productId, storyboard.id])
+    expect(store.groupSelected()).toBe(false)
+
+    expect(store.deleteWorkflow(workflowId)).toBe(true)
+    expect(store.nodes.map((node) => node.id)).toEqual([basicId])
+    expect(store.edges).toEqual([])
+  })
+
+  it('allows ordinary basic-node connections and deletion', async () => {
+    const store = useCanvasStore()
+    await store.loadWorkspace({
+      id: 'workspace-1', version: 1, workspace_type: 'ecommerce', canvas: { schema_version: 4, nodes: [], edges: [], groups: [], sequence: 1 },
+    })
+    const imageId = store.addNode('image', { x: 0, y: 0 })
+    const videoId = store.addNode('video', { x: 400, y: 0 })
+
+    expect(store.addEdge({ source: imageId, target: videoId })).toBe(true)
+    expect(store.deleteEdge(store.edges[0].id)).toBe(true)
+    expect(store.deleteNode(imageId)).toBe(true)
+  })
+
   it('finds an incoming node by its target handle', () => {
     const store = useCanvasStore()
     store.$patch({

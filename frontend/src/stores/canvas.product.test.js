@@ -34,10 +34,18 @@ describe('canvas product workflows', () => {
       imageModel: 'gpt-image-2',
       items: expect.arrayContaining([expect.objectContaining({ id: 'white-bg', enabled: true })]),
       prompt: '',
+      workflowRoot: true,
     }))
-    expect(store.edges).toEqual([
-      expect.objectContaining({ source: 'image-1', target: productId }),
-    ])
+    expect(store.nodes[2]).toEqual(expect.objectContaining({
+      id: 'product_storyboard-3',
+      position: { x: 520, y: 0 },
+      data: expect.objectContaining({ workflowRole: 'storyboard' }),
+    }))
+    expect(new Set(store.nodes.map((node) => node.data.workflowId))).toEqual(new Set([store.nodes[1].data.workflowId]))
+    expect(store.edges).toEqual(expect.arrayContaining([
+      expect.objectContaining({ source: 'image-1', target: productId, workflowId: store.nodes[1].data.workflowId }),
+      expect.objectContaining({ source: productId, target: 'product_storyboard-3', workflowId: store.nodes[1].data.workflowId }),
+    ]))
   })
 
   it('creates one editable UGC storyboard image node', async () => {
@@ -49,7 +57,7 @@ describe('canvas product workflows', () => {
       canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
     })
     const productId = store.addNode('product', { x: 0, y: 0 })
-    const storyboardId = store.addNode('product_storyboard', { x: 500, y: 0 }, productId)
+    const storyboardId = store.nodes.find((node) => node.type === 'product_storyboard').id
     expect(store.nodes.find((node) => node.id === storyboardId).data.duration).toBe(30)
     store.nodes.find((node) => node.id === storyboardId).data.duration = 8
     store.nodes.find((node) => node.id === storyboardId).data.characterReferences = [{
@@ -135,7 +143,7 @@ describe('canvas product workflows', () => {
       id: 'workspace-1', version: 1, workspace_type: 'ecommerce', canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
     })
     const productId = store.addNode('product', { x: 0, y: 0 })
-    const storyboardId = store.addNode('product_storyboard', { x: 500, y: 0 }, productId)
+    const storyboardId = store.nodes.find((node) => node.type === 'product_storyboard').id
     const plan = {
       templateId: 'ugc-seeding', title: 'UGC 种草', globalScript: '全局脚本', totalDuration: 30,
       segments: [
@@ -179,7 +187,7 @@ describe('canvas product workflows', () => {
       id: 'workspace-1', version: 1, workspace_type: 'ecommerce', canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
     })
     const productId = store.addNode('product', { x: 0, y: 0 })
-    const storyboardId = store.addNode('product_storyboard', { x: 500, y: 0 }, productId)
+    const storyboardId = store.nodes.find((node) => node.type === 'product_storyboard').id
     const planner = store.nodes.find((node) => node.id === storyboardId)
     planner.data.productReferences = [{ id: 'old-product', name: '旧商品图', url: 'https://example.com/old-product.png' }]
     planner.data.characterReferences = [{ id: 'old-character', name: '旧角色', url: 'https://example.com/old-character.png' }]
@@ -200,7 +208,7 @@ describe('canvas product workflows', () => {
     ])
   })
 
-  it('uses an existing image when product creation is contextual', async () => {
+  it('keeps contextual legacy product creation available for saved flows', async () => {
     const store = useCanvasStore()
     await store.loadWorkspace({
       id: 'workspace-1',
@@ -235,7 +243,7 @@ describe('canvas product workflows', () => {
       { id: 'first-screen', label: '首屏主视觉', prompt: '首屏主视觉商品图' },
     ], { model: 'gpt-image-2', aspectRatio: '1:1', resolution: '1K' })
 
-    expect(ids).toEqual(['image-4', 'image-5'])
+    expect(ids).toEqual(['image-5', 'image-6'])
     expect(store.nodes.find((node) => node.id === ids[0]).data).toEqual(expect.objectContaining({
       title: '白底图', prompt: '纯白背景商品图', model: 'gpt-image-2', aspectRatio: '1:1', resolution: '1K',
     }))
