@@ -43,11 +43,14 @@ export function useMediaNodeAsset({ props, store, toast, updateNodeData, mediaWi
       : resourceType.value === 'asset' ? '资产库' : `${libraryCopy.value.label}库`
   ))
   const storyboardAsset = computed(() => props.data.storyboardAsset || {})
-  const storyboardRegistrationLabel = computed(() => ({
-    active: 'Seedance 虚拟人像素材已可用',
-    processing: '刷新虚拟人像素材审核状态',
-    failed: '重新注册虚拟人像素材',
-  }[storyboardAsset.value.status] || '注册虚拟人像素材'))
+  const storyboardRegistrationLabel = computed(() => {
+    if (!props.data.assetId) return '当前图片缺少资产记录，无法注册人物素材'
+    return ({
+      active: 'Seedance 人物素材已可用',
+      processing: '刷新 Seedance 人物素材审核状态',
+      failed: '重新注册 Seedance 人物素材',
+    }[storyboardAsset.value.status] || '注册为 Seedance 人物素材')
+  })
   const imageResolution = computed(() => {
     if (props.type !== 'image') return ''
     const width = Number(props.data.sourceWidth)
@@ -89,7 +92,7 @@ export function useMediaNodeAsset({ props, store, toast, updateNodeData, mediaWi
         ...(replacementWidth ? { displayWidth: replacementWidth } : {}),
         ...(metadata.duration ? { sourceDuration: metadata.duration } : {}),
         sourceByteSize: result.data.size,
-        ...(props.data.storyboardSourceId ? { storyboardAsset: null } : {}),
+        ...(props.type === 'image' ? { storyboardAsset: null } : {}),
       })
     } catch (error) {
       uploadNotice.value = getApiErrorMessage(error, '上传失败')
@@ -111,7 +114,7 @@ export function useMediaNodeAsset({ props, store, toast, updateNodeData, mediaWi
       sourceAspectRatio: sourceWidth && sourceHeight ? sourceWidth / sourceHeight : null,
       sourceByteSize: item.byteSize || null,
       resourceId: item.id,
-      ...(props.data.storyboardSourceId ? { storyboardAsset: null } : {}),
+      ...(props.type === 'image' ? { storyboardAsset: item.metadata?.seedance || null } : {}),
     })
     assetPickerOpen.value = false
     characterAssetPickerOpen.value = false
@@ -180,10 +183,12 @@ export function useMediaNodeAsset({ props, store, toast, updateNodeData, mediaWi
       const seedance = result.data?.metadata?.seedance
       if (seedance) updateNodeData(props.id, { storyboardAsset: seedance })
       if (result.code !== 0) throw new Error(result.message)
-      if (seedance?.status === 'active') toast.success('分镜虚拟人像素材已可用于 Seedance')
-      else toast.info('分镜素材审核中，请稍后点击刷新')
+      if (seedance?.status === 'active') toast.success('人物素材已可用于 Seedance')
+      else toast.info('人物素材审核中，请稍后点击刷新')
     } catch (error) {
-      toast.error(getApiErrorMessage(error, '分镜素材注册失败'))
+      const seedance = error.response?.data?.data?.metadata?.seedance
+      if (seedance) updateNodeData(props.id, { storyboardAsset: seedance })
+      toast.error(getApiErrorMessage(error, '人物素材注册失败'))
     } finally {
       registeringStoryboard.value = false
     }

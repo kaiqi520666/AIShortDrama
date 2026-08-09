@@ -36,8 +36,16 @@ export function useGenerationContext({
     && props.data.storyboardSegmentIndex < props.data.storyboardSegmentCount
   ))
   const connectedReferences = computed(() => store.incomingNodes(props.nodeId).map((node) => (
-    props.type === 'video' && node.type === 'image' && node.data.storyboardSourceId
-      ? { ...node, data: { ...node.data, providerAsset: node.data.storyboardAsset?.asset_url } }
+    props.type === 'video' && node.type === 'image'
+      ? {
+          ...node,
+          data: {
+            ...node.data,
+            providerAsset: node.data.storyboardAsset?.status === 'active'
+              ? node.data.storyboardAsset.asset_url
+              : node.data.providerAsset || null,
+          },
+        }
       : node
   )))
   const references = computed(() => {
@@ -337,7 +345,7 @@ export function useGenerationContext({
       status: 'generating',
       generationProgress: 0,
       generationError: '',
-      ...(isStoryboardImage.value ? { storyboardAsset: null } : {}),
+      ...(props.type === 'image' ? { storyboardAsset: null } : {}),
     })
     try {
       const result = await adapter.submit(adapter.buildRequest(context), context)

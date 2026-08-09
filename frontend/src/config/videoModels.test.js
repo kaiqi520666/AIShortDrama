@@ -62,6 +62,18 @@ describe('buildVideoRequest', () => {
     expect(buildVideoRequest({ model: 'seedance-2', prompt: 'test', duration: 5, resolution: '720p', aspectRatio: '16:9' }, [avatar]).reference_images).toEqual(['asset://pa_test'])
   })
 
+  it('waits for a registered image asset to become active', () => {
+    const avatar = {
+      id: 'avatar',
+      type: 'image',
+      data: {
+        asset: 'https://example.com/avatar.png',
+        storyboardAsset: { status: 'processing', asset_url: 'asset://pa_test' },
+      },
+    }
+    expect(getVideoReferenceError({ model: 'seedance-2' }, [avatar])).toContain('刷新状态')
+  })
+
   it('uses the registered storyboard asset for Seedance', () => {
     const storyboard = {
       id: 'storyboard',
@@ -90,7 +102,7 @@ describe('buildVideoRequest', () => {
         storyboardCharacterReferences: [{ assetUrl: 'asset://pa_character' }],
       },
     }
-    expect(getVideoReferenceError({ model: 'seedance-2' }, [storyboard])).toContain('注册虚拟人像素材')
+    expect(getVideoReferenceError({ model: 'seedance-2' }, [storyboard])).toContain('注册 Seedance 人物素材')
   })
 
   it('requires registration for an apparel storyboard with a model reference', () => {
@@ -103,7 +115,7 @@ describe('buildVideoRequest', () => {
         storyboardRequiresRegistration: true,
       },
     }
-    expect(getVideoReferenceError({ model: 'seedance-2' }, [storyboard])).toContain('注册虚拟人像素材')
+    expect(getVideoReferenceError({ model: 'seedance-2' }, [storyboard])).toContain('注册 Seedance 人物素材')
   })
 
   it('requires registration for legacy apparel storyboard nodes', () => {
@@ -116,7 +128,7 @@ describe('buildVideoRequest', () => {
         storyboardOutfitBoard: { url: 'https://example.com/outfit-board.jpg' },
       },
     }
-    expect(getVideoReferenceError({ model: 'seedance-2' }, [storyboard])).toContain('注册虚拟人像素材')
+    expect(getVideoReferenceError({ model: 'seedance-2' }, [storyboard])).toContain('注册 Seedance 人物素材')
   })
 
   it('does not recheck avatar registration on a prior storyboard video reference', () => {

@@ -122,7 +122,7 @@ const { resume: resumeGenerationPolling } = useNodeGenerationPolling({
       <AppTooltip v-if="data.storyboardSourceId" text="创建视频节点">
         <AppButton class="media-node-toolbar-button" icon-only aria-label="创建视频节点" @click.stop="createStoryboardVideo"><Video :size="16" /></AppButton>
       </AppTooltip>
-      <AppTooltip v-if="data.storyboardSourceId" :text="storyboardRegistrationLabel">
+      <AppTooltip :text="storyboardRegistrationLabel">
         <AppButton class="media-node-toolbar-button" icon-only :disabled="registeringStoryboard || !data.assetId" :aria-label="storyboardRegistrationLabel" @click.stop="registerStoryboardAsset">
           <LoaderCircle v-if="registeringStoryboard" class="media-action-spinner" :size="16" />
           <BadgeCheck v-else-if="storyboardAsset.status === 'active'" :size="16" />

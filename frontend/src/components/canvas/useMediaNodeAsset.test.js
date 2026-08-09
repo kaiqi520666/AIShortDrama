@@ -59,6 +59,7 @@ describe('useMediaNodeAsset', () => {
       assetId: 'asset-1',
       sourceAspectRatio: 4 / 3,
       status: 'ready',
+      storyboardAsset: null,
     }))
     expect(subject.uploading.value).toBe(false)
   })
@@ -80,13 +81,39 @@ describe('useMediaNodeAsset', () => {
     const { subject, updateNodeData } = createSubject()
     subject.assetPickerOpen.value = true
 
-    subject.selectAsset({ id: 'library-1', assetId: 'asset-2', url: 'https://cdn.test/library.png', width: 100, height: 200, byteSize: 300 })
+    subject.selectAsset({
+      id: 'library-1',
+      assetId: 'asset-2',
+      url: 'https://cdn.test/library.png',
+      width: 100,
+      height: 200,
+      byteSize: 300,
+      metadata: { seedance: { status: 'active', asset_url: 'asset://library-person' } },
+    })
 
     expect(updateNodeData).toHaveBeenCalledWith('image-1', expect.objectContaining({
       assetSource: 'library',
       resourceId: 'library-1',
       sourceAspectRatio: 0.5,
+      storyboardAsset: { status: 'active', asset_url: 'asset://library-person' },
     }))
     expect(subject.assetPickerOpen.value).toBe(false)
+  })
+
+  it('registers an ordinary image as a Seedance person asset', async () => {
+    const { props, subject, updateNodeData, toast } = createSubject()
+    props.data.assetId = 'asset-1'
+    registerAssetPrivateAvatar.mockResolvedValue({
+      code: 0,
+      data: { metadata: { seedance: { status: 'active', asset_url: 'asset://person-1' } } },
+    })
+
+    await subject.registerStoryboardAsset()
+
+    expect(registerAssetPrivateAvatar).toHaveBeenCalledWith('asset-1', null)
+    expect(updateNodeData).toHaveBeenCalledWith('image-1', {
+      storyboardAsset: { status: 'active', asset_url: 'asset://person-1' },
+    })
+    expect(toast.success).toHaveBeenCalledWith('人物素材已可用于 Seedance')
   })
 })

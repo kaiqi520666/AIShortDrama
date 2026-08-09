@@ -19,7 +19,7 @@ const videoModel = {
   id: 'video-1', label: '视频模型', resolutions: ['720p'], aspectRatios: ['16:9'],
   defaultResolution: '720p', defaultAspectRatio: '16:9', defaultDuration: 5, durationMin: 3,
   durationMax: 10, durationOptions: [5, 10], maxPromptLength: 100, generateAudio: true,
-  returnLastFrame: false, requiresPrivateAsset: false, referenceLimits: { image: 1, video: 1, audio: 1 },
+  returnLastFrame: false, requiresPrivateAsset: true, referenceLimits: { image: 1, video: 1, audio: 1 },
 }
 const audioCapability = {
   model: { id: 'audio-1', label: '音频模型' },
@@ -133,5 +133,29 @@ describe('useGenerationContext', () => {
       ],
       prompt: '展示@图片1',
     })
+  })
+
+  it('uses the registered person asset from an ordinary image node', async () => {
+    const reference = {
+      id: 'image-1',
+      type: 'image',
+      data: {
+        asset: 'https://cdn.test/person.png',
+        storyboardAsset: { status: 'active', asset_url: 'asset://person-1' },
+      },
+    }
+    const { context } = createSubject('video', {
+      model: 'video-1',
+      prompt: '人物展示服装',
+      duration: 5,
+      resolution: '720p',
+      aspectRatio: '16:9',
+    }, [reference])
+
+    await context.submitTask()
+
+    expect(createVideoGeneration).toHaveBeenCalledWith(expect.objectContaining({
+      reference_images: ['asset://person-1'],
+    }))
   })
 })

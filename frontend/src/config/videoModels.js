@@ -47,6 +47,7 @@ function normalizeReferences(references, usePrivateAssets = false) {
     type: reference?.type,
     url: typeof reference === 'string' ? reference : reference?.url || (usePrivateAssets ? reference?.data?.providerAsset : null) || reference?.data?.asset,
     providerAsset: typeof reference === 'string' ? '' : reference?.data?.providerAsset || '',
+    privateAssetStatus: typeof reference === 'string' ? '' : reference?.data?.storyboardAsset?.status || '',
     storyboardCharacterReferences: typeof reference === 'string' ? [] : reference?.data?.storyboardCharacterReferences || [],
     storyboard: typeof reference === 'string' ? false : Boolean(reference?.data?.storyboardSourceId),
     storyboardRequiresRegistration: typeof reference === 'string' ? false : Boolean(reference?.data?.storyboardRequiresRegistration),
@@ -74,8 +75,14 @@ export function getVideoReferenceError(data, references = [], models, defaultMod
   const normalized = normalizeReferences(references, model.requiresPrivateAsset)
   const modelError = getVideoModelError(data, references, models, defaultModel)
   if (modelError) return modelError
+  if (model.requiresPrivateAsset && normalized.some((reference) => reference.type === 'image' && reference.privateAssetStatus === 'processing')) {
+    return '人物素材审核中，请在图片节点工具栏刷新状态'
+  }
+  if (model.requiresPrivateAsset && normalized.some((reference) => reference.type === 'image' && reference.privateAssetStatus === 'failed')) {
+    return '人物素材注册失败，请在图片节点工具栏重新注册'
+  }
   if (model.requiresPrivateAsset && normalized.some((reference) => reference.type === 'image' && reference.storyboard && (reference.storyboardCharacterReferences?.some((character) => character.assetUrl) || reference.storyboardRequiresRegistration || reference.storyboardOutfitBoard) && !reference.providerAsset)) {
-    return '请先在分镜图工具栏注册虚拟人像素材'
+    return '请先在图片节点工具栏注册 Seedance 人物素材'
   }
   const types = normalized.map((reference) => reference.type)
   if (types.includes('audio') && !types.some((type) => ['image', 'video'].includes(type))) return '参考音频需同时连接图片或视频'
