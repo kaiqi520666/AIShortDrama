@@ -149,6 +149,14 @@ export const apparelActions = {
   addOutfitStoryboardNodes(plannerId, outfitReferenceId, outfitReference, sceneId, plans, settings) {
     const planner = this.nodes.find((node) => node.id === plannerId)
     if (!planner || !plans?.segments?.length) return []
+    const defaultVideoModel = useModelCapabilitiesStore().defaultVideoModel
+    const videoSettings = {
+      model: planner.data.videoModel || defaultVideoModel.id,
+      duration: 15,
+      aspectRatio: planner.data.videoAspectRatio || defaultVideoModel.defaultAspectRatio,
+      resolution: planner.data.videoResolution || defaultVideoModel.defaultResolution,
+      generateAudio: planner.data.generateAudio ?? true,
+    }
     const reference = outfitReference?.url
       ? { url: outfitReference.url, assetId: outfitReference.assetId || null }
       : null
@@ -217,6 +225,7 @@ export const apparelActions = {
         prompt: segment.videoPrompt,
         promptParts: [{ type: 'text', value: segment.videoPrompt }],
         segmentLocked: true,
+        ...videoSettings,
       }
       if (workflowId) assignWorkflowNode(video, workflowId, planner.data.workflowType, 'storyboard_video')
       this.addEdge({ source: imageId, target: videoId, ...(workflowId ? { workflowId } : {}) })

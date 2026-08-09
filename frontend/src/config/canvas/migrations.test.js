@@ -52,7 +52,7 @@ describe('canvas migrations', () => {
     const product = migrated.nodes.find((node) => node.id === 'product-2')
     const storyboard = migrated.nodes.find((node) => node.type === 'product_storyboard')
 
-    expect(migrated.schema_version).toBe(4)
+    expect(migrated.schema_version).toBe(CURRENT_CANVAS_SCHEMA_VERSION)
     expect(migrated.nodes.some((node) => node.type === 'product_visual')).toBe(false)
     expect(product.position).toEqual({ x: 0, y: 0 })
     expect(product.data).toEqual(expect.objectContaining({ resolution: '2K', items: [{ id: 'saved' }], workflowRoot: true }))
@@ -117,5 +117,22 @@ describe('canvas migrations', () => {
       position: { x: 1500, y: 200 },
       data: expect.objectContaining({ title: '保留的服饰分镜', customRequirement: '海边场景', workflowRole: 'storyboard' }),
     }))
+  })
+
+  it('fills missing apparel storyboard video settings from its planner', () => {
+    const migrated = migrateCanvas({
+      schema_version: 4,
+      nodes: [
+        { id: 'apparel_storyboard-1', type: 'apparel_storyboard', data: { videoModel: 'seedance-2-mini', videoAspectRatio: '9:16', videoResolution: '720p', generateAudio: true } },
+        { id: 'video-2', type: 'video', data: { storyboardSourceId: 'apparel_storyboard-1', storyboardDuration: 15 } },
+        { id: 'video-3', type: 'video', data: { storyboardSourceId: 'apparel_storyboard-1', storyboardDuration: 15, aspectRatio: '1:1' } },
+      ],
+      edges: [],
+      groups: [],
+    }, ecommerceOptions)
+
+    expect(migrated.nodes[1].data).toEqual(expect.objectContaining({ model: 'seedance-2-mini', duration: 15, aspectRatio: '9:16', resolution: '720p', generateAudio: true }))
+    expect(migrated.nodes[2].data.aspectRatio).toBe('1:1')
+    expect(migrateCanvas(migrated, ecommerceOptions)).toEqual(migrated)
   })
 })

@@ -1,7 +1,7 @@
 import { createNodeData } from './nodeCatalog'
 import { createStoryboardTemplates } from './productStoryboard'
 
-export const CURRENT_CANVAS_SCHEMA_VERSION = 4
+export const CURRENT_CANVAS_SCHEMA_VERSION = 5
 
 function legacyMigrations(canvas, version, defaultTextModelId, templates) {
   const storyboardTemplate = templates?.product_storyboard
@@ -195,6 +195,26 @@ function migrateEcommerceWorkflows(canvas, models, templates) {
   canvas.sequence = sequence
 }
 
+function migrateApparelStoryboardVideoSettings(canvas, models) {
+  const nodes = new Map(canvas.nodes.map((node) => [node.id, node]))
+  canvas.nodes
+    .filter((node) => node.type === 'video' && node.data?.storyboardSourceId)
+    .forEach((node) => {
+      const planner = nodes.get(node.data.storyboardSourceId)
+      if (planner?.type !== 'apparel_storyboard') return
+      const defaults = {
+        model: planner.data.videoModel || models?.video?.id,
+        duration: node.data.storyboardDuration || 15,
+        aspectRatio: planner.data.videoAspectRatio || models?.video?.defaultAspectRatio,
+        resolution: planner.data.videoResolution || models?.video?.defaultResolution,
+        generateAudio: planner.data.generateAudio ?? true,
+      }
+      Object.entries(defaults).forEach(([key, value]) => {
+        if (node.data[key] == null && value != null) node.data[key] = value
+      })
+    })
+}
+
 export function migrateCanvas(source = {}, options = {}, legacyTemplates) {
   const canvas = JSON.parse(JSON.stringify(source || {}))
   canvas.nodes ||= []
@@ -210,6 +230,9 @@ export function migrateCanvas(source = {}, options = {}, legacyTemplates) {
   legacyMigrations(canvas, version, normalized.defaultTextModelId, normalized.templates)
   if (version < 4 && normalized.workspaceType === 'ecommerce') {
     migrateEcommerceWorkflows(canvas, normalized.models, normalized.templates)
+  }
+  if (version < 5 && normalized.workspaceType === 'ecommerce') {
+    migrateApparelStoryboardVideoSettings(canvas, normalized.models)
   }
   canvas.schema_version = CURRENT_CANVAS_SCHEMA_VERSION
   return canvas

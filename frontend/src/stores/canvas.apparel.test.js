@@ -123,7 +123,8 @@ describe('canvas apparel workflows', () => {
     }, { model: 'gpt-image-2', aspectRatio: '16:9', resolution: '2K' })
 
     expect(resultIds).toHaveLength(4)
-    expect(store.nodes.find((node) => node.id === resultIds[0]).data).toEqual(expect.objectContaining({ storyboardTemplateId: 'apparel-showcase', storyboardTemplateKey: 'apparel_showcase', storyboardShotCount: 6, prompt: '分镜1' }))
+    expect(store.nodes.find((node) => node.id === resultIds[0]).data).toEqual(expect.objectContaining({ storyboardTemplateId: 'apparel-showcase', storyboardTemplateKey: 'apparel_showcase', storyboardShotCount: 6, prompt: '分镜1', aspectRatio: '16:9' }))
+    expect(store.nodes.find((node) => node.id === resultIds[1]).data).toEqual(expect.objectContaining({ model: 'seedance-2-mini', duration: 15, aspectRatio: '9:16', resolution: '720p', generateAudio: true }))
     expect(store.nodes.find((node) => node.id === resultIds[2]).data).toEqual(expect.objectContaining({ storyboardContinuityMode: 'extend', segmentLocked: true }))
     expect(store.edges).toEqual(expect.arrayContaining([
       expect.objectContaining({ source: outfitReferenceId, target: resultIds[0] }),
