@@ -46,17 +46,24 @@ function close() { if (!dialog.submitting) dialog.type = '' }
 function title() { return ({ credits: '调整积分', role: '修改角色', status: dialog.value === 'disabled' ? '停用用户' : '启用用户', password: '重置密码' })[dialog.type] }
 
 async function submit() {
-  if (!await confirmMutation({
+  const mutation = {
+    type: dialog.type,
+    user: dialog.user,
+    reason: dialog.reason,
+    value: dialog.value,
     title: title(),
-    message: `${dialog.user.username} · ${dialog.user.email}`,
+  }
+  if (!await confirmMutation({
+    title: mutation.title,
+    message: `${mutation.user.username} · ${mutation.user.email}`,
   })) return
   dialog.submitting = true
   try {
-    const payload = { reason: dialog.reason }
-    if (dialog.type === 'credits') await adjustUserCredits(dialog.user.id, { ...payload, amount: Number(dialog.value) })
-    else if (dialog.type === 'role') await updateUserRole(dialog.user.id, { ...payload, role: dialog.value })
-    else if (dialog.type === 'status') await updateUserStatus(dialog.user.id, { ...payload, status: dialog.value })
-    else await resetUserPassword(dialog.user.id, { ...payload, new_password: dialog.value })
+    const payload = { reason: mutation.reason }
+    if (mutation.type === 'credits') await adjustUserCredits(mutation.user.id, { ...payload, amount: Number(mutation.value) })
+    else if (mutation.type === 'role') await updateUserRole(mutation.user.id, { ...payload, role: mutation.value })
+    else if (mutation.type === 'status') await updateUserStatus(mutation.user.id, { ...payload, status: mutation.value })
+    else if (mutation.type === 'password') await resetUserPassword(mutation.user.id, { ...payload, new_password: mutation.value })
     toast.success('操作已完成')
     dialog.type = ''
     await load(data.page)
