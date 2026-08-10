@@ -81,6 +81,19 @@ def load_apparel_visual_migration():
     return module
 
 
+def load_apparel_reference_instruction_migration():
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "alembic"
+        / "versions"
+        / "s9k1m3o5q7r8_fix_apparel_reference_instruction.py"
+    )
+    spec = importlib.util.spec_from_file_location("apparel_reference_instruction_migration", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def product_visual_config():
     group_labels = {
         "basic": "基础展示",
@@ -170,6 +183,12 @@ def test_apparel_visual_migration_preserves_operator_fields_and_is_idempotent():
     })
     assert defaults["business_instruction"] == migration.BUSINESS_INSTRUCTION
     assert defaults["prompt_blocks"]["fidelity_rules"] == migration.FIDELITY_RULES
+
+
+def test_apparel_reference_instruction_migration_only_replaces_known_fixed_copy():
+    migration = load_apparel_reference_instruction_migration()
+    assert migration.TASK_INSTRUCTION.startswith("请根据下方明确列出的参考图角色")
+    assert any("图片2是模特参考图" in value for value in migration.OLD_PREFIXES)
 
 
 def test_product_visual_builder_matches_accepted_frontend_prompt_byte_for_byte():
