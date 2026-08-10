@@ -2,7 +2,6 @@ import { getNodeDescriptor } from '../config/canvas/nodeCatalog'
 import {
   apparelActions,
   createApparelChain,
-  createApparelStoryboardChain,
   createOutfitChain,
 } from './canvasBusiness/apparelActions'
 import { createCharacterChain, dramaActions } from './canvasBusiness/dramaActions'
@@ -11,7 +10,6 @@ import { createCanvasEdge, sharedActions, storyboardVideoData } from './canvasBu
 
 const businessCreators = {
   apparel: createApparelChain,
-  apparelStoryboard: createApparelStoryboardChain,
   character: createCharacterChain,
   outfit: createOutfitChain,
   product: createProductChain,

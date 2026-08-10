@@ -208,8 +208,6 @@ def test_reverse_prompt_accepts_product_storyboard_mode():
     assert drama_payload.template_key == "commerce_drama"
     with pytest.raises(ValidationError, match="服务端模板"):
         ReversePromptRequest(**storyboard_payload(prompt="生成商品分镜"))
-    apparel_payload = ReversePromptRequest(**apparel_storyboard_payload())
-    assert apparel_payload.response_mode == "apparel_storyboard_plan"
 
 
 def test_product_storyboard_limits_total_reference_images():

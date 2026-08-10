@@ -30,7 +30,7 @@ const templateLabels = {
   apparel_visual: '服饰试穿',
   product_storyboard: 'UGC 种草',
   commerce_drama: '短剧带货',
-  apparel_showcase: '服饰展示',
+  apparel_showcase: '服饰视频模板',
 }
 const promptFields = {
   product_visual: [
@@ -64,14 +64,14 @@ const promptFields = {
     ['forbidden_rules', '禁止项', ''],
   ],
   apparel_showcase: [
-    ['creative_direction', '创作方向', ''],
-    ['segment_structure', '分段结构', '{segment_count}'],
-    ['apparel_fidelity_rules', '服饰一致性', ''],
-    ['model_consistency_rules', '模特一致性', ''],
-    ['shot_rules', '镜头规则', ''],
-    ['image_rules', '生图规则', '{columns} {rows} {ratio}'],
-    ['video_rules', '视频规则', '{ratio}'],
-    ['continuity_rules', '连续性规则', ''],
+    ['look_rules', '定妆图规则', ''],
+    ['model_rules', '模特规则', '{model_description}'],
+    ['scene_rules', '场景规则', '{scene_description}'],
+    ['phone_style_rules', '手机实拍风格', ''],
+    ['action_rules', '服饰展示动作', ''],
+    ['video_reference_rules', '视频参考规则', ''],
+    ['sound_rules', '声音规则', ''],
+    ['continuation_rules', '连续生成规则', '{duration}'],
     ['forbidden_rules', '禁止项', ''],
   ],
 }
@@ -93,7 +93,7 @@ const currentPromptFields = computed(() => promptFields[props.templateKey] || []
 const visibleDurationOptions = computed(() => isDrama.value ? durationOptions.slice(1) : durationOptions)
 const pageCopy = computed(() => {
   if (isImageSettings.value) return { eyebrow: 'IMAGE SETTINGS', title: '出图设置', description: '管理商品出图与服饰试穿的视觉生成规则。' }
-  if (isApparelShowcase.value) return { eyebrow: 'APPAREL TEMPLATE', title: '服饰模板', description: '管理服饰展示的分镜结构、视频规则和连续性。' }
+  if (isApparelShowcase.value) return { eyebrow: 'APPAREL VIDEO TEMPLATE', title: '服饰视频模板', description: '管理定妆图与真实手机实拍视频的默认规则。' }
   return { eyebrow: 'COMMERCE TEMPLATE', title: '电商模板', description: '管理 UGC 种草和短剧带货的内容工作流。' }
 })
 
@@ -233,7 +233,7 @@ onMounted(load)
           <header><strong>JSON 输出协议</strong><small>协议由生成器固定，后台不可修改</small></header>
           <div class="admin-protocol-row">
             <code>{{ isUgc ? 'ugc-seeding' : form.config.output_protocol_id }}</code>
-            <p>{{ isUgc ? '每段 15 秒，每段 6 镜头，输出 prompt / videoPrompt' : isApparelShowcase ? '基于试穿定妆图生成多段服饰展示，每段固定 6 镜头' : '包含剧情角色、剧情节拍、商品植入及每段 6 镜头提示词' }}</p>
+            <p>{{ isUgc ? '每段 15 秒，每段 6 镜头，输出 prompt / videoPrompt' : isApparelShowcase ? '输出定妆图与服饰展示视频提示词，不生成六格分镜。' : '包含剧情角色、剧情节拍、商品植入及每段 6 镜头提示词' }}</p>
           </div>
         </section>
 
@@ -247,7 +247,7 @@ onMounted(load)
           </div>
         </section>
 
-        <section class="admin-template-block">
+        <section v-if="!isApparelShowcase" class="admin-template-block">
           <header><strong>分镜连续性</strong><small>协议 ID 固定为 cut / extend</small></header>
           <div v-for="mode in ['cut', 'extend']" :key="mode" class="admin-continuity-row">
             <code>{{ mode }}</code>

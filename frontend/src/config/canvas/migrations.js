@@ -1,7 +1,7 @@
 import { createNodeData } from './nodeCatalog'
 import { createStoryboardTemplates } from './productStoryboard'
 
-export const CURRENT_CANVAS_SCHEMA_VERSION = 5
+export const CURRENT_CANVAS_SCHEMA_VERSION = 6
 
 function legacyMigrations(canvas, version, defaultTextModelId, templates) {
   const storyboardTemplate = templates?.product_storyboard
@@ -150,69 +150,26 @@ function migrateEcommerceWorkflows(canvas, models, templates) {
     markEdges(workflowId)
   })
 
-  const processedApparel = new Set()
-  const migrateApparelChain = (seed) => {
-    if (!seed || processedApparel.has(seed.id)) return
-    let outfit = seed.type === 'outfit' ? seed : null
-    let storyboard = seed.type === 'apparel_storyboard' ? seed : null
-    let apparel = seed.type === 'apparel' ? seed : null
-    if (storyboard && !outfit) outfit = activeIncoming(storyboard.id, 'outfit').map((edge) => activeNodeById(edge.source))[0]
-    if (outfit && !apparel) apparel = activeIncoming(outfit.id, 'apparel').map((edge) => activeNodeById(edge.source))[0]
-    if (apparel && !outfit) outfit = activeOutgoing(apparel.id, 'outfit').map((edge) => activeNodeById(edge.target))[0]
-    if (!outfit) {
-      const anchor = storyboard?.position || { x: apparel.position.x + 1020, y: apparel.position.y }
-      outfit = createNode('outfit', { x: anchor.x - 520, y: anchor.y })
-    }
-    if (!apparel) apparel = createNode('apparel', { x: outfit.position.x - 500, y: outfit.position.y - 170 })
-    let garment = activeIncoming(apparel.id, 'image').map((edge) => activeNodeById(edge.source))[0]
-    if (!garment) garment = createNode('image', { x: apparel.position.x - 460, y: apparel.position.y + 3 }, { title: '服饰参考图', assetSource: 'upload', resourceType: 'garment' })
-    let model = activeIncoming(outfit.id, 'image')
-      .filter((edge) => edge.targetHandle !== 'scene')
-      .map((edge) => activeNodeById(edge.source))[0]
-    if (!model) model = createNode('image', { x: outfit.position.x - 500, y: outfit.position.y + 190 }, { title: '模特参考图', assetSource: 'upload', resourceType: 'model' })
-    if (!storyboard) storyboard = activeOutgoing(outfit.id, 'apparel_storyboard').map((edge) => activeNodeById(edge.target))[0]
-    if (!storyboard) storyboard = createNode('apparel_storyboard', { x: outfit.position.x + 520, y: outfit.position.y })
-    addEdge(garment.id, apparel.id)
-    addEdge(apparel.id, outfit.id, 'apparel')
-    addEdge(model.id, outfit.id, 'model')
-    addEdge(outfit.id, storyboard.id, 'outfit')
-    const workflowId = outfit.data?.workflowId || `workflow-apparel-${outfit.id}`
-    if (/^模特试穿\s*\d*$/.test(outfit.data?.title || '')) outfit.data.title = outfit.data.title.replace('模特试穿', '服饰穿搭')
-    markNode(garment, workflowId, 'apparel', 'garment_reference')
-    markNode(apparel, workflowId, 'apparel', 'apparel')
-    markNode(model, workflowId, 'apparel', 'model_reference')
-    markNode(outfit, workflowId, 'apparel', 'outfit', true)
-    markNode(storyboard, workflowId, 'apparel', 'storyboard')
-    canvas.nodes.filter((node) => node.data?.storyboardSourceId === storyboard.id || node.data?.outfitSourceId === outfit.id)
-      .forEach((node) => markNode(node, workflowId, 'apparel', node.type === 'video' ? 'storyboard_video' : node.data?.outfitSourceId ? 'outfit_reference' : 'storyboard_image'))
-    ;[garment, apparel, model, outfit, storyboard].forEach((node) => processedApparel.add(node.id))
-    markEdges(workflowId)
-  }
-  canvas.nodes.filter((node) => node.type === 'outfit').forEach(migrateApparelChain)
-  canvas.nodes.filter((node) => node.type === 'apparel_storyboard').forEach(migrateApparelChain)
-  canvas.nodes.filter((node) => node.type === 'apparel').forEach(migrateApparelChain)
-
   canvas.sequence = sequence
 }
 
-function migrateApparelStoryboardVideoSettings(canvas, models) {
-  const nodes = new Map(canvas.nodes.map((node) => [node.id, node]))
-  canvas.nodes
-    .filter((node) => node.type === 'video' && node.data?.storyboardSourceId)
-    .forEach((node) => {
-      const planner = nodes.get(node.data.storyboardSourceId)
-      if (planner?.type !== 'apparel_storyboard') return
-      const defaults = {
-        model: planner.data.videoModel || models?.video?.id,
-        duration: node.data.storyboardDuration || 15,
-        aspectRatio: planner.data.videoAspectRatio || models?.video?.defaultAspectRatio,
-        resolution: planner.data.videoResolution || models?.video?.defaultResolution,
-        generateAudio: planner.data.generateAudio ?? true,
-      }
-      Object.entries(defaults).forEach(([key, value]) => {
-        if (node.data[key] == null && value != null) node.data[key] = value
-      })
-    })
+function removeLegacyApparelStoryboard(canvas) {
+  const storyboardIds = new Set(
+    canvas.nodes.filter((node) => node.type === 'apparel_storyboard').map((node) => node.id),
+  )
+  if (!storyboardIds.size) return
+  const obsoleteIds = new Set(storyboardIds)
+  canvas.nodes.forEach((node) => {
+    if (node.data?.inputRole === 'scene') obsoleteIds.add(node.id)
+  })
+  canvas.nodes.forEach((node) => {
+    if (storyboardIds.has(node.data?.storyboardSourceId)) obsoleteIds.add(node.id)
+  })
+  canvas.nodes = canvas.nodes.filter((node) => !obsoleteIds.has(node.id))
+  canvas.edges = canvas.edges.filter((edge) => !obsoleteIds.has(edge.source) && !obsoleteIds.has(edge.target))
+  canvas.groups = canvas.groups
+    .map((group) => ({ ...group, nodeIds: group.nodeIds.filter((id) => !obsoleteIds.has(id)) }))
+    .filter((group) => group.nodeIds.length > 1)
 }
 
 export function migrateCanvas(source = {}, options = {}, legacyTemplates) {
@@ -231,8 +188,8 @@ export function migrateCanvas(source = {}, options = {}, legacyTemplates) {
   if (version < 4 && normalized.workspaceType === 'ecommerce') {
     migrateEcommerceWorkflows(canvas, normalized.models, normalized.templates)
   }
-  if (version < 5 && normalized.workspaceType === 'ecommerce') {
-    migrateApparelStoryboardVideoSettings(canvas, normalized.models)
+  if (version < 6 && normalized.workspaceType === 'ecommerce') {
+    removeLegacyApparelStoryboard(canvas)
   }
   canvas.schema_version = CURRENT_CANVAS_SCHEMA_VERSION
   return canvas

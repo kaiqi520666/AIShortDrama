@@ -9,7 +9,7 @@ from app.models.billing import (
 )
 from app.models.configuration import BillingPolicy, ContentTemplate, ModelAdminSetting
 from app.models.generation_task import GenerationTask
-from app.models.reference_library import Character, Garment, OutfitModel
+from app.models.reference_library import Character, Garment, OutfitModel, Scene
 from app.models.user import User
 from app.models.workspace import Workspace
 
@@ -28,6 +28,7 @@ __all__ = [
     "OutfitModel",
     "RechargeOrder",
     "RechargeTier",
+    "Scene",
     "User",
     "Workspace",
 ]

@@ -62,7 +62,7 @@ describe('canvas version conflicts', () => {
     })
 
     expect(saveWorkspaceCanvas).toHaveBeenCalledOnce()
-    expect(saveWorkspaceCanvas).toHaveBeenCalledWith('workspace-1', expect.objectContaining({ schema_version: 5, version: 4 }))
+    expect(saveWorkspaceCanvas).toHaveBeenCalledWith('workspace-1', expect.objectContaining({ schema_version: 6, version: 4 }))
     expect(store.workspaceVersion).toBe(5)
   })
 
@@ -78,7 +78,7 @@ describe('canvas version conflicts', () => {
 
     expect(store.ready).toBe(true)
     expect(store.saveStatus).toBe('failed')
-    expect(store.canvasPayload().schema_version).toBe(5)
+    expect(store.canvasPayload().schema_version).toBe(6)
   })
 
   it('forwards and updates the workspace version after a save', async () => {

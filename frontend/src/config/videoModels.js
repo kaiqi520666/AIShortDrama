@@ -51,6 +51,7 @@ function normalizeReferences(references, usePrivateAssets = false) {
     storyboardCharacterReferences: typeof reference === 'string' ? [] : reference?.data?.storyboardCharacterReferences || [],
     storyboard: typeof reference === 'string' ? false : Boolean(reference?.data?.storyboardSourceId),
     storyboardRequiresRegistration: typeof reference === 'string' ? false : Boolean(reference?.data?.storyboardRequiresRegistration),
+    requiresPrivateRegistration: typeof reference === 'string' ? false : Boolean(reference?.data?.requiresPrivateRegistration),
     storyboardOutfitBoard: typeof reference === 'string' ? null : reference?.data?.storyboardOutfitBoard,
   }))
 }
@@ -80,6 +81,9 @@ export function getVideoReferenceError(data, references = [], models, defaultMod
   }
   if (model.requiresPrivateAsset && normalized.some((reference) => reference.type === 'image' && reference.privateAssetStatus === 'failed')) {
     return '人物素材注册失败，请在图片节点工具栏重新注册'
+  }
+  if (model.requiresPrivateAsset && normalized.some((reference) => reference.type === 'image' && reference.requiresPrivateRegistration && !reference.providerAsset)) {
+    return '请先在定妆图节点工具栏注册 Seedance 人物素材'
   }
   if (model.requiresPrivateAsset && normalized.some((reference) => reference.type === 'image' && reference.storyboard && (reference.storyboardCharacterReferences?.some((character) => character.assetUrl) || reference.storyboardRequiresRegistration || reference.storyboardOutfitBoard) && !reference.providerAsset)) {
     return '请先在图片节点工具栏注册 Seedance 人物素材'

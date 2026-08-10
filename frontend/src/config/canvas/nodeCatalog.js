@@ -41,8 +41,8 @@ export const nodeCatalog = {
     placeholder: '描述你想生成的商品画面，@ 引用素材…', setting: '16:9 · 2K', iconName: 'Image',
     componentName: 'MediaNode', panelName: 'GenerationPanel', panelHeight: 260,
     workspaces: coreWorkspaces, order: coreOrder(1),
-    inputs: ['text', 'image', 'product', 'product_visual', 'product_storyboard', 'outfit', 'apparel_storyboard', 'character'],
-    outputs: ['text', 'image', 'video', 'audio', 'product', 'apparel', 'outfit', 'apparel_storyboard', 'character'],
+    inputs: ['text', 'image', 'product', 'product_visual', 'product_storyboard', 'outfit', 'character'],
+    outputs: ['text', 'image', 'video', 'audio', 'product', 'apparel', 'outfit', 'character'],
     createData: ({ number, models }) => ({ model: models.image.id, title: `图片节点 ${number}`, status: 'empty', prompt: '' }),
   },
   video: {
@@ -50,7 +50,7 @@ export const nodeCatalog = {
     placeholder: '描述商品动作、运镜和节奏…', setting: '16:9 · 720P · 10s', iconName: 'Video',
     componentName: 'MediaNode', panelName: 'GenerationPanel', panelHeight: 260,
     workspaces: coreWorkspaces, order: coreOrder(2),
-    inputs: ['text', 'image', 'video', 'audio', 'product'], outputs: ['text', 'video'],
+    inputs: ['text', 'image', 'video', 'audio', 'product', 'outfit'], outputs: ['text', 'video'],
     createData: ({ number, models }) => ({ model: models.video.id, title: `视频节点 ${number}`, status: 'empty', prompt: '', generateAudio: true, returnLastFrame: true }),
   },
   audio: {
@@ -122,7 +122,7 @@ export const nodeCatalog = {
     placeholder: '补充识别重点，例如重点区分配饰、鞋履或面料…', setting: '服饰图 + AI 识别', iconName: 'Shirt',
     componentName: 'ApparelNode', panelName: 'ApparelPanel', panelHeight: 440,
     workspaces: ['ecommerce'], order: { ecommerce: 3 }, businessCreator: 'apparel',
-    inputs: ['image'], outputs: ['outfit', 'apparel_storyboard'],
+    inputs: ['image'], outputs: ['outfit'],
     createData: ({ number, models }) => ({
       title: `服饰识别 ${number}`, status: 'empty', model: models.text.id,
       compositionType: 'single', summary: '', items: [], prompt: '',
@@ -130,34 +130,17 @@ export const nodeCatalog = {
   },
   outfit: {
     type: 'outfit', label: '服饰穿搭', model: '', hint: '将已识别服饰穿到指定模特并生成试穿定妆图',
-    setting: '服饰识别 + 模特图 · 9:16 / 1K', iconName: 'Shirt',
+    setting: '服饰识别 + 可选模特/场景', iconName: 'Shirt',
     componentName: 'OutfitNode', panelName: 'OutfitPanel', panelHeight: 470,
     workspaces: ['ecommerce'], order: { ecommerce: 4 }, businessCreator: 'outfit',
-    inputs: ['apparel', 'image'], outputs: ['image', 'apparel_storyboard'],
+    inputs: ['apparel'], outputs: ['image', 'video'],
     inputLimits: {
       apparel: { max: 1, message: '服饰穿搭节点只能连接 1 个服饰识别' },
-      image: { max: 1, message: '服饰穿搭节点只能连接 1 张模特图' },
     },
     createData: ({ number, models, templates }) => ({
       title: `服饰穿搭 ${number}`, status: 'empty', textModel: models.text.id, imageModel: models.image.id,
       aspectRatio: '9:16', resolution: '1K', templateVersion: templates.apparel_visual.version,
-      customRequirement: '', generatedNodeIds: [],
-    }),
-  },
-  apparel_storyboard: {
-    type: 'apparel_storyboard', label: '服饰分镜', model: '', hint: '基于试穿定妆图生成多段服饰展示故事板与视频',
-    setting: '试穿定妆图 · 15 秒分段', iconName: 'Clapperboard', componentName: 'ApparelStoryboardNode',
-    panelName: 'ApparelStoryboardPanel', panelHeight: 470,
-    workspaces: ['ecommerce'], order: { ecommerce: 5 }, businessCreator: 'apparelStoryboard',
-    inputs: ['outfit', 'apparel', 'image'], outputs: ['image'],
-    inputLimits: {
-      outfit: { max: 1, message: '服饰分镜节点只能连接 1 个服饰穿搭' },
-      apparel: { max: 1, message: '服饰分镜节点只能连接 1 个服饰资料' },
-    },
-    createData: ({ number, models, templates }) => ({
-      title: `服饰分镜 ${number}`, status: 'empty', textModel: models.text.id, videoModel: models.video.id,
-      duration: 30, videoAspectRatio: '9:16', templateKey: 'apparel_showcase', templateVersion: templates.apparel_showcase.version,
-      videoResolution: models.video.defaultResolution, generateAudio: true, prompt: '', generatedNodeIds: [],
+      videoTemplateVersion: templates.apparel_showcase.version, customRequirement: '', modelSource: 'default', sceneSource: 'default', modelDescription: '', sceneDescription: '', generatedNodeIds: [],
     }),
   },
   world: {

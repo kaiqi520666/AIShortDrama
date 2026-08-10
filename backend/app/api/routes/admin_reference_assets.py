@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.errors import NotFoundError, RequestError, ServiceUnavailableError, public_error_message
 from app.core.identity import get_current_admin
-from app.models import Character, Garment, OutfitModel, User
+from app.models import Character, Garment, OutfitModel, Scene, User
 from app.providers.toapis import ToApisProvider
 from app.schemas.admin import SystemReferenceAssetUpdateRequest
 from app.schemas.response import success
@@ -25,6 +25,7 @@ RESOURCE_TYPES = {
     "model": (OutfitModel, "model_metadata", "outfit-models"),
     "character": (Character, "character_metadata", "characters"),
     "garment": (Garment, "garment_metadata", "garments"),
+    "scene": (Scene, "scene_metadata", "scenes"),
 }
 
 

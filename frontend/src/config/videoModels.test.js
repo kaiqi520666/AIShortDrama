@@ -105,30 +105,16 @@ describe('buildVideoRequest', () => {
     expect(getVideoReferenceError({ model: 'seedance-2' }, [storyboard])).toContain('注册 Seedance 人物素材')
   })
 
-  it('requires registration for an apparel storyboard with a model reference', () => {
-    const storyboard = {
-      id: 'apparel-storyboard',
+  it('requires registration for a try-on reference', () => {
+    const reference = {
+      id: 'outfit-reference',
       type: 'image',
       data: {
-        asset: 'https://example.com/apparel-storyboard.png',
-        storyboardSourceId: 'planner',
-        storyboardRequiresRegistration: true,
+        asset: 'https://example.com/outfit-reference.png',
+        requiresPrivateRegistration: true,
       },
     }
-    expect(getVideoReferenceError({ model: 'seedance-2' }, [storyboard])).toContain('注册 Seedance 人物素材')
-  })
-
-  it('requires registration for legacy apparel storyboard nodes', () => {
-    const storyboard = {
-      id: 'legacy-apparel-storyboard',
-      type: 'image',
-      data: {
-        asset: 'https://example.com/legacy-apparel-storyboard.png',
-        storyboardSourceId: 'planner',
-        storyboardOutfitBoard: { url: 'https://example.com/outfit-board.jpg' },
-      },
-    }
-    expect(getVideoReferenceError({ model: 'seedance-2' }, [storyboard])).toContain('注册 Seedance 人物素材')
+    expect(getVideoReferenceError({ model: 'seedance-2' }, [reference])).toContain('注册 Seedance 人物素材')
   })
 
   it('does not recheck avatar registration on a prior storyboard video reference', () => {

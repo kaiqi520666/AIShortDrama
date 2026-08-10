@@ -64,7 +64,7 @@ describe('canvas migrations', () => {
     expect(migrateCanvas(migrated, ecommerceOptions)).toEqual(migrated)
   })
 
-  it('removes apparel scene nodes and marks existing results without moving nodes', () => {
+  it('removes the legacy apparel storyboard and its generated results', () => {
     const source = {
       schema_version: 3,
       sequence: 9,
@@ -91,48 +91,9 @@ describe('canvas migrations', () => {
     }
 
     const migrated = migrateCanvas(source, ecommerceOptions)
-    const outfit = migrated.nodes.find((node) => node.id === 'outfit-3')
-
-    expect(migrated.nodes.some((node) => node.id === 'image-5')).toBe(false)
-    expect(migrated.edges.some((edge) => edge.targetHandle === 'scene')).toBe(false)
+    expect(migrated.nodes.map((node) => node.id)).toEqual(['image-1', 'apparel-2', 'outfit-3', 'image-4'])
+    expect(migrated.edges.map((edge) => edge.id)).toEqual(['e1', 'e2', 'e3'])
     expect(migrated.groups).toEqual([])
-    expect(outfit.position).toEqual({ x: 960, y: 0 })
-    expect(outfit.data).toEqual(expect.objectContaining({ title: '服饰穿搭 3', workflowRoot: true }))
-    expect(migrated.nodes.find((node) => node.id === 'video-8').data.workflowId).toBe(outfit.data.workflowId)
-    expect(migrated.edges.every((edge) => edge.workflowId === outfit.data.workflowId)).toBe(true)
-    expect(migrateCanvas(migrated, ecommerceOptions)).toEqual(migrated)
-  })
-
-  it('conservatively fills a storyboard-only apparel workflow', () => {
-    const migrated = migrateCanvas({
-      schema_version: 3,
-      sequence: 2,
-      nodes: [{ id: 'apparel_storyboard-1', type: 'apparel_storyboard', position: { x: 1500, y: 200 }, data: { title: '保留的服饰分镜', customRequirement: '海边场景' } }],
-      edges: [],
-      groups: [],
-    }, ecommerceOptions)
-
-    expect(migrated.nodes.map((node) => node.type).sort()).toEqual(['apparel', 'apparel_storyboard', 'image', 'image', 'outfit'].sort())
-    expect(migrated.nodes.find((node) => node.id === 'apparel_storyboard-1')).toEqual(expect.objectContaining({
-      position: { x: 1500, y: 200 },
-      data: expect.objectContaining({ title: '保留的服饰分镜', customRequirement: '海边场景', workflowRole: 'storyboard' }),
-    }))
-  })
-
-  it('fills missing apparel storyboard video settings from its planner', () => {
-    const migrated = migrateCanvas({
-      schema_version: 4,
-      nodes: [
-        { id: 'apparel_storyboard-1', type: 'apparel_storyboard', data: { videoModel: 'seedance-2-mini', videoAspectRatio: '9:16', videoResolution: '720p', generateAudio: true } },
-        { id: 'video-2', type: 'video', data: { storyboardSourceId: 'apparel_storyboard-1', storyboardDuration: 15 } },
-        { id: 'video-3', type: 'video', data: { storyboardSourceId: 'apparel_storyboard-1', storyboardDuration: 15, aspectRatio: '1:1' } },
-      ],
-      edges: [],
-      groups: [],
-    }, ecommerceOptions)
-
-    expect(migrated.nodes[1].data).toEqual(expect.objectContaining({ model: 'seedance-2-mini', duration: 15, aspectRatio: '9:16', resolution: '720p', generateAudio: true }))
-    expect(migrated.nodes[2].data.aspectRatio).toBe('1:1')
     expect(migrateCanvas(migrated, ecommerceOptions)).toEqual(migrated)
   })
 })

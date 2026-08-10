@@ -43,10 +43,9 @@ export function validateProductContentTemplates(value) {
   if (dramaConfig.output_protocol_id !== 'commerce-drama-v1') return '短剧带货输出协议无效'
   if (!dramaConfig.continuity || !['cut', 'extend'].every((key) => validText(dramaConfig.continuity[key]?.label, 32) && validText(dramaConfig.continuity[key]?.description, 120))) return '短剧带货衔接配置无效'
   const showcaseConfig = apparelShowcase.config
-  if (showcaseConfig?.schema_version !== 1 || !validText(showcaseConfig.label, 64) || !validText(showcaseConfig.description, 255)) return '服饰展示模板无效'
-  if (!Array.isArray(showcaseConfig.durations) || !showcaseConfig.durations.length || showcaseConfig.durations.some((item) => !allowedDurations.has(item))) return '服饰展示时长无效'
-  if (showcaseConfig.output_protocol_id !== 'apparel-showcase-v1') return '服饰展示输出协议无效'
-  if (!showcaseConfig.continuity || !['cut', 'extend'].every((key) => validText(showcaseConfig.continuity[key]?.label, 32) && validText(showcaseConfig.continuity[key]?.description, 120))) return '服饰展示衔接配置无效'
+  if (showcaseConfig?.schema_version !== 3 || !validText(showcaseConfig.label, 64) || !validText(showcaseConfig.description, 255)) return '服饰视频模板无效'
+  if (!Array.isArray(showcaseConfig.durations) || !showcaseConfig.durations.length || showcaseConfig.durations.some((item) => !allowedDurations.has(item))) return '服饰视频时长无效'
+  if (showcaseConfig.output_protocol_id !== 'apparel-video-v2') return '服饰视频输出协议无效'
   return ''
 }
 

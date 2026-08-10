@@ -16,7 +16,7 @@ import AppModal from '../ui/AppModal.vue'
 import EmptyState from '../ui/EmptyState.vue'
 
 const props = defineProps({
-  resourceType: { type: String, default: 'asset', validator: (value) => ['asset', 'model', 'character', 'garment'].includes(value) },
+  resourceType: { type: String, default: 'asset', validator: (value) => ['asset', 'model', 'character', 'garment', 'scene'].includes(value) },
   mediaType: { type: String, default: 'image' },
   inputRole: { type: String, default: '' },
   workspaceId: { type: String, default: '' },

@@ -45,17 +45,20 @@ class ApparelVisualTemplateContext(BaseModel):
     apparel_context: str = Field(max_length=6000)
     aspect_ratio: str = Field(pattern=r"^\d{1,3}:\d{1,3}$")
     resolution: str = Field(pattern=r"^\d{1,3}[Kk]$")
-    reference_count: Literal[2]
+    reference_count: int = Field(ge=1, le=3)
+    model_description: str = Field(default="", max_length=600)
+    scene_description: str = Field(default="", max_length=600)
     user_requirement: str = Field(default="", max_length=600)
 
 
-class ApparelStoryboardTemplateContext(BaseModel):
+class ApparelVideoTemplateContext(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     apparel_context: str = Field(max_length=6000)
+    aspect_ratio: str = Field(pattern=r"^\d{1,3}:\d{1,3}$")
     duration: int
-    video_aspect_ratio: str = Field(min_length=3, max_length=16)
-    scene_count: int = Field(ge=0, le=1)
+    model_description: str = Field(default="", max_length=600)
+    scene_description: str = Field(default="", max_length=600)
     user_requirement: str = Field(default="", max_length=600)
 
 
@@ -81,7 +84,7 @@ class ReversePromptRequest(BaseModel):
         StoryboardTemplateContext
         | ProductVisualTemplateContext
         | ApparelVisualTemplateContext
-        | ApparelStoryboardTemplateContext
+        | ApparelVideoTemplateContext
         | None
     ) = None
     response_mode: Literal[
@@ -90,8 +93,8 @@ class ReversePromptRequest(BaseModel):
         "apparel_profile",
         "product_visual_plan",
         "outfit_visual_plan",
+        "apparel_video_plan",
         "product_storyboard_plan",
-        "apparel_storyboard_plan",
         "character_profile",
         "character_visual_plan",
     ] = "prompt"
@@ -101,7 +104,7 @@ class ReversePromptRequest(BaseModel):
         storyboard_mode = self.response_mode == "product_storyboard_plan"
         product_visual_mode = self.response_mode == "product_visual_plan"
         apparel_visual_mode = self.response_mode == "outfit_visual_plan"
-        apparel_storyboard_mode = self.response_mode == "apparel_storyboard_plan"
+        apparel_video_mode = self.response_mode == "apparel_video_plan"
         if product_visual_mode:
             if self.prompt.strip():
                 raise ValueError("商品出图 Prompt 必须由服务端模板生成")
@@ -124,6 +127,17 @@ class ReversePromptRequest(BaseModel):
                 raise ValueError("服饰试穿模板参数不完整")
             if 1 + len(self.media_urls) != self.template_context.reference_count:
                 raise ValueError("服饰试穿参考图数量不一致")
+        elif apparel_video_mode:
+            if self.prompt.strip():
+                raise ValueError("服饰视频 Prompt 必须由服务端模板生成")
+            if (
+                self.template_key != "apparel_showcase"
+                or not self.template_version
+                or not isinstance(self.template_context, ApparelVideoTemplateContext)
+            ):
+                raise ValueError("服饰视频模板参数不完整")
+            if len(self.media_urls) != 1:
+                raise ValueError("服饰视频必须使用定妆图和服饰原图")
         elif storyboard_mode:
             if self.prompt.strip():
                 raise ValueError("商品分镜 Prompt 必须由服务端模板生成")
@@ -139,17 +153,6 @@ class ReversePromptRequest(BaseModel):
             )
             if reference_count != expected_count:
                 raise ValueError("商品分镜参考图数量不一致")
-        elif apparel_storyboard_mode:
-            if self.prompt.strip():
-                raise ValueError("服饰分镜 Prompt 必须由服务端模板生成")
-            if (
-                self.template_key != "apparel_showcase"
-                or not self.template_version
-                or not isinstance(self.template_context, ApparelStoryboardTemplateContext)
-            ):
-                raise ValueError("服饰分镜模板参数不完整")
-            if 1 + len(self.media_urls) != 3 + self.template_context.scene_count:
-                raise ValueError("服饰分镜参考图数量不一致")
         elif any((self.template_key, self.template_version, self.template_context)):
             raise ValueError("当前任务不支持内容模板参数")
         if self.response_mode not in {
@@ -157,8 +160,8 @@ class ReversePromptRequest(BaseModel):
             "apparel_profile",
             "product_visual_plan",
             "outfit_visual_plan",
+            "apparel_video_plan",
             "product_storyboard_plan",
-            "apparel_storyboard_plan",
         } and not self.prompt.strip():
             raise ValueError("提示词不能为空")
         if self.response_mode in {

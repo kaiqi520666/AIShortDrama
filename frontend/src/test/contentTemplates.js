@@ -57,18 +57,14 @@ export const contentTemplatesFixture = {
   },
   apparel_showcase: {
     key: 'apparel_showcase',
-    version: 2,
+    version: 3,
     enabled: true,
     config: {
-      schema_version: 1,
-      label: '服饰展示',
-      description: '基于试穿定妆图生成多段服饰展示分镜与视频',
+      schema_version: 3,
+      label: '服饰视频模板',
+      description: '管理服饰定妆图与真实手机实拍视频的默认规则',
       durations: [15, 30, 45, 60],
-      output_protocol_id: 'apparel-showcase-v1',
-      continuity: {
-        cut: { label: '独立新段', description: '不引用上一段视频' },
-        extend: { label: '延续上段', description: '引用上一段视频保持连续性' },
-      },
+      output_protocol_id: 'apparel-video-v2',
     },
   },
 }

@@ -207,11 +207,11 @@ export const useCanvasStore = defineStore('canvas', {
       const connectionError = source && targetHandle
         ? getConnectionError(source.type, type, incomingConnections.map(({ type: sourceType }) => sourceType).filter(Boolean), this.workspaceType, targetHandle, incomingConnections)
         : ''
-      if (sourceId && (!source || !canConnect(source.type, type, this.workspaceType) || connectionError || (type === 'apparel_storyboard' && source.type === 'image' && !targetHandle))) return
+      if (sourceId && (!source || !canConnect(source.type, type, this.workspaceType) || connectionError)) return
       const number = this.sequence++
       const id = `${type}-${number}`
       this.nodes.forEach((node) => { node.selected = false })
-      const needsTemplates = ['product', 'product_visual', 'product_storyboard', 'outfit', 'apparel_storyboard'].includes(type)
+      const needsTemplates = ['product', 'product_visual', 'product_storyboard', 'outfit'].includes(type)
       const data = createNodeData(type, number, source, modelDefaults(), contentTemplates(needsTemplates))
       if (type === 'video') Object.assign(data, storyboardVideoData(source, modelDefaults().video) || {})
       this.nodes.push({
@@ -231,9 +231,7 @@ export const useCanvasStore = defineStore('canvas', {
       if (this.workspaceType !== 'ecommerce') return
       const workflow = ECOMMERCE_WORKFLOWS.find((item) => item.id === type)
       if (!workflow) return
-      return workflow.id === 'apparel'
-        ? this.addNode('apparel_storyboard', position)
-        : this.addNode(workflow.nodeType, position)
+      return this.addNode(workflow.nodeType, position)
     },
     addEdge(connection) {
       if (this.edges.some((edge) => edge.source === connection.source && edge.target === connection.target)) return false
@@ -264,17 +262,14 @@ export const useCanvasStore = defineStore('canvas', {
     syncProductStoryboardReferences(...args) {
       return canvasBusinessActions.syncProductStoryboardReferences.apply(this, args)
     },
-    addApparelStoryboardNodes(...args) {
-      return canvasBusinessActions.addApparelStoryboardNodes.apply(this, args)
-    },
-    addOutfitStoryboardNodes(...args) {
-      return canvasBusinessActions.addOutfitStoryboardNodes.apply(this, args)
-    },
     addStoryboardVideoNode(...args) {
       return canvasBusinessActions.addStoryboardVideoNode.apply(this, args)
     },
     addOutfitVisualNode(...args) {
       return canvasBusinessActions.addOutfitVisualNode.apply(this, args)
+    },
+    addOutfitVideoNode(...args) {
+      return canvasBusinessActions.addOutfitVideoNode.apply(this, args)
     },
     addCharacterVisualNodes(...args) {
       return canvasBusinessActions.addCharacterVisualNodes.apply(this, args)

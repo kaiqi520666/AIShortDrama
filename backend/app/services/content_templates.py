@@ -20,7 +20,7 @@ STORYBOARD_TEMPLATE_ID = "ugc-seeding"
 COMMERCE_DRAMA_TEMPLATE_ID = "commerce-drama"
 COMMERCE_DRAMA_PROTOCOL_ID = "commerce-drama-v1"
 APPAREL_SHOWCASE_TEMPLATE_ID = "apparel-showcase"
-APPAREL_SHOWCASE_PROTOCOL_ID = "apparel-showcase-v1"
+APPAREL_SHOWCASE_PROTOCOL_ID = "apparel-video-v2"
 STORYBOARD_DURATIONS = {15, 30, 45, 60}
 COMMERCE_DRAMA_DURATIONS = {30, 45, 60}
 PRODUCT_VISUAL_GROUPS = {
@@ -55,16 +55,16 @@ APPAREL_VISUAL_PROVIDER_INSTRUCTION = (
 )
 APPAREL_VISUAL_PROMPT_BLOCKS = {
     "task_instruction": (
-        "图片1是服饰参考图，图片2是模特参考图。请生成一条中文图片提示词，将图片1中的完整服饰准确穿到"
-        "图片2的模特身上，输出一张正面全身试穿定妆图。统一画面规格：{aspect_ratio}，{resolution}。"
+        "图片1是服饰参考图；图片2如存在则为模特参考图，图片3如存在则为场景参考图。请生成一条中文图片提示词，"
+        "输出一张正面全身试穿定妆图。统一画面规格：{aspect_ratio}，{resolution}。"
     ),
     "fidelity_rules": (
-        "保持模特的脸部、发型、体型、肤色和身份一致；严格保持服饰类别、颜色、图案、Logo、面料、版型、"
+        "如提供模特参考图，保持模特的脸部、发型、体型、肤色和身份一致；严格保持服饰类别、颜色、图案、Logo、面料、版型、"
         "长度、开合方式和工艺细节，不新增或删除单品，不改变真实穿着层级。模特自然站立，手臂不遮挡服饰，"
         "人物从头到脚完整可见，背景简洁，光线自然，适合作为后续服饰分镜和视频的一致性参考。"
     ),
     "output_protocol": (
-        '严格输出 JSON 对象，格式为 {"prompt":"图片提示词"}。提示词必须明确引用图片1服饰和图片2模特，'
+        '严格输出 JSON 对象，格式为 {"prompt":"图片提示词"}。提示词必须明确引用图片1服饰及可选参考图片，'
         "完整描述人物、服饰、姿态、构图、背景和光线，不生成六宫格、多视角拼图、文字、字幕或水印，"
         "不解释，不使用 Markdown。"
     ),
@@ -76,54 +76,51 @@ APPAREL_VISUAL_PLACEHOLDERS = {
 }
 
 APPAREL_SHOWCASE_BLOCKS = (
-    "creative_direction",
-    "segment_structure",
-    "apparel_fidelity_rules",
-    "model_consistency_rules",
-    "shot_rules",
-    "image_rules",
-    "video_rules",
-    "continuity_rules",
+    "look_rules",
+    "model_rules",
+    "scene_rules",
+    "phone_style_rules",
+    "action_rules",
+    "video_reference_rules",
+    "sound_rules",
+    "continuation_rules",
     "forbidden_rules",
 )
 APPAREL_SHOWCASE_PROVIDER_INSTRUCTION = (
-    "你是专业的中文服饰展示分镜导演。根据试穿定妆图、服饰原图、模特原图和可选场景参考，生成可直接用于"
-    "生图和 Seedance 2 视频生成的服饰展示方案。严格按指定 JSON 输出协议返回合法 JSON 对象，不解释，"
-    "不使用 Markdown。"
+    "你是专业的中文服饰视频策划师。根据服饰资料、可选模特与可选场景，生成一条可直接用于定妆图和"
+    "Seedance 视频生成的中文提示词。严格按指定 JSON 输出协议返回合法 JSON 对象，不解释，不使用 Markdown。"
 )
 APPAREL_SHOWCASE_PROMPT_BLOCKS = {
-    "creative_direction": (
-        "以服饰本身为视觉核心，通过模特自然站立、转身、行走和局部近景展示整体廓形、正侧背面、动态垂坠感、"
-        "面料纹理和适用场景。画面专业但自然，不设计剧情对白，不使用夸张广告动作。"
+    "look_rules": (
+        "服饰原图必须作为唯一服装依据。定妆图只生成一张正面全身图，服饰类别、颜色、图案、Logo、面料、"
+        "版型、长度、开合方式和工艺细节必须一致，不得增加、删除或替换单品。"
     ),
-    "segment_structure": (
-        "全片共{segment_count}个15秒展示段，每段固定6个镜头。第一段建立完整造型并展示正面、侧面和背面；"
-        "后续段依次扩展动态行走、转身、面料工艺、搭配比例和生活场景，禁止重复相同构图与动作。"
+    "model_rules": (
+        "优先使用用户确认的模特图片或描述；均未提供时使用默认生活化模特描述。定妆图确认后锁定脸部、发型、"
+        "年龄感、肤色、体型和基础造型，视频中不得换脸、换体型或过度美颜。默认描述：{model_description}"
     ),
-    "apparel_fidelity_rules": (
-        "服饰类别、颜色、图案、Logo、面料、版型、长度、开合方式、层级和工艺必须与参考图一致。不得增加、"
-        "删除或替换单品，不得改变袖长、领型、腰线、裤型、裙长和真实材质。"
+    "scene_rules": (
+        "优先使用用户确认的场景图片或描述；均未提供时使用干净、真实、生活化默认场景。整条视频固定一个场景，"
+        "不得在视频中无原因切换场景。默认描述：{scene_description}"
     ),
-    "model_consistency_rules": (
-        "所有分段保持同一模特的脸部、发型、年龄感、肤色、体型和身份一致。姿态可以变化，但身体比例、"
-        "妆容和基础造型不得漂移。"
+    "phone_style_rules": (
+        "使用 iPhone 后置 1 倍主摄的真实手机实拍感：手持拍摄、自然环境光、自动曝光和对焦、轻微自然晃动。"
+        "不使用棚拍灯光、三脚架、稳定器、电影运镜或电影调色。"
     ),
-    "shot_rules": (
-        "每段6个镜头必须包含完整造型、正面或45度展示、侧面或背面展示、自然动态、服饰局部细节和场景定格。"
-        "每个镜头只完成一个连续动作，景别由全身到中近景合理变化，服饰始终清晰可见。"
+    "action_rules": (
+        "人物自然站立、整理衣服、侧身展示、缓慢转圈、轻微走动并展示面料和细节。动作舒缓、连续、像真实"
+        "穿搭博主，不使用夸张广告摆拍。"
     ),
-    "image_rules": (
-        "生图prompt要求：生成一张{columns}列×{rows}行的六格服饰展示分镜板，按从左到右、从上到下对应"
-        "镜头1至镜头6，每格保持{ratio}视频画幅。图片1是试穿定妆图，图片2为可选场景参考。分镜板只允许"
-        "出现镜头1至镜头6标签，不生成字幕、水印、价格、二维码或额外Logo，prompt不得包含对白和声音。"
+    "video_reference_rules": (
+        "视频参考图顺序固定：图片1是确认后的定妆图，决定人物、场景、构图和动作；图片2是服饰原图，仅用于"
+        "校验服饰细节，不得改变图片1中的人物、场景和穿着效果。"
     ),
-    "video_rules": (
-        "生视频prompt要求：图片1是当前段分镜图，严格按六格顺序描述动作、景别、单一运镜、"
-        "光线和自然衔接，画幅为{ratio}。禁止台词、口播、旁白、字幕和背景音乐，只保留脚步、衣料摩擦和环境声。"
+    "sound_rules": (
+        "默认不生成声音；用户开启声音时只保留环境音、脚步声和衣料摩擦声，禁止背景音乐、旁白、对白、字幕和口播。"
     ),
-    "continuity_rules": (
-        "第一段固定使用cut。后续使用extend时必须承接上一段结尾的模特位置、动作、服饰状态、场景、光影和声音；"
-        "使用cut时可以切换场景或展示重点，但模特身份和服饰外观必须保持一致。"
+    "continuation_rules": (
+        "用户选择{duration}秒时，系统自动续接15秒片段。每段承接上一段的模特位置、动作方向、服饰状态、"
+        "场景、光线和环境音，前端不展示分段或 cut/extend。"
     ),
     "forbidden_rules": (
         "禁止服饰变色、图案或Logo漂移、材质替换、版型变化、衣物穿插、肢体畸形、模特换脸、无原因换装、"
@@ -131,14 +128,14 @@ APPAREL_SHOWCASE_PROMPT_BLOCKS = {
     ),
 }
 APPAREL_SHOWCASE_PLACEHOLDERS = {
-    "creative_direction": set(),
-    "segment_structure": {"segment_count"},
-    "apparel_fidelity_rules": set(),
-    "model_consistency_rules": set(),
-    "shot_rules": set(),
-    "image_rules": {"columns", "rows", "ratio"},
-    "video_rules": {"ratio"},
-    "continuity_rules": set(),
+    "look_rules": set(),
+    "model_rules": {"model_description"},
+    "scene_rules": {"scene_description"},
+    "phone_style_rules": set(),
+    "action_rules": set(),
+    "video_reference_rules": set(),
+    "sound_rules": set(),
+    "continuation_rules": {"duration"},
     "forbidden_rules": set(),
 }
 
@@ -384,14 +381,13 @@ def default_commerce_drama_config() -> dict[str, Any]:
 
 def default_apparel_showcase_config() -> dict[str, Any]:
     return {
-        "schema_version": 1,
-        "label": "服饰展示",
-        "description": "基于试穿定妆图生成多段服饰展示分镜与视频",
+        "schema_version": 3,
+        "label": "服饰视频模板",
+        "description": "管理服饰定妆图与真实手机实拍视频的默认规则",
         "durations": [15, 30, 45, 60],
         "provider_instruction": APPAREL_SHOWCASE_PROVIDER_INSTRUCTION,
         "output_protocol_id": APPAREL_SHOWCASE_PROTOCOL_ID,
         "prompt_blocks": deepcopy(APPAREL_SHOWCASE_PROMPT_BLOCKS),
-        "continuity": deepcopy(DEFAULT_CONTINUITY),
     }
 
 
@@ -467,7 +463,6 @@ async def get_product_templates(db: AsyncSession) -> dict[str, dict[str, Any]]:
                 "label": config["label"],
                 "description": config["description"],
                 "durations": deepcopy(config["durations"]),
-                "continuity": deepcopy(config["continuity"]),
                 "output_protocol_id": config["output_protocol_id"],
             }
         result[template.key] = data
@@ -677,22 +672,22 @@ def _validate_apparel_showcase(value: dict[str, Any], _enabled: bool) -> dict[st
     blocks = value.get("prompt_blocks")
     durations = value.get("durations")
     if (
-        value.get("schema_version") != 1
+        value.get("schema_version") != 3
         or value.get("output_protocol_id") != APPAREL_SHOWCASE_PROTOCOL_ID
         or not isinstance(blocks, dict)
         or set(blocks) != set(APPAREL_SHOWCASE_BLOCKS)
     ):
-        raise ValueError("服饰展示模板配置无效")
+        raise ValueError("服饰视频模板配置无效")
     if (
         not isinstance(durations, list)
         or not durations
         or any(item not in STORYBOARD_DURATIONS for item in durations)
     ):
-        raise ValueError("服饰展示时长配置无效")
+        raise ValueError("服饰视频时长配置无效")
     return {
-        "schema_version": 1,
-        "label": _text(value.get("label"), "服饰展示名称", max_length=64),
-        "description": _text(value.get("description"), "服饰展示描述", max_length=255),
+        "schema_version": 3,
+        "label": _text(value.get("label"), "服饰视频模板名称", max_length=64),
+        "description": _text(value.get("description"), "服饰视频模板描述", max_length=255),
         "durations": sorted(set(durations)),
         "provider_instruction": _text(
             value.get("provider_instruction"), "模型角色指令", max_length=2000
@@ -704,7 +699,6 @@ def _validate_apparel_showcase(value: dict[str, Any], _enabled: bool) -> dict[st
             )
             for key in APPAREL_SHOWCASE_BLOCKS
         },
-        "continuity": _validate_continuity(value.get("continuity")),
     }
 
 
@@ -779,48 +773,26 @@ def build_apparel_visual_prompt(config: dict[str, Any], context: dict[str, Any])
 
 def build_apparel_showcase_prompt(config: dict[str, Any], context: dict[str, Any]) -> str:
     validated = _validate_apparel_showcase(config, True)
-    duration = context["duration"]
+    duration = context.get("duration", 15)
     if duration not in validated["durations"]:
-        raise ValueError("服饰展示时长无效")
-    ratio = context["video_aspect_ratio"]
-    columns, rows = _storyboard_grid(ratio)
-    segment_count = duration // 15
-    scene_count = context["scene_count"]
-    if scene_count not in {0, 1}:
-        raise ValueError("服饰展示场景参考数量无效")
+        raise ValueError("服饰视频时长无效")
+    ratio = context["aspect_ratio"]
     blocks = validated["prompt_blocks"]
-    scene_reference = "，图片4是场景参考图" if scene_count else ""
-    scene_generation = "，图片2是场景参考图" if scene_count else ""
     user_requirement = context.get("user_requirement", "").strip()
     extra = f"\n用户补充要求：{user_requirement}" if user_requirement else ""
-    schema = (
-        '{"templateId":"apparel-showcase","title":"服饰展示","globalScript":"完整展示方向",'
-        f'"totalDuration":{duration},"segments":[{{"segmentIndex":1,"duration":15,"shotCount":6,'
-        '"plotGoal":"本段展示目标","openingState":"开头状态","endingState":"结尾状态",'
-        '"continuityMode":"cut","prompt":"镜头1：... 镜头2：... 镜头3：... 镜头4：... '
-        '镜头5：... 镜头6：...","videoPrompt":"图片1是本段分镜图，..."}]}'
-    )
-    output_contract = (
-        f"严格只输出一个JSON对象，不要Markdown、解释或额外文本，格式必须符合：{schema}。"
-        f"segments必须恰好{segment_count}条且按顺序，每条duration必须为15、shotCount必须为6。"
-        "第一段continuityMode必须为cut，后续只能为cut或extend。每条prompt和videoPrompt必须完整写出"
-        "镜头1至镜头6；plotGoal、openingState和endingState不能为空。"
-    )
     return (
-        "本次文本分析参考图顺序：图片1是试穿定妆图，图片2是服饰原图，图片3是模特原图"
-        f"{scene_reference}。\n"
-        f"实际生图参考顺序：图片1是试穿定妆图{scene_generation}。\n"
-        "实际生视频参考顺序：图片1是本段分镜图；extend段还会引用上一段视频。\n\n"
+        f"生成 {ratio} 画幅、{duration} 秒服饰展示视频的提示词。\n"
         f"服饰资料：\n{context['apparel_context']}\n\n"
-        f"创作方向：{blocks['creative_direction']}\n\n"
-        f"分段结构：{blocks['segment_structure'].format(segment_count=segment_count)}\n\n"
-        f"服饰一致性：{blocks['apparel_fidelity_rules']}\n\n"
-        f"模特一致性：{blocks['model_consistency_rules']}\n\n"
-        f"镜头规则：{blocks['shot_rules']}\n\n"
-        f"生图规则：{blocks['image_rules'].format(columns=columns, rows=rows, ratio=ratio)}\n\n"
-        f"视频规则：{blocks['video_rules'].format(ratio=ratio)}\n\n"
-        f"连续性规则：{blocks['continuity_rules']}\n\n"
-        f"禁止项：{blocks['forbidden_rules']}{extra}\n\n{output_contract}"
+        f"定妆图规则：{blocks['look_rules']}\n\n"
+        f"模特规则：{blocks['model_rules'].format(model_description=context.get('model_description') or '未提供，使用系统默认生活化模特')}\n\n"
+        f"场景规则：{blocks['scene_rules'].format(scene_description=context.get('scene_description') or '未提供，使用系统默认生活化场景')}\n\n"
+        f"手机实拍风格：{blocks['phone_style_rules']}\n\n"
+        f"展示动作：{blocks['action_rules']}\n\n"
+        f"视频参考规则：{blocks['video_reference_rules']}\n\n"
+        f"声音规则：{blocks['sound_rules']}\n\n"
+        f"连续生成规则：{blocks['continuation_rules'].format(duration=duration)}\n\n"
+        f"禁止项：{blocks['forbidden_rules']}{extra}\n\n"
+        '严格输出 JSON 对象，格式为 {"prompt":"完整视频提示词"}，不解释，不使用 Markdown。'
     )
 
 

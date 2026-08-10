@@ -317,27 +317,24 @@ def test_apparel_visual_builder_creates_one_server_prompt():
         "user_requirement": "自然日光",
     })
     assert "一张正面全身试穿定妆图" in prompt
-    assert "图片1是服饰参考图，图片2是模特参考图" in prompt
+    assert "图片1是服饰参考图；图片2如存在则为模特参考图" in prompt
     assert "用户补充要求：自然日光" in prompt
     assert '"prompt":"图片提示词"' in prompt
     assert "不生成六宫格、多视角拼图" in prompt
 
 
-def test_apparel_showcase_builder_creates_four_segment_contract():
+def test_apparel_showcase_builder_creates_video_prompt_contract():
     config = default_apparel_showcase_config()
     validated = validate_template_config(APPAREL_SHOWCASE_KEY, config, enabled=True)
     prompt = build_apparel_showcase_prompt(validated, {
         "apparel_context": "单品1：白色衬衫",
         "duration": 60,
-        "video_aspect_ratio": "9:16",
-        "scene_count": 1,
+        "aspect_ratio": "9:16",
         "user_requirement": "最后在街景收尾",
     })
-    assert "全片共4个15秒展示段" in prompt
-    assert "图片4是场景参考图" in prompt
-    assert '"templateId":"apparel-showcase"' in prompt
-    assert "segments必须恰好4条" in prompt
-    assert "实际生视频参考顺序：图片1是本段分镜图；" in prompt
-    assert "图片2是六格试穿总览" not in prompt
-    assert "图片1是试穿定妆图" in prompt
+    assert "生成 9:16 画幅、60 秒服饰展示视频的提示词" in prompt
+    assert "图片1是确认后的定妆图" in prompt
+    assert "图片2是服饰原图" in prompt
+    assert "iPhone 后置 1 倍主摄" in prompt
+    assert "缓慢转圈" in prompt
     assert "用户补充要求：最后在街景收尾" in prompt

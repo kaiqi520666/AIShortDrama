@@ -4,6 +4,9 @@ export function buildApparelVisualRequest({
   model,
   garmentUrl,
   modelUrl,
+  sceneUrl,
+  modelDescription,
+  sceneDescription,
   apparelContext,
   aspectRatio,
   resolution,
@@ -16,7 +19,7 @@ export function buildApparelVisualRequest({
     model,
     media_type: 'image',
     media_url: garmentUrl,
-    media_urls: [modelUrl],
+    media_urls: [modelUrl, sceneUrl].filter(Boolean),
     response_mode: 'outfit_visual_plan',
     template_key: 'apparel_visual',
     template_version: templateVersion,
@@ -24,7 +27,9 @@ export function buildApparelVisualRequest({
       apparel_context: apparelContext,
       aspect_ratio: aspectRatio,
       resolution,
-      reference_count: 2,
+      reference_count: 1 + [modelUrl, sceneUrl].filter(Boolean).length,
+      ...(modelDescription?.trim() ? { model_description: modelDescription.trim() } : {}),
+      ...(sceneDescription?.trim() ? { scene_description: sceneDescription.trim() } : {}),
       user_requirement: userRequirement || '',
     },
   }
@@ -42,6 +47,41 @@ export function parseOutfitPrompt(content) {
     // Fall through to the stable user-facing error.
   }
   throw new Error('试穿定妆方案格式异常')
+}
+
+export function buildApparelVideoRequest({
+  workspaceId,
+  nodeId,
+  model,
+  outfitReferenceUrl,
+  garmentUrl,
+  apparelContext,
+  aspectRatio,
+  duration,
+  templateVersion,
+  modelDescription,
+  sceneDescription,
+  userRequirement,
+}) {
+  return {
+    workspace_id: workspaceId,
+    node_id: nodeId,
+    model,
+    media_type: 'image',
+    media_url: outfitReferenceUrl,
+    media_urls: [garmentUrl],
+    response_mode: 'apparel_video_plan',
+    template_key: 'apparel_showcase',
+    template_version: templateVersion,
+    template_context: {
+      apparel_context: apparelContext,
+      aspect_ratio: aspectRatio,
+      duration,
+      ...(modelDescription?.trim() ? { model_description: modelDescription.trim() } : {}),
+      ...(sceneDescription?.trim() ? { scene_description: sceneDescription.trim() } : {}),
+      user_requirement: userRequirement || '',
+    },
+  }
 }
 
 export function resolveOutfitReference(outfitData = {}, nodes = []) {

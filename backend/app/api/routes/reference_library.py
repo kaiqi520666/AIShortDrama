@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.errors import NotFoundError, RequestError, ServiceUnavailableError, public_error_message
 from app.core.identity import get_current_user_id
-from app.models import Asset, Character, Garment, OutfitModel
+from app.models import Asset, Character, Garment, OutfitModel, Scene
 from app.providers.toapis import ToApisProvider
 from app.schemas.response import success
 from app.services.media_upload import MEDIA_UPLOAD_RULES, MediaUploadService, StoredMedia
@@ -51,11 +51,12 @@ async def refresh_virtual_character(item: Character) -> dict[str, Any]:
     return refreshed
 
 
-def reference_payload(item: OutfitModel | Character | Garment, resource_type: str) -> dict[str, Any]:
+def reference_payload(item: OutfitModel | Character | Garment | Scene, resource_type: str) -> dict[str, Any]:
     metadata = {
         "model": getattr(item, "model_metadata", {}),
         "character": getattr(item, "character_metadata", {}),
         "garment": getattr(item, "garment_metadata", {}),
+        "scene": getattr(item, "scene_metadata", {}),
     }[resource_type] or {}
     library = metadata.get("library") if isinstance(metadata, dict) else None
     if isinstance(library, dict):
@@ -353,3 +354,46 @@ async def upload_garment(
     )
     await _commit_reference_item(db, item, stored, service)
     return success(reference_payload(item, "garment"))
+
+
+@router.get("/scenes")
+async def list_scenes(
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    items = await db.scalars(
+        select(Scene)
+        .where(
+            Scene.active.is_(True),
+            or_(Scene.user_id.is_(None), Scene.user_id == user_id),
+        )
+        .order_by(Scene.user_id.is_not(None), Scene.sort_order, Scene.created_at)
+    )
+    return success([reference_payload(item, "scene") for item in items])
+
+
+@router.post("/scenes")
+async def upload_scene(
+    file: UploadFile = File(...),
+    name: str | None = Form(default=None),
+    db: AsyncSession = Depends(get_db),
+    user_id: uuid.UUID = Depends(get_current_user_id),
+):
+    service = get_media_upload_service()
+    try:
+        stored = await store_reference_image(file, "scenes", service)
+    except ValueError as exc:
+        raise RequestError(str(exc)) from exc
+    except Exception as exc:
+        logger.exception("Scene upload failed")
+        raise ServiceUnavailableError(public_error_message(exc, "上传服务暂时不可用")) from exc
+    item = Scene(
+        user_id=user_id,
+        name=((name or file.filename or "我的场景").rsplit(".", 1)[0].strip() or "我的场景")[:100],
+        image_url=stored.url,
+        object_key=stored.object_key,
+        width=stored.width,
+        height=stored.height,
+    )
+    await _commit_reference_item(db, item, stored, service)
+    return success(reference_payload(item, "scene"))

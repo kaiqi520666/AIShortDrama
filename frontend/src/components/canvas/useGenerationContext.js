@@ -68,9 +68,18 @@ export function useGenerationContext({
       type: 'image',
       data: { title: '试穿定妆图', asset: (props.data.storyboardOutfitReference || props.data.storyboardOutfitBoard).url },
     }] : []
+    const outfitReferences = props.type === 'image' && props.data.outfitSourceId
+      ? [props.data.outfitModelReference, props.data.outfitSceneReference]
+        .filter((reference) => reference?.url)
+        .map((reference, index) => ({
+          id: `outfit-reference-${index}-${reference.id || reference.url}`,
+          type: 'image',
+          data: { title: index ? '场景参考图' : '模特参考图', asset: reference.url },
+        }))
+      : []
     return isStoryboardImage.value
       ? [...legacyOutfitReference, ...connectedReferences.value, ...characters, ...productReferences]
-      : [...connectedReferences.value, ...characters, ...productReferences]
+      : [...connectedReferences.value, ...outfitReferences, ...characters, ...productReferences]
   })
   const disabledReferenceIds = computed(() => new Set(props.data.disabledReferenceIds || []))
   const activeReferences = computed(() => references.value.filter(
