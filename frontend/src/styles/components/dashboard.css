@@ -46,6 +46,21 @@
   font-weight: 700;
   letter-spacing: 0.12em;
 }
+.dashboard-nav__section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+}
+.dashboard-nav__section:first-of-type {
+  margin-top: 0;
+}
+.dashboard-nav__section > small {
+  padding: 0 13px 4px;
+  color: var(--color-text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
 .dashboard-nav__item {
   display: flex;
   min-height: 42px;
@@ -111,7 +126,13 @@
   .dashboard-nav__group {
     display: contents;
   }
+  .dashboard-nav__section {
+    display: contents;
+  }
   .dashboard-nav__group > small {
+    display: none;
+  }
+  .dashboard-nav__section > small {
     display: none;
   }
   .dashboard-nav__item {

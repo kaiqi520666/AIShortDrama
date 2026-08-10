@@ -70,6 +70,7 @@ const {
   selectedVideoSettings,
   selectedVideoModel,
   selectedAudioSettings,
+  selectableModels,
   selectedModel,
   selectedResolution,
   selectedAspectRatio,
