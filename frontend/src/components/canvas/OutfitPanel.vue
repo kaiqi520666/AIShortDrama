@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ArrowUp, Coins, FileText, Image, LoaderCircle, MapPin, Shirt, UserRound } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
 import { streamReversePrompt } from '../../api/reversals'
@@ -61,6 +61,7 @@ const message = computed(() => {
 })
 const canSubmit = computed(() => templateEnabled.value && !running.value && garmentNode.value?.data.asset && apparelContext.value && !insufficientCredits.value)
 const canCreateVideo = computed(() => outfitReference.value.asset && !videoGenerating.value && videoTemplateEnabled.value)
+const existingVideoNode = computed(() => props.data.videoNodeId && store.nodes.find((node) => node.id === props.data.videoNodeId))
 const sourceItems = computed(() => [
   { label: '服饰识别', icon: Shirt, asset: garmentNode.value?.data.asset, title: apparelNode.value ? `${(apparelNode.value.data.items || []).filter((item) => item.enabled !== false).length} 件已启用` : '尚未连接' },
   { label: '模特', icon: UserRound, asset: props.data.modelReference?.url, title: props.data.modelReference?.name || (props.data.modelDescription ? '文字生成/默认模特' : '系统自动生成') },
@@ -85,6 +86,10 @@ function selectReference(kind, item) {
 async function createVideoNode() {
   const reference = outfitReference.value
   if (!reference.asset || !garmentNode.value?.data.asset || videoGenerating.value || !videoTemplateEnabled.value) return
+  if (existingVideoNode.value) {
+    store.selectNodes([existingVideoNode.value.id])
+    return
+  }
   videoGenerating.value = true
   try {
     await runTextTask(streamReversePrompt, buildApparelVideoRequest({
@@ -120,6 +125,16 @@ async function createVideoNode() {
     videoGenerating.value = false
   }
 }
+
+watch(
+  () => props.data.createOutfitVideoRequested,
+  async (requested) => {
+    if (!requested) return
+    updateData({ createOutfitVideoRequested: false })
+    await createVideoNode()
+  },
+  { immediate: true },
+)
 
 async function submitTask() {
   if (!canSubmit.value) return
@@ -229,7 +244,7 @@ defineExpose({ submitTask })
         <LoaderCircle v-if="running" class="run-task-spinner" :size="18" />
         <ArrowUp v-else :size="18" />
       </AppButton>
-    <AppButton v-if="outfitReference.asset" variant="soft" :disabled="!canCreateVideo" @click="createVideoNode">{{ videoGenerating ? '准备视频…' : '确认定妆图，生成视频节点' }}</AppButton>
+    <AppButton v-if="outfitReference.asset" variant="soft" :disabled="!canCreateVideo && !existingVideoNode" @click="createVideoNode">{{ existingVideoNode ? '打开服饰视频节点' : videoGenerating ? '准备视频…' : '生成服饰视频节点' }}</AppButton>
     </footer>
     <AppAssetPickerModal v-if="modelPickerOpen" resource-type="model" input-role="model" :selected-url="data.modelReference?.url" @close="modelPickerOpen = false" @select="selectReference('model', $event)" />
     <AppAssetPickerModal v-if="scenePickerOpen" resource-type="scene" input-role="scene" :selected-url="data.sceneReference?.url" @close="scenePickerOpen = false" @select="selectReference('scene', $event)" />

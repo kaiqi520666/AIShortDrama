@@ -111,6 +111,17 @@ const { resume: resumeGenerationPolling } = useNodeGenerationPolling({
   getWorkspaceId: () => store.workspaceId,
   updateNodeData,
 })
+const isOutfitReference = computed(() => (
+  props.type === 'image'
+  && props.data.resourceType === 'outfit-reference'
+  && props.data.outfitSourceId
+))
+
+function openOutfitVideoFlow() {
+  if (!isOutfitReference.value) return
+  updateNodeData(props.data.outfitSourceId, { createOutfitVideoRequested: true })
+  store.selectNodes([props.data.outfitSourceId])
+}
 </script>
 
 <template>
@@ -121,6 +132,9 @@ const { resume: resumeGenerationPolling } = useNodeGenerationPolling({
       </AppTooltip>
       <AppTooltip v-if="data.storyboardSourceId" text="创建视频节点">
         <AppButton class="media-node-toolbar-button" icon-only aria-label="创建视频节点" @click.stop="createStoryboardVideo"><Video :size="16" /></AppButton>
+      </AppTooltip>
+      <AppTooltip v-if="isOutfitReference" text="确认定妆图并生成服饰视频">
+        <AppButton class="media-node-toolbar-button" icon-only aria-label="确认定妆图并生成服饰视频" @click.stop="openOutfitVideoFlow"><Video :size="16" /></AppButton>
       </AppTooltip>
       <AppTooltip :text="storyboardRegistrationLabel">
         <AppButton class="media-node-toolbar-button" icon-only :disabled="registeringStoryboard || !data.assetId" :aria-label="storyboardRegistrationLabel" @click.stop="registerStoryboardAsset">
