@@ -46,6 +46,8 @@ class ApparelVisualTemplateContext(BaseModel):
     aspect_ratio: str = Field(pattern=r"^\d{1,3}:\d{1,3}$")
     resolution: str = Field(pattern=r"^\d{1,3}[Kk]$")
     reference_count: int = Field(ge=1, le=3)
+    model_reference_provided: bool | None = None
+    scene_reference_provided: bool | None = None
     model_description: str = Field(default="", max_length=600)
     scene_description: str = Field(default="", max_length=600)
     user_requirement: str = Field(default="", max_length=600)

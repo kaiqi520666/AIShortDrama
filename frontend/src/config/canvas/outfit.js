@@ -28,6 +28,8 @@ export function buildApparelVisualRequest({
       aspect_ratio: aspectRatio,
       resolution,
       reference_count: 1 + [modelUrl, sceneUrl].filter(Boolean).length,
+      model_reference_provided: Boolean(modelUrl),
+      scene_reference_provided: Boolean(sceneUrl),
       ...(modelDescription?.trim() ? { model_description: modelDescription.trim() } : {}),
       ...(sceneDescription?.trim() ? { scene_description: sceneDescription.trim() } : {}),
       user_requirement: userRequirement || '',

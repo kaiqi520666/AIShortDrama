@@ -22,6 +22,8 @@ describe('outfit planning', () => {
       aspect_ratio: '9:16',
       resolution: '1K',
       reference_count: 2,
+      model_reference_provided: true,
+      scene_reference_provided: false,
       user_requirement: '自然日光',
     })
   })

@@ -314,13 +314,30 @@ def test_apparel_visual_builder_creates_one_server_prompt():
         "apparel_context": "单品1：白色衬衫（面料：棉）",
         "aspect_ratio": "9:16",
         "resolution": "1K",
+        "reference_count": 2,
         "user_requirement": "自然日光",
     })
     assert "一张正面全身试穿定妆图" in prompt
-    assert "图片1是服饰参考图；图片2如存在则为模特参考图" in prompt
+    assert "图片1：服饰参考图；图片2：模特参考图" in prompt
     assert "用户补充要求：自然日光" in prompt
     assert '"prompt":"图片提示词"' in prompt
     assert "不生成六宫格、多视角拼图" in prompt
+
+
+def test_apparel_visual_builder_does_not_invent_missing_references():
+    config = validate_template_config(APPAREL_VISUAL_KEY, default_apparel_visual_config(), enabled=True)
+    prompt = build_apparel_visual_prompt(config, {
+        "apparel_context": "单品1：粉色连衣裙",
+        "aspect_ratio": "9:16",
+        "resolution": "1K",
+        "reference_count": 1,
+        "model_reference_provided": False,
+        "scene_reference_provided": False,
+    })
+    assert "参考图角色（仅可引用以下图片，禁止虚构不存在的图片）：图片1：服饰参考图。" in prompt
+    assert "图片2：模特参考图" not in prompt
+    assert "图片3：场景参考图" not in prompt
+    assert "图片2如存在则为模特参考图" not in prompt
 
 
 def test_apparel_showcase_builder_creates_video_prompt_contract():

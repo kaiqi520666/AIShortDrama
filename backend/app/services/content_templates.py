@@ -55,7 +55,7 @@ APPAREL_VISUAL_PROVIDER_INSTRUCTION = (
 )
 APPAREL_VISUAL_PROMPT_BLOCKS = {
     "task_instruction": (
-        "图片1是服饰参考图；图片2如存在则为模特参考图，图片3如存在则为场景参考图。请生成一条中文图片提示词，"
+        "请根据下方明确列出的参考图角色生成一条中文图片提示词，"
         "输出一张正面全身试穿定妆图。统一画面规格：{aspect_ratio}，{resolution}。"
     ),
     "fidelity_rules": (
@@ -763,8 +763,33 @@ def build_apparel_visual_prompt(config: dict[str, Any], context: dict[str, Any])
     business_line = f"\n业务要求：{instruction}" if instruction else ""
     user_requirement = context.get("user_requirement", "").strip()
     user_line = f"\n用户补充要求：{user_requirement}" if user_requirement else ""
+    model_provided = context.get("model_reference_provided")
+    scene_provided = context.get("scene_reference_provided")
+    if model_provided is None and scene_provided is None:
+        # Older clients only supplied a positional media_urls list; preserve its model-first convention.
+        model_provided = context.get("reference_count", 1) >= 2
+        scene_provided = context.get("reference_count", 1) >= 3
+    reference_roles = ["图片1：服饰参考图"]
+    next_index = 2
+    if model_provided:
+        reference_roles.append(f"图片{next_index}：模特参考图")
+        next_index += 1
+    if scene_provided:
+        reference_roles.append(f"图片{next_index}：场景参考图")
+    reference_rules = (
+        "参考图角色（仅可引用以下图片，禁止虚构不存在的图片）："
+        + "；".join(reference_roles)
+        + "。"
+    )
+    task_instruction = blocks["task_instruction"]
+    for legacy_prefix in (
+        "图片1是服饰参考图；图片2如存在则为模特参考图，图片3如存在则为场景参考图。",
+        "图片1是服饰参考图，图片2是模特参考图。",
+    ):
+        task_instruction = task_instruction.replace(legacy_prefix, "")
     return (
-        f"{blocks['task_instruction'].format(aspect_ratio=context['aspect_ratio'], resolution=context['resolution'])}"
+        f"{reference_rules}\n"
+        f"{task_instruction.format(aspect_ratio=context['aspect_ratio'], resolution=context['resolution'])}"
         f"{business_line}\n"
         f"服饰资料：\n{context['apparel_context']}{user_line}\n"
         f"{blocks['fidelity_rules']}\n{blocks['output_protocol']}"
