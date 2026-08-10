@@ -50,12 +50,13 @@ PRODUCT_VISUAL_PLACEHOLDERS = {
 }
 
 APPAREL_VISUAL_PROVIDER_INSTRUCTION = (
-    "你是专业的中文服饰试穿视觉策划师。严格保持参考服饰和模特身份一致，并按用户指定的 JSON 对象输出，"
-    "不解释，不使用 Markdown。"
+    "你是专业的中文服饰试穿视觉策划师。模特参考图是可选输入：未提供时必须依据服饰资料创建自然生活化模特，"
+    "不得以缺少图片或无法保持一致为由拒绝生成。严格按用户指定的 JSON 对象输出，不解释，不使用 Markdown。"
 )
 APPAREL_VISUAL_PROMPT_BLOCKS = {
     "task_instruction": (
-        "请根据下方明确列出的参考图角色生成一条中文图片提示词，"
+        "请根据下方明确列出的参考图角色生成一条可直接用于生图的中文图片提示词。模特参考图可选：未提供时，"
+        "直接依据服饰资料创建自然生活化模特，不得输出缺少图片、无法生成或要求补充参考图的文案。"
         "输出一张正面全身试穿定妆图。统一画面规格：{aspect_ratio}，{resolution}。"
     ),
     "fidelity_rules": (
@@ -781,6 +782,18 @@ def build_apparel_visual_prompt(config: dict[str, Any], context: dict[str, Any])
         + "；".join(reference_roles)
         + "。"
     )
+    if model_provided:
+        model_rule = "模特参考图已提供：严格保持该模特的脸部、发型、体型、肤色和身份一致。"
+    elif context.get("model_description", "").strip():
+        model_rule = (
+            "未提供模特参考图：这是正常输入。必须依据用户的模特描述创建人物并输出可用提示词，"
+            "不得声称缺少图片、无法生成或要求补充模特图。"
+        )
+    else:
+        model_rule = (
+            "未提供模特参考图：这是正常输入。必须依据服饰资料创建一位自然生活化成年模特并输出可用提示词，"
+            "不得声称缺少图片、无法生成或要求补充模特图。"
+        )
     task_instruction = blocks["task_instruction"]
     for legacy_prefix in (
         "图片1是服饰参考图；图片2如存在则为模特参考图，图片3如存在则为场景参考图。",
@@ -789,6 +802,7 @@ def build_apparel_visual_prompt(config: dict[str, Any], context: dict[str, Any])
         task_instruction = task_instruction.replace(legacy_prefix, "")
     return (
         f"{reference_rules}\n"
+        f"{model_rule}\n"
         f"{task_instruction.format(aspect_ratio=context['aspect_ratio'], resolution=context['resolution'])}"
         f"{business_line}\n"
         f"服饰资料：\n{context['apparel_context']}{user_line}\n"

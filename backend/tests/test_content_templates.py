@@ -94,6 +94,19 @@ def load_apparel_reference_instruction_migration():
     return module
 
 
+def load_apparel_optional_model_migration():
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "alembic"
+        / "versions"
+        / "t1v3x5z7b9c0_fix_apparel_optional_model_copy.py"
+    )
+    spec = importlib.util.spec_from_file_location("apparel_optional_model_migration", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def product_visual_config():
     group_labels = {
         "basic": "基础展示",
@@ -189,6 +202,12 @@ def test_apparel_reference_instruction_migration_only_replaces_known_fixed_copy(
     migration = load_apparel_reference_instruction_migration()
     assert migration.TASK_INSTRUCTION.startswith("请根据下方明确列出的参考图角色")
     assert any("图片2是模特参考图" in value for value in migration.OLD_PREFIXES)
+
+
+def test_apparel_optional_model_migration_only_targets_system_defaults():
+    migration = load_apparel_optional_model_migration()
+    assert "模特参考图可选" in migration.TASK_INSTRUCTION
+    assert "不得以缺少图片或无法保持一致为由拒绝生成" in migration.PROVIDER_INSTRUCTION
 
 
 def test_product_visual_builder_matches_accepted_frontend_prompt_byte_for_byte():
@@ -357,6 +376,9 @@ def test_apparel_visual_builder_does_not_invent_missing_references():
     assert "图片2：模特参考图" not in prompt
     assert "图片3：场景参考图" not in prompt
     assert "图片2如存在则为模特参考图" not in prompt
+    assert "这是正常输入" in prompt
+    assert "创建一位自然生活化成年模特" in prompt
+    assert "不得声称缺少图片、无法生成或要求补充模特图" in prompt
 
 
 def test_apparel_showcase_builder_creates_video_prompt_contract():
