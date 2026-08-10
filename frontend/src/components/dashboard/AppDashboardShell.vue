@@ -1,9 +1,10 @@
 <script setup>
-import { ClipboardList, CreditCard, FileText, History, Image, Images, LayoutDashboard, PanelsTopLeft, ReceiptText, Shirt, Tags, UsersRound } from 'lucide-vue-next'
+import { ref, watch } from 'vue'
+import { ChevronDown, ClipboardList, CreditCard, FileText, History, Image, Images, LayoutDashboard, PanelsTopLeft, ReceiptText, Shirt, Tags, UsersRound } from 'lucide-vue-next'
 import AppBrand from '../ui/AppBrand.vue'
 import AppHeaderAccountControls from '../ui/AppHeaderAccountControls.vue'
 
-defineProps({
+const props = defineProps({
   activeItem: { type: String, required: true },
   username: { type: String, required: true },
   creditBalance: { type: Number, default: 0 },
@@ -21,6 +22,7 @@ const accountItems = [
 ]
 const adminGroups = [
   {
+    id: 'operations',
     label: '运营概览',
     items: [
       { id: 'admin-overview', label: '后台概览', icon: LayoutDashboard, to: { name: 'admin-overview' } },
@@ -29,6 +31,7 @@ const adminGroups = [
     ],
   },
   {
+    id: 'content',
     label: '内容配置',
     items: [
       { id: 'admin-models', label: '模型管理', icon: PanelsTopLeft, to: { name: 'admin-models' } },
@@ -39,6 +42,7 @@ const adminGroups = [
     ],
   },
   {
+    id: 'resources',
     label: '用户资源',
     items: [
       { id: 'admin-users', label: '用户管理', icon: UsersRound, to: { name: 'admin-users' } },
@@ -46,12 +50,23 @@ const adminGroups = [
     ],
   },
   {
+    id: 'finance',
     label: '财务管理',
     items: [
       { id: 'admin-recharge', label: '充值管理', icon: CreditCard, to: { name: 'admin-recharge' } },
     ],
   },
 ]
+const openAdminGroup = ref('operations')
+
+function toggleAdminGroup(groupId) {
+  openAdminGroup.value = openAdminGroup.value === groupId ? '' : groupId
+}
+
+watch(() => props.activeItem, (activeItem) => {
+  const group = adminGroups.find(({ items }) => items.some((item) => item.id === activeItem))
+  if (group) openAdminGroup.value = group.id
+}, { immediate: true })
 </script>
 
 <template>
@@ -87,10 +102,20 @@ const adminGroups = [
           <div v-if="isAdmin" class="dashboard-nav__group dashboard-nav__group--admin">
             <small>后台管理</small>
             <div v-for="group in adminGroups" :key="group.label" class="dashboard-nav__section">
-              <small>{{ group.label }}</small>
-              <RouterLink v-for="item in group.items" :key="item.id" class="dashboard-nav__item" :class="{ active: activeItem === item.id }" :to="item.to">
-                <component :is="item.icon" :size="16" /><span>{{ item.label }}</span>
-              </RouterLink>
+              <button
+                type="button"
+                class="dashboard-nav__section-toggle"
+                :aria-expanded="openAdminGroup === group.id"
+                :aria-controls="`admin-group-${group.id}`"
+                @click="toggleAdminGroup(group.id)"
+              >
+                <span>{{ group.label }}</span><ChevronDown :size="15" :class="{ 'is-expanded': openAdminGroup === group.id }" />
+              </button>
+              <div v-show="openAdminGroup === group.id" :id="`admin-group-${group.id}`" class="dashboard-nav__section-items">
+                <RouterLink v-for="item in group.items" :key="item.id" class="dashboard-nav__item" :class="{ active: activeItem === item.id }" :to="item.to">
+                  <component :is="item.icon" :size="16" /><span>{{ item.label }}</span>
+                </RouterLink>
+              </div>
             </div>
           </div>
         </nav>
