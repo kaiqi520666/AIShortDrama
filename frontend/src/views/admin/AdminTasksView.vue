@@ -74,31 +74,14 @@ function parseEmbeddedJson(value) {
   const end = source.lastIndexOf(closing)
   try { return JSON.parse(source.slice(0, end + 1)) } catch { return value }
 }
+function normalizeSnapshot(value) {
+  const parsed = parseEmbeddedJson(value)
+  if (Array.isArray(parsed)) return parsed.map(normalizeSnapshot)
+  if (parsed && typeof parsed === 'object') return Object.fromEntries(Object.entries(parsed).map(([key, item]) => [key, normalizeSnapshot(item)]))
+  return parsed
+}
 function formatSnapshot(value) {
-  const lines = []
-  function append(input, depth = 0, key = '') {
-    const current = parseEmbeddedJson(input)
-    const indent = '  '.repeat(depth)
-    if (Array.isArray(current)) {
-      if (!current.length && !key) return lines.push(`${indent}[]`)
-      if (key) lines.push(`${indent}${key}:${current.length ? '' : ' []'}`)
-      current.forEach((item, index) => append(item, depth + Number(Boolean(key)), `[${index}]`))
-      return
-    }
-    if (current && typeof current === 'object') {
-      const entries = Object.entries(current)
-      if (!entries.length && !key) return lines.push(`${indent}{}`)
-      if (key) lines.push(`${indent}${key}:${entries.length ? '' : ' {}'}`)
-      entries.forEach(([childKey, child]) => append(child, depth + Number(Boolean(key)), childKey))
-      return
-    }
-    const text = current == null ? 'null' : String(current)
-    if (!key || !text.includes('\n')) return lines.push(`${indent}${key ? `${key}: ` : ''}${text}`)
-    lines.push(`${indent}${key}:`)
-    text.split('\n').forEach((line) => lines.push(`${indent}  ${line}`))
-  }
-  append(value ?? {})
-  return lines.join('\n')
+  return JSON.stringify(normalizeSnapshot(value ?? {}), null, 2)
 }
 onMounted(load)
 </script>
@@ -136,6 +119,7 @@ onMounted(load)
         <AppButton size="sm" variant="soft" :disabled="providerLoading" @click="refreshProviderStatus"><RefreshCw :size="14" :class="{ 'is-spinning': providerLoading }" />{{ providerLoading ? '查询中' : '重新查询上游状态' }}</AppButton>
         <p v-if="providerState"><strong>{{ providerState.status }}</strong> · {{ providerState.progress }}%<span v-if="providerState.error_message"> · {{ providerState.error_message }}</span><small>查询于 {{ formatDate(providerState.checked_at) }}</small></p>
       </section>
+      <details v-if="detail.diagnostic_snapshot" class="admin-task-snapshot"><summary>完整错误</summary><pre class="admin-json">{{ formatSnapshot(detail.diagnostic_snapshot) }}</pre></details>
       <details class="admin-task-snapshot"><summary>请求快照</summary><pre class="admin-json">{{ formatSnapshot(detail.request_snapshot) }}</pre></details>
       <details class="admin-task-snapshot"><summary>计费快照</summary><pre class="admin-json">{{ formatSnapshot(detail.pricing_snapshot) }}</pre></details>
       <details class="admin-task-snapshot"><summary>结果快照</summary><pre class="admin-json">{{ formatSnapshot(detail.result) }}</pre></details>

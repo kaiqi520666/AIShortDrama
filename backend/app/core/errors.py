@@ -1,4 +1,5 @@
 import re
+import traceback
 from datetime import UTC, datetime
 from typing import Any
 
@@ -55,7 +56,8 @@ DIAGNOSTIC_STAGES = {
     "unknown",
 }
 _SECRET_PATTERN = re.compile(
-    r"(?i)(authorization|api[-_ ]?key|token|secret|signature)\s*[:=]\s*[^\s,;]+"
+    r"(?i)(authorization|api[-_ ]?key|access[-_ ]?key(?:[-_ ]?(?:id|secret))?|password|token|secret|signature)"
+    r"[\"']?\s*[:=]\s*[\"']?(?:bearer\s+)?[^\s,;\"')\]}]+"
 )
 _URL_PATTERN = re.compile(r"https?://[^\s\]\[()<>\"']+")
 
@@ -114,6 +116,10 @@ def diagnostic_snapshot(exc: Exception, stage: str = "unknown") -> dict[str, Any
         "provider_message": message,
         "provider_request_id": request_id,
         "exception_type": exception_name[:120],
+        "exception_module": exc.__class__.__module__[:200],
+        "exception_message": _safe_diagnostic_text(str(exc)),
+        "cause_chain": _cause_chain(exc),
+        "traceback": _safe_diagnostic_text("".join(traceback.format_exception(exc))),
         "retryable": retryable,
         "occurred_at": datetime.now(UTC).isoformat(),
     }
@@ -136,3 +142,28 @@ def _safe_provider_message(value: str, limit: int = 500) -> str:
     value = _URL_PATTERN.sub("[URL]", value)
     value = " ".join(value.split())
     return (value or "上游未返回错误详情")[:limit]
+
+
+def _safe_diagnostic_text(value: str) -> str:
+    return _SECRET_PATTERN.sub(r"\1=[REDACTED]", value)
+
+
+def _cause_chain(exc: Exception) -> list[dict[str, str]]:
+    causes = []
+    seen = {id(exc)}
+    current = exc
+    while True:
+        cause = current.__cause__ or (
+            current.__context__ if not current.__suppress_context__ else None
+        )
+        if cause is None or id(cause) in seen:
+            return causes
+        seen.add(id(cause))
+        causes.append(
+            {
+                "exception_type": cause.__class__.__name__[:120],
+                "exception_module": cause.__class__.__module__[:200],
+                "exception_message": _safe_diagnostic_text(str(cause)),
+            }
+        )
+        current = cause

@@ -182,13 +182,16 @@ async def test_video_generation_hides_provider_detail_from_node():
         failed = await db.get(GenerationTask, task_id)
         assert failed.status == "failed"
         assert failed.error_message == "视频生成服务暂时不可用"
-        assert failed.diagnostic_snapshot == {
-            "stage": "submit",
-            "category": "upstream_http",
-            "provider_status": 524,
-            "provider_message": "完整上游错误",
-            "provider_request_id": "req-video-failure",
-            "exception_type": "ToApisError",
-            "retryable": True,
-            "occurred_at": failed.diagnostic_snapshot["occurred_at"],
-        }
+        diagnostic = failed.diagnostic_snapshot
+        assert diagnostic["stage"] == "submit"
+        assert diagnostic["category"] == "upstream_http"
+        assert diagnostic["provider_status"] == 524
+        assert diagnostic["provider_message"] == "完整上游错误"
+        assert diagnostic["provider_request_id"] == "req-video-failure"
+        assert diagnostic["exception_type"] == "ToApisError"
+        assert diagnostic["exception_module"] == "app.providers.toapis"
+        assert diagnostic["exception_message"] == "完整上游错误"
+        assert diagnostic["cause_chain"] == []
+        assert "ToApisError: 完整上游错误" in diagnostic["traceback"]
+        assert diagnostic["retryable"] is True
+        assert diagnostic["occurred_at"]
