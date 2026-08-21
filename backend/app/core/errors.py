@@ -59,12 +59,18 @@ _SECRET_PATTERN = re.compile(
     r"(?i)(authorization|api[-_ ]?key|access[-_ ]?key(?:[-_ ]?(?:id|secret))?|password|token|secret|signature)"
     r"[\"']?\s*[:=]\s*[\"']?(?:bearer\s+)?[^\s,;\"')\]}]+"
 )
+_SECRET_KEY_PATTERN = re.compile(
+    r"(?i)^(authorization|api[-_ ]?key|access[-_ ]?key(?:[-_ ]?(?:id|secret))?|password|token|secret|signature)$"
+)
 _URL_PATTERN = re.compile(r"https?://[^\s\]\[()<>\"']+")
 
 
 def public_error_message(exc: Exception, fallback: str) -> str:
     if isinstance(exc, ApiError):
         return exc.message
+    public_message = getattr(exc, "public_message", None)
+    if isinstance(public_message, str) and public_message.strip():
+        return public_message
     if isinstance(exc, (httpx.HTTPError, OSError, TimeoutError, ConnectionError)):
         return fallback
     if exc.__class__.__name__ in _UPSTREAM_ERROR_NAMES:
@@ -76,6 +82,7 @@ def diagnostic_snapshot(exc: Exception, stage: str = "unknown") -> dict[str, Any
     stage = stage if stage in DIAGNOSTIC_STAGES else "unknown"
     status_code = _integer_attribute(exc, "status_code")
     request_id = _text_attribute(exc, "request_id")
+    provider_code = _text_attribute(exc, "code")
     if isinstance(exc, httpx.HTTPStatusError):
         status_code = exc.response.status_code
         request_id = request_id or next(
@@ -113,7 +120,9 @@ def diagnostic_snapshot(exc: Exception, stage: str = "unknown") -> dict[str, Any
         "stage": stage,
         "category": category,
         "provider_status": status_code,
+        "provider_code": provider_code,
         "provider_message": message,
+        "provider_error": _safe_diagnostic_value(getattr(exc, "details", None)),
         "provider_request_id": request_id,
         "exception_type": exception_name[:120],
         "exception_module": exc.__class__.__module__[:200],
@@ -146,6 +155,21 @@ def _safe_provider_message(value: str, limit: int = 500) -> str:
 
 def _safe_diagnostic_text(value: str) -> str:
     return _SECRET_PATTERN.sub(r"\1=[REDACTED]", value)
+
+
+def _safe_diagnostic_value(value: Any) -> Any:
+    if isinstance(value, str):
+        return _safe_diagnostic_text(value)
+    if isinstance(value, dict):
+        return {
+            str(key): "[REDACTED]"
+            if _SECRET_KEY_PATTERN.fullmatch(str(key))
+            else _safe_diagnostic_value(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, list):
+        return [_safe_diagnostic_value(item) for item in value]
+    return value
 
 
 def _cause_chain(exc: Exception) -> list[dict[str, str]]:

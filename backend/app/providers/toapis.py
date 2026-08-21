@@ -12,15 +12,25 @@ class ToApisError(RuntimeError):
         retryable: bool = False,
         status_code: int | None = None,
         request_id: str | None = None,
+        code: str | None = None,
+        details: dict[str, Any] | None = None,
     ):
         super().__init__(message)
         self.retryable = retryable
         self.status_code = status_code
         self.request_id = request_id
+        self.code = code
+        self.details = details
 
     @property
-    def public_message(self) -> str:
-        return "上游服务暂时不可用，请稍后重试"
+    def public_message(self) -> str | None:
+        privacy_error = (self.code or "").lower().endswith("privacyinformation")
+        if privacy_error or "may contain real person" in str(self).lower():
+            return (
+                "参考图片中检测到真人，请在对应图片节点顶部点击人物图标，"
+                "注册为 Seedance 人物素材，审核通过后重新生成视频"
+            )
+        return None
 
 
 class ToApisProvider:
@@ -91,11 +101,14 @@ class ToApisProvider:
         try:
             response.raise_for_status()
         except httpx.HTTPStatusError as exc:
+            message, code, details = self._error_details(response)
             raise ToApisError(
-                self._error_message(response),
+                message,
                 retryable=response.status_code == 429 or response.status_code >= 500,
                 status_code=response.status_code,
                 request_id=self._request_id(response),
+                code=code,
+                details=details,
             ) from exc
         data = response.json()
         if not isinstance(data, dict):
@@ -112,24 +125,32 @@ class ToApisProvider:
         return data
 
     @staticmethod
-    def _error_message(response: httpx.Response) -> str:
+    def _error_details(
+        response: httpx.Response,
+    ) -> tuple[str, str | None, dict[str, Any] | None]:
         try:
             payload = response.json()
             error = payload.get("error") if isinstance(payload, dict) else None
             if isinstance(error, dict):
-                return error.get("message") or error.get("detail") or f"ToAPIs 请求失败（{response.status_code}）"
+                nested = error.get("error") if isinstance(error.get("error"), dict) else error
+                message = nested.get("message") or nested.get("detail")
+                code = nested.get("code") or error.get("code") or payload.get("code")
+                if isinstance(message, str) and message:
+                    return message, code if isinstance(code, str) else None, payload
+                return f"ToAPIs 请求失败（{response.status_code}）", code if isinstance(code, str) else None, payload
             if isinstance(error, str):
-                return error
+                return error, None, payload
             if isinstance(payload, dict):
                 message = payload.get("message") or payload.get("detail")
                 code = payload.get("code")
                 if isinstance(message, str) and message:
-                    return f"{message}（{code}）" if code and code != message else message
+                    text = f"{message}（{code}）" if code and code != message else message
+                    return text, code if isinstance(code, str) else None, payload
                 if isinstance(code, str) and code:
-                    return code
+                    return code, code, payload
         except ValueError:
             pass
-        return f"ToAPIs 请求失败（{response.status_code}）"
+        return f"ToAPIs 请求失败（{response.status_code}）", None, None
 
     @staticmethod
     def _request_id(response: httpx.Response) -> str | None:

@@ -69,6 +69,22 @@ class FailingVideoProvider:
         )
 
 
+class PrivacyFailingVideoProvider:
+    async def submit_video(self, _payload):
+        raise ToApisError(
+            "The request failed because the input image 'content[1]' may contain real person.",
+            status_code=400,
+            request_id="req-privacy-failure",
+            code="InputImage.PrivacyInformation",
+            details={
+                "error": {
+                    "code": "InputImage.PrivacyInformation",
+                    "message": "The request failed because the input image may contain real person.",
+                }
+            },
+        )
+
+
 async def default_workspace_owner():
     async with SessionLocal() as db:
         workspace = await db.get(Workspace, DEFAULT_WORKSPACE_ID)
@@ -195,3 +211,45 @@ async def test_video_generation_hides_provider_detail_from_node():
         assert "ToApisError: 完整上游错误" in diagnostic["traceback"]
         assert diagnostic["retryable"] is True
         assert diagnostic["occurred_at"]
+
+
+@pytest.mark.asyncio
+async def test_video_generation_guides_user_to_register_real_person_reference():
+    user_id = await default_workspace_owner()
+    async with SessionLocal() as db:
+        task = await create_video_task(
+            db,
+            FakeRedis(),
+            VideoGenerationRequest(
+                workspace_id=DEFAULT_WORKSPACE_ID,
+                node_id="video-privacy-error-test",
+                model="seedance-2-mini",
+                prompt="test video",
+                duration=15,
+                resolution="480p",
+                aspect_ratio="9:16",
+            ),
+            user_id,
+        )
+        task_id = task.id
+
+    with pytest.raises(ToApisError, match="may contain real person"):
+        await run_video_generation(
+            str(task_id), provider=PrivacyFailingVideoProvider()
+        )
+
+    async with SessionLocal() as db:
+        failed = await db.get(GenerationTask, task_id)
+        assert failed.error_message == (
+            "参考图片中检测到真人，请在对应图片节点顶部点击人物图标，"
+            "注册为 Seedance 人物素材，审核通过后重新生成视频"
+        )
+        assert failed.diagnostic_snapshot["provider_code"] == (
+            "InputImage.PrivacyInformation"
+        )
+        assert failed.diagnostic_snapshot["provider_error"] == {
+            "error": {
+                "code": "InputImage.PrivacyInformation",
+                "message": "The request failed because the input image may contain real person.",
+            }
+        }

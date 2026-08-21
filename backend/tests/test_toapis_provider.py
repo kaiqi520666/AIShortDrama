@@ -3,6 +3,7 @@ import json
 import httpx
 import pytest
 
+from app.core.errors import public_error_message
 from app.providers.toapis import ToApisError, ToApisProvider
 
 
@@ -122,8 +123,40 @@ async def test_http_error_preserves_top_level_provider_message():
     try:
         with pytest.raises(ToApisError, match="参考图片不符合要求（invalid_parameter）") as exc_info:
             await provider.submit_video({"model": "seedance-2-mini"})
-        assert exc_info.value.public_message == "上游服务暂时不可用，请稍后重试"
+        assert exc_info.value.public_message is None
+        assert exc_info.value.code == "invalid_parameter"
         assert exc_info.value.status_code == 400
         assert exc_info.value.request_id == "req-invalid-reference"
+    finally:
+        await provider.client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_http_error_maps_real_person_privacy_failure_for_users():
+    payload = {
+        "error": {
+            "error": {
+                "code": "InputImage.PrivacyInformation",
+                "message": "The request failed because the input image 'content[1]' may contain real person.",
+                "param": "",
+                "type": "BadRequest",
+            }
+        }
+    }
+    provider = ToApisProvider(
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(400, json=payload)
+        )
+    )
+    try:
+        with pytest.raises(ToApisError) as exc_info:
+            await provider.submit_video({"model": "seedance-2-mini"})
+        error = exc_info.value
+        assert error.code == "InputImage.PrivacyInformation"
+        assert error.details == payload
+        assert public_error_message(error, "视频生成服务暂时不可用") == (
+            "参考图片中检测到真人，请在对应图片节点顶部点击人物图标，"
+            "注册为 Seedance 人物素材，审核通过后重新生成视频"
+        )
     finally:
         await provider.client.aclose()

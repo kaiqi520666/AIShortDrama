@@ -9,6 +9,8 @@ def test_diagnostic_snapshot_redacts_urls_and_credentials():
             status_code=503,
             request_id="req-123",
             retryable=True,
+            code="upstream_error",
+            details={"token": "private", "message": "request failed"},
         ),
         "submit",
     )
@@ -17,6 +19,8 @@ def test_diagnostic_snapshot_redacts_urls_and_credentials():
     assert diagnostic["category"] == "upstream_http"
     assert diagnostic["provider_status"] == 503
     assert diagnostic["provider_request_id"] == "req-123"
+    assert diagnostic["provider_code"] == "upstream_error"
+    assert diagnostic["provider_error"] == {"token": "[REDACTED]", "message": "request failed"}
     assert diagnostic["retryable"] is True
     assert "https://" not in diagnostic["provider_message"]
     assert "secret" not in diagnostic["provider_message"].lower()
