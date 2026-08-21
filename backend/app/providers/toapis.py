@@ -131,6 +131,10 @@ class ToApisProvider:
         try:
             payload = response.json()
             error = payload.get("error") if isinstance(payload, dict) else None
+            if not isinstance(error, dict) and isinstance(payload, dict):
+                message_body = payload.get("message")
+                if isinstance(message_body, dict):
+                    error = message_body
             if isinstance(error, dict):
                 nested = error.get("error") if isinstance(error.get("error"), dict) else error
                 message = nested.get("message") or nested.get("detail")

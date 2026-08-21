@@ -1,6 +1,4 @@
 import re
-import traceback
-from datetime import UTC, datetime
 from typing import Any
 
 import httpx
@@ -46,15 +44,6 @@ _UPSTREAM_ERROR_NAMES = {
     "ZPayError",
 }
 
-DIAGNOSTIC_STAGES = {
-    "enqueue",
-    "submit",
-    "poll",
-    "download",
-    "storage",
-    "billing",
-    "unknown",
-}
 _SECRET_PATTERN = re.compile(
     r"(?i)(authorization|api[-_ ]?key|access[-_ ]?key(?:[-_ ]?(?:id|secret))?|password|token|secret|signature)"
     r"[\"']?\s*[:=]\s*[\"']?(?:bearer\s+)?[^\s,;\"')\]}]+"
@@ -62,7 +51,6 @@ _SECRET_PATTERN = re.compile(
 _SECRET_KEY_PATTERN = re.compile(
     r"(?i)^(authorization|api[-_ ]?key|access[-_ ]?key(?:[-_ ]?(?:id|secret))?|password|token|secret|signature)$"
 )
-_URL_PATTERN = re.compile(r"https?://[^\s\]\[()<>\"']+")
 
 
 def public_error_message(exc: Exception, fallback: str) -> str:
@@ -78,79 +66,11 @@ def public_error_message(exc: Exception, fallback: str) -> str:
     return fallback
 
 
-def diagnostic_snapshot(exc: Exception, stage: str = "unknown") -> dict[str, Any]:
-    stage = stage if stage in DIAGNOSTIC_STAGES else "unknown"
-    status_code = _integer_attribute(exc, "status_code")
-    request_id = _text_attribute(exc, "request_id")
-    provider_code = _text_attribute(exc, "code")
-    if isinstance(exc, httpx.HTTPStatusError):
-        status_code = exc.response.status_code
-        request_id = request_id or next(
-            (
-                exc.response.headers.get(name)
-                for name in ("x-request-id", "request-id", "x-amzn-requestid", "cf-ray")
-                if exc.response.headers.get(name)
-            ),
-            None,
-        )
-    retryable = bool(getattr(exc, "retryable", False))
-    exception_name = exc.__class__.__name__
-    is_upstream = exception_name in _UPSTREAM_ERROR_NAMES or isinstance(exc, httpx.HTTPError)
-
-    if status_code:
-        category = "upstream_http"
-    elif isinstance(exc, (httpx.TimeoutException, TimeoutError)) or "Timeout" in exception_name:
-        category = "upstream_timeout"
-        retryable = True
-    elif isinstance(exc, (httpx.RequestError, ConnectionError)):
-        category = "upstream_network"
-        retryable = True
-    elif stage == "enqueue":
-        category = "queue"
-        retryable = True
-    elif stage == "storage":
-        category = "storage"
-    elif stage == "billing":
-        category = "billing"
-    else:
-        category = "provider" if is_upstream else "internal"
-
-    message = _safe_provider_message(str(exc)) if is_upstream else "内部异常，详见服务端日志"
-    return {
-        "stage": stage,
-        "category": category,
-        "provider_status": status_code,
-        "provider_code": provider_code,
-        "provider_message": message,
-        "provider_error": _safe_diagnostic_value(getattr(exc, "details", None)),
-        "provider_request_id": request_id,
-        "exception_type": exception_name[:120],
-        "exception_module": exc.__class__.__module__[:200],
-        "exception_message": _safe_diagnostic_text(str(exc)),
-        "cause_chain": _cause_chain(exc),
-        "traceback": _safe_diagnostic_text("".join(traceback.format_exception(exc))),
-        "retryable": retryable,
-        "occurred_at": datetime.now(UTC).isoformat(),
-    }
-
-
-def _integer_attribute(exc: Exception, name: str) -> int | None:
-    value = getattr(exc, name, None)
-    return value if isinstance(value, int) and 100 <= value <= 599 else None
-
-
-def _text_attribute(exc: Exception, name: str) -> str | None:
-    value = getattr(exc, name, None)
-    if not isinstance(value, str) or not value.strip():
+def diagnostic_snapshot(exc: Exception, _stage: str = "unknown") -> Any:
+    if exc.__class__.__name__ != "ToApisError":
         return None
-    return _safe_provider_message(value, limit=160)
-
-
-def _safe_provider_message(value: str, limit: int = 500) -> str:
-    value = _SECRET_PATTERN.sub(r"\1=[REDACTED]", value)
-    value = _URL_PATTERN.sub("[URL]", value)
-    value = " ".join(value.split())
-    return (value or "上游未返回错误详情")[:limit]
+    details = getattr(exc, "details", None)
+    return _safe_diagnostic_value(details) if details is not None else None
 
 
 def _safe_diagnostic_text(value: str) -> str:
@@ -170,24 +90,3 @@ def _safe_diagnostic_value(value: Any) -> Any:
     if isinstance(value, list):
         return [_safe_diagnostic_value(item) for item in value]
     return value
-
-
-def _cause_chain(exc: Exception) -> list[dict[str, str]]:
-    causes = []
-    seen = {id(exc)}
-    current = exc
-    while True:
-        cause = current.__cause__ or (
-            current.__context__ if not current.__suppress_context__ else None
-        )
-        if cause is None or id(cause) in seen:
-            return causes
-        seen.add(id(cause))
-        causes.append(
-            {
-                "exception_type": cause.__class__.__name__[:120],
-                "exception_module": cause.__class__.__module__[:200],
-                "exception_message": _safe_diagnostic_text(str(cause)),
-            }
-        )
-        current = cause

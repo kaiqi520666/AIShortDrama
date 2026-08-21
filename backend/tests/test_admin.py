@@ -91,14 +91,9 @@ async def test_admin_task_list_is_lightweight_and_detail_has_diagnostics(monkeyp
             result={"type": "video"},
             error_message="视频生成服务暂时不可用",
             diagnostic_snapshot={
-                "stage": "submit",
-                "category": "upstream_http",
-                "provider_status": 524,
-                "provider_message": "upstream request timeout",
-                "provider_request_id": "req-123",
-                "exception_type": "ToApisError",
-                "retryable": True,
-                "occurred_at": "2026-08-06T18:23:49Z",
+                "code": "fail_to_fetch_task",
+                "data": None,
+                "message": {"error": {"code": "upstream_timeout"}},
             },
         )
         db.add(task)
@@ -116,7 +111,7 @@ async def test_admin_task_list_is_lightweight_and_detail_has_diagnostics(monkeyp
                 item for item in listed.json()["data"]["items"] if item["id"] == str(task_id)
             )
             assert item["provider_task_id"] == "provider-task-123"
-            assert item["diagnostic_summary"]["provider_status"] == 524
+            assert "diagnostic_summary" not in item
             assert "request_snapshot" not in item
             assert "pricing_snapshot" not in item
             assert "result" not in item
@@ -124,7 +119,11 @@ async def test_admin_task_list_is_lightweight_and_detail_has_diagnostics(monkeyp
             detailed = await client.get(f"/api/admin/tasks/{task_id}")
             assert detailed.status_code == 200
             data = detailed.json()["data"]
-            assert data["diagnostic_snapshot"]["provider_request_id"] == "req-123"
+            assert data["diagnostic_snapshot"] == {
+                "code": "fail_to_fetch_task",
+                "data": None,
+                "message": {"error": {"code": "upstream_timeout"}},
+            }
             assert data["request_snapshot"] == {"prompt": "private prompt"}
             assert data["pricing_snapshot"] == {"credits": 10}
             assert data["result"] == {"type": "video"}

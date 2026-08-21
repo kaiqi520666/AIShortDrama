@@ -13,7 +13,6 @@ from app.core.errors import (
     NotFoundError,
     RequestError,
     ServiceUnavailableError,
-    diagnostic_snapshot,
 )
 from app.core.identity import get_current_admin
 from app.core.model_capabilities import get_model_capability
@@ -28,7 +27,7 @@ from app.models import (
     RechargeTier,
     User,
 )
-from app.providers.toapis import ToApisError, ToApisProvider
+from app.providers.toapis import ToApisProvider
 from app.schemas.admin import (
     AdminResetPasswordRequest,
     BillingPolicyUpdateRequest,
@@ -72,22 +71,6 @@ def rule_data(rule: ModelPriceRule) -> dict:
 
 
 def task_summary_data(task: GenerationTask, user: User) -> dict:
-    diagnostic = task.diagnostic_snapshot or {}
-    diagnostic_summary = {
-        key: (
-            diagnostic.get(key)[:160]
-            if key == "provider_message" and isinstance(diagnostic.get(key), str)
-            else diagnostic.get(key)
-        )
-        for key in (
-            "stage",
-            "category",
-            "provider_status",
-            "provider_message",
-            "retryable",
-        )
-        if diagnostic.get(key) is not None
-    }
     return {
         "id": str(task.id),
         "user": {"id": str(user.id), "username": user.username, "email": user.email},
@@ -101,7 +84,6 @@ def task_summary_data(task: GenerationTask, user: User) -> dict:
         "charged_credits": task.charged_credits,
         "credit_status": task.credit_status,
         "error_message": task.error_message,
-        "diagnostic_summary": diagnostic_summary or None,
         "created_at": task.created_at.isoformat(),
         "finished_at": task.finished_at.isoformat() if task.finished_at else None,
     }
@@ -592,11 +574,7 @@ async def get_task_provider_status(
 
     error = state.get("error") or {}
     error_message = error.get("message") if isinstance(error, dict) else str(error)
-    safe_message = (
-        diagnostic_snapshot(ToApisError(error_message), "poll")["provider_message"]
-        if error_message
-        else None
-    )
+    safe_message = str(error_message) if error_message else None
     return success(
         {
             "provider_task_id": task.provider_task_id,

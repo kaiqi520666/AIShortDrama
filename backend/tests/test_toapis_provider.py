@@ -134,7 +134,9 @@ async def test_http_error_preserves_top_level_provider_message():
 @pytest.mark.asyncio
 async def test_http_error_maps_real_person_privacy_failure_for_users():
     payload = {
-        "error": {
+        "code": "fail_to_fetch_task",
+        "data": None,
+        "message": {
             "error": {
                 "code": "InputImage.PrivacyInformation",
                 "message": "The request failed because the input image 'content[1]' may contain real person.",

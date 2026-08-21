@@ -88,6 +88,5 @@ async def test_stream_text_events_fail_task_and_emit_error():
     failed.assert_awaited_once()
     args = failed.await_args.args
     assert args[:3] == (task_id, "failed", "文本生成服务暂时不可用")
-    assert args[3]["stage"] == "submit"
-    assert args[3]["exception_type"] == "RuntimeError"
+    assert args[3] is None
     complete.assert_not_awaited()

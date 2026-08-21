@@ -198,19 +198,7 @@ async def test_video_generation_hides_provider_detail_from_node():
         failed = await db.get(GenerationTask, task_id)
         assert failed.status == "failed"
         assert failed.error_message == "视频生成服务暂时不可用"
-        diagnostic = failed.diagnostic_snapshot
-        assert diagnostic["stage"] == "submit"
-        assert diagnostic["category"] == "upstream_http"
-        assert diagnostic["provider_status"] == 524
-        assert diagnostic["provider_message"] == "完整上游错误"
-        assert diagnostic["provider_request_id"] == "req-video-failure"
-        assert diagnostic["exception_type"] == "ToApisError"
-        assert diagnostic["exception_module"] == "app.providers.toapis"
-        assert diagnostic["exception_message"] == "完整上游错误"
-        assert diagnostic["cause_chain"] == []
-        assert "ToApisError: 完整上游错误" in diagnostic["traceback"]
-        assert diagnostic["retryable"] is True
-        assert diagnostic["occurred_at"]
+        assert failed.diagnostic_snapshot is None
 
 
 @pytest.mark.asyncio
@@ -244,10 +232,7 @@ async def test_video_generation_guides_user_to_register_real_person_reference():
             "参考图片中检测到真人，请在对应图片节点顶部点击人物图标，"
             "注册为 Seedance 人物素材，审核通过后重新生成视频"
         )
-        assert failed.diagnostic_snapshot["provider_code"] == (
-            "InputImage.PrivacyInformation"
-        )
-        assert failed.diagnostic_snapshot["provider_error"] == {
+        assert failed.diagnostic_snapshot == {
             "error": {
                 "code": "InputImage.PrivacyInformation",
                 "message": "The request failed because the input image may contain real person.",
