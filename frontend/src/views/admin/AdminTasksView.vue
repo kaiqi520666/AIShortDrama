@@ -81,7 +81,7 @@ function normalizeSnapshot(value) {
   return parsed
 }
 function formatSnapshot(value) {
-  return JSON.stringify(normalizeSnapshot(value ?? {}), null, 2)
+  return JSON.stringify(normalizeSnapshot(value ?? {}), null, 2).replace(/\\r\\n|\\n|\\r/g, '\n')
 }
 onMounted(load)
 </script>
