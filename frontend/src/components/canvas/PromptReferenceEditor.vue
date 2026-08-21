@@ -135,6 +135,26 @@ function handleInput(event) {
   nextTick(updateMenuPosition)
 }
 
+function handlePaste(event) {
+  event.preventDefault()
+  const clipboard = event.clipboardData
+  if (!clipboard || Array.from(clipboard.items).some((item) => item.kind === 'file')) return
+  const text = clipboard.getData('text/plain').replace(/\r\n?/g, '\n')
+  if (!text) return
+  const selection = window.getSelection()
+  if (!selection.rangeCount) return
+  const range = selection.getRangeAt(0)
+  if (!editor.value.contains(range.commonAncestorContainer)) return
+  range.deleteContents()
+  const node = document.createTextNode(text)
+  range.insertNode(node)
+  range.setStartAfter(node)
+  range.collapse(true)
+  selection.removeAllRanges()
+  selection.addRange(range)
+  syncParts()
+}
+
 function insertReference(reference) {
   if (!mentionRange) return
   const container = mentionRange.startContainer
@@ -187,12 +207,13 @@ onMounted(renderEditor)
     <div
       ref="editor"
       class="prompt-editor-content"
-      contenteditable="true"
+      contenteditable="plaintext-only"
       role="textbox"
       :aria-label="`${referenceLabel}提示词`"
       aria-multiline="true"
       :data-placeholder="placeholder"
       @input="handleInput"
+      @paste="handlePaste"
       @keydown="handleKeydown"
       @scroll="updateMenuPosition"
       @blur="menuVisible = false"
