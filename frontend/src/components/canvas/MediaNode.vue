@@ -23,6 +23,7 @@ const props = defineProps({
   selected: Boolean,
 })
 
+const mediaLabels = { image: '图片', video: '视频', audio: '音频' }
 const textMode = computed(() => props.type === 'text' ? (props.data.textMode ?? (props.data.content ? 'manual' : null)) : null)
 const acceptsInput = computed(() => props.type === 'text' ? textMode.value === 'task' : !props.data.assetSource)
 const sourceAspectRatio = computed(() => props.data.assetSource && props.data.sourceAspectRatio > 0 ? props.data.sourceAspectRatio : null)
@@ -186,7 +187,7 @@ function openOutfitVideoFlow() {
       </div>
 
       <div v-else-if="data.status === 'failed' && type !== 'text'" class="generation-failed-state">
-        <p>{{ data.generationError || '生成失败' }}</p>
+        <p>{{ mediaLabels[type] || '内容' }}生成失败</p>
       </div>
 
       <div v-else-if="type === 'text' && !textMode" class="text-mode-chooser">
