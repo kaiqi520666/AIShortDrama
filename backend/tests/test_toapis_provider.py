@@ -162,3 +162,40 @@ async def test_http_error_maps_real_person_privacy_failure_for_users():
         )
     finally:
         await provider.client.aclose()
+
+
+@pytest.mark.asyncio
+async def test_http_error_explains_oversized_reference_image_for_users():
+    payload = {
+        "code": "fail_to_fetch_task",
+        "data": None,
+        "message": json.dumps(
+            {
+                "error": {
+                    "code": "InvalidParameter",
+                    "message": (
+                        "Error while downloading image, error: expected the width to be at most "
+                        "6000px, but received a 6102x4068px image instead"
+                    ),
+                    "param": "image_url",
+                    "type": "BadRequest",
+                }
+            }
+        ),
+    }
+    provider = ToApisProvider(
+        transport=httpx.MockTransport(
+            lambda _request: httpx.Response(400, json=payload)
+        )
+    )
+    try:
+        with pytest.raises(ToApisError) as exc_info:
+            await provider.submit_video({"model": "seedance-2-mini"})
+        error = exc_info.value
+        assert error.details == payload
+        assert public_error_message(error, "视频生成服务暂时不可用") == (
+            "参考图片尺寸过大：6102×4068px，宽度不能超过 "
+            "6000px，请缩小图片后重新生成视频"
+        )
+    finally:
+        await provider.client.aclose()

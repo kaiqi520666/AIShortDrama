@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 import httpx
@@ -24,6 +25,19 @@ class ToApisError(RuntimeError):
 
     @property
     def public_message(self) -> str | None:
+        dimension_error = re.search(
+            r"expected the (width|height) to be at most (\d+)px, "
+            r"but received a (\d+)x(\d+)px image",
+            str(self),
+            re.IGNORECASE,
+        )
+        if dimension_error:
+            dimension, limit, width, height = dimension_error.groups()
+            dimension_label = "宽度" if dimension.lower() == "width" else "高度"
+            return (
+                f"参考图片尺寸过大：{width}×{height}px，{dimension_label}不能超过 "
+                f"{limit}px，请缩小图片后重新生成视频"
+            )
         privacy_error = (self.code or "").lower().endswith("privacyinformation")
         if privacy_error or "may contain real person" in str(self).lower():
             return (
