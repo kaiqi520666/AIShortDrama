@@ -1,0 +1,4 @@
+SHELL=/bin/sh
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+30 3 * * * root /opt/ai-short-drama/backup.sh >> /var/log/ai-short-drama-backup.log 2>&1
