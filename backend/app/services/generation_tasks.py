@@ -205,6 +205,7 @@ async def _create_task(
     if task_type == "image":
         resolution = request.resolution
     elif task_type == "video":
+        resolution = request.resolution
         duration = request.duration
     await freeze_task_credits(
         db,

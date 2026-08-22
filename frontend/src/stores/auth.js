@@ -62,7 +62,7 @@ export const useAuthStore = defineStore('auth', {
       this.creditPrices = result.data.prices
     },
     estimateCredits(mediaType, model, { resolution = '', duration = 1 } = {}) {
-      const rule = this.creditPrices.find((item) => item.media_type === mediaType && item.model === model && item.specification === (mediaType === 'image' ? resolution : ''))
+      const rule = this.creditPrices.find((item) => item.media_type === mediaType && item.model === model && item.specification === (['image', 'video'].includes(mediaType) ? resolution : ''))
       if (!rule) return null
       if (mediaType === 'audio') return rule.freeze_credits
       return rule.unit_credits * (mediaType === 'video' ? duration : 1)

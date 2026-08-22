@@ -47,12 +47,17 @@ async def test_model_price_calculation():
         for model, resolution, expected in image_prices:
             snapshot = await build_price_snapshot(db, "image", model, resolution=resolution)
             assert snapshot["frozen_credits"] == expected
-        for model, expected in [
-            ("seedance-2", 26),
-            ("seedance-2-fast", 21),
-            ("seedance-2-mini", 15),
+        for model, resolution, expected in [
+            ("seedance-2", "480p", 13),
+            ("seedance-2", "720p", 26),
+            ("seedance-2", "1080p", 65),
+            ("seedance-2", "4k", 143),
+            ("seedance-2-fast", "480p", 8),
+            ("seedance-2-fast", "720p", 16),
+            ("seedance-2-mini", "480p", 3),
+            ("seedance-2-mini", "720p", 6),
         ]:
-            assert (await build_price_snapshot(db, "video", model, duration=1))[
+            assert (await build_price_snapshot(db, "video", model, resolution=resolution, duration=1))[
                 "frozen_credits"
             ] == expected
         assert (await build_price_snapshot(db, "text", "gpt-5.6-sol"))["frozen_credits"] == 1

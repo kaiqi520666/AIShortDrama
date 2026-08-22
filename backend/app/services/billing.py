@@ -76,7 +76,7 @@ async def build_price_snapshot(
     specification = (
         resolution or get_model_capability("image", model)["default_resolution"]
         if media_type == "image"
-        else ""
+        else resolution or ""
     )
     rule = await get_price_rule(db, media_type, model, specification or "")
     unit_credits = _unit_credits(rule, credit_value_yuan)
