@@ -1,5 +1,6 @@
 #!/bin/sh
 set -eu
+umask 077
 
 deploy_dir=/opt/ai-short-drama/deploy
 backup_dir=/opt/ai-short-drama/backups
