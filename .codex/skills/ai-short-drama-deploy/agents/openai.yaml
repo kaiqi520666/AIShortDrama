@@ -1,0 +1,4 @@
+interface:
+  display_name: "AIShortDrama Production Deploy"
+  short_description: "Check and update AIShortDrama production safely"
+  default_prompt: "Use $ai-short-drama-deploy to check production status or deploy the current committed version."
