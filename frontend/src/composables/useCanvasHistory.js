@@ -1,5 +1,28 @@
 import { computed, nextTick, ref } from 'vue'
 
+const generationRuntimeFields = [
+  'generationTaskId',
+  'generationStatus',
+  'generationProgress',
+  'generationPollingPaused',
+  'generationError',
+]
+
+function hasMeaningfulValue(value) {
+  if (typeof value === 'string') return Boolean(value.trim())
+  if (Array.isArray(value)) return value.some(hasMeaningfulValue)
+  if (value && typeof value === 'object') return Object.values(value).some(hasMeaningfulValue)
+  return false
+}
+
+function stabilizeGeneratingData(data) {
+  const stable = { ...data }
+  stable.status = ['asset', 'content', 'product', 'world', 'profile', 'items', 'generatedNodeIds']
+    .some((key) => hasMeaningfulValue(stable[key])) ? 'ready' : 'empty'
+  generationRuntimeFields.forEach((field) => { delete stable[field] })
+  return stable
+}
+
 export function useCanvasHistory({ store, activeGroupId, contextMenu, delay = 200, eventTarget = globalThis }) {
   let history = []
   const historyIndex = ref(-1)
@@ -8,7 +31,31 @@ export function useCanvasHistory({ store, activeGroupId, contextMenu, delay = 20
 
   function snapshot() {
     const payload = store.canvasPayload()
-    return JSON.stringify({ nodes: payload.nodes, edges: payload.edges, groups: payload.groups })
+    const previous = history[historyIndex.value] ? JSON.parse(history[historyIndex.value]) : null
+    const previousNodes = new Map((previous?.nodes || []).map((node) => [node.id, node]))
+    const skippedNodeIds = new Set()
+    const nodes = payload.nodes.flatMap((node) => {
+      if (node.data?.status !== 'generating') return [node]
+      const previousNode = previousNodes.get(node.id)
+      if (previousNode) return [{ ...node, data: previousNode.data }]
+      if (!previous) return [{ ...node, data: stabilizeGeneratingData(node.data) }]
+      skippedNodeIds.add(node.id)
+      return []
+    })
+    const edges = payload.edges.filter((edge) => (
+      !skippedNodeIds.has(edge.source) && !skippedNodeIds.has(edge.target)
+    ))
+    const groups = payload.groups
+      .map((group) => ({
+        ...group,
+        nodeIds: group.nodeIds.filter((nodeId) => !skippedNodeIds.has(nodeId)),
+      }))
+      .filter((group) => group.nodeIds.length > 1)
+    return JSON.stringify({ nodes, edges, groups })
+  }
+
+  function generationRunning() {
+    return store.nodes.some((node) => node.data?.status === 'generating')
   }
 
   function commit() {
@@ -39,14 +86,14 @@ export function useCanvasHistory({ store, activeGroupId, contextMenu, delay = 20
   }
 
   function undo() {
-    if (applying) return
+    if (applying || generationRunning()) return
     commit()
     if (historyIndex.value <= 0) return
     restore(history[--historyIndex.value])
   }
 
   function redo() {
-    if (applying) return
+    if (applying || generationRunning()) return
     commit()
     if (historyIndex.value >= history.length - 1) return
     restore(history[++historyIndex.value])
@@ -65,8 +112,8 @@ export function useCanvasHistory({ store, activeGroupId, contextMenu, delay = 20
   }
 
   return {
-    canUndo: computed(() => historyIndex.value > 0),
-    canRedo: computed(() => historyIndex.value < history.length - 1),
+    canUndo: computed(() => !generationRunning() && historyIndex.value > 0),
+    canRedo: computed(() => !generationRunning() && historyIndex.value < history.length - 1),
     snapshot,
     commit,
     schedule,
