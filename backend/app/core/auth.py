@@ -1,4 +1,3 @@
-import hashlib
 import json
 import uuid
 from datetime import UTC, datetime, timedelta
@@ -196,24 +195,3 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str) 
 def clear_auth_cookies(response: Response) -> None:
     response.delete_cookie(ACCESS_COOKIE, path="/api")
     response.delete_cookie(REFRESH_COOKIE, path="/api/auth")
-
-
-def login_failure_key(email: str, ip_address: str) -> str:
-    digest = hashlib.sha256(f"{email}|{ip_address}".encode()).hexdigest()
-    return f"{get_settings().redis_prefix}:auth:login:{digest}"
-
-
-async def login_is_limited(redis, email: str, ip_address: str) -> bool:
-    value = await redis.get(login_failure_key(email, ip_address))
-    return int(value or 0) >= 5
-
-
-async def record_login_failure(redis, email: str, ip_address: str) -> None:
-    key = login_failure_key(email, ip_address)
-    count = await redis.incr(key)
-    if count == 1:
-        await redis.expire(key, 900)
-
-
-async def clear_login_failures(redis, email: str, ip_address: str) -> None:
-    await redis.delete(login_failure_key(email, ip_address))

@@ -9,12 +9,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.auth import (
     REFRESH_COOKIE,
     clear_auth_cookies,
-    clear_login_failures,
     create_refresh_session,
     decode_token,
     hash_password,
-    login_is_limited,
-    record_login_failure,
     revoke_refresh_session,
     rotate_refresh_session,
     set_auth_cookies,
@@ -35,6 +32,13 @@ from app.services.email_verification import (
     consume_registration_code,
     issue_registration_code,
 )
+from app.services.login_security import (
+    LoginSecurityState,
+    clear_login_failures,
+    get_login_security_state,
+    record_login_failure,
+)
+from app.providers.turnstile import TurnstileVerificationError, verify_turnstile
 
 router = APIRouter()
 DUMMY_PASSWORD_HASH = hash_password("invalid-password-placeholder")
@@ -44,6 +48,13 @@ def unauthorized(message: str) -> JSONResponse:
     response = JSONResponse(status_code=401, content=fail(message))
     clear_auth_cookies(response)
     return response
+
+
+def login_security_payload(state: LoginSecurityState) -> dict:
+    data = {"captcha_required": state.captcha_required}
+    if state.retry_after_seconds is not None:
+        data["retry_after_seconds"] = state.retry_after_seconds
+    return data
 
 
 @router.get("/captcha-config")
@@ -125,8 +136,20 @@ async def login(
     email = str(payload.email).casefold()
     ip_address = client_ip(request)
     redis = request.app.state.redis
-    if await login_is_limited(redis, email, ip_address):
-        return JSONResponse(status_code=429, content=fail("登录尝试过于频繁，请稍后再试"))
+    security = await get_login_security_state(redis, email, ip_address)
+    if security.rate_limited:
+        return JSONResponse(
+            status_code=429,
+            content=fail("登录尝试过于频繁，请稍后再试", login_security_payload(security)),
+        )
+    if security.captcha_required:
+        try:
+            await verify_turnstile(payload.captcha_token or "", ip_address, "login")
+        except TurnstileVerificationError as exc:
+            return JSONResponse(
+                status_code=401,
+                content=fail(str(exc), login_security_payload(security)),
+            )
 
     user = await db.scalar(
         select(User).where(User.email == email, User.is_system.is_(False))
@@ -137,8 +160,12 @@ async def login(
         user.password_hash if user else DUMMY_PASSWORD_HASH,
     )
     if not user or not valid:
-        await record_login_failure(redis, email, ip_address)
-        return JSONResponse(status_code=401, content=fail("邮箱或密码错误"))
+        security = await record_login_failure(redis, email, ip_address)
+        message = "登录尝试过于频繁，请稍后再试" if security.rate_limited else "邮箱或密码错误"
+        return JSONResponse(
+            status_code=429 if security.rate_limited else 401,
+            content=fail(message, login_security_payload(security)),
+        )
     if user.status != "active":
         return JSONResponse(status_code=403, content=fail("账号已被禁用"))
 

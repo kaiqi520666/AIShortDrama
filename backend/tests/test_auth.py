@@ -11,7 +11,9 @@ from app.core.identity import LOCAL_USER_ID
 from app.main import app
 from app.models import User, Workspace
 from app.api.routes import auth as auth_routes
+from app.providers.turnstile import TurnstileVerificationError
 from app.services.authentication import transfer_local_data
+from app.services.login_security import get_login_security_state
 
 
 class FakeRedis:
@@ -24,8 +26,8 @@ class FakeRedis:
     async def get(self, key):
         return self.values.get(key)
 
-    async def delete(self, key):
-        return int(self.values.pop(key, None) is not None)
+    async def delete(self, *keys):
+        return sum(self.values.pop(key, None) is not None for key in keys)
 
     async def incr(self, key):
         value = int(self.values.get(key, 0)) + 1
@@ -35,7 +37,13 @@ class FakeRedis:
     async def expire(self, _key, _ttl):
         return True
 
-    async def eval(self, _script, _key_count, key, expected, replacement, _ttl):
+    async def ttl(self, key):
+        return 900 if key in self.values else -2
+
+    async def eval(self, _script, _key_count, key, *args):
+        if len(args) == 1:
+            return await self.incr(key)
+        expected, replacement, _ttl = args
         current = self.values.get(key)
         if current is None:
             return 0
@@ -102,6 +110,63 @@ async def test_login_refresh_replay_and_logout():
         logged_out = await client.post("/api/auth/logout")
         assert logged_out.status_code == 200
         assert (await client.get("/api/auth/me")).status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_login_requires_captcha_after_three_failures_and_clears_on_success(monkeypatch):
+    user_id = uuid.uuid4()
+    email = f"captcha-{user_id.hex[:8]}@example.com"
+    async with SessionLocal() as db:
+        db.add(
+            User(
+                id=user_id,
+                username=f"captcha-{user_id.hex[:8]}",
+                email=email,
+                password_hash=hash_password("password-123"),
+                is_system=False,
+            )
+        )
+        await db.commit()
+
+    redis = FakeRedis()
+    app.state.redis = redis
+    ip_address = "203.0.113.8"
+    monkeypatch.setattr(auth_routes, "client_ip", lambda _request: ip_address)
+
+    async def verify_captcha(token, ip, action):
+        if not token:
+            raise TurnstileVerificationError("请完成人机验证")
+        assert (token, ip, action) == ("captcha-token", ip_address, "login")
+
+    monkeypatch.setattr(auth_routes, "verify_turnstile", verify_captcha)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        for attempt in range(3):
+            response = await client.post(
+                "/api/auth/login",
+                json={"email": email, "password": "wrong-password"},
+            )
+            assert response.status_code == 401
+            assert response.json()["data"]["captcha_required"] is (attempt == 2)
+
+        blocked = await client.post(
+            "/api/auth/login",
+            json={"email": email, "password": "password-123"},
+        )
+        assert blocked.status_code == 401
+        assert blocked.json()["message"] == "请完成人机验证"
+
+        logged_in = await client.post(
+            "/api/auth/login",
+            json={
+                "email": email,
+                "password": "password-123",
+                "captcha_token": "captcha-token",
+            },
+        )
+
+    assert logged_in.status_code == 200
+    security = await get_login_security_state(redis, email, ip_address)
+    assert security.captcha_required is False
 
 
 @pytest.mark.asyncio

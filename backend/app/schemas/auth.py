@@ -33,6 +33,7 @@ class LoginRequest(BaseModel):
 
     email: EmailStr
     password: str
+    captcha_token: str | None = Field(default=None, max_length=4096)
 
 
 class EmailCodeRequest(BaseModel):
