@@ -1,7 +1,7 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ArrowRight, CircleAlert, KeyRound, LockKeyhole, Mail, Send, UserRound } from 'lucide-vue-next'
+import { ArrowRight, CircleAlert, KeyRound, LockKeyhole, Mail, UserRound } from 'lucide-vue-next'
 import AuthFormShell from '../../components/auth/AuthFormShell.vue'
 import AuthInputField from '../../components/auth/AuthInputField.vue'
 import TurnstileWidget from '../../components/auth/TurnstileWidget.vue'
@@ -99,11 +99,13 @@ async function submit() {
         @expired="captchaToken = ''"
         @error="captchaToken = ''; errorMessage = '人机验证加载失败，请刷新重试'"
       />
-      <AppButton type="button" variant="soft" block :disabled="codeSubmitting || cooldown > 0" @click="sendCode">
-        <Send :size="16" />
-        <span>{{ cooldown > 0 ? `${cooldown} 秒后可重新发送` : codeSubmitting ? '发送中…' : '发送邮箱验证码' }}</span>
-      </AppButton>
-      <AuthInputField v-model.trim="verificationCode" label="验证码" :icon="KeyRound" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" pattern="[0-9]{6}" required />
+      <AuthInputField v-model.trim="verificationCode" label="验证码" :icon="KeyRound" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" pattern="[0-9]{6}" required>
+        <template #action>
+          <AppButton class="auth-code-button" type="button" variant="soft" size="sm" :disabled="codeSubmitting || cooldown > 0" @click="sendCode">
+            {{ cooldown > 0 ? `${cooldown}s 后重发` : codeSubmitting ? '发送中…' : '发送验证码' }}
+          </AppButton>
+        </template>
+      </AuthInputField>
       <AuthInputField v-model="password" label="密码" :icon="LockKeyhole" type="password" autocomplete="new-password" minlength="8" maxlength="72" revealable required />
       <p v-if="errorMessage" class="auth-error"><CircleAlert :size="14" />{{ errorMessage }}</p>
       <AppButton type="submit" variant="primary" size="lg" block :disabled="submitting"><span>{{ submitting ? '注册中…' : '注册并登录' }}</span><ArrowRight :size="17" /></AppButton>

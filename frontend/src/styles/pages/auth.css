@@ -124,6 +124,26 @@
   border-color: var(--color-border-default);
   background: var(--color-surface-base);
 }
+.auth-form .auth-field-control--action input {
+  padding-right: 126px;
+}
+.auth-code-button.ui-button {
+  position: absolute;
+  z-index: 1;
+  right: 7px;
+  width: 108px;
+  min-height: 30px;
+  padding: 0 8px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--color-brand);
+  font-size: 12px;
+  font-weight: 650;
+}
+.auth-code-button.ui-button:hover {
+  background: var(--color-brand-soft);
+  color: var(--color-brand-hover);
+}
 .auth-form input:hover {
   border-color: var(--color-border-strong);
 }

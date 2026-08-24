@@ -25,9 +25,10 @@ function updateValue(value) {
 <template>
   <label class="auth-field">
     <span class="auth-field-label">{{ label }}</span>
-    <span class="auth-field-control">
+    <span class="auth-field-control" :class="{ 'auth-field-control--action': $slots.action }">
       <component :is="icon" class="auth-field-icon" :size="17" aria-hidden="true" />
       <AppInput v-bind="$attrs" :model-value="modelValue" :type="inputType" :aria-label="label" @update:model-value="updateValue" />
+      <slot name="action" />
       <button
         v-if="revealable"
         class="auth-password-toggle"
