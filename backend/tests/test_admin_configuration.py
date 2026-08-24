@@ -78,6 +78,37 @@ async def test_billing_policy_update_changes_new_quotes_and_is_audited():
 
 
 @pytest.mark.asyncio
+async def test_credit_policy_update_is_audited():
+    admin = await create_admin()
+    try:
+        async with admin_client(admin) as client:
+            before = await client.get("/api/admin/credit-policy")
+            assert before.status_code == 200
+            policy = before.json()["data"]
+            response = await client.put(
+                "/api/admin/credit-policy",
+                json={
+                    "registration_bonus_enabled": True,
+                    "registration_bonus_credits": 12,
+                    "daily_refill_enabled": True,
+                    "daily_minimum_credits": 15,
+                    "reason": "验证免费积分策略",
+                },
+            )
+        assert response.status_code == 200
+        assert response.json()["data"]["version"] == policy["version"] + 1
+        assert response.json()["data"]["daily_minimum_credits"] == 15
+
+        async with SessionLocal() as db:
+            audit = await db.scalar(
+                select(AdminAuditLog).where(AdminAuditLog.action == "update_credit_policy")
+            )
+            assert audit and audit.after_snapshot["registration_bonus_credits"] == 12
+    finally:
+        app.dependency_overrides.pop(get_current_admin, None)
+
+
+@pytest.mark.asyncio
 async def test_model_settings_enforce_default_and_capabilities_only_return_enabled(
     override_business_user,
 ):

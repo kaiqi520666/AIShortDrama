@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.model_capabilities import MODEL_CAPABILITIES
-from app.models import BillingPolicy, ModelAdminSetting
+from app.models import BillingPolicy, CreditPolicy, ModelAdminSetting
 
 
 class ModelDisabledError(ValueError):
@@ -35,6 +35,26 @@ async def get_billing_policy(db: AsyncSession, *, lock: bool = False) -> Billing
     policy = await db.scalar(statement)
     if not policy:
         raise RuntimeError("计费政策未初始化")
+    return policy
+
+
+def credit_policy_data(policy: CreditPolicy) -> dict[str, Any]:
+    return {
+        "version": policy.version,
+        "registration_bonus_enabled": policy.registration_bonus_enabled,
+        "registration_bonus_credits": policy.registration_bonus_credits,
+        "daily_refill_enabled": policy.daily_refill_enabled,
+        "daily_minimum_credits": policy.daily_minimum_credits,
+    }
+
+
+async def get_credit_policy(db: AsyncSession, *, lock: bool = False) -> CreditPolicy:
+    statement = select(CreditPolicy).where(CreditPolicy.key == "default")
+    if lock:
+        statement = statement.with_for_update()
+    policy = await db.scalar(statement)
+    if not policy:
+        raise RuntimeError("积分策略未初始化")
     return policy
 
 

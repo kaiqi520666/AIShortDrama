@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue'
-import { ChevronDown, ClipboardList, CreditCard, FileText, History, Image, Images, LayoutDashboard, PanelsTopLeft, ReceiptText, Shirt, Tags, UsersRound } from 'lucide-vue-next'
+import { ChevronDown, ClipboardList, CreditCard, FileText, Gift, History, Image, Images, LayoutDashboard, ListOrdered, PanelsTopLeft, ReceiptText, Settings2, Shirt, Tags, UsersRound } from 'lucide-vue-next'
 import AppBrand from '../ui/AppBrand.vue'
 import AppHeaderAccountControls from '../ui/AppHeaderAccountControls.vue'
 
@@ -35,7 +35,6 @@ const adminGroups = [
     label: '内容配置',
     items: [
       { id: 'admin-models', label: '模型管理', icon: PanelsTopLeft, to: { name: 'admin-models' } },
-      { id: 'admin-pricing', label: '计费规则', icon: Tags, to: { name: 'admin-pricing' } },
       { id: 'admin-image-settings', label: '出图设置', icon: Image, to: { name: 'admin-image-product' } },
       { id: 'admin-commerce-templates', label: '电商模板', icon: FileText, to: { name: 'admin-commerce-ugc' } },
       { id: 'admin-apparel-templates', label: '服饰模板', icon: Shirt, to: { name: 'admin-apparel-showcase' } },
@@ -53,7 +52,11 @@ const adminGroups = [
     id: 'finance',
     label: '财务管理',
     items: [
-      { id: 'admin-recharge', label: '充值管理', icon: CreditCard, to: { name: 'admin-recharge' } },
+      { id: 'admin-credit-policy', label: '积分策略', icon: Gift, to: { name: 'admin-credit-policy' } },
+      { id: 'admin-recharge-policy', label: '充值政策', icon: Settings2, to: { name: 'admin-recharge-policy' } },
+      { id: 'admin-recharge-tiers', label: '充值阶梯', icon: ListOrdered, to: { name: 'admin-recharge-tiers' } },
+      { id: 'admin-recharge-orders', label: '充值订单', icon: CreditCard, to: { name: 'admin-recharge-orders' } },
+      { id: 'admin-model-pricing', label: '模型计费', icon: Tags, to: { name: 'admin-model-pricing' } },
     ],
   },
 ]

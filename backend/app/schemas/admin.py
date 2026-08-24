@@ -92,6 +92,13 @@ class BillingPolicyUpdateRequest(AdminMutation):
         return self
 
 
+class CreditPolicyUpdateRequest(AdminMutation):
+    registration_bonus_enabled: bool
+    registration_bonus_credits: int = Field(gt=0, le=1_000_000)
+    daily_refill_enabled: bool
+    daily_minimum_credits: int = Field(gt=0, le=1_000_000)
+
+
 class ModelAdminSettingUpdateRequest(AdminMutation):
     label: str = Field(min_length=1, max_length=100)
     enabled: bool

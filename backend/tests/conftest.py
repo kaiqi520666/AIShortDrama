@@ -20,6 +20,7 @@ from app.models import (
     BillingPolicy,
     Character,
     ContentTemplate,
+    CreditPolicy,
     CreditLedger,
     Garment,
     GenerationTask,
@@ -40,6 +41,7 @@ BASELINE_MODELS = (
     ModelPriceRule,
     RechargeTier,
     BillingPolicy,
+    CreditPolicy,
     ModelAdminSetting,
     ContentTemplate,
     OutfitModel,
@@ -86,7 +88,7 @@ async def restore_test_data() -> None:
             if baseline_ids:
                 statement = statement.where(getattr(model, primary_key).not_in(baseline_ids))
             await db.execute(statement)
-        for model in (BillingPolicy, ContentTemplate):
+        for model in (BillingPolicy, CreditPolicy, ContentTemplate):
             primary_key = primary_key_name(model)
             baseline_ids = [row[primary_key] for row in baseline_rows[model]]
             statement = delete(model)

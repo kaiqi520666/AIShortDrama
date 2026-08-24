@@ -33,6 +33,7 @@ from app.schemas.admin import (
     BillingPolicyUpdateRequest,
     ContentTemplateUpdateRequest,
     CreditAdjustmentRequest,
+    CreditPolicyUpdateRequest,
     ModelAdminSettingUpdateRequest,
     PriceRuleUpdateRequest,
     RechargeTierMutationRequest,
@@ -42,7 +43,9 @@ from app.schemas.admin import (
 from app.schemas.response import success
 from app.services.admin import active_admin_count, add_audit, adjust_credits, price_snapshot, user_snapshot
 from app.services.admin_configuration import (
+    credit_policy_data,
     get_billing_policy,
+    get_credit_policy,
     get_model_settings,
     model_settings_payload,
     policy_data,
@@ -363,6 +366,41 @@ async def update_billing_policy(
     await db.commit()
     await db.refresh(policy)
     return success(policy_data(policy))
+
+
+@router.get("/credit-policy")
+async def get_credit_policy_data(
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+):
+    return success(credit_policy_data(await get_credit_policy(db)))
+
+
+@router.put("/credit-policy")
+async def update_credit_policy(
+    payload: CreditPolicyUpdateRequest,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    policy = await get_credit_policy(db, lock=True)
+    before = credit_policy_data(policy)
+    for field, value in payload.model_dump(exclude={"reason"}).items():
+        setattr(policy, field, value)
+    policy.version += 1
+    after = credit_policy_data(policy)
+    add_audit(
+        db,
+        admin_id=admin.id,
+        action="update_credit_policy",
+        target_type="credit_policy",
+        target_id=policy.key,
+        reason=payload.reason,
+        before=before,
+        after=after,
+    )
+    await db.commit()
+    await db.refresh(policy)
+    return success(credit_policy_data(policy))
 
 
 @router.get("/models")

@@ -9,7 +9,7 @@ from app.core.auth import hash_password, verify_password
 from app.core.database import SessionLocal
 from app.core.identity import LOCAL_USER_ID
 from app.main import app
-from app.models import User, Workspace
+from app.models import CreditLedger, User, Workspace
 from app.api.routes import auth as auth_routes
 from app.providers.turnstile import TurnstileVerificationError
 from app.services.authentication import transfer_local_data
@@ -204,10 +204,19 @@ async def test_register_creates_default_workspace_without_exposing_token(monkeyp
     registered_id = uuid.UUID(data["id"])
     assert response.status_code == 200
     assert data["username"] == "newuser"
+    assert data["credit_balance"] == 10
     assert "token" not in data
     async with SessionLocal() as db:
         workspace = await db.scalar(select(Workspace).where(Workspace.user_id == registered_id))
+        ledger = await db.scalar(
+            select(CreditLedger).where(
+                CreditLedger.user_id == registered_id,
+                CreditLedger.idempotency_key == f"registration-bonus:{registered_id}",
+            )
+        )
         assert workspace.name == "默认工作台"
+        assert ledger.amount == 10
+        assert ledger.note == "新用户注册赠送"
 
 
 @pytest.mark.asyncio

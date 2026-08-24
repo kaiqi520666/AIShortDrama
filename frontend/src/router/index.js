@@ -15,7 +15,10 @@ const AdminUsersView = () => import('../views/admin/AdminUsersView.vue')
 const AdminPricingView = () => import('../views/admin/AdminPricingView.vue')
 const AdminTasksView = () => import('../views/admin/AdminTasksView.vue')
 const AdminAuditsView = () => import('../views/admin/AdminAuditsView.vue')
-const AdminRechargeView = () => import('../views/admin/AdminRechargeView.vue')
+const AdminCreditPolicyView = () => import('../views/admin/AdminCreditPolicyView.vue')
+const AdminRechargePolicyView = () => import('../views/admin/AdminRechargePolicyView.vue')
+const AdminRechargeTiersView = () => import('../views/admin/AdminRechargeTiersView.vue')
+const AdminRechargeOrdersView = () => import('../views/admin/AdminRechargeOrdersView.vue')
 const AdminOverviewView = () => import('../views/admin/AdminOverviewView.vue')
 const AdminModelsView = () => import('../views/admin/AdminModelsView.vue')
 const AdminTemplatesView = () => import('../views/admin/AdminTemplatesView.vue')
@@ -51,7 +54,7 @@ export function createAppRouter(authStore) {
           { path: 'overview', name: 'admin-overview', component: AdminOverviewView, meta: { navKey: 'admin-overview' } },
           { path: 'users', name: 'admin-users', component: AdminUsersView, meta: { navKey: 'admin-users' } },
           { path: 'models', name: 'admin-models', component: AdminModelsView, meta: { navKey: 'admin-models' } },
-          { path: 'pricing', name: 'admin-pricing', component: AdminPricingView, meta: { navKey: 'admin-pricing' } },
+          { path: 'pricing', redirect: { name: 'admin-model-pricing' } },
           { path: 'image-settings', redirect: { name: 'admin-image-product' } },
           { path: 'image-settings/product', name: 'admin-image-product', component: AdminTemplatesView, props: { templateKey: 'product_visual', section: 'image' }, meta: { navKey: 'admin-image-settings' } },
           { path: 'image-settings/apparel', name: 'admin-image-apparel', component: AdminTemplatesView, props: { templateKey: 'apparel_visual', section: 'image' }, meta: { navKey: 'admin-image-settings' } },
@@ -64,7 +67,13 @@ export function createAppRouter(authStore) {
           { path: 'reference-assets', name: 'admin-reference-assets', component: AdminReferenceAssetsView, meta: { navKey: 'admin-reference-assets' } },
           { path: 'tasks', name: 'admin-tasks', component: AdminTasksView, meta: { navKey: 'admin-tasks' } },
           { path: 'audits', name: 'admin-audits', component: AdminAuditsView, meta: { navKey: 'admin-audits' } },
-          { path: 'recharge', name: 'admin-recharge', component: AdminRechargeView, meta: { navKey: 'admin-recharge' } },
+          { path: 'recharge', redirect: { name: 'admin-recharge-policy' } },
+          { path: 'finance', redirect: { name: 'admin-credit-policy' } },
+          { path: 'finance/credit-policy', name: 'admin-credit-policy', component: AdminCreditPolicyView, meta: { navKey: 'admin-credit-policy' } },
+          { path: 'finance/recharge-policy', name: 'admin-recharge-policy', component: AdminRechargePolicyView, meta: { navKey: 'admin-recharge-policy' } },
+          { path: 'finance/recharge-tiers', name: 'admin-recharge-tiers', component: AdminRechargeTiersView, meta: { navKey: 'admin-recharge-tiers' } },
+          { path: 'finance/recharge-orders', name: 'admin-recharge-orders', component: AdminRechargeOrdersView, meta: { navKey: 'admin-recharge-orders' } },
+          { path: 'finance/model-pricing', name: 'admin-model-pricing', component: AdminPricingView, meta: { navKey: 'admin-model-pricing' } },
         ],
       },
       { path: '/canvas/:workspaceId', name: 'canvas', component: WorkspaceCanvasView, meta: { requiresAuth: true } },

@@ -31,6 +31,40 @@ class BillingPolicy(Base):
     )
 
 
+class CreditPolicy(Base):
+    __tablename__ = "credit_policies"
+    __table_args__ = (
+        CheckConstraint("key = 'default'", name="ck_credit_policies_singleton"),
+        CheckConstraint(
+            "registration_bonus_credits > 0",
+            name="ck_credit_policies_registration_bonus_positive",
+        ),
+        CheckConstraint(
+            "daily_minimum_credits > 0",
+            name="ck_credit_policies_daily_minimum_positive",
+        ),
+    )
+
+    key: Mapped[str] = mapped_column(String(32), primary_key=True, default="default")
+    version: Mapped[int] = mapped_column(Integer, server_default=text("1"))
+    registration_bonus_enabled: Mapped[bool] = mapped_column(
+        Boolean, server_default=text("true")
+    )
+    registration_bonus_credits: Mapped[int] = mapped_column(
+        Integer, server_default=text("10")
+    )
+    daily_refill_enabled: Mapped[bool] = mapped_column(
+        Boolean, server_default=text("true")
+    )
+    daily_minimum_credits: Mapped[int] = mapped_column(
+        Integer, server_default=text("10")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+
+
 class ModelAdminSetting(Base):
     __tablename__ = "model_admin_settings"
     __table_args__ = (

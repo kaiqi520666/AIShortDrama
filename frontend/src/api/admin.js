@@ -36,6 +36,14 @@ export async function updateAdminBillingPolicy(payload) {
   return (await apiClient.put('/admin/billing-policy', payload)).data
 }
 
+export async function getAdminCreditPolicy() {
+  return (await apiClient.get('/admin/credit-policy')).data
+}
+
+export async function updateAdminCreditPolicy(payload) {
+  return (await apiClient.put('/admin/credit-policy', payload)).data
+}
+
 export async function getAdminModels() {
   return (await apiClient.get('/admin/models')).data
 }

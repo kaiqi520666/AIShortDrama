@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.identity import DEFAULT_WORKSPACE_ID, LOCAL_USER_ID
 from app.models import Asset, GenerationTask, User, Workspace
 from app.schemas.workspace import empty_canvas
+from app.services.credit_grants import grant_registration_credits
 
 REGISTRATION_LOCK_ID = 827_104_221
 
@@ -61,6 +62,7 @@ async def register_user(
             await transfer_local_data(db, user.id)
         else:
             db.add(Workspace(user_id=user.id, name="默认工作台", canvas=empty_canvas()))
+        await grant_registration_credits(db, user)
         await db.commit()
     except IntegrityError as exc:
         await db.rollback()
