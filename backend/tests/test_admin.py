@@ -46,7 +46,7 @@ async def test_admin_actions_audit_and_credit_floor():
             target = await db.get(User, target_id)
             assert target.auth_version == 1
             audit_actions = list(await db.scalars(select(AdminAuditLog.action).where(AdminAuditLog.admin_id == admin_id)))
-            assert audit_actions == ["adjust_credits", "change_role"]
+            assert sorted(audit_actions) == ["adjust_credits", "change_role"]
     finally:
         app.dependency_overrides.pop(get_current_admin, None)
 
