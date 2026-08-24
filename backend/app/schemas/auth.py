@@ -9,6 +9,7 @@ class RegisterRequest(BaseModel):
     username: str = Field(min_length=2, max_length=32)
     email: EmailStr
     password: str
+    verification_code: str = Field(pattern=r"^\d{6}$")
 
     @field_validator("username")
     @classmethod
@@ -32,6 +33,13 @@ class LoginRequest(BaseModel):
 
     email: EmailStr
     password: str
+
+
+class EmailCodeRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    email: EmailStr
+    captcha_token: str = Field(min_length=1, max_length=4096)
 
 
 class ChangePasswordRequest(BaseModel):

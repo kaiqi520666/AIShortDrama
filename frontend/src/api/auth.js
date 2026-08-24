@@ -4,6 +4,14 @@ export async function register(payload) {
   return (await apiClient.post('/auth/register', payload)).data
 }
 
+export async function getCaptchaConfig() {
+  return (await apiClient.get('/auth/captcha-config')).data
+}
+
+export async function sendRegistrationEmailCode(payload) {
+  return (await apiClient.post('/auth/email-code', payload)).data
+}
+
 export async function login(payload) {
   return (await apiClient.post('/auth/login', payload)).data
 }

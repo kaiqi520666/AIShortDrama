@@ -84,6 +84,18 @@
 .auth-form {
   gap: 16px;
 }
+.auth-turnstile {
+  min-height: 70px;
+  display: grid;
+  place-items: center;
+}
+.auth-turnstile-widget {
+  width: 100%;
+}
+.auth-turnstile p {
+  color: var(--color-text-muted);
+  font-size: 12px;
+}
 .auth-field {
   display: grid;
   gap: 8px;

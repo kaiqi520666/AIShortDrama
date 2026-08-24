@@ -20,13 +20,21 @@ from app.core.auth import (
     set_auth_cookies,
     verify_password,
 )
+from app.core.client_ip import client_ip
+from app.core.config import get_settings
 from app.core.database import get_db
-from app.core.errors import RequestError
+from app.core.errors import RequestError, ServiceUnavailableError
 from app.core.identity import get_current_user
 from app.models import User
-from app.schemas.auth import ChangePasswordRequest, LoginRequest, RegisterRequest
+from app.schemas.auth import ChangePasswordRequest, EmailCodeRequest, LoginRequest, RegisterRequest
 from app.schemas.response import fail, success
 from app.services.authentication import RegistrationError, register_user, user_payload
+from app.services.email_verification import (
+    COOLDOWN_SECONDS,
+    EmailVerificationError,
+    consume_registration_code,
+    issue_registration_code,
+)
 
 router = APIRouter()
 DUMMY_PASSWORD_HASH = hash_password("invalid-password-placeholder")
@@ -38,8 +46,31 @@ def unauthorized(message: str) -> JSONResponse:
     return response
 
 
-def client_ip(request: Request) -> str:
-    return request.client.host if request.client else "unknown"
+@router.get("/captcha-config")
+async def captcha_config():
+    site_key = get_settings().turnstile_site_key
+    if not site_key:
+        raise ServiceUnavailableError("人机验证未配置")
+    return success({"site_key": site_key})
+
+
+@router.post("/email-code")
+async def send_email_code(
+    payload: EmailCodeRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    try:
+        await issue_registration_code(
+            db,
+            request.app.state.redis,
+            str(payload.email),
+            client_ip(request),
+            payload.captcha_token,
+        )
+    except EmailVerificationError as exc:
+        raise RequestError(str(exc)) from exc
+    return success({"cooldown_seconds": COOLDOWN_SECONDS}, "验证码已发送")
 
 
 @router.post("/register")
@@ -49,12 +80,28 @@ async def register(
     response: Response,
     db: AsyncSession = Depends(get_db),
 ):
+    email = str(payload.email).casefold()
+    duplicate = await db.scalar(
+        select(User.id).where(
+            (User.username == payload.username) | (User.email == email)
+        ).limit(1)
+    )
+    if duplicate:
+        raise RequestError("用户名或邮箱已注册")
+    try:
+        await consume_registration_code(
+            request.app.state.redis,
+            email,
+            payload.verification_code,
+        )
+    except EmailVerificationError as exc:
+        raise RequestError(str(exc)) from exc
     encoded_password = await asyncio.to_thread(hash_password, payload.password)
     try:
         user = await register_user(
             db,
             username=payload.username,
-            email=str(payload.email),
+            email=email,
             encoded_password=encoded_password,
         )
     except RegistrationError as exc:

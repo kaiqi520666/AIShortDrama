@@ -1,4 +1,5 @@
 import uuid
+from unittest.mock import AsyncMock
 
 import pytest
 from httpx import ASGITransport, AsyncClient
@@ -9,6 +10,7 @@ from app.core.database import SessionLocal
 from app.core.identity import LOCAL_USER_ID
 from app.main import app
 from app.models import User, Workspace
+from app.api.routes import auth as auth_routes
 from app.services.authentication import transfer_local_data
 
 
@@ -103,7 +105,7 @@ async def test_login_refresh_replay_and_logout():
 
 
 @pytest.mark.asyncio
-async def test_register_creates_default_workspace_without_exposing_token():
+async def test_register_creates_default_workspace_without_exposing_token(monkeypatch):
     anchor_id = uuid.uuid4()
     registered_email = f"new-{anchor_id.hex[:8]}@example.com"
     async with SessionLocal() as db:
@@ -119,6 +121,7 @@ async def test_register_creates_default_workspace_without_exposing_token():
         await db.commit()
 
     app.state.redis = FakeRedis()
+    monkeypatch.setattr(auth_routes, "consume_registration_code", AsyncMock())
     async with AsyncClient(
         transport=ASGITransport(app=app),
         base_url="http://test",
@@ -129,6 +132,7 @@ async def test_register_creates_default_workspace_without_exposing_token():
                 "username": "NewUser",
                 "email": registered_email.upper(),
                 "password": "password-123",
+                "verification_code": "123456",
             },
         )
     data = response.json()["data"]

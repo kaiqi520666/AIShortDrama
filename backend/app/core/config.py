@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     zpay_notify_url: str = ""
     zpay_return_url: str = ""
     frontend_base_url: str = "http://localhost:5173"
+    trusted_proxy_cidrs: str = "127.0.0.1/32,::1/128,172.16.0.0/12"
+    turnstile_site_key: str = ""
+    turnstile_secret_key: str = ""
+    tencent_cloud_secret_id: str = ""
+    tencent_cloud_secret_key: str = ""
+    tencent_ses_region: str = "ap-hongkong"
+    tencent_ses_from_email: str = "no-reply@mail.nodepass.net"
+    tencent_ses_template_id: int = 204003
 
     @property
     def redis_queue_name(self) -> str:
