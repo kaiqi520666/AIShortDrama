@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator
 class CreateRechargeOrderRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    amount_cents: int = Field(ge=3500, le=350000)
+    amount_cents: int = Field(ge=100, le=350000)
 
     @field_validator("amount_cents")
     @classmethod
