@@ -1,6 +1,6 @@
 ---
 name: ai-short-drama-deploy
-description: Check or update the AIShortDrama production deployment on its fixed Tencent Cloud server. Use only for this project's production status, application image deployment, rollback checks, or deployment troubleshooting; do not use for other servers or projects.
+description: Check or update the AIShortDrama production deployment on its fixed Tencent Cloud server. For other explicitly named projects on the same server, perform read-only status, payment, log, or configuration inspection without applying the AIShortDrama deployment routine.
 ---
 
 # AIShortDrama Production Deploy
@@ -18,9 +18,9 @@ SSH target, key path, production directory, Compose project, and public health U
 ## Invariants
 
 - Never read, print, download, replace, or upload the production `.env` as a whole. The script may read or change only its `BACKEND_IMAGE` and `FRONTEND_IMAGE` lines on the server.
-- Never modify, restart, inspect secrets from, or otherwise operate on `shangtu` and its `deploy-*` containers.
+- Do not infer mutation permission for other projects; keep cross-project inspections read-only unless the user explicitly requests a change.
 - Connect directly to `43.161.251.55` with SSH proxy and jump-host settings disabled. Do not change Windows VPN, TUN, proxy, or routing settings.
-- Operate only in `/opt/ai-short-drama/deploy` with Compose project name `ai-short-drama`.
+- For AIShortDrama deployment operations, operate only in `/opt/ai-short-drama/deploy` with Compose project name `ai-short-drama`. For explicitly authorized inspections of other projects, use their own project paths and containers without applying this deployment workflow.
 - Require a clean Git worktree for deployment. Deploy only committed code and tag both images with the current short commit SHA.
 - Back up PostgreSQL before changing image tags. Keep old Docker images for rollback.
 - A code-image rollback does not reverse an Alembic migration. If migration compatibility is uncertain, stop before deployment and report it.
