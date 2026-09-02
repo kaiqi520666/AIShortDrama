@@ -410,7 +410,7 @@ export function useGenerationContext({
       return 'close'
     }
     updateNodeData(props.nodeId, { [key]: value })
-    return ['duration', 'resolution', 'aspectRatio'].includes(key) ? 'close' : ''
+    return ['resolution', 'aspectRatio'].includes(key) ? 'close' : ''
   }
 
   function updateAudioSetting(key, value) {

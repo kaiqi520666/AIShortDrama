@@ -135,6 +135,16 @@ describe('useGenerationContext', () => {
     })
   })
 
+  it('keeps video settings open while adjusting duration', () => {
+    const { context, updateNodeData } = createSubject('video', {
+      model: 'video-1', prompt: '', duration: 5, resolution: '720p', aspectRatio: '16:9',
+    })
+
+    expect(context.updateVideoSetting('duration', 8)).toBe('')
+    expect(updateNodeData).toHaveBeenCalledWith('video-1', { duration: 8 })
+    expect(context.updateVideoSetting('resolution', '720p')).toBe('close')
+  })
+
   it('uses the registered person asset from an ordinary image node', async () => {
     const reference = {
       id: 'image-1',

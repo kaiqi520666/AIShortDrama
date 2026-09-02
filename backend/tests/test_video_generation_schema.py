@@ -45,9 +45,9 @@ def test_invalid_video_request(updates):
         video_request(**updates)
 
 
-def test_seedance_mini_duration_options():
-    request = video_request(model="seedance-2-mini", duration=8, resolution="480p")
-    assert request.duration == 8
+def test_seedance_mini_duration_range():
+    request = video_request(model="seedance-2-mini", duration=6, resolution="480p")
+    assert request.duration == 6
 
 
 def test_provider_payloads_use_reference_mode():

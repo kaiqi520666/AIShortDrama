@@ -119,7 +119,7 @@ MODEL_CAPABILITIES: dict[str, dict[str, Any]] = {
                 "default_resolution": "720p",
                 "default_aspect_ratio": "16:9",
                 "default_duration": 10,
-                "duration": {"options": [4, 8, 10, 12, 15]},
+                "duration": {"min": 4, "max": 15},
                 "prompt_max_length": 32000,
                 "reference_limits": {"image": 9, "video": 3, "audio": 3},
                 "generate_audio": True,

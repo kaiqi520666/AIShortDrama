@@ -29,6 +29,8 @@ async def test_capabilities_endpoint_returns_public_registry():
     assert payload["version"] == 1
     assert payload["image"]["default_model"] == "gpt-image-2"
     assert payload["video"]["default_model"] == "seedance-2-mini"
+    mini = next(model for model in payload["video"]["models"] if model["id"] == "seedance-2-mini")
+    assert mini["duration"] == {"min": 4, "max": 15}
     assert payload["audio"]["models"][0]["formats"] == ["mp3", "wav", "ogg_opus"]
     assert all(not key.startswith("_") for model in payload["image"]["models"] for key in model)
 
