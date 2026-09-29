@@ -5,7 +5,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from urllib.parse import urlparse
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 
 from app.core.database import SessionLocal
 from app.core.errors import diagnostic_snapshot
@@ -179,22 +179,33 @@ async def complete_text_task(task_id: uuid.UUID, content: str) -> None:
         await db.commit()
 
 
-async def compensate_stale_generation_tasks(_ctx) -> None:
+async def compensate_stale_generation_tasks(ctx) -> None:
     cutoff = datetime.now(UTC) - timedelta(minutes=30)
     async with SessionLocal() as db:
-        task_ids = list(
+        tasks = list(
             await db.scalars(
-                select(GenerationTask.id).where(
+                select(GenerationTask).where(
                     GenerationTask.credit_status == "frozen",
-                    GenerationTask.status.in_({"queued", "running"}),
-                    GenerationTask.created_at < cutoff,
+                    or_(
+                        (GenerationTask.status == "queued") & (GenerationTask.created_at < cutoff),
+                        (GenerationTask.status == "running") & (GenerationTask.updated_at < cutoff),
+                    ),
                 )
             )
         )
-    for task_id in task_ids:
+    for task in tasks:
+        if task.task_type == "video" and task.provider_task_id:
+            await update_task(
+                task.id,
+                status="queued",
+                error_message="视频任务已恢复排队，继续查询上游结果",
+            )
+            if ctx and ctx.get("redis"):
+                await ctx["redis"].enqueue_job("generate_video", str(task.id))
+            continue
         error = GenerationPollTimeout("生成任务超时")
         await fail_task(
-            task_id,
+            task.id,
             "timeout",
             str(error),
             diagnostic_snapshot(error, "poll"),

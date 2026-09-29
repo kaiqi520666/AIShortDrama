@@ -7,6 +7,7 @@ from app.workers.image_generation import generate_image
 from app.workers.audio_generation import generate_audio
 from app.workers.video_generation import generate_video
 from app.workers.generation import compensate_stale_generation_tasks
+from app.workers.payments import reconcile_cahaya_orders
 
 settings = get_settings()
 
@@ -15,6 +16,7 @@ class WorkerSettings:
     functions = [generate_image, generate_video, generate_audio]
     cron_jobs = [
         cron(compensate_stale_generation_tasks, minute={0, 10, 20, 30, 40, 50}),
+        cron(reconcile_cahaya_orders, minute={2, 7, 12, 17, 22, 27, 32, 37, 42, 47, 52, 57}),
         # ARQ uses UTC; 16:00 UTC is 00:00 in Asia/Shanghai.
         cron(replenish_daily_credits, hour=16, minute=0, run_at_startup=True),
     ]

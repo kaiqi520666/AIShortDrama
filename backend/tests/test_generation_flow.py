@@ -59,6 +59,23 @@ class FakeVideoProvider:
         }
 
 
+class ResumeVideoProvider:
+    def __init__(self):
+        self.submitted = False
+
+    async def submit_video(self, _payload):
+        self.submitted = True
+        raise AssertionError("恢复任务不能重复提交")
+
+    async def get_video_task(self, task_id):
+        assert task_id == "provider-video-task-existing"
+        return {
+            "status": "completed",
+            "progress": 100,
+            "result": {"data": [{"url": "https://example.com/temp.mp4"}]},
+        }
+
+
 class FailingVideoProvider:
     async def submit_video(self, _payload):
         raise ToApisError(
@@ -173,6 +190,42 @@ async def test_video_generation_flow():
 
 
 @pytest.mark.asyncio
+async def test_video_generation_resumes_existing_provider_task_without_resubmitting():
+    user_id = await default_workspace_owner()
+    async with SessionLocal() as db:
+        task = await create_video_task(
+            db,
+            FakeRedis(),
+            VideoGenerationRequest(
+                workspace_id=DEFAULT_WORKSPACE_ID,
+                node_id="video-resume-test",
+                model="seedance-2-mini",
+                prompt="resume video",
+                duration=5,
+                resolution="480p",
+                aspect_ratio="16:9",
+            ),
+            user_id,
+        )
+        task.provider_task_id = "provider-video-task-existing"
+        task.status = "running"
+        await db.commit()
+        task_id = task.id
+
+    await run_video_generation(
+        str(task_id),
+        provider=ResumeVideoProvider(),
+        storage=FakeStorage(),
+        poll_interval=0,
+        max_polls=1,
+    )
+    async with SessionLocal() as db:
+        completed = await db.get(GenerationTask, task_id)
+        assert completed.status == "succeeded"
+        assert completed.provider_task_id == "provider-video-task-existing"
+
+
+@pytest.mark.asyncio
 async def test_video_generation_hides_provider_detail_from_node():
     user_id = await default_workspace_owner()
     async with SessionLocal() as db:
@@ -196,8 +249,8 @@ async def test_video_generation_hides_provider_detail_from_node():
         await run_video_generation(str(task_id), provider=FailingVideoProvider())
     async with SessionLocal() as db:
         failed = await db.get(GenerationTask, task_id)
-        assert failed.status == "failed"
-        assert failed.error_message == "视频生成服务暂时不可用"
+        assert failed.status == "needs_review"
+        assert failed.error_message == "上游提交结果未知，请人工核对后再处理"
         assert failed.diagnostic_snapshot is None
 
 

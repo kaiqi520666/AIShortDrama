@@ -316,7 +316,7 @@ async function pasteFromMenu() {
   return pasteFromClipboard(position)
 }
 
-const { enable: enableAutosave, saveBeforeLeave, retrySave, cancelScheduledSave } = useCanvasAutosave({
+const { enable: enableAutosave, saveBeforeLeave, cancelScheduledSave } = useCanvasAutosave({
   store,
   getPayload: () => store.canvasPayload(),
   getViewport: () => viewport.value,
@@ -380,10 +380,8 @@ onBeforeUnmount(() => {
       :username="authStore.user?.username || t('canvas.guest')"
       :credit-balance="authStore.user?.credit_balance || 0"
       :credit-frozen="authStore.user?.credit_frozen || 0"
-      :save-status="store.saveStatus"
       @back="goHome"
       @logout="signOut"
-      @retry-save="retrySave"
     />
 
     <VueFlow

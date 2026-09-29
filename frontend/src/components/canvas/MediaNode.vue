@@ -214,7 +214,7 @@ function openOutfitVideoFlow() {
         <img class="node-image" :src="buildOssImageUrl(data.asset)" :alt="data.title" :title="t('canvas.doubleClickPreview')" draggable="false" referrerpolicy="no-referrer" @load="captureImageDimensions" @dblclick.stop="openImagePreview" />
       </template>
 
-      <video v-else-if="data.assetId && type === 'video'" class="node-video nodrag nopan nowheel" :src="`/api/assets/${data.assetId}/content`" :poster="data.poster || data.lastFrameUrl" controls playsinline preload="none"></video>
+      <video v-else-if="data.asset && type === 'video'" class="node-video nodrag nopan nowheel" :src="data.asset" :poster="data.poster || data.lastFrameUrl" controls playsinline preload="none"></video>
 
       <div v-else-if="['image', 'video'].includes(type) && data.assetSource === 'upload'" class="media-upload-state">
         <div class="media-upload-actions">
@@ -224,9 +224,9 @@ function openOutfitVideoFlow() {
         <p v-if="uploadNotice">{{ uploadNotice }}</p>
       </div>
 
-      <div v-else-if="type === 'audio' && data.assetId" class="audio-preview">
+      <div v-else-if="type === 'audio' && data.asset" class="audio-preview">
         <AudioWaveform :size="60" />
-        <audio class="node-audio nodrag nopan nowheel" :src="`/api/assets/${data.assetId}/content`" controls preload="metadata"></audio>
+        <audio class="node-audio nodrag nopan nowheel" :src="data.asset" controls preload="metadata"></audio>
       </div>
 
       <div v-else-if="type === 'audio' && data.status === 'ready'" class="audio-preview">

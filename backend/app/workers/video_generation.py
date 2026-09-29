@@ -38,8 +38,10 @@ async def run_video_generation(
         if not task or task.status in {"succeeded", "failed", "timeout", "cancelled"}:
             return
         payload = task.request_snapshot
+        provider_task_id = task.provider_task_id
         task.status = "running"
-        task.progress = 0
+        if not provider_task_id:
+            task.progress = 0
         task.started_at = datetime.now(UTC)
         await db.commit()
 
@@ -48,11 +50,12 @@ async def run_video_generation(
     try:
         provider = provider or ToApisProvider()
         storage = storage or OssStorage()
-        submitted = await provider.submit_video(payload)
-        provider_task_id = submitted.get("id")
         if not provider_task_id:
-            raise ToApisError("ToAPIs 未返回任务 ID")
-        await update_task(task_uuid, provider_task_id=provider_task_id)
+            submitted = await provider.submit_video(payload)
+            provider_task_id = submitted.get("id")
+            if not provider_task_id:
+                raise ToApisError("ToAPIs 未返回任务 ID")
+            await update_task(task_uuid, provider_task_id=provider_task_id)
         stage = "poll"
         state = await poll_generation(
             provider.get_video_task,
@@ -75,12 +78,20 @@ async def run_video_generation(
             result_extra={"last_frame_url": stored_last_frame[0]} if stored_last_frame else None,
         )
     except GenerationPollTimeout as exc:
-        await fail_task(
-            task_uuid,
-            "timeout",
-            str(exc),
-            diagnostic_snapshot(exc, "poll"),
-        )
+        await update_task(task_uuid, status="queued", error_message=str(exc), diagnostic_snapshot=diagnostic_snapshot(exc, "poll"))
+    except ToApisError as exc:
+        if exc.retryable and provider_task_id:
+            await update_task(task_uuid, status="queued", error_message="上游任务查询暂时失败，请稍后重试", diagnostic_snapshot=diagnostic_snapshot(exc, stage))
+        elif exc.retryable:
+            await update_task(task_uuid, status="needs_review", error_message="上游提交结果未知，请人工核对后再处理", diagnostic_snapshot=diagnostic_snapshot(exc, stage))
+        else:
+            await fail_task(
+                task_uuid,
+                "failed",
+                public_error_message(exc, "视频生成服务暂时不可用"),
+                diagnostic_snapshot(exc, stage),
+            )
+        raise
     except Exception as exc:
         logger.exception("Video generation failed", extra={"task_id": str(task_uuid)})
         await fail_task(

@@ -335,6 +335,13 @@ async def settle_recharge_order(db: AsyncSession, order: RechargeOrder, provider
 async def sync_cahaya_order(db: AsyncSession, order: RechargeOrder) -> RechargeOrder:
     if order.provider != "cahaya" or order.status != "pending":
         return order
+    order = await db.scalar(
+        select(RechargeOrder)
+        .where(RechargeOrder.id == order.id)
+        .with_for_update()
+    )
+    if not order or order.status != "pending":
+        return order
     try:
         async with CahayaProvider(require_enabled=False) as provider:
             result = await provider.query_payment(out_trade_no=order.out_trade_no)

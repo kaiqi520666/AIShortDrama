@@ -21,6 +21,11 @@
 - [ ] Did I build a complex, generic component with 10+ props just to handle 2 simple pages? (If yes, simplify it immediately)
 - [ ] Am I wasting time writing overly safe error-handling for non-fatal edge cases? (If yes, let it fail or just print a basic log)
 
+## CodeGraph
+
+- 项目存在 `.codegraph/` 时，理解代码先用 CodeGraph。
+- 已由 CodeGraph 返回且未发生修改的源码，不重复读取；避免宽泛查询，优先指定文件或符号；仅对缺失或截断的内容定点补查。
+
 ## Testing Rules
 
 - 默认采用“最小必要测试”，只运行与本次改动直接相关的定向测试或检查。

@@ -3,9 +3,7 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-import httpx
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -25,15 +23,6 @@ from app.services.private_avatar import PrivateAvatarService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-
-async def stream_remote(response: httpx.Response, client: httpx.AsyncClient):
-    try:
-        async for chunk in response.aiter_raw():
-            yield chunk
-    finally:
-        await response.aclose()
-        await client.aclose()
 
 
 async def owned_asset(db: AsyncSession, asset_id: uuid.UUID, user_id: uuid.UUID) -> Asset | None:
@@ -147,41 +136,6 @@ async def register_private_avatar(
         }
         await db.commit()
         raise ServiceUnavailableError(message, asset_payload(asset)) from exc
-
-
-@router.get("/{asset_id}/content")
-async def stream_asset(
-    asset_id: uuid.UUID,
-    request: Request,
-    db: AsyncSession = Depends(get_db),
-    user_id: uuid.UUID = Depends(get_current_user_id),
-):
-    asset = await owned_asset(db, asset_id, user_id)
-    if not asset:
-        raise HTTPException(status_code=404, detail="资产不存在")
-
-    headers = {"Accept-Encoding": "identity"}
-    if request.headers.get("range"):
-        headers["Range"] = request.headers["range"]
-    client = httpx.AsyncClient(timeout=60, follow_redirects=True)
-    try:
-        response = await client.send(client.build_request("GET", asset.url, headers=headers), stream=True)
-        response.raise_for_status()
-    except httpx.HTTPError as exc:
-        await client.aclose()
-        raise HTTPException(status_code=502, detail="资产读取失败") from exc
-
-    forwarded_headers = {
-        name: response.headers[name]
-        for name in ("accept-ranges", "content-length", "content-range", "etag", "last-modified")
-        if name in response.headers
-    }
-    return StreamingResponse(
-        stream_remote(response, client),
-        status_code=response.status_code,
-        media_type=asset.mime_type or response.headers.get("content-type"),
-        headers=forwarded_headers,
-    )
 
 
 @router.delete("/{asset_id}")
