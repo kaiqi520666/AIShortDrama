@@ -56,7 +56,7 @@ async def test_stream_text_events_complete_with_compatible_ndjson():
     ]
 
     assert events == [
-        {"type": "meta", "task_id": str(task_id)},
+        {"type": "meta", "task_id": str(task_id), "generated_locale": "zh-CN"},
         {"type": "delta", "content": "第一段"},
         {"type": "delta", "content": "第二段"},
         {"type": "done"},
