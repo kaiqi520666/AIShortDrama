@@ -54,16 +54,17 @@ class CahayaProvider:
     async def __aexit__(self, *_):
         await self.client.aclose()
 
-    def _request(self, params: dict[str, Any]) -> dict[str, Any]:
-        now = str(int(time.time() * 1000))
+    def _request(self, params: dict[str, Any], *, request_time: str | None = None) -> dict[str, Any]:
+        now = request_time or str(int(time.time() * 1000))
         public = {"req_ver": "1.0", "req_mode": "1", "req_time": now, "req_id": str(uuid.uuid4()), "terminal_no": self.settings.cahaya_terminal_no, "req_params": json.dumps(params, ensure_ascii=False, separators=(",", ":"))}
         public["key_sign"] = sign_payload(public, self.settings.cahaya_access_token)
         return public
 
     async def create_payment(self, *, out_trade_no: str, amount_minor: int, terminal_ip: str) -> dict[str, Any]:
-        params = {"pay_ver": "100", "merchant_order_no": out_trade_no, "merchant_no": self.settings.cahaya_merchant_no, "terminal_no": self.settings.cahaya_terminal_no, "total_fee": str(amount_minor), "pay_type": "2", "terminal_ip": terminal_ip, "terminal_time": str(int(time.time() * 1000)), "time_expire": "7200", "notify_url": self.settings.cahaya_notify_url}
+        request_time = str(int(time.time() * 1000))
+        params = {"pay_ver": "100", "merchant_order_no": out_trade_no, "merchant_no": self.settings.cahaya_merchant_no, "terminal_no": self.settings.cahaya_terminal_no, "total_fee": str(amount_minor), "pay_type": "2", "terminal_ip": terminal_ip, "terminal_time": request_time, "time_expire": "7200", "notify_url": self.settings.cahaya_notify_url}
         try:
-            response = await self.client.post(f"{self.settings.cahaya_gateway.rstrip('/')}/open/payment/prepay", data=self._request(params))
+            response = await self.client.post(f"{self.settings.cahaya_gateway.rstrip('/')}/open/payment/prepay", data=self._request(params, request_time=request_time))
             response.raise_for_status()
             data = response.json()
         except Exception as exc:

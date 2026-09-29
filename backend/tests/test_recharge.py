@@ -24,6 +24,16 @@ def test_cahaya_signature_uses_sorted_public_fields_and_access_token_last():
     assert not verify_payload({**payload, "key_sign": "wrong"}, "31cf7844f0ae4360adea6ca1a280f6ae")
 
 
+def test_cahaya_prepay_uses_one_timestamp_for_request_and_terminal():
+    provider = cahaya_provider.CahayaProvider.__new__(cahaya_provider.CahayaProvider)
+    provider.settings = SimpleNamespace(cahaya_terminal_no="10005965", cahaya_access_token="token")
+    payload = provider._request(
+        {"terminal_time": "1772701701326"},
+        request_time="1772701701326",
+    )
+    assert payload["req_time"] == json.loads(payload["req_params"])["terminal_time"]
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("amount_cents", "base", "bonus"),
