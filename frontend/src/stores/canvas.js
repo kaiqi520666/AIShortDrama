@@ -222,8 +222,7 @@ export const useCanvasStore = defineStore('canvas', {
         data,
       })
       if (sourceId) {
-        const defaultHandle = type === 'character' && source.type === 'image' ? 'reference' : targetHandle
-        this.edges.push(createCanvasEdge(`edge-${crypto.randomUUID()}`, sourceId, id, defaultHandle))
+        this.edges.push(createCanvasEdge(`edge-${crypto.randomUUID()}`, sourceId, id, targetHandle))
       }
       return id
     },

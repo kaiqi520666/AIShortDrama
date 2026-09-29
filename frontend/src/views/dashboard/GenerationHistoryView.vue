@@ -1,5 +1,7 @@
 <script setup>
-import { onMounted, reactive, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { localizeAccountText } from '../../utils/accountLocalization'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { ExternalLink, Eye } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import { getGenerationDetail, getGenerationHistory } from '../../api/account'
@@ -11,6 +13,7 @@ import { useGlobalToast } from '../../composables/useGlobalUI'
 import { getApiErrorMessage, getTaskErrorMessage } from '../../utils/apiError'
 import { buildOssImageUrl } from '../../utils/ossImage'
 
+const { t, locale } = useI18n()
 const router = useRouter()
 const toast = useGlobalToast()
 const loading = ref(true)
@@ -18,31 +21,31 @@ const detailLoadingId = ref('')
 const detail = ref(null)
 const filters = reactive({ media_type: 'all', status: 'all' })
 const result = ref({ items: [], page: 1, page_size: 20, total: 0 })
-const mediaOptions = [
-  { value: 'all', label: '全部模型类型' },
-  { value: 'text', label: '文本' },
-  { value: 'image', label: '图片' },
-  { value: 'video', label: '视频' },
-  { value: 'audio', label: '音频' },
-]
-const statusOptions = [
-  { value: 'all', label: '全部状态' },
-  { value: 'processing', label: '进行中' },
-  { value: 'succeeded', label: '成功' },
-  { value: 'failed', label: '失败' },
-]
-const statusLabels = {
-  queued: '排队中', running: '生成中', succeeded: '成功', failed: '失败', timeout: '已超时', cancelled: '已取消',
-}
-const columns = [
-  { key: 'created_at', label: '时间', width: '158px' },
-  { key: 'workspace', label: '工作台' },
-  { key: 'type_label', label: '模型类型', width: '96px' },
-  { key: 'model', label: '模型', width: '220px', class: 'generation-model-cell' },
-  { key: 'status', label: '状态', width: '88px' },
-  { key: 'charged_credits', label: '消耗积分', width: '90px', align: 'right' },
-  { key: 'actions', label: '详情', width: '84px', align: 'right' },
-]
+const mediaOptions = computed(() => ([
+  { value: 'all', label: t('records.allMedia') },
+  { value: 'text', label: t('records.text') },
+  { value: 'image', label: t('records.image') },
+  { value: 'video', label: t('records.video') },
+  { value: 'audio', label: t('records.audio') },
+]))
+const statusOptions = computed(() => ([
+  { value: 'all', label: t('records.allStatuses') },
+  { value: 'processing', label: t('records.processing') },
+  { value: 'succeeded', label: t('records.success') },
+  { value: 'failed', label: t('records.failed') },
+]))
+const statusLabels = computed(() => ({
+  queued: t('records.queued'), running: t('records.running'), succeeded: t('records.success'), failed: t('records.failed'), timeout: t('records.timeout'), cancelled: t('records.cancelled'),
+}))
+const columns = computed(() => ([
+  { key: 'created_at', label: t('records.time'), width: '158px' },
+  { key: 'workspace', label: t('records.workspace') },
+  { key: 'type_label', label: t('records.mediaType'), width: '96px' },
+  { key: 'model', label: t('records.model'), width: '220px', class: 'generation-model-cell' },
+  { key: 'status', label: t('records.status'), width: '88px' },
+  { key: 'charged_credits', label: t('records.charged'), width: '90px', align: 'right' },
+  { key: 'actions', label: t('records.details'), width: '84px', align: 'right' },
+]))
 
 async function load(page = 1) {
   loading.value = true
@@ -51,7 +54,7 @@ async function load(page = 1) {
     if (response.code !== 0) throw new Error(response.message)
     result.value = response.data
   } catch (error) {
-    toast.error(getApiErrorMessage(error, '生成记录加载失败'))
+    toast.error(getApiErrorMessage(error, t('records.historyError')))
   } finally {
     loading.value = false
   }
@@ -64,14 +67,14 @@ async function showDetail(task) {
     if (response.code !== 0) throw new Error(response.message)
     detail.value = response.data
   } catch (error) {
-    toast.error(getApiErrorMessage(error, '任务详情加载失败'))
+    toast.error(getApiErrorMessage(error, t('records.detailError')))
   } finally {
     detailLoadingId.value = ''
   }
 }
 
 function formatDate(value) {
-  return value ? new Date(value).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' }) : '—'
+  return value ? new Date(value).toLocaleString(locale.value, { timeZone: 'Asia/Shanghai' }) : '—'
 }
 
 function openWorkspace() {
@@ -85,68 +88,68 @@ onMounted(load)
 
 <template>
   <section class="account-content">
-    <header class="account-section-heading"><h1>生成记录</h1><p>查看生成状态、积分消耗与结果</p></header>
+    <header class="account-section-heading"><h1>{{ t('records.history') }}</h1><p>{{ t('records.historySubtitle') }}</p></header>
     <div class="generation-filters">
-      <AppSelect v-model="filters.media_type" :options="mediaOptions" aria-label="模型类型" />
-      <AppSelect v-model="filters.status" :options="statusOptions" aria-label="任务状态" />
+      <AppSelect v-model="filters.media_type" :options="mediaOptions" :aria-label="t('records.mediaType')" />
+      <AppSelect v-model="filters.status" :options="statusOptions" :aria-label="t('records.taskStatus')" />
     </div>
     <AppDataTable
       :columns="columns"
       :items="result.items"
       :loading="loading"
-      loading-title="正在加载生成记录"
-      empty-title="暂无生成记录"
-      empty-description="当前筛选条件下没有相关任务"
+      :loading-title="t('records.historyLoading')"
+      :empty-title="t('records.historyEmpty')"
+      :empty-description="t('records.historyFilterEmpty')"
       min-width="920px"
       :pagination="{ page: result.page, pageSize: result.page_size, total: result.total }"
       @page-change="load"
     >
       <template #cell-created_at="{ value }">{{ formatDate(value) }}</template>
-      <template #cell-workspace="{ value }"><span class="generation-workspace">{{ value.name }}</span></template>
-      <template #cell-type_label="{ item }"><span class="generation-media-type" :class="`is-${item.media_type}`">{{ item.type_label }}</span></template>
+      <template #cell-workspace="{ value }"><span class="generation-workspace">{{ value.available ? value.name : t('records.deletedWorkspace') }}</span></template>
+      <template #cell-type_label="{ item }"><span class="generation-media-type" :class="`is-${item.media_type}`">{{ localizeAccountText(item.type_label) }}</span></template>
       <template #cell-status="{ value }"><span class="generation-status" :class="`is-${value}`">{{ statusLabels[value] || value }}</span></template>
       <template #cell-charged_credits="{ value }"><strong class="generation-credits">{{ value }}</strong></template>
       <template #cell-actions="{ item }">
         <AppButton size="sm" variant="soft" :disabled="detailLoadingId === item.id" @click="showDetail(item)">
-          <Eye :size="14" />{{ detailLoadingId === item.id ? '加载中' : '查看' }}
+          <Eye :size="14" />{{ detailLoadingId === item.id ? t('records.loading') : t('records.view') }}
         </AppButton>
       </template>
     </AppDataTable>
 
     <AdminDialog
       v-if="detail"
-      title="生成详情"
-      :description="detail.type_label"
+      :title="t('records.generationDetail')"
+      :description="localizeAccountText(detail.type_label)"
       :reason-required="false"
       :cancel-text="''"
-      confirm-text="关闭"
+      :confirm-text="t('records.close')"
       @close="detail = null"
       @submit="detail = null"
     >
       <dl class="generation-detail-summary">
-        <div><dt>工作台</dt><dd>{{ detail.workspace.name }}</dd></div>
-        <div><dt>模型</dt><dd>{{ detail.model }}</dd></div>
-        <div><dt>状态</dt><dd><span class="generation-status" :class="`is-${detail.status}`">{{ statusLabels[detail.status] || detail.status }}</span></dd></div>
-        <div><dt>消耗积分</dt><dd>{{ detail.charged_credits }}</dd></div>
-        <div><dt>创建时间</dt><dd>{{ formatDate(detail.created_at) }}</dd></div>
-        <div><dt>完成时间</dt><dd>{{ formatDate(detail.finished_at) }}</dd></div>
+        <div><dt>{{ t('records.workspace') }}</dt><dd>{{ detail.workspace.available ? detail.workspace.name : t('records.deletedWorkspace') }}</dd></div>
+        <div><dt>{{ t('records.model') }}</dt><dd>{{ detail.model }}</dd></div>
+        <div><dt>{{ t('records.status') }}</dt><dd><span class="generation-status" :class="`is-${detail.status}`">{{ statusLabels[detail.status] || detail.status }}</span></dd></div>
+        <div><dt>{{ t('records.charged') }}</dt><dd>{{ detail.charged_credits }}</dd></div>
+        <div><dt>{{ t('records.createdAt') }}</dt><dd>{{ formatDate(detail.created_at) }}</dd></div>
+        <div><dt>{{ t('records.finishedAt') }}</dt><dd>{{ formatDate(detail.finished_at) }}</dd></div>
       </dl>
 
       <section v-if="detail.specs.length" class="generation-detail-section">
-        <h3>生成规格</h3>
-        <dl class="generation-specs"><div v-for="spec in detail.specs" :key="spec.label"><dt>{{ spec.label }}</dt><dd>{{ spec.value }}</dd></div></dl>
+        <h3>{{ t('records.specs') }}</h3>
+        <dl class="generation-specs"><div v-for="spec in detail.specs" :key="spec.label"><dt>{{ localizeAccountText(spec.label) }}</dt><dd>{{ localizeAccountText(spec.value) }}</dd></div></dl>
       </section>
-      <section class="generation-detail-section"><h3>提示词</h3><p class="generation-prompt">{{ detail.prompt || '—' }}</p></section>
+      <section class="generation-detail-section"><h3>{{ t('records.prompt') }}</h3><p class="generation-prompt">{{ detail.prompt || '—' }}</p></section>
       <section v-if="detail.error_message" class="generation-detail-section generation-detail-error"><h3>{{ $t('errors.failure_reason') }}</h3><p>{{ getTaskErrorMessage(detail) }}</p></section>
       <section v-if="detail.result" class="generation-detail-section">
-        <h3>生成结果</h3>
+        <h3>{{ t('records.result') }}</h3>
         <p v-if="detail.result.type === 'text'" class="generation-result-text">{{ detail.result.content }}</p>
-        <img v-else-if="detail.result.type === 'image'" class="generation-result-image" :src="buildOssImageUrl(detail.result.url)" alt="生成结果" />
+        <img v-else-if="detail.result.type === 'image'" class="generation-result-image" :src="buildOssImageUrl(detail.result.url)" :alt="t('records.result')" />
         <video v-else-if="detail.result.type === 'video'" class="generation-result-media" :src="detail.result.url" controls preload="metadata" />
         <audio v-else-if="detail.result.type === 'audio'" class="generation-result-audio" :src="detail.result.url" controls preload="metadata" />
       </section>
       <AppButton v-if="detail.status === 'succeeded' && detail.workspace.available" variant="soft" @click="openWorkspace">
-        <ExternalLink :size="15" />打开工作台
+        <ExternalLink :size="15" />{{ t('records.openWorkspace') }}
       </AppButton>
     </AdminDialog>
   </section>

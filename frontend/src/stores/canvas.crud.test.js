@@ -164,12 +164,12 @@ describe('canvas connections and node packs', () => {
   it('finds an incoming node by its target handle', () => {
     const store = useCanvasStore()
     store.$patch({
-      nodes: [{ id: 'world-1', type: 'world', data: {} }, { id: 'character-1', type: 'character', data: {} }],
-      edges: [{ id: 'edge-1', source: 'world-1', target: 'character-1', targetHandle: 'world' }],
+      nodes: [{ id: 'product-1', type: 'product', data: {} }, { id: 'visual-1', type: 'product_visual', data: {} }],
+      edges: [{ id: 'edge-1', source: 'product-1', target: 'visual-1', targetHandle: 'product' }],
     })
 
-    expect(store.incomingNodeByHandle('character-1', 'world')).toEqual(expect.objectContaining({ id: 'world-1' }))
-    expect(store.incomingNodeByHandle('character-1', 'reference')).toBeUndefined()
+    expect(store.incomingNodeByHandle('visual-1', 'product')).toEqual(expect.objectContaining({ id: 'product-1' }))
+    expect(store.incomingNodeByHandle('visual-1', 'reference')).toBeUndefined()
   })
 
   it('enforces mutually exclusive and counted media references in the store', () => {
@@ -192,11 +192,11 @@ describe('canvas connections and node packs', () => {
     await store.loadWorkspace({
       id: 'workspace-1',
       version: 1,
-      workspace_type: 'drama',
+      workspace_type: 'general',
       canvas: { nodes: [], edges: [], groups: [], sequence: 1 },
     })
 
-    expect(store.workspaceType).toBe('drama')
+    expect(store.workspaceType).toBe('general')
     expect(store.addNode('product', { x: 0, y: 0 })).toBeUndefined()
     expect(store.addNode('image', { x: 0, y: 0 })).toBe('image-1')
   })

@@ -1,12 +1,12 @@
 <script setup>
-import { Clapperboard, LayoutGrid, ShoppingBag, X } from 'lucide-vue-next'
+import { LayoutGrid, ShoppingBag, X } from 'lucide-vue-next'
 import { onBeforeUnmount } from 'vue'
 import { workspaceTypes } from '../../config/canvas/nodePacks'
 import AppButton from '../ui/AppButton.vue'
 
 const props = defineProps({ submitting: Boolean })
 const emit = defineEmits(['close', 'select'])
-const icons = { general: LayoutGrid, ecommerce: ShoppingBag, drama: Clapperboard }
+const icons = { general: LayoutGrid, ecommerce: ShoppingBag }
 
 function close() {
   if (!props.submitting) emit('close')

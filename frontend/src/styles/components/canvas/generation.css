@@ -19,27 +19,12 @@
   padding: 0;
   overflow: hidden;
 }
-.generation-panel.world-creation-panel {
-  display: flex;
-  width: min(600px, calc(100vw - 32px));
-  min-height: 0;
-  flex-direction: column;
-  padding: 0;
-}
 .product-creation-panel.step-visual {
   height: min(440px, calc(100vh - 32px));
 }
-.product-creation-panel > .product-workflow-steps,
-.world-creation-panel > .product-workflow-steps {
+.product-creation-panel > .product-workflow-steps {
   padding: 7px 18px 0;
   border-bottom: 1px solid var(--color-border-subtle);
-}
-.world-creation-stage {
-  padding: 14px 18px;
-}
-.world-creation-stage > .ui-textarea {
-  width: 100%;
-  margin: 0 0 8px;
 }
 .product-creation-stage {
   flex: none;
@@ -68,31 +53,8 @@
 .product-creation-stage > .product-visual-panel.embedded .product-visual-panel-header {
   display: none;
 }
-.character-profile-panel .reference-strip {
-  margin-bottom: 8px;
-}
-.character-profile-panel > .ui-textarea {
-  width: 100%;
-  margin: 0 0 8px;
-}
 .reference-item.optional {
   border-style: dashed;
-}
-.character-panel-references {
-  margin-top: 2px;
-}
-.character-visual-types {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  padding: 12px 0;
-}
-.character-visual-types .product-visual-option {
-  display: grid;
-  min-height: 38px;
-  place-items: center;
-  padding: 0 8px;
-  text-align: center;
 }
 .product-visual-panel {
   display: flex;

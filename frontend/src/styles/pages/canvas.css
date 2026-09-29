@@ -33,16 +33,6 @@
 .media-node--outfit {
   --node-accent: var(--color-warning);
 }
-.media-node--world,
-.world-creation-panel {
-  --node-accent: var(--color-brand);
-}
-.media-node--character,
-.character-creation-panel,
-.character-profile-panel,
-.character-visual-panel {
-  --node-accent: var(--color-media-video);
-}
 .product-creation-panel {
   --node-accent: var(--color-warning);
 }
@@ -148,12 +138,6 @@
 .product-node-content .ui-input:focus,
 .product-node-content .ui-textarea:focus {
   border-color: var(--node-accent);
-}
-.node-create-menu .node-option--world .menu-icon {
-  color: var(--color-brand);
-}
-.node-create-menu .node-option--character .menu-icon {
-  color: var(--color-media-video);
 }
 .product-workflow-steps > .ui-button {
   background: transparent;
@@ -410,7 +394,7 @@
   min-height: 34px;
   flex-wrap: wrap;
 }
-.canvas-page > .generation-panel:is(.outfit-panel, .product-visual-panel, .apparel-panel, .product-creation-panel, .character-creation-panel) {
+.canvas-page > .generation-panel:is(.outfit-panel, .product-visual-panel, .apparel-panel, .product-creation-panel) {
   max-height: calc(100dvh - var(--canvas-panel-top, 16px) - 84px);
   overflow-y: auto;
 }
@@ -441,7 +425,7 @@
     clip-path: inset(50%);
   }
   .canvas-page > .generation-panel,
-  .canvas-page > .generation-panel:is(.outfit-panel, .product-visual-panel, .apparel-panel, .product-creation-panel, .character-creation-panel) {
+  .canvas-page > .generation-panel:is(.outfit-panel, .product-visual-panel, .apparel-panel, .product-creation-panel) {
     top: auto !important;
     bottom: 76px;
     max-height: calc(100dvh - 190px);

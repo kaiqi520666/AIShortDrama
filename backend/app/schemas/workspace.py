@@ -20,7 +20,7 @@ class WorkspaceCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     name: str = Field(default="未命名工作台", min_length=1, max_length=100)
-    workspace_type: Literal["general", "ecommerce", "drama"]
+    workspace_type: Literal["general", "ecommerce"]
 
     @field_validator("name")
     @classmethod

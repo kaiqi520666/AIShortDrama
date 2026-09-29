@@ -6,8 +6,6 @@ import { i18n } from './index'
 import zhCN from './locales/zh-CN.json'
 import id from './locales/id.json'
 import { useCanvasStore } from '../stores/canvas'
-import { buildWorldPrompt } from '../config/canvas/drama'
-import { buildCharacterProfilePrompt, buildCharacterVisualPrompt } from '../config/canvas/character'
 import { nodeCatalog, createNodeData } from '../config/canvas/nodeCatalog'
 import { getConnectionError } from '../config/canvas/connectionRules'
 import { buildVideoRequest, normalizeVideoModels } from '../config/videoModels'
@@ -68,10 +66,10 @@ describe('canvas interface localization', () => {
 
   it('switches validation feedback without changing connection decisions', () => {
     i18n.global.locale.value = 'zh-CN'
-    expect(getConnectionError('world', 'character', ['world'], 'drama')).toContain('只能连接 1 个')
+    expect(getConnectionError('product', 'product_visual', ['product'], 'ecommerce')).toContain('只能连接 1 个')
     i18n.global.locale.value = 'id'
-    expect(getConnectionError('world', 'character', ['world'], 'drama')).toContain('1 dunia cerita')
-    expect(getConnectionError('world', 'character', [], 'drama')).toBe('')
+    expect(getConnectionError('product', 'product_visual', ['product'], 'ecommerce')).toContain('1 data produk')
+    expect(getConnectionError('product', 'product_visual', [], 'ecommerce')).toBe('')
   })
 
   it('preserves stored canvas content and prompt builders across locale switches', async () => {
@@ -99,11 +97,8 @@ describe('canvas interface localization', () => {
     const videoData = { prompt: data.videoPrompt, model: models[0].id }
     const snapshot = () => JSON.stringify({
       canvas: store.canvasPayload(),
-      world: buildWorldPrompt(data),
-      character: buildCharacterProfilePrompt('既有世界观', data, true),
-      visual: buildCharacterVisualPrompt('既有世界观', '既有档案', data, true),
       video: buildVideoRequest(videoData, [], models, models[0]),
-      defaults: createNodeData('world', 1, null, { text: { id: 'text' }, image: {}, video: {}, audio: {} }),
+      defaults: createNodeData('text', 1, null, { text: { id: 'text' }, image: {}, video: {}, audio: {} }),
     })
     i18n.global.locale.value = 'zh-CN'
     const before = snapshot()

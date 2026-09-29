@@ -174,19 +174,6 @@ def test_product_profile_limits_reference_images():
         })
 
 
-def test_reverse_prompt_accepts_character_response_modes():
-    payload = {
-        "workspace_id": DEFAULT_WORKSPACE_ID,
-        "node_id": "character-1",
-        "model": "gpt-5.6-sol",
-        "media_type": "image",
-        "media_url": "https://example.com/character.png",
-        "prompt": "生成角色档案",
-    }
-    assert ReversePromptRequest(**payload, response_mode="character_profile").response_mode == "character_profile"
-    assert ReversePromptRequest(**payload, response_mode="character_visual_plan").response_mode == "character_visual_plan"
-
-
 def test_reverse_prompt_accepts_apparel_profile_without_prompt():
     payload = ReversePromptRequest(
         workspace_id=DEFAULT_WORKSPACE_ID,

@@ -1,5 +1,7 @@
 <script setup>
-import { onMounted, reactive, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { localizeAccountText } from '../../utils/accountLocalization'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { Search } from 'lucide-vue-next'
 import { getCreditLedger } from '../../api/account'
 import AppButton from '../ui/AppButton.vue'
@@ -9,37 +11,38 @@ import AppSelect from '../ui/AppSelect.vue'
 import EmptyState from '../ui/EmptyState.vue'
 import { getApiErrorMessage } from '../../utils/apiError'
 
-const typeOptions = [
-  { value: 'all', label: '全部类型' },
-  { value: 'recharge', label: '充值' },
-  { value: 'consume', label: '消费' },
-  { value: 'refund', label: '退回' },
-  { value: 'system', label: '系统' },
-]
-const mediaOptions = [
-  { value: 'all', label: '全部模型类型' },
-  { value: 'text', label: '文本' },
-  { value: 'image', label: '图片' },
-  { value: 'video', label: '视频' },
-  { value: 'audio', label: '音频' },
-]
-const timeOptions = [
-  { value: 'today', label: '今日' },
-  { value: '7days', label: '近 7 天' },
-  { value: '30days', label: '近 30 天' },
-  { value: 'custom', label: '自定义' },
-]
-const typeLabels = { recharge: '充值', consume: '消费', refund: '退回', system: '系统' }
-const mediaLabels = { text: '文本', image: '图片', video: '视频', audio: '音频' }
-const columns = [
-  { key: 'created_at', label: '时间', width: '158px' },
-  { key: 'type', label: '类型', width: '78px' },
-  { key: 'media_type', label: '模型类型', width: '92px' },
-  { key: 'model', label: '模型', width: '220px', class: 'credit-model-cell' },
-  { key: 'note', label: '说明' },
-  { key: 'delta', label: '积分变化', width: '92px', align: 'right' },
-  { key: 'balance_after', label: '余额', width: '92px', align: 'right' },
-]
+const { t, locale } = useI18n()
+const typeOptions = computed(() => ([
+  { value: 'all', label: t('records.allTypes') },
+  { value: 'recharge', label: t('records.recharge') },
+  { value: 'consume', label: t('records.consume') },
+  { value: 'refund', label: t('records.refund') },
+  { value: 'system', label: t('records.system') },
+]))
+const mediaOptions = computed(() => ([
+  { value: 'all', label: t('records.allMedia') },
+  { value: 'text', label: t('records.text') },
+  { value: 'image', label: t('records.image') },
+  { value: 'video', label: t('records.video') },
+  { value: 'audio', label: t('records.audio') },
+]))
+const timeOptions = computed(() => ([
+  { value: 'today', label: t('records.today') },
+  { value: '7days', label: t('records.sevenDays') },
+  { value: '30days', label: t('records.thirtyDays') },
+  { value: 'custom', label: t('records.custom') },
+]))
+const typeLabels = computed(() => ({ recharge: t('records.recharge'), consume: t('records.consume'), refund: t('records.refund'), system: t('records.system') }))
+const mediaLabels = computed(() => ({ text: t('records.text'), image: t('records.image'), video: t('records.video'), audio: t('records.audio') }))
+const columns = computed(() => ([
+  { key: 'created_at', label: t('records.time'), width: '158px' },
+  { key: 'type', label: t('records.type'), width: '78px' },
+  { key: 'media_type', label: t('records.mediaType'), width: '92px' },
+  { key: 'model', label: t('records.model'), width: '220px', class: 'credit-model-cell' },
+  { key: 'note', label: t('records.note') },
+  { key: 'delta', label: t('records.delta'), width: '92px', align: 'right' },
+  { key: 'balance_after', label: t('records.balance'), width: '92px', align: 'right' },
+]))
 const filters = reactive({ type: 'all', media_type: 'all', time: '30days', start: '', end: '' })
 const result = ref({ items: [], page: 1, page_size: 20, total: 0 })
 const loading = ref(true)
@@ -86,14 +89,14 @@ async function load(page = 1) {
     if (response.code !== 0) throw new Error(response.message)
     result.value = response.data
   } catch (requestError) {
-    error.value = getApiErrorMessage(requestError, '积分明细加载失败')
+    error.value = requestError
   } finally {
     loading.value = false
   }
 }
 
 function formatDate(value) {
-  return new Date(value).toLocaleString('zh-CN', {
+  return new Date(value).toLocaleString(locale.value, {
     timeZone: 'Asia/Shanghai', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
   })
 }
@@ -105,33 +108,33 @@ onMounted(load)
 </script>
 
 <template>
-  <header class="account-section-heading"><h1>积分明细</h1><p>查看充值、消费、退回与系统调整记录</p></header>
+  <header class="account-section-heading"><h1>{{ t('records.ledger') }}</h1><p>{{ t('records.ledgerSubtitle') }}</p></header>
 
   <div class="credit-filters">
-    <AppSelect v-model="filters.type" :options="typeOptions" aria-label="积分类型" />
-    <AppSelect v-model="filters.media_type" :options="mediaOptions" aria-label="模型类型" />
-    <AppSelect v-model="filters.time" :options="timeOptions" aria-label="时间范围" />
+    <AppSelect v-model="filters.type" :options="typeOptions" :aria-label="t('records.creditType')" />
+    <AppSelect v-model="filters.media_type" :options="mediaOptions" :aria-label="t('records.mediaType')" />
+    <AppSelect v-model="filters.time" :options="timeOptions" :aria-label="t('records.timeRange')" />
     <template v-if="filters.time === 'custom'">
-      <AppDateTime v-model="filters.start" aria-label="开始时间" placeholder="开始时间" />
-      <span class="credit-filters__separator">至</span>
-      <AppDateTime v-model="filters.end" aria-label="结束时间" placeholder="结束时间" />
+      <AppDateTime v-model="filters.start" :aria-label="t('records.startTime')" :placeholder="t('records.startTime')" />
+      <span class="credit-filters__separator">{{ t('records.to') }}</span>
+      <AppDateTime v-model="filters.end" :aria-label="t('records.endTime')" :placeholder="t('records.endTime')" />
       <AppButton type="button" variant="primary" :disabled="!filters.start && !filters.end" @click="load()">
-        <Search :size="15" />查询
+        <Search :size="15" />{{ t('records.search') }}
       </AppButton>
     </template>
   </div>
 
-  <EmptyState v-if="error" compact tone="error" title="积分明细加载失败" :description="error">
-    <AppButton variant="primary" @click="load(result.page)">重新加载</AppButton>
+  <EmptyState v-if="error" compact tone="error" :title="t('records.ledgerError')" :description="getApiErrorMessage(error, t('records.ledgerError'))">
+    <AppButton variant="primary" @click="load(result.page)">{{ t('records.reload') }}</AppButton>
   </EmptyState>
   <AppDataTable
     v-else
     :columns="columns"
     :items="result.items"
     :loading="loading"
-    loading-title="正在加载积分明细"
-    empty-title="暂无积分记录"
-    empty-description="当前筛选条件下没有相关明细"
+    :loading-title="t('records.ledgerLoading')"
+    :empty-title="t('records.ledgerEmpty')"
+    :empty-description="t('records.ledgerFilterEmpty')"
     min-width="960px"
     :pagination="{ page: result.page, pageSize: result.page_size, total: result.total }"
     @page-change="load"
@@ -140,7 +143,7 @@ onMounted(load)
     <template #cell-type="{ item }"><span class="credit-type" :class="`credit-type--${item.type}`">{{ typeLabels[item.type] }}</span></template>
     <template #cell-media_type="{ value }">{{ mediaLabels[value] || '—' }}</template>
     <template #cell-model="{ value }">{{ value || '—' }}</template>
-    <template #cell-note="{ value }">{{ value || '—' }}</template>
+    <template #cell-note="{ value }">{{ localizeAccountText(value) || '—' }}</template>
     <template #cell-delta="{ value }"><span class="credit-delta" :class="value >= 0 ? 'positive' : 'negative'">{{ value > 0 ? '+' : '' }}{{ value }}</span></template>
     <template #cell-balance_after="{ value }"><span class="credit-balance">{{ value }}</span></template>
   </AppDataTable>

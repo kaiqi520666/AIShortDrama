@@ -1,5 +1,3 @@
-import { emptyCharacterProfile } from './character'
-import { emptyWorld } from './drama'
 import { createStoryboardTemplates } from './productStoryboard'
 import { createProductVisualItems } from './productVisual'
 
@@ -7,10 +5,10 @@ const reversePrompts = {
   image: '根据图片生成结构化中文提示词，包括主体描述、环境、光影、镜头语言、风格关键词。',
 }
 
-const coreWorkspaces = ['general', 'ecommerce', 'drama']
+const coreWorkspaces = ['general', 'ecommerce']
 
 function coreOrder(order) {
-  return { general: order, ecommerce: order + 100, drama: order + 100 }
+  return { general: order, ecommerce: order + 100 }
 }
 
 function createTextData(number, source, models) {
@@ -41,8 +39,8 @@ export const nodeCatalog = {
     placeholder: '描述你想生成的商品画面，@ 引用素材…', setting: '16:9 · 2K', iconName: 'Image',
     componentName: 'MediaNode', panelName: 'GenerationPanel', panelHeight: 260,
     workspaces: coreWorkspaces, order: coreOrder(1),
-    inputs: ['text', 'image', 'product', 'product_visual', 'product_storyboard', 'outfit', 'character'],
-    outputs: ['text', 'image', 'video', 'audio', 'product', 'apparel', 'outfit', 'character'],
+    inputs: ['text', 'image', 'product', 'product_visual', 'product_storyboard', 'outfit'],
+    outputs: ['text', 'image', 'video', 'audio', 'product', 'apparel', 'outfit'],
     createData: ({ number, models }) => ({ model: models.image.id, title: `图片节点 ${number}`, status: 'empty', prompt: '' }),
   },
   video: {
@@ -141,35 +139,6 @@ export const nodeCatalog = {
       title: `服饰穿搭 ${number}`, status: 'empty', textModel: models.text.id, imageModel: models.image.id,
       aspectRatio: '9:16', resolution: '1K', templateVersion: templates.apparel_visual.version,
       videoTemplateVersion: templates.apparel_showcase.version, customRequirement: '', modelSource: 'default', sceneSource: 'default', modelDescription: '', sceneDescription: '', generatedNodeIds: [],
-    }),
-  },
-  world: {
-    type: 'world', label: '世界观创作', model: '', hint: '生成统一的短剧世界设定',
-    setting: '设定输入 + 世界观结果', iconName: 'Globe2', componentName: 'WorldNode',
-    panelName: 'WorldCreationPanel', panelHeight: 250,
-    workspaces: ['drama'], order: { drama: 0 },
-    inputs: [], outputs: ['character'],
-    createData: ({ number, models }) => ({
-      title: `世界观创作 ${number}`, status: 'empty', workflowStep: 'setting', model: models.text.id, prompt: '',
-      setting: { genre: '都市', era: '当代', location: '', civilization: '现实社会', ruleSeed: '', visualStyle: '电影写实', tone: '写实' },
-      world: emptyWorld(),
-    }),
-  },
-  character: {
-    type: 'character', label: '角色创作', model: '', hint: '生成角色档案与统一设定图',
-    setting: '角色设定 + 3 张设定图', iconName: 'UserRound', componentName: 'CharacterNode',
-    panelName: 'CharacterCreationPanel', panelHeight: 440,
-    workspaces: ['drama'], order: { drama: 1 }, businessCreator: 'character',
-    inputs: ['world', 'image'], outputs: ['image'],
-    inputLimits: {
-      world: { max: 1, message: '角色创作节点只能连接 1 个世界观' },
-      image: { max: 1, message: '角色创作节点只能连接 1 张参考图' },
-    },
-    createData: ({ number, models }) => ({
-      title: `角色创作 ${number}`, status: 'empty', workflowStep: 'profile', model: models.text.id,
-      textModel: models.text.id, imageModel: models.image.id, aspectRatio: '3:4', resolution: models.image.defaultResolution,
-      prompt: '', setting: { roleType: '主角', gender: '女', ageStage: '青年', visualStyle: '电影写实' },
-      profile: emptyCharacterProfile(), generatedNodeIds: [], mainReferenceNodeId: '',
     }),
   },
 }

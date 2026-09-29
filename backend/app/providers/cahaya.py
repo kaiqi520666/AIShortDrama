@@ -64,7 +64,7 @@ class CahayaProvider:
         request_time = str(int(time.time() * 1000))
         params = {"pay_ver": "100", "merchant_order_no": out_trade_no, "merchant_no": self.settings.cahaya_merchant_no, "terminal_no": self.settings.cahaya_terminal_no, "total_fee": str(amount_minor), "pay_type": "2", "terminal_ip": terminal_ip, "terminal_time": request_time, "time_expire": "7200", "notify_url": self.settings.cahaya_notify_url}
         try:
-            response = await self.client.post(f"{self.settings.cahaya_gateway.rstrip('/')}/open/payment/prepay", data=self._request(params, request_time=request_time))
+            response = await self.client.post(f"{self.settings.cahaya_gateway.rstrip('/')}/open/payment/prepay", json=self._request(params, request_time=request_time))
             response.raise_for_status()
             data = response.json()
         except Exception as exc:
@@ -82,7 +82,7 @@ class CahayaProvider:
     async def query_payment(self, *, out_trade_no: str) -> dict[str, Any]:
         params = {"pay_ver": "100", "merchant_order_no": out_trade_no, "merchant_no": self.settings.cahaya_merchant_no, "terminal_no": self.settings.cahaya_terminal_no}
         try:
-            response = await self.client.post(f"{self.settings.cahaya_gateway.rstrip('/')}/open/payment/query", data=self._request(params))
+            response = await self.client.post(f"{self.settings.cahaya_gateway.rstrip('/')}/open/payment/query", json=self._request(params))
             response.raise_for_status()
             data = response.json()
         except Exception as exc:

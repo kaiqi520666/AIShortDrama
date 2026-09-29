@@ -97,8 +97,6 @@ class ReversePromptRequest(BaseModel):
         "outfit_visual_plan",
         "apparel_video_plan",
         "product_storyboard_plan",
-        "character_profile",
-        "character_visual_plan",
     ] = "prompt"
 
     @model_validator(mode="after")

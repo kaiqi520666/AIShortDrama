@@ -37,7 +37,6 @@
 | `generation` | 文本/图片/视频/音频、模型、画幅、分辨率、时长、参考素材、已启用/已禁用、生成中、重试 | GenerationPanel、生成设置组件、模型配置 |
 | `product` | 商品资料字段、商品创作步骤、商品出图、图种分组、UGC 种草、短剧带货、分镜衔接 | Product 系列组件、商品配置 |
 | `apparel` | 服饰识别、服饰穿搭、单品属性、模特/场景来源、试穿与展示操作 | Apparel / Outfit 系列组件及配置 |
-| `drama` | 世界观创作、题材、时代、视觉风格、角色创作、角色档案、设定图、流程步骤 | World / Character 系列组件及配置 |
 | `assets` | 素材库、系统模特、系统角色、系统服饰、类型筛选、选择、上传、预览、下载、无素材 | AssetDrawer、AppAssetPickerModal、媒体公共组件 |
 | `admin.overview` | 近 1/7/30 天、已支付充值、调用次数、成功率、队列积压 | AdminOverviewView |
 | `admin.users` | 用户管理、普通用户、管理员、启用、停用、积分调整、操作原因 | AdminUsersView |

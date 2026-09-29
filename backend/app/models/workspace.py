@@ -25,7 +25,7 @@ class Workspace(Base):
     __table_args__ = (
         Index("ix_workspaces_user_updated_at", "user_id", "updated_at"),
         CheckConstraint(
-            "workspace_type IN ('general', 'ecommerce', 'drama')",
+            "workspace_type IN ('general', 'ecommerce')",
             name="ck_workspaces_workspace_type",
         ),
     )

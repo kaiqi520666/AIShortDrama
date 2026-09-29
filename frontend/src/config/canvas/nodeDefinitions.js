@@ -1,7 +1,7 @@
-import { Clapperboard, FileText, Globe2, Image, Images, Music2, Package, Shirt, UserRound, Video } from 'lucide-vue-next'
+import { Clapperboard, FileText, Image, Images, Music2, Package, Shirt, Video } from 'lucide-vue-next'
 import { nodeCatalog, getNodeDescriptor } from './nodeCatalog'
 
-const icons = { Clapperboard, FileText, Globe2, Image, Images, Music2, Package, Shirt, UserRound, Video }
+const icons = { Clapperboard, FileText, Image, Images, Music2, Package, Shirt, Video }
 
 export const nodeDefinitions = Object.fromEntries(Object.entries(nodeCatalog).map(([type, descriptor]) => [type, {
   ...descriptor,

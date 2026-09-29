@@ -29,7 +29,6 @@ describe('canvas node packs', () => {
   it('provides the expected nodes for every workspace', () => {
     const expectedPacks = {
       general: ['text', 'image', 'video', 'audio'],
-      drama: ['world', 'character', 'text', 'image', 'video', 'audio'],
       ecommerce: ['product', 'product_visual', 'product_storyboard', 'apparel', 'outfit', 'text', 'image', 'video', 'audio'],
     }
 
@@ -43,12 +42,11 @@ describe('canvas node packs', () => {
     })
   })
 
-  it('keeps drama connection rules', () => {
-    expect(canConnect('world', 'character', 'drama')).toBe(true)
-    expect(canConnect('image', 'character', 'drama')).toBe(true)
-    expect(canConnect('character', 'image', 'drama')).toBe(true)
-    expect(getConnectionError('world', 'character', ['world'], 'drama')).toContain('只能连接 1 个')
-    expect(getConnectionError('image', 'character', ['image'], 'drama')).toContain('只能连接 1 张')
+  it('rejects the removed drama workspace and nodes', () => {
+    expect(() => getWorkspaceType('drama')).toThrow('不支持的画布类型')
+    expect(() => getNodeTypes('drama')).toThrow('不支持的画布类型')
+    expect(nodeCatalog.world).toBeUndefined()
+    expect(nodeCatalog.character).toBeUndefined()
   })
 
   it('keeps ecommerce connection rules', () => {
@@ -69,7 +67,7 @@ describe('canvas node packs', () => {
 
   it('keeps existing media connection rules', () => {
     expect(canConnect('image', 'video', 'ecommerce')).toBe(true)
-    expect(canConnect('video', 'image', 'drama')).toBe(false)
+    expect(canConnect('video', 'image', 'general')).toBe(false)
     expect(getConnectionError('audio', 'audio', ['image'], 'general')).toBe('参考图片和参考音频不能混用')
     expect(canConnect('audio', 'video')).toBe(true)
     expect(canConnect('audio', 'audio')).toBe(true)

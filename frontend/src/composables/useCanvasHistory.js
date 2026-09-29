@@ -17,7 +17,7 @@ function hasMeaningfulValue(value) {
 
 function stabilizeGeneratingData(data) {
   const stable = { ...data }
-  stable.status = ['asset', 'content', 'product', 'world', 'profile', 'items', 'generatedNodeIds']
+  stable.status = ['asset', 'content', 'product', 'items', 'generatedNodeIds']
     .some((key) => hasMeaningfulValue(stable[key])) ? 'ready' : 'empty'
   generationRuntimeFields.forEach((field) => { delete stable[field] })
   return stable

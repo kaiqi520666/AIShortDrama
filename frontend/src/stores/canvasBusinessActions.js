@@ -4,13 +4,11 @@ import {
   createApparelChain,
   createOutfitChain,
 } from './canvasBusiness/apparelActions'
-import { createCharacterChain, dramaActions } from './canvasBusiness/dramaActions'
 import { createProductChain, productActions } from './canvasBusiness/productActions'
 import { createCanvasEdge, sharedActions, storyboardVideoData } from './canvasBusiness/sharedActions'
 
 const businessCreators = {
   apparel: createApparelChain,
-  character: createCharacterChain,
   outfit: createOutfitChain,
   product: createProductChain,
 }
@@ -26,7 +24,6 @@ export function createBusinessNodeChain(type, position, sourceId, skipStoryboard
 export const canvasBusinessActions = {
   ...productActions,
   ...apparelActions,
-  ...dramaActions,
   ...sharedActions,
 }
 

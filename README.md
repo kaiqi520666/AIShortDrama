@@ -1,6 +1,6 @@
 # AI Short Drama
 
-AI 短剧画布项目：Vue 3 前端 + FastAPI 后端，使用 PostgreSQL、Redis/ARQ、ToAPIs 和 OSS。
+AI 内容创作画布项目，支持通用画布和电商画布：Vue 3 前端 + FastAPI 后端，使用 PostgreSQL、Redis/ARQ、ToAPIs 和 OSS。
 
 ## 环境要求
 
