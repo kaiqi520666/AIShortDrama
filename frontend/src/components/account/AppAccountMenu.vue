@@ -5,12 +5,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { useGlobalConfirm } from '../../composables/useGlobalUI'
 import AppButton from '../ui/AppButton.vue'
 import AppMenu from '../ui/AppMenu.vue'
+import { useI18n } from 'vue-i18n'
 
 defineProps({ username: { type: String, required: true } })
 const emit = defineEmits(['logout'])
 const route = useRoute()
 const router = useRouter()
 const { confirm } = useGlobalConfirm()
+const { t } = useI18n()
 const root = ref(null)
 const trigger = ref(null)
 const open = ref(false)
@@ -42,9 +44,9 @@ async function openWorkspaces() {
 async function logout() {
   closeMenu()
   const accepted = await confirm({
-    title: '退出登录',
-    message: '确定退出当前账号吗？',
-    confirmText: '退出',
+    title: t('accountMenu.logoutTitle'),
+    message: t('accountMenu.logoutMessage'),
+    confirmText: t('common.logout'),
     tone: 'danger',
   })
   if (accepted) emit('logout')
@@ -97,16 +99,16 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', handleOutside))
       <ChevronDown class="account-menu__chevron" :size="14" />
     </AppButton>
     <Transition name="theme-menu">
-      <AppMenu v-if="open" class="account-menu__popup" aria-label="账户菜单">
+      <AppMenu v-if="open" class="account-menu__popup" :aria-label="t('accountMenu.aria')">
         <AppButton class="account-menu__item" role="menuitem" :class="{ active: activeIndex === 0 }" @pointerenter="activeIndex = 0" @click="openWorkspaces">
-          <PanelsTopLeft :size="15" /><span>工作台</span>
+          <PanelsTopLeft :size="15" /><span>{{ t('common.workspaces') }}</span>
         </AppButton>
         <AppButton class="account-menu__item" role="menuitem" :class="{ active: activeIndex === 1 }" @pointerenter="activeIndex = 1" @click="openAccount">
-          <UserRound :size="15" /><span>个人中心</span>
+          <UserRound :size="15" /><span>{{ t('common.account') }}</span>
         </AppButton>
         <span class="account-menu__divider"></span>
         <AppButton class="account-menu__item account-menu__item--danger" role="menuitem" :class="{ active: activeIndex === 2 }" @pointerenter="activeIndex = 2" @click="logout">
-          <LogOut :size="15" /><span>退出登录</span>
+          <LogOut :size="15" /><span>{{ t('common.logout') }}</span>
         </AppButton>
       </AppMenu>
     </Transition>

@@ -1,14 +1,17 @@
+import { i18n } from '../i18n/index'
 import { getGenerationTask } from '../api/generations'
 import { useAuthStore } from '../stores/auth'
 import { useCanvasStore } from '../stores/canvas'
-import { getApiErrorMessage } from '../utils/apiError'
+import { getApiErrorMessage, getTaskErrorMessage } from '../utils/apiError'
+
+const { t } = i18n.global
 
 const POLL_INTERVAL = 5000
 const RETRY_DELAYS = [5000, 10000, 20000, 40000, 60000, 60000]
 const MAX_POLL_DURATION = 30 * 60 * 1000
 const polls = new Map()
 
-const mediaLabels = { image: '图片', video: '视频', audio: '音频' }
+const mediaLabels = { image: 'canvas.image', video: 'canvas.video', audio: 'canvas.audio' }
 
 function clearRecord(record) {
   if (record.timer !== null) globalThis.clearTimeout(record.timer)
@@ -32,7 +35,7 @@ function failNode(record, message) {
   })
 }
 
-function pauseNode(record, message = '状态同步中断，请继续同步') {
+function pauseNode(record, message = t('canvas.syncInterruptedResume')) {
   clearRecord(record)
   record.updateNodeData(record.nodeId, {
     generationPollingPaused: true,
@@ -43,7 +46,7 @@ function pauseNode(record, message = '状态同步中断，请继续同步') {
 async function pollTask(record) {
   if (polls.get(record.taskId) !== record) return
   if (Date.now() - record.startedAt >= MAX_POLL_DURATION) {
-    pauseNode(record, '任务状态同步已超时，请继续同步')
+    pauseNode(record, t('canvas.syncTimedOut'))
     return
   }
 
@@ -52,7 +55,7 @@ async function pollTask(record) {
     const result = await getGenerationTask(record.taskId, { signal: record.controller.signal })
     if (polls.get(record.taskId) !== record) return
     if (result.code !== 0) {
-      failNode(record, result.message || '任务不存在')
+      failNode(record, getApiErrorMessage(result))
       return
     }
     record.failures = 0
@@ -76,9 +79,9 @@ async function pollTask(record) {
       }
       const generated = task.result?.data?.[0]
       const asset = generated?.url
-      const mediaLabel = mediaLabels[task.task_type] || '内容'
+      const mediaLabel = t(mediaLabels[task.task_type] || 'canvas.content')
       if (!asset) {
-        failNode(record, `任务未返回${mediaLabel}地址`)
+        failNode(record, t('canvas.missingMediaUrl', { p0: mediaLabel }))
         return
       }
       clearRecord(record)
@@ -96,7 +99,7 @@ async function pollTask(record) {
     }
     if (['failed', 'cancelled', 'timeout'].includes(task.status)) {
       useAuthStore().refreshCredits().catch(() => {})
-      failNode(record, task.error_message || `${mediaLabels[task.task_type] || '内容'}生成失败`)
+      failNode(record, getTaskErrorMessage(task))
       return
     }
   } catch (error) {
@@ -104,7 +107,7 @@ async function pollTask(record) {
     const status = error.response?.status
     if (status === 401) stopAllGenerationPolling()
     if (status && status < 500) {
-      failNode(record, getApiErrorMessage(error, '任务状态查询失败'))
+      failNode(record, getApiErrorMessage(error, t('canvas.taskStatusFailed')))
       return
     }
     record.failures += 1

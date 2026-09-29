@@ -1,4 +1,7 @@
+import { i18n } from '../../i18n/index'
 import { computed, ref } from 'vue'
+
+const { t } = i18n.global
 
 export function getGroupFrameStyle(nodeIds, { findNode, viewport, assetsVisible }) {
   const flowNodes = nodeIds.map((id) => findNode(id)).filter(Boolean)
@@ -77,9 +80,11 @@ export function useCanvasGrouping({
     const zoom = viewport.value.zoom
     const center = (assetsVisible.value ? 292 : 0) + viewport.value.x + (node.computedPosition.x + node.dimensions.width / 2) * zoom
     const top = viewport.value.y + (node.computedPosition.y + node.dimensions.height) * zoom + 16
+    const panelTop = `clamp(16px, ${top}px, calc(100vh - ${getPanelHeight(node.type) + 84}px))`
     return {
       left: `clamp(16px, ${center - 300}px, calc(100vw - 616px))`,
-      top: `clamp(16px, ${top}px, calc(100vh - ${getPanelHeight(node.type) + 84}px))`,
+      top: panelTop,
+      '--canvas-panel-top': panelTop,
     }
   })
 
@@ -130,9 +135,9 @@ export function useCanvasGrouping({
     if (workflowNodes.length) {
       const root = nodeIds.length === 1 && workflowNodes[0]?.data.workflowRoot ? workflowNodes[0] : null
       if (!root || !await confirm({
-        title: `删除整个${root.data.workflowType === 'product' ? '商品创作' : '服饰穿搭'}流程`,
-        message: '将删除这条流程在画布中的全部节点和生成结果，素材库文件不会删除。',
-        confirmText: '删除整个流程',
+        title: t('canvas.deleteNamedWorkflow', { p0: root.data.workflowType === 'product' ? t('canvas.productCreation') : t('canvas.outfit') }),
+        message: t('canvas.deleteWorkflowConfirm'),
+        confirmText: t('canvas.deleteWorkflow'),
         tone: 'danger',
       })) return false
       store.deleteWorkflow(root.data.workflowId)
@@ -140,9 +145,9 @@ export function useCanvasGrouping({
       return true
     }
     if (nodeIds.length > 1 && !await confirm({
-      title: '删除所选节点',
-      message: `确定删除选中的 ${nodeIds.length} 个节点吗？`,
-      confirmText: '删除',
+      title: t('canvas.deleteSelectedNodes'),
+      message: t('canvas.deleteSelectedNodesConfirm', { p0: nodeIds.length }),
+      confirmText: t('canvas.delete'),
       tone: 'danger',
     })) return false
     store.deleteNodes(nodeIds)

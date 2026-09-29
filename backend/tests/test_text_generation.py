@@ -117,7 +117,10 @@ async def test_stream_text_generation_hides_provider_error(monkeypatch):
 
     events = [json.loads(line) for line in response.text.splitlines()]
     task_id = uuid.UUID(events[0]["task_id"])
-    assert events[-1] == {"type": "error", "message": "文本生成服务暂时不可用"}
+    assert events[-1] == {
+        "type": "error", "message": "文本生成服务暂时不可用",
+        "error_key": "upstream_unavailable", "error_params": {},
+    }
     assert "provider secret response" not in response.text
     async with SessionLocal() as db:
         task = await db.get(GenerationTask, task_id)

@@ -10,7 +10,7 @@ from app.models import BillingPolicy, CreditPolicy, ModelAdminSetting
 
 
 class ModelDisabledError(ValueError):
-    pass
+    error_key = "model_disabled"
 
 
 def policy_data(policy: BillingPolicy) -> dict[str, Any]:

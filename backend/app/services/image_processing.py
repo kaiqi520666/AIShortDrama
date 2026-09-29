@@ -3,6 +3,7 @@ from io import BytesIO
 import warnings
 
 from PIL import Image, ImageOps, UnidentifiedImageError
+from app.core.errors import LocalizedValueError
 
 
 IMAGE_FORMATS = {
@@ -28,9 +29,9 @@ def normalize_image(stream, content_type: str) -> NormalizedImage:
                 image = ImageOps.exif_transpose(source)
                 image.load()
     except (Image.DecompressionBombError, Image.DecompressionBombWarning) as exc:
-        raise ValueError("图片像素尺寸过大") from exc
+        raise LocalizedValueError("图片像素尺寸过大", error_key="image_dimensions") from exc
     except (UnidentifiedImageError, OSError) as exc:
-        raise ValueError("图片文件已损坏或无法解析") from exc
+        raise LocalizedValueError("图片文件已损坏或无法解析", error_key="invalid_image") from exc
 
     if image_format == "JPEG":
         image = image.convert("RGB")

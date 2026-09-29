@@ -21,9 +21,16 @@
 - [ ] Did I build a complex, generic component with 10+ props just to handle 2 simple pages? (If yes, simplify it immediately)
 - [ ] Am I wasting time writing overly safe error-handling for non-fatal edge cases? (If yes, let it fail or just print a basic log)
 
+## Testing Rules
+
+- 默认采用“最小必要测试”，只运行与本次改动直接相关的定向测试或检查。
+- 仅在生产部署、高风险改动或用户明确要求时运行完整测试。
+
 ## Git Rules
 
-- Automatically create a commit after completing each code change, with a concise commit message describing the change.
+- 普通修改不自动提交。
+- 一批关联功能完成后统一提交。
+- 用户明确说“提交”时才立即提交。
 - Do not use destructive commands such as `git reset --hard` or `git checkout --` unless the user explicitly requests them.
 - Do not revert changes that the user has not asked to revert.
 - Before committing, inspect the diff to confirm that it contains no unrelated files or generated artifacts.

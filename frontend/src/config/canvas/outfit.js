@@ -1,3 +1,6 @@
+import { i18n } from '../../i18n/index'
+
+const { t } = i18n.global
 export function buildApparelVisualRequest({
   workspaceId,
   nodeId,
@@ -41,14 +44,14 @@ export function parseOutfitPrompt(content) {
   const source = String(content || '').trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
   const start = source.indexOf('{')
   const end = source.lastIndexOf('}')
-  if (start < 0 || end <= start) throw new Error('未生成有效的试穿定妆方案')
+  if (start < 0 || end <= start) throw new Error(t('canvas.invalidOutfitResult'))
   try {
     const prompt = JSON.parse(source.slice(start, end + 1))?.prompt?.trim()
     if (prompt) return prompt
   } catch {
     // Fall through to the stable user-facing error.
   }
-  throw new Error('试穿定妆方案格式异常')
+  throw new Error(t('canvas.invalidOutfitFormat'))
 }
 
 export function buildApparelVideoRequest({

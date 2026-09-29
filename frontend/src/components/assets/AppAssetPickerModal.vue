@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, onMounted, ref, watch } from 'vue'
 import { ImagePlus, Images, LoaderCircle, Music2, Search, Video } from 'lucide-vue-next'
 import { listAssets } from '../../api/assets'
@@ -14,6 +15,8 @@ import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
 import AppInput from '../ui/AppInput.vue'
 import AppModal from '../ui/AppModal.vue'
 import EmptyState from '../ui/EmptyState.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   resourceType: { type: String, default: 'asset', validator: (value) => ['asset', 'model', 'character', 'garment', 'scene'].includes(value) },
@@ -39,12 +42,12 @@ const effectiveMediaType = computed(() => props.resourceType === 'asset' ? props
 const uploadIcon = computed(() => ({ image: ImagePlus, video: Video, audio: Music2 }[effectiveMediaType.value]))
 const formatHint = computed(() => ({ image: 'JPG、PNG、WebP', video: 'MP4、MOV、WebM', audio: 'MP3、WAV、M4A' }[effectiveMediaType.value]))
 const copy = computed(() => ({
-  role: { title: '选择角色', description: props.includeAssetLibrary ? '选择系统角色、已上传的角色或普通图片资产' : '选择系统角色或已上传的角色', upload: '上传角色' },
-  scene: { title: '选择场景', description: '选择系统场景或已上传的场景', upload: '上传场景' },
-  asset: { title: `选择${props.mediaType === 'video' ? '视频' : props.mediaType === 'audio' ? '音频' : '图片'}素材`, description: '从资产库选择，或上传新的素材', upload: `上传${props.mediaType === 'video' ? '视频' : props.mediaType === 'audio' ? '音频' : '图片'}` },
-  model: { title: '选择模特', description: '选择系统模特或已上传的模特', upload: '上传模特' },
-  character: { title: '选择虚拟角色', description: '选择已注册的虚拟角色，或从资产库选择普通图片', upload: '上传' },
-  garment: { title: '选择服饰', description: '选择系统服饰或已上传的服饰', upload: '上传服饰' },
+  role: { title: t('canvas.selectCharacter'), description: props.includeAssetLibrary ? t('canvas.selectCharacterIncludingAssets') : t('canvas.selectCharacterDescription'), upload: t('canvas.uploadCharacter') },
+  scene: { title: t('canvas.selectScene'), description: t('canvas.selectSceneDescription'), upload: t('canvas.uploadScene') },
+  asset: { title: t('canvas.selectMediaType', { p0: props.mediaType === 'video' ? t('canvas.video') : props.mediaType === 'audio' ? t('canvas.audio') : t('canvas.image') }), description: t('canvas.selectMediaDescription'), upload: t('canvas.uploadType', { p0: props.mediaType === 'video' ? t('canvas.video') : props.mediaType === 'audio' ? t('canvas.audio') : t('canvas.image') }) },
+  model: { title: t('canvas.selectModel'), description: t('canvas.selectModelDescription'), upload: t('canvas.uploadModel') },
+  character: { title: t('canvas.selectVirtualCharacter'), description: t('canvas.selectVirtualCharacterDescription'), upload: t('canvas.upload') },
+  garment: { title: t('canvas.selectApparel'), description: t('canvas.selectApparelDescription'), upload: t('canvas.uploadApparel') },
 }[props.inputRole || props.resourceType]))
 const visibleItems = computed(() => items.value.filter((item) => {
   const queryMatches = !query.value.trim() || item.name.toLowerCase().includes(query.value.trim().toLowerCase())
@@ -62,7 +65,7 @@ async function loadAssets() {
     items.value = props.resourceType === 'character' ? [props.extraItem, ...libraryItems].filter(Boolean) : libraryItems
     selected.value = items.value.find((item) => item.url === props.selectedUrl) || null
   } catch (error) {
-    toast.error(getApiErrorMessage(error, '素材加载失败'))
+    toast.error(getApiErrorMessage(error, t('canvas.mediaLoadFailed')))
   } finally {
     loading.value = false
   }
@@ -90,7 +93,7 @@ async function handleUpload(event) {
     items.value = [item, ...items.value]
     selected.value = props.resourceType === 'character' && item.seedanceStatus !== 'active' ? null : item
   } catch (uploadError) {
-    toast.error(getApiErrorMessage(uploadError, '素材上传失败'))
+    toast.error(getApiErrorMessage(uploadError, t('canvas.mediaUploadFailed')))
   } finally {
     uploading.value = false
   }
@@ -112,9 +115,9 @@ async function selectItem(item) {
     const refreshed = { ...normalizeLibraryItem(result.data || item, 'character'), pickerKind: 'character' }
     items.value = items.value.map((value) => value.id === item.id ? refreshed : value)
     if (refreshed.seedanceStatus === 'active') selected.value = refreshed
-    else toast.info('角色正在处理中，请稍后点击刷新')
+    else toast.info(t('canvas.characterProcessing'))
   } catch (error) {
-    toast.error(getApiErrorMessage(error, '角色注册失败'))
+    toast.error(getApiErrorMessage(error, t('canvas.characterRegistrationFailed')))
   } finally {
     registeringId.value = ''
   }
@@ -137,26 +140,26 @@ watch(() => props.extraItem, (extraItem) => {
 <template>
   <AppModal :title="copy.title" :description="copy.description" @close="emit('close')">
     <template #header-actions>
-      <label class="asset-picker-search"><Search :size="15" /><AppInput v-model="query" placeholder="搜索素材" aria-label="搜索素材" /></label>
+      <label class="asset-picker-search"><Search :size="15" /><AppInput v-model="query" :placeholder="t('canvas.searchMedia')" :aria-label="t('canvas.searchMedia')" /></label>
     </template>
 
-    <EmptyState v-if="loading" title="正在加载素材" loading />
+    <EmptyState v-if="loading" :title="t('canvas.loadingMedia')" loading />
     <div v-else class="asset-picker-grid">
       <div v-if="includeAssetLibrary && resourceType === 'character'" class="asset-picker-upload asset-picker-upload-options">
         <AppButton class="asset-picker-action" :disabled="uploading" @click="fileInput?.click()">
           <LoaderCircle v-if="uploading" class="asset-picker-spinner" :size="22" />
           <ImagePlus v-else :size="22" />
-          <span>{{ uploading ? `上传中 ${uploadProgress}%` : '上传' }}</span>
+          <span>{{ uploading ? t('canvas.uploadProgress', { p0: uploadProgress }) : t('canvas.upload') }}</span>
         </AppButton>
         <AppButton class="asset-picker-action" @click="emit('open-asset-library')">
           <Images :size="22" />
-          <span>素材</span>
+          <span>{{ t('canvas.media') }}</span>
         </AppButton>
       </div>
       <AppButton v-else class="asset-picker-upload" :disabled="uploading" @click="fileInput?.click()">
         <LoaderCircle v-if="uploading" class="asset-picker-spinner" :size="22" />
         <component :is="uploadIcon" v-else :size="22" />
-        <strong>{{ uploading ? `上传中 ${uploadProgress}%` : copy.upload }}</strong>
+        <strong>{{ uploading ? t('canvas.uploadProgress', { p0: uploadProgress }) : copy.upload }}</strong>
         <small>{{ formatHint }}</small>
       </AppButton>
       <input ref="fileInput" type="file" :accept="mediaUploadRules[effectiveMediaType]?.types.join(',')" hidden @change="handleUpload" />
@@ -172,14 +175,14 @@ watch(() => props.extraItem, (extraItem) => {
         <AppImageHoverPreview :src="item.url" :preview-src="buildOssImageUrl(item.url, { width: 1200, quality: 90 })" :alt="item.name">
           <img :src="buildOssImageUrl(item.url, { width: 480, quality: 80 })" :alt="item.name" loading="lazy" referrerpolicy="no-referrer" />
         </AppImageHoverPreview>
-        <span class="asset-picker-item-label"><strong>{{ item.name }}</strong><small v-if="resourceType === 'character'">{{ registeringId === item.id ? '注册中' : item.pickerKind === 'asset' ? '点击注册' : ({ active: 'Seedance 可用', processing: '处理中，点击刷新', failed: '失败，点击重试', unregistered: '点击注册' })[item.seedanceStatus] || '' }}</small></span>
+        <span class="asset-picker-item-label"><strong>{{ item.name }}</strong><small v-if="resourceType === 'character'">{{ registeringId === item.id ? t('canvas.registering') : item.pickerKind === 'asset' ? t('canvas.clickRegister') : ({ active: t('canvas.seedanceAvailable'), processing: t('canvas.processingRefresh'), failed: t('canvas.failedRetry'), unregistered: t('canvas.clickRegister') })[item.seedanceStatus] || '' }}</small></span>
       </AppButton>
-      <EmptyState v-if="!visibleItems.length" compact title="暂无匹配素材" />
+      <EmptyState v-if="!visibleItems.length" compact :title="t('canvas.noMatchingMedia')" />
     </div>
 
     <template #footer>
-      <AppButton variant="soft" @click="emit('close')">取消</AppButton>
-      <AppButton variant="primary" :disabled="!selected || (resourceType === 'character' && selected.seedanceStatus !== 'active')" @click="confirmSelection">使用所选素材</AppButton>
+      <AppButton variant="soft" @click="emit('close')">{{ t('canvas.cancel') }}</AppButton>
+      <AppButton variant="primary" :disabled="!selected || (resourceType === 'character' && selected.seedanceStatus !== 'active')" @click="confirmSelection">{{ t('canvas.useSelectedMedia') }}</AppButton>
     </template>
   </AppModal>
 </template>

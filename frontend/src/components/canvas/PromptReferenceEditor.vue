@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { nextTick, onMounted, ref, watch } from 'vue'
 import { Image, Music2, Video as VideoIcon } from 'lucide-vue-next'
 import { buildOssImageUrl } from '../../utils/ossImage'
@@ -6,11 +7,13 @@ import AppButton from '../ui/AppButton.vue'
 import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
 import AppMenu from '../ui/AppMenu.vue'
 
+const { t, locale } = useI18n()
+
 const props = defineProps({
   modelValue: { type: Array, required: true },
   references: { type: Array, required: true },
   referenceType: { type: String, default: 'image' },
-  referenceLabel: { type: String, default: '图片' },
+  referenceLabel: { type: String, default: '' },
   placeholder: { type: String, default: '' },
 })
 const emit = defineEmits(['update:modelValue'])
@@ -20,14 +23,14 @@ const menuVisible = ref(false)
 const menuStyle = ref({})
 const activeIndex = ref(0)
 let mentionRange = null
-const referenceLabels = { image: '图片', video: '视频', audio: '音频' }
+const referenceLabels = { image: 'canvas.image', video: 'canvas.video', audio: 'canvas.audio' }
 
 function getReferenceType(reference) {
   return reference?.type || props.referenceType
 }
 
 function getReferenceLabel(type) {
-  return referenceLabels[type] || props.referenceLabel
+  return referenceLabels[type] ? t(referenceLabels[type]) : props.referenceLabel || t('canvas.image')
 }
 
 function getReferenceNumber(reference) {
@@ -199,6 +202,7 @@ watch([() => props.modelValue, () => props.references], () => {
 watch(menuVisible, (visible) => {
   if (visible) nextTick(updateMenuPosition)
 })
+watch(locale, renumberTokens)
 onMounted(renderEditor)
 </script>
 
@@ -209,7 +213,7 @@ onMounted(renderEditor)
       class="prompt-editor-content"
       contenteditable="plaintext-only"
       role="textbox"
-      :aria-label="`${referenceLabel}提示词`"
+      :aria-label="t('canvas.referencePrompt', { p0: referenceLabel || t('canvas.image') })"
       aria-multiline="true"
       :data-placeholder="placeholder"
       @input="handleInput"
@@ -235,7 +239,7 @@ onMounted(renderEditor)
         <Image v-else :size="24" />
         <span>{{ reference.data.title }}</span>
       </AppButton>
-      <p v-if="!references.length">暂无可引用资产，请连入后操作</p>
+      <p v-if="!references.length">{{ t('canvas.noReferences') }}</p>
     </AppMenu>
   </div>
 </template>

@@ -9,6 +9,7 @@ from sqlalchemy import and_, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
+from app.core.errors import task_error_fields
 from app.core.identity import get_current_user_id
 from app.models import CreditLedger, GenerationTask, User, Workspace
 from app.schemas.response import fail, success
@@ -112,6 +113,7 @@ def _task_item(
         "type_label": type_label,
         "model": task.model,
         "status": task.status,
+        **task_error_fields(task.status),
         "charged_credits": task.charged_credits,
         "created_at": task.created_at.isoformat(),
         "finished_at": task.finished_at.isoformat() if task.finished_at else None,
@@ -301,5 +303,5 @@ async def get_generation(
         )
     ).one_or_none()
     if not row:
-        return JSONResponse(status_code=404, content=fail("任务不存在"))
+        return JSONResponse(status_code=404, content=fail("任务不存在", error_key="not_found"))
     return success(_task_item(row[0], row[1], detail=True))

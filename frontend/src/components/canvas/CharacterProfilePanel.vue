@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed } from 'vue'
 import { ArrowUp, Coins, FileText, Globe2, Image, LoaderCircle } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
@@ -15,6 +16,8 @@ import AppButton from '../ui/AppButton.vue'
 import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
 import AppSelect from '../ui/AppSelect.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   nodeId: { type: String, required: true },
@@ -36,12 +39,12 @@ const running = computed(() => props.data.status === 'generating')
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedModel.value.id))
 const insufficientCredits = computed(() => estimatedCredits.value !== null && (authStore.user?.credit_balance || 0) < estimatedCredits.value)
 const message = computed(() => failure.value || props.data.generationError || (!worldNode.value
-  ? '请先连接世界观创作节点'
+  ? t('canvas.connectWorldFirst')
   : !worldReady(worldNode.value.data.world)
-    ? '请先完成世界观创作'
+    ? t('canvas.completeWorldFirst')
     : !props.data.prompt?.trim()
-      ? '请先输入角色想法'
-      : insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
+      ? t('canvas.enterCharacterIdea')
+      : insufficientCredits.value ? t('canvas.insufficientCredits', { p0: estimatedCredits.value }) : ''))
 const canSubmit = computed(() => !running.value && worldReady(worldNode.value?.data.world) && props.data.prompt?.trim() && !insufficientCredits.value)
 
 async function submitTask() {
@@ -60,7 +63,7 @@ async function submitTask() {
         response_mode: 'character_profile',
       }
     : { workspace_id: store.workspaceId, node_id: props.nodeId, model: selectedModel.value.id, prompt }, {
-    failureMessage: '角色档案生成失败',
+    failureMessage: t('canvas.characterProfileFailed'),
     onSuccess: (content) => ({
       profile: mergeCharacterProfile(props.data.profile, parseCharacterProfile(content)),
       workflowStep: 'visual',
@@ -72,32 +75,32 @@ async function submitTask() {
 <template>
   <section class="generation-panel character-profile-panel nodrag nowheel" :class="{ embedded }" @pointerdown.stop>
     <div class="reference-strip">
-      <div class="reference-item" :class="{ optional: !worldNode }" :title="worldNode ? '世界观' : '世界观（未连接）'">
+      <div class="reference-item" :class="{ optional: !worldNode }" :title="worldNode ? t('canvas.world') : t('canvas.worldDisconnected')">
         <Globe2 :size="20" /><b>{{ worldNode ? 1 : '?' }}</b>
       </div>
-      <div v-if="referenceImage?.data.asset" class="reference-item" title="角色参考图">
-        <AppImageHoverPreview :src="referenceImage.data.asset" :preview-src="buildOssImageUrl(referenceImage.data.asset, { width: 1200, quality: 90 })" alt="角色参考图">
-          <img :src="buildOssImageUrl(referenceImage.data.asset)" alt="角色参考图" referrerpolicy="no-referrer" />
+      <div v-if="referenceImage?.data.asset" class="reference-item" :title="t('canvas.characterReference')">
+        <AppImageHoverPreview :src="referenceImage.data.asset" :preview-src="buildOssImageUrl(referenceImage.data.asset, { width: 1200, quality: 90 })" :alt="t('canvas.characterReference')">
+          <img :src="buildOssImageUrl(referenceImage.data.asset)" :alt="t('canvas.characterReference')" referrerpolicy="no-referrer" />
         </AppImageHoverPreview>
         <b>1</b>
       </div>
-      <div v-else class="reference-item optional" title="角色参考图（可选）">
+      <div v-else class="reference-item optional" :title="t('canvas.optionalCharacterReference')">
         <Image :size="20" /><b>?</b>
       </div>
     </div>
     <AppTextarea
       :model-value="data.prompt"
       maxlength="1200"
-      placeholder="输入角色的大概想法，例如：表面冷静、执着追查失踪案的年轻记者……"
+      :placeholder="t('canvas.characterIdeaPlaceholder')"
       @input="failure = ''; updateNodeData(nodeId, { prompt: $event.target.value, generationError: '' })"
     />
     <p v-if="message" class="panel-notice">{{ message }}</p>
     <footer>
       <FileText :size="16" />
-      <AppSelect :model-value="selectedModel.id" :options="modelOptions" aria-label="文本模型" @update:model-value="updateNodeData(nodeId, { model: $event })" />
+      <AppSelect :model-value="selectedModel.id" :options="modelOptions" :aria-label="t('canvas.textModel')" @update:model-value="updateNodeData(nodeId, { model: $event })" />
       <span class="panel-divider"></span>
-      <span class="task-credit-cost"><Coins :size="14" />本次 {{ estimatedCredits }} 积分</span>
-      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '生成中' : '生成角色档案'" @click="submitTask">
+      <span class="task-credit-cost"><Coins :size="14" />{{ t('canvas.creditCost', { p0: estimatedCredits }) }}</span>
+      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? t('canvas.generating') : t('canvas.generateCharacterProfile')" @click="submitTask">
         <LoaderCircle v-if="running" class="run-task-spinner" :size="18" />
         <ArrowUp v-else :size="18" />
       </AppButton>

@@ -1,3 +1,6 @@
+import { i18n } from '../../i18n/index'
+
+const { t } = i18n.global
 const apparelFields = ['name', 'category', 'color', 'material', 'silhouette', 'details']
 
 function text(value) {
@@ -13,13 +16,13 @@ export function parseApparelProfile(content) {
   const source = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
   const start = source.indexOf('{')
   const end = source.lastIndexOf('}')
-  if (start < 0 || end <= start) throw new Error('未识别到有效的服饰资料')
+  if (start < 0 || end <= start) throw new Error(t('canvas.invalidApparelResult'))
 
   let parsed
   try {
     parsed = JSON.parse(source.slice(start, end + 1))
   } catch {
-    throw new Error('服饰资料识别结果格式异常')
+    throw new Error(t('canvas.invalidApparelFormat'))
   }
 
   const items = (Array.isArray(parsed.items) ? parsed.items : []).slice(0, 12).map((item, index) => ({
@@ -27,7 +30,7 @@ export function parseApparelProfile(content) {
     enabled: true,
     ...Object.fromEntries(apparelFields.map((key) => [key, text(item?.[key])])),
   })).filter((item) => item.name || item.category)
-  if (!items.length) throw new Error('图片中未识别到服饰单品')
+  if (!items.length) throw new Error(t('canvas.apparelNotFound'))
 
   return {
     compositionType: parsed.compositionType === 'set' || items.length > 1 ? 'set' : 'single',

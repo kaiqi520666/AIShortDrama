@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { getGenerationTask } from '../api/generations'
 import { startGenerationPolling, stopAllGenerationPolling, stopGenerationPolling, stopWorkspaceGenerationPolling } from './generationPolling'
+import { i18n } from '../i18n'
 
 vi.mock('../api/generations', () => ({ getGenerationTask: vi.fn() }))
 
@@ -29,7 +30,7 @@ describe('generation polling', () => {
     const update = vi.fn()
 
     startGenerationPolling('task-2', 'node-2', update, 'workspace-1')
-    await vi.waitFor(() => expect(update).toHaveBeenCalledWith('node-2', expect.objectContaining({ status: 'failed', generationError: '任务不存在' })))
+    await vi.waitFor(() => expect(update).toHaveBeenCalledWith('node-2', expect.objectContaining({ status: 'failed', generationError: i18n.global.t('errors.not_found') })))
     expect(getGenerationTask).toHaveBeenCalledOnce()
   })
 
@@ -47,6 +48,17 @@ describe('generation polling', () => {
 
     expect(getGenerationTask).toHaveBeenCalledTimes(2)
     vi.useRealTimers()
+  })
+
+  it.each(['failed', 'cancelled', 'timeout'])('localizes %s without rewriting original task diagnostics', async (status) => {
+    const task = { status, task_type: 'image', error_message: '第三方原始错误', result: null }
+    getGenerationTask.mockResolvedValue({ code: 0, data: task })
+    const update = vi.fn()
+    startGenerationPolling(`task-${status}`, 'node-1', update, 'workspace-1')
+    const key = { failed: 'generation_failed', cancelled: 'task_cancelled', timeout: 'task_timeout' }[status]
+    await vi.waitFor(() => expect(update).toHaveBeenCalledWith('node-1', expect.objectContaining({ generationError: i18n.global.t(`errors.${key}`) })))
+    expect(task.error_message).toBe('第三方原始错误')
+    expect(task.result).toBeNull()
   })
 
   it('backs off and pauses after six transient failures', async () => {

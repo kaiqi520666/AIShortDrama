@@ -1,7 +1,10 @@
+import { i18n } from '../i18n/index'
 import { defineStore } from 'pinia'
 import { getProductContentTemplates } from '../api/contentTemplates'
 import { validateProductContentTemplates } from '../config/canvas/contentTemplates'
 import { getApiErrorMessage } from '../utils/apiError'
+
+const { t } = i18n.global
 
 let loadPromise = null
 
@@ -19,14 +22,14 @@ export const useContentTemplatesStore = defineStore('contentTemplates', {
       this.error = ''
       loadPromise = getProductContentTemplates()
         .then((response) => {
-          if (response?.code !== 0) throw new Error(response?.message || '商品模板加载失败')
+          if (response?.code !== 0) throw new Error(response?.message || t('canvas.productTemplatesFailed'))
           const error = validateProductContentTemplates(response.data)
           if (error) throw new Error(error)
           this.templates = response.data
           return response.data
         })
         .catch((error) => {
-          this.error = getApiErrorMessage(error, '商品模板加载失败')
+          this.error = getApiErrorMessage(error, t('canvas.productTemplatesFailed'))
           throw error
         })
         .finally(() => {

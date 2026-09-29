@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { i18n } from '../../i18n'
+
 import { buildWorldPrompt, parseWorldProfile, worldReady } from './drama'
+
+beforeEach(() => { i18n.global.locale.value = 'zh-CN' })
+afterEach(() => { i18n.global.locale.value = 'id' })
 
 describe('drama world creation', () => {
   it('builds a structured world prompt from settings and story idea', () => {

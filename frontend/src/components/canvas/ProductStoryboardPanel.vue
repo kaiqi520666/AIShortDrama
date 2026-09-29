@@ -1,4 +1,6 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
+import { canvasTemplateText } from '../../i18n/canvas'
 import { computed, ref } from 'vue'
 import { ArrowUp, Clapperboard, Coins, FileText, ImagePlus, Images, LoaderCircle, Package, UserRound, X } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
@@ -28,6 +30,8 @@ import AppButton from '../ui/AppButton.vue'
 import AppImageHoverPreview from '../ui/AppImageHoverPreview.vue'
 import AppSelect from '../ui/AppSelect.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   nodeId: { type: String, required: true },
@@ -73,14 +77,14 @@ const characterReferences = computed(() => referenceManifest.value.characters)
 const totalReferenceCount = computed(() => characterReferences.value.length + productReferences.value.length)
 const productLimit = computed(() => getStoryboardProductLimit(characterReferences.value.length))
 const message = computed(() => failure.value || props.data.generationError || (!templateEnabled.value
-  ? '商品分镜模板已停用'
+  ? t('canvas.storyboardTemplateDisabled')
   : !productNode.value
-  ? '请先连接商品创作节点'
+  ? t('canvas.connectProductCreationFirst')
   : !productReferences.value.length
-    ? '请先选择商品参考图'
+    ? t('canvas.selectProductReferenceFirst')
     : !productContext.value
-      ? '请先完成商品识别'
-      : insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
+      ? t('canvas.completeProductRecognitionFirst')
+      : insufficientCredits.value ? t('canvas.insufficientCredits', { p0: estimatedCredits.value }) : ''))
 const canSubmit = computed(() => templateEnabled.value && !running.value && productNode.value && productReferences.value.length && productContext.value && !insufficientCredits.value)
 
 function selectTemplate(option) {
@@ -193,9 +197,9 @@ function closeProductPicker() {
 async function submitTask() {
   if (!canSubmit.value) return
   if (existingGeneratedNodes.value.length && !await confirm({
-    title: `重新生成${selectedTemplateOption.value.label}方案`,
-    message: `将使用${selectedTemplateOption.value.label}替换当前分镜链，已有节点会被移除。`,
-    confirmText: '继续生成',
+    title: t('canvas.regenerateNamedPlan', { p0: canvasTemplateText(selectedTemplateOption.value.id, selectedTemplateOption.value.label) }),
+    message: t('canvas.replaceStoryboardChain', { p0: canvasTemplateText(selectedTemplateOption.value.id, selectedTemplateOption.value.label) }),
+    confirmText: t('canvas.continueGeneration'),
   })) return
   if (existingGeneratedNodes.value.length) store.deleteGeneratedNodes(existingGeneratedNodes.value)
 
@@ -216,7 +220,7 @@ async function submitTask() {
     productReferences: productReferences.value,
     userRequirement: props.data.prompt,
   }), {
-    failureMessage: `${selectedTemplateOption.value.label}方案生成失败`,
+    failureMessage: t('canvas.namedPlanFailed', { p0: canvasTemplateText(selectedTemplateOption.value.id, selectedTemplateOption.value.label) }),
     onSuccess: (content) => {
       const plan = parseProductStoryboardPlan(content, template.value)
       const generatedNodeIds = store.addProductStoryboardNodes(
@@ -234,73 +238,73 @@ async function submitTask() {
 <template>
   <section class="generation-panel product-visual-panel storyboard-panel nodrag nowheel" @pointerdown.stop>
     <header class="product-visual-panel-header">
-      <span><Clapperboard :size="16" />商品分镜</span>
+      <span><Clapperboard :size="16" />{{ t('canvas.productStoryboard') }}</span>
       <small v-if="productNode"><Package :size="13" />{{ productNode.data.product?.name || productNode.data.title }}</small>
     </header>
 
     <section class="storyboard-reference-section">
-      <header class="storyboard-section-header"><span><Images :size="14" />参考素材</span></header>
+      <header class="storyboard-section-header"><span><Images :size="14" />{{ t('canvas.referenceMedia') }}</span></header>
       <div class="storyboard-reference-row">
-        <div class="storyboard-reference-label"><UserRound :size="14" /><span><strong>出镜角色</strong><small>可选 · {{ characterReferences.length }}/{{ MAX_STORYBOARD_CHARACTERS }} · 共 {{ totalReferenceCount }}/{{ MAX_STORYBOARD_REFERENCES }}</small></span></div>
+        <div class="storyboard-reference-label"><UserRound :size="14" /><span><strong>{{ t('canvas.onScreenCharacters') }}</strong><small>{{ t('canvas.optionalReferenceCount', { p0: characterReferences.length, p1: MAX_STORYBOARD_CHARACTERS, p2: totalReferenceCount, p3: MAX_STORYBOARD_REFERENCES }) }}</small></span></div>
         <div class="storyboard-reference-list">
           <div v-for="(character, index) in characterReferences" :key="character.id" class="storyboard-reference-item">
-            <AppButton class="storyboard-reference-main" :title="`更换角色${index + 1}：${character.name}`" :aria-label="`更换角色${index + 1}：${character.name}`" @click="openCharacterPicker(character.id)">
+            <AppButton class="storyboard-reference-main" :title="t('canvas.replaceCharacter', { p0: index + 1, p1: character.name })" :aria-label="t('canvas.replaceCharacter', { p0: index + 1, p1: character.name })" @click="openCharacterPicker(character.id)">
               <AppImageHoverPreview :src="character.url" :preview-src="buildOssImageUrl(character.url, { width: 1200, quality: 90 })" :alt="character.name">
                 <img :src="buildOssImageUrl(character.url, { width: 120, quality: 80 })" :alt="character.name" referrerpolicy="no-referrer" />
               </AppImageHoverPreview>
             </AppButton>
-            <AppButton class="storyboard-reference-remove" icon-only size="sm" :title="`移除角色${index + 1}`" @click="updateData({ characterReferences: characterReferences.filter((reference) => reference.id !== character.id) })"><X :size="13" /></AppButton>
+            <AppButton class="storyboard-reference-remove" icon-only size="sm" :title="t('canvas.removeCharacter', { p0: index + 1 })" @click="updateData({ characterReferences: characterReferences.filter((reference) => reference.id !== character.id) })"><X :size="13" /></AppButton>
           </div>
-          <AppButton v-if="characterReferences.length < MAX_STORYBOARD_CHARACTERS && totalReferenceCount < MAX_STORYBOARD_REFERENCES" class="storyboard-reference-add" variant="soft" @click="openCharacterPicker()"><UserRound :size="14" />添加角色</AppButton>
+          <AppButton v-if="characterReferences.length < MAX_STORYBOARD_CHARACTERS && totalReferenceCount < MAX_STORYBOARD_REFERENCES" class="storyboard-reference-add" variant="soft" @click="openCharacterPicker()"><UserRound :size="14" />{{ t('canvas.addCharacter') }}</AppButton>
         </div>
       </div>
       <div class="storyboard-reference-row">
-        <div class="storyboard-reference-label"><Package :size="14" /><span><strong>商品参考图</strong><small>必选 · {{ productReferences.length }}/{{ productLimit }} · 总计 {{ totalReferenceCount }}/{{ MAX_STORYBOARD_REFERENCES }}</small></span></div>
+        <div class="storyboard-reference-label"><Package :size="14" /><span><strong>{{ t('canvas.productReference') }}</strong><small>{{ t('canvas.requiredReferenceCount', { p0: productReferences.length, p1: productLimit, p2: totalReferenceCount, p3: MAX_STORYBOARD_REFERENCES }) }}</small></span></div>
         <div class="storyboard-reference-list">
           <div v-for="reference in productReferences" :key="reference.id" class="storyboard-reference-item">
-            <AppButton class="storyboard-reference-main" :title="`更换${reference.name}`" :aria-label="`更换${reference.name}`" @click="openProductPicker(reference.id)">
+            <AppButton class="storyboard-reference-main" :title="t('canvas.replaceNamed', { p0: reference.name })" :aria-label="t('canvas.replaceNamed', { p0: reference.name })" @click="openProductPicker(reference.id)">
               <AppImageHoverPreview :src="reference.url" :preview-src="buildOssImageUrl(reference.url, { width: 1200, quality: 90 })" :alt="reference.name">
                 <img :src="buildOssImageUrl(reference.url, { width: 120, quality: 80 })" :alt="reference.name" referrerpolicy="no-referrer" />
               </AppImageHoverPreview>
             </AppButton>
-            <AppButton class="storyboard-reference-remove" icon-only size="sm" :title="`移除${reference.name}`" @click="removeProductReference(reference.id)"><X :size="13" /></AppButton>
+            <AppButton class="storyboard-reference-remove" icon-only size="sm" :title="t('canvas.removeNamed', { p0: reference.name })" @click="removeProductReference(reference.id)"><X :size="13" /></AppButton>
           </div>
-          <AppButton v-if="productReferences.length < productLimit && totalReferenceCount < MAX_STORYBOARD_REFERENCES" class="storyboard-reference-add" variant="soft" @click="openProductPicker()"><ImagePlus :size="14" />添加商品图</AppButton>
+          <AppButton v-if="productReferences.length < productLimit && totalReferenceCount < MAX_STORYBOARD_REFERENCES" class="storyboard-reference-add" variant="soft" @click="openProductPicker()"><ImagePlus :size="14" />{{ t('canvas.addProductImage') }}</AppButton>
         </div>
       </div>
     </section>
 
     <section class="storyboard-template-section">
-      <header class="storyboard-section-header"><span><Clapperboard :size="14" />内容类型</span><small>选择生成方向</small></header>
+      <header class="storyboard-section-header"><span><Clapperboard :size="14" />{{ t('canvas.contentType') }}</span><small>{{ t('canvas.generationDirection') }}</small></header>
       <div class="storyboard-template-grid">
         <label v-for="option in storyboardTemplates" :key="option.key" class="storyboard-template-option" :class="{ active: option.key === selectedTemplateOption?.key }">
           <input type="radio" name="storyboard-template" :checked="option.key === selectedTemplateOption?.key" @change="selectTemplate(option)" />
-          <span><strong>{{ option.label }}</strong><small>{{ option.description }}</small></span>
+          <span><strong>{{ canvasTemplateText(option.id, option.label) }}</strong><small>{{ canvasTemplateText(option.id, option.description, 'description') }}</small></span>
         </label>
       </div>
     </section>
 
     <div class="storyboard-settings">
-      <label><span>视频总时长</span><AppSelect :model-value="data.duration" :options="storyboardDurations.map((value) => ({ value, label: `${value} 秒` }))" aria-label="视频总时长" @update:model-value="updateData({ duration: $event })" /></label>
-      <label><span>视频比例</span><AppSelect :model-value="data.videoAspectRatio" :options="ratioOptions" aria-label="视频比例" @update:model-value="updateData({ videoAspectRatio: $event })" /></label>
-      <div class="storyboard-recommendation"><Clapperboard :size="14" />{{ segmentCount }} 段 · 每段 {{ shots }} 格 · {{ recommended.aspectRatio }} · {{ recommended.resolution }}</div>
+      <label><span>{{ t('canvas.totalVideoDuration') }}</span><AppSelect :model-value="data.duration" :options="storyboardDurations.map((value) => ({ value, label: t('canvas.seconds', { p0: value }) }))" :aria-label="t('canvas.totalVideoDuration')" @update:model-value="updateData({ duration: $event })" /></label>
+      <label><span>{{ t('canvas.videoRatio') }}</span><AppSelect :model-value="data.videoAspectRatio" :options="ratioOptions" :aria-label="t('canvas.videoRatio')" @update:model-value="updateData({ videoAspectRatio: $event })" /></label>
+      <div class="storyboard-recommendation"><Clapperboard :size="14" />{{ t('canvas.storyboardRecommendation', { p0: segmentCount, p1: shots, p2: recommended.aspectRatio, p3: recommended.resolution }) }}</div>
     </div>
 
     <AppTextarea
       class="storyboard-extra-input nodrag nopan"
       :model-value="data.prompt"
       maxlength="600"
-      placeholder="可选：补充节奏、场景、受众或画面要求…"
+      :placeholder="t('canvas.storyboardPlaceholder')"
       @input="updateData({ prompt: $event.target.value })"
     />
 
     <p v-if="message" class="panel-notice">{{ message }}</p>
     <footer class="product-visual-panel-footer">
       <FileText :size="16" />
-      <AppSelect :model-value="selectedTextModel.id" :options="textModelOptions" aria-label="文本模型" @update:model-value="updateData({ textModel: $event })" />
+      <AppSelect :model-value="selectedTextModel.id" :options="textModelOptions" :aria-label="t('canvas.textModel')" @update:model-value="updateData({ textModel: $event })" />
       <span class="panel-divider"></span>
-      <span class="task-credit-cost"><Coins :size="14" />本次 {{ estimatedCredits }} 积分</span>
-      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '生成中' : '生成商品分镜方案'" @click="submitTask">
+      <span class="task-credit-cost"><Coins :size="14" />{{ t('canvas.creditCost', { p0: estimatedCredits }) }}</span>
+      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? t('canvas.generating') : t('canvas.generateProductStoryboard')" @click="submitTask">
         <LoaderCircle v-if="running" class="run-task-spinner" :size="18" />
         <ArrowUp v-else :size="18" />
       </AppButton>

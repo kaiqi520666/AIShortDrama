@@ -67,7 +67,7 @@ onBeforeUnmount(() => {
 <template>
   <div class="auth-turnstile">
     <div ref="container" class="auth-turnstile-widget"></div>
-    <p v-if="!siteKey">正在加载人机验证...</p>
-    <p v-else-if="failed">人机验证加载失败，请刷新重试</p>
+    <p v-if="!siteKey">{{ $t('auth.captchaLoading') }}</p>
+    <p v-else-if="failed">{{ $t('auth.captchaFailed') }}</p>
   </div>
 </template>

@@ -31,7 +31,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
             <div><h2 id="app-modal-title">{{ title }}</h2><p v-if="description">{{ description }}</p></div>
             <div class="app-modal-header-actions">
               <slot name="header-actions" />
-              <AppButton ref="closeButton" icon-only size="sm" title="关闭" aria-label="关闭" @click="emit('close')"><X :size="17" /></AppButton>
+              <AppButton ref="closeButton" icon-only size="sm" :title="$t('common.close')" :aria-label="$t('common.close')" @click="emit('close')"><X :size="17" /></AppButton>
             </div>
           </header>
           <div class="app-modal-body"><slot /></div>

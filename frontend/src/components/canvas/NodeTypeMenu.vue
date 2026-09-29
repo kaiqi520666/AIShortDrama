@@ -1,5 +1,6 @@
 <script setup>
 import { computed } from 'vue'
+import { canvasLabel } from '../../i18n/canvas'
 import { getNodeMenuGroups, resolveNodeMenuGroups } from '../../config/canvas/ecommerceWorkflows'
 import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
 import { useCanvasStore } from '../../stores/canvas'
@@ -23,10 +24,10 @@ const groups = computed(() => resolveNodeMenuGroups(getNodeMenuGroups(store.work
 
 <template>
   <section v-for="group in groups" :key="group.id" class="node-menu-group">
-    <p v-if="group.label">{{ group.label }}</p>
+    <p v-if="group.label">{{ canvasLabel(group.label) }}</p>
     <AppButton v-for="option in group.options" :key="`${option.kind}-${option.type}`" :class="`node-option--${option.nodeType || option.type}`" @click="$emit('select', { kind: option.kind, type: option.type })">
       <span class="menu-icon"><component :is="option.icon" :size="17" /></span>
-      <strong>{{ option.label }}</strong>
+      <strong>{{ canvasLabel(option.label) }}</strong>
     </AppButton>
   </section>
 </template>

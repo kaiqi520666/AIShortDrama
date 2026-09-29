@@ -21,7 +21,7 @@ async function signOut() {
 <template>
   <AppDashboardShell
     :active-item="activeItem"
-    :username="authStore.user?.username || '用户'"
+    :username="authStore.user?.username || $t('common.user')"
     :credit-balance="authStore.user?.credit_balance ?? 0"
     :credit-frozen="authStore.user?.credit_frozen ?? 0"
     :is-admin="authStore.user?.role === 'admin'"

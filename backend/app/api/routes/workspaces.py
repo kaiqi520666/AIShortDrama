@@ -159,7 +159,7 @@ async def save_canvas(
     if not workspace:
         raise NotFoundError("工作台不存在")
     if workspace.version != payload.version:
-        raise ConflictError("画布已在其他页面更新，请刷新后继续")
+        raise ConflictError("画布已在其他页面更新，请刷新后继续", error_key="canvas_conflict")
     workspace.canvas = payload.model_dump(mode="json", exclude={"version"})
     workspace.version += 1
     await db.commit()

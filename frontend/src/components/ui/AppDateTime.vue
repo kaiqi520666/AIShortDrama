@@ -3,14 +3,16 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { CalendarDays, ChevronLeft, ChevronRight, Clock3, X } from 'lucide-vue-next'
 import AppButton from './AppButton.vue'
 import AppSelect from './AppSelect.vue'
+import { useI18n } from 'vue-i18n'
 
 defineOptions({ inheritAttrs: false })
 
 const props = defineProps({
   modelValue: { type: String, default: '' },
   ariaLabel: { type: String, required: true },
-  placeholder: { type: String, default: '选择日期和时间' },
+  placeholder: { type: String, default: '' },
 })
+const { t, tm, locale } = useI18n()
 const emit = defineEmits(['update:modelValue'])
 const root = ref(null)
 const open = ref(false)
@@ -18,9 +20,9 @@ const viewDate = ref(new Date())
 const datePart = ref('')
 const timePart = ref('00:00')
 
-const monthLabel = computed(() => `${viewDate.value.getFullYear()}年${String(viewDate.value.getMonth() + 1).padStart(2, '0')}月`)
-const hourOptions = Array.from({ length: 24 }, (_, value) => ({ value: String(value).padStart(2, '0'), label: `${String(value).padStart(2, '0')} 时` }))
-const minuteOptions = Array.from({ length: 60 }, (_, value) => ({ value: String(value).padStart(2, '0'), label: `${String(value).padStart(2, '0')} 分` }))
+const monthLabel = computed(() => new Intl.DateTimeFormat(locale.value, { year: 'numeric', month: 'long' }).format(viewDate.value))
+const hourOptions = computed(() => Array.from({ length: 24 }, (_, value) => ({ value: String(value).padStart(2, '0'), label: `${String(value).padStart(2, '0')} ${t('dateTime.hour')}` })))
+const minuteOptions = computed(() => Array.from({ length: 60 }, (_, value) => ({ value: String(value).padStart(2, '0'), label: `${String(value).padStart(2, '0')} ${t('dateTime.minute')}` })))
 const selectedHour = computed(() => timePart.value.slice(0, 2))
 const selectedMinute = computed(() => timePart.value.slice(3, 5))
 const calendarDays = computed(() => {
@@ -119,14 +121,14 @@ onBeforeUnmount(() => {
 <template>
   <div ref="root" v-bind="$attrs" class="app-date-time" :class="{ open }">
     <AppButton type="button" class="app-date-time__trigger" :aria-label="ariaLabel" :aria-expanded="open" @click="open ? closePicker() : openPicker()">
-      <CalendarDays :size="15" /><span>{{ displayValue || placeholder }}</span><X v-if="displayValue" class="app-date-time__clear" :size="14" aria-label="清除" @click.stop="clearValue" /><ChevronRight v-else :size="14" />
+      <CalendarDays :size="15" /><span>{{ displayValue || placeholder || t('dateTime.placeholder') }}</span><X v-if="displayValue" class="app-date-time__clear" :size="14" :aria-label="t('common.clear')" @click.stop="clearValue" /><ChevronRight v-else :size="14" />
     </AppButton>
     <div v-if="open" class="app-date-time__popover">
-      <header><AppButton icon-only size="sm" aria-label="上个月" @click="shiftMonth(-1)"><ChevronLeft :size="15" /></AppButton><strong>{{ monthLabel }}</strong><AppButton icon-only size="sm" aria-label="下个月" @click="shiftMonth(1)"><ChevronRight :size="15" /></AppButton></header>
-      <div class="app-date-time__weekdays"><span v-for="day in ['一', '二', '三', '四', '五', '六', '日']" :key="day">{{ day }}</span></div>
+      <header><AppButton icon-only size="sm" :aria-label="t('dateTime.previousMonth')" @click="shiftMonth(-1)"><ChevronLeft :size="15" /></AppButton><strong>{{ monthLabel }}</strong><AppButton icon-only size="sm" :aria-label="t('dateTime.nextMonth')" @click="shiftMonth(1)"><ChevronRight :size="15" /></AppButton></header>
+      <div class="app-date-time__weekdays"><span v-for="day in tm('dateTime.weekdays')" :key="day">{{ day }}</span></div>
       <div class="app-date-time__calendar"><AppButton v-for="item in calendarDays" :key="item.value" type="button" size="sm" class="app-date-time__day" :class="{ muted: !item.current, selected: item.selected }" @click="chooseDate(item.value)">{{ item.day }}</AppButton></div>
-      <div class="app-date-time__time"><Clock3 :size="15" /><AppSelect :model-value="selectedHour" :options="hourOptions" aria-label="小时" @update:model-value="updateTime('hour', $event)" /><span>:</span><AppSelect :model-value="selectedMinute" :options="minuteOptions" aria-label="分钟" @update:model-value="updateTime('minute', $event)" /></div>
-      <footer><AppButton type="button" size="sm" variant="soft" @click="clearValue">清除</AppButton><AppButton type="button" size="sm" variant="soft" @click="chooseToday">今天</AppButton></footer>
+      <div class="app-date-time__time"><Clock3 :size="15" /><AppSelect :model-value="selectedHour" :options="hourOptions" :aria-label="t('dateTime.hour')" @update:model-value="updateTime('hour', $event)" /><span>:</span><AppSelect :model-value="selectedMinute" :options="minuteOptions" :aria-label="t('dateTime.minute')" @update:model-value="updateTime('minute', $event)" /></div>
+      <footer><AppButton type="button" size="sm" variant="soft" @click="clearValue">{{ t('common.clear') }}</AppButton><AppButton type="button" size="sm" variant="soft" @click="chooseToday">{{ t('common.today') }}</AppButton></footer>
     </div>
   </div>
 </template>

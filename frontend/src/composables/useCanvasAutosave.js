@@ -1,5 +1,8 @@
+import { i18n } from '../i18n/index'
 import { getCurrentInstance, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { onBeforeRouteLeave } from 'vue-router'
+
+const { t } = i18n.global
 
 export function useCanvasAutosave({ store, getPayload, getViewport, confirm, delay = 800, eventTarget = globalThis.window }) {
   const dirty = ref(false)
@@ -16,7 +19,7 @@ export function useCanvasAutosave({ store, getPayload, getViewport, confirm, del
     if (!dirty.value && store.saveStatus !== 'failed') return true
     try {
       await store.saveCanvas(getViewport?.())
-      if (store.saveConflict || store.saveStatus === 'failed') throw new Error('画布保存失败')
+      if (store.saveConflict || store.saveStatus === 'failed') throw new Error(t('canvas.canvasSaveFailed'))
       dirty.value = false
       return true
     } catch {
@@ -35,10 +38,10 @@ export function useCanvasAutosave({ store, getPayload, getViewport, confirm, del
   async function saveBeforeLeave() {
     if (await saveNow()) return true
     return confirm({
-      title: '画布保存失败',
-      message: '最新修改尚未保存，仍要离开画布吗？',
-      confirmText: '仍然离开',
-      cancelText: '留在画布',
+      title: t('canvas.canvasSaveFailed'),
+      message: t('canvas.leaveUnsavedConfirm'),
+      confirmText: t('canvas.leaveAnyway'),
+      cancelText: t('canvas.stayOnCanvas'),
       tone: 'danger',
     })
   }

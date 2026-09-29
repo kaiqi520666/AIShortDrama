@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Pencil } from 'lucide-vue-next'
 import { getAdminModels, updateAdminModel } from '../../api/admin'
 import AdminDialog from '../../components/admin/AdminDialog.vue'
@@ -12,26 +13,22 @@ import { useGlobalToast } from '../../composables/useGlobalUI'
 import { getApiErrorMessage } from '../../utils/apiError'
 
 const toast = useGlobalToast()
+const { t, n } = useI18n()
 const { confirmMutation } = useAdminMutation()
 const loading = ref(false)
 const models = ref([])
 const dialog = reactive({ item: null, label: '', enabled: 'true', isDefault: 'false', reason: '', submitting: false })
-const mediaTypes = [
-  { key: 'text', label: '文本' },
-  { key: 'image', label: '图片' },
-  { key: 'video', label: '视频' },
-  { key: 'audio', label: '音频' },
-]
-const enabledOptions = [{ value: 'true', label: '启用' }, { value: 'false', label: '停用' }]
-const defaultOptions = [{ value: 'true', label: '设为默认模型' }, { value: 'false', label: '非默认模型' }]
-const columns = [
-  { key: 'label', label: '展示名称' },
-  { key: 'model_id', label: '模型 ID' },
-  { key: 'enabled', label: '状态' },
-  { key: 'is_default', label: '默认' },
-  { key: 'actions', label: '操作', align: 'right' },
-]
-const groupedModels = computed(() => Object.fromEntries(mediaTypes.map(({ key }) => [key, models.value.filter((item) => item.media_type === key)])))
+const mediaTypes = computed(() => ['text', 'image', 'video', 'audio'].map((key) => ({ key, label: t(`home.${key}`) })))
+const enabledOptions = computed(() => [{ value: 'true', label: t('admin.enabled') }, { value: 'false', label: t('admin.disabled') }])
+const defaultOptions = computed(() => [{ value: 'true', label: t('admin.models.defaultOption') }, { value: 'false', label: t('admin.models.notDefault') }])
+const columns = computed(() => [
+  { key: 'label', label: t('admin.models.label') },
+  { key: 'model_id', label: t('admin.models.id') },
+  { key: 'enabled', label: t('admin.status') },
+  { key: 'is_default', label: t('admin.default') },
+  { key: 'actions', label: t('admin.actions'), align: 'right' },
+])
+const groupedModels = computed(() => Object.fromEntries(mediaTypes.value.map(({ key }) => [key, models.value.filter((item) => item.media_type === key)])))
 
 async function load() {
   loading.value = true
@@ -40,7 +37,7 @@ async function load() {
     if (result.code !== 0) throw new Error(result.message)
     models.value = result.data
   } catch (error) {
-    toast.error(getApiErrorMessage(error, '模型配置加载失败'))
+    toast.error(getApiErrorMessage(error, t('admin.models.loadFailed')))
   } finally {
     loading.value = false
   }
@@ -69,18 +66,18 @@ async function submit() {
     reason: dialog.reason,
   }
   if (!await confirmMutation({
-    title: '更新模型配置',
-    message: `${dialog.item.label}（${dialog.item.model_id}）将${payload.enabled ? '启用' : '停用'}${payload.is_default ? '并设为默认模型' : ''}。`,
+    title: t('admin.models.update'),
+    message: t('admin.models.updateMessage', { label: dialog.item.label, id: dialog.item.model_id, status: t(payload.enabled ? 'admin.enabled' : 'admin.disabled'), defaultText: payload.is_default ? t('admin.models.setDefaultSuffix') : '' }),
   })) return
   dialog.submitting = true
   try {
     const result = await updateAdminModel(dialog.item.media_type, dialog.item.model_id, payload)
     if (result.code !== 0) throw new Error(result.message)
-    toast.success('模型配置已更新')
+    toast.success(t('admin.models.updated'))
     dialog.item = null
     await load()
   } catch (error) {
-    toast.error(getApiErrorMessage(error, '模型配置保存失败'))
+    toast.error(getApiErrorMessage(error, t('admin.models.saveFailed')))
   } finally {
     dialog.submitting = false
   }
@@ -91,23 +88,23 @@ onMounted(load)
 
 <template>
   <section class="admin-page">
-    <header class="admin-page__header"><div><span>MODEL CONTROL</span><h1>模型管理</h1><p>控制模型展示、可用状态和默认模型，不开放能力边界或 Provider 参数</p></div><b>{{ models.length }} 个模型</b></header>
+    <header class="admin-page__header"><div><span>{{ t('navigation.content') }}</span><h1>{{ t('navigation.models') }}</h1><p>{{ t('admin.models.description') }}</p></div><b>{{ t('admin.models.count', { count: n(models.length) }) }}</b></header>
     <section v-for="media in mediaTypes" :key="media.key" class="admin-model-group">
-      <header><h2>{{ media.label }}模型</h2><small>{{ groupedModels[media.key].length }} 个</small></header>
-      <AppDataTable :columns="columns" :items="groupedModels[media.key]" :loading="loading" loading-title="正在加载模型配置" empty-title="暂无模型配置" min-width="760px">
+      <header><h2>{{ t('admin.models.group', { type: media.label }) }}</h2><small>{{ t('admin.models.count', { count: n(groupedModels[media.key].length) }) }}</small></header>
+      <AppDataTable :columns="columns" :items="groupedModels[media.key]" :loading="loading" :loading-title="t('admin.models.loading')" :empty-title="t('admin.models.empty')" min-width="760px">
         <template #cell-label="{ item }"><strong>{{ item.label }}</strong></template>
         <template #cell-model_id="{ value }"><code>{{ value }}</code></template>
-        <template #cell-enabled="{ item }"><span class="admin-status" :class="item.enabled ? 'is-active' : 'is-disabled'">{{ item.enabled ? '启用' : '停用' }}</span></template>
-        <template #cell-is_default="{ item }"><span class="admin-badge" :class="{ 'is-admin': item.is_default }">{{ item.is_default ? '默认' : '—' }}</span></template>
-        <template #cell-actions="{ item }"><AppButton size="sm" variant="soft" @click="open(item)"><Pencil :size="14" />编辑</AppButton></template>
+        <template #cell-enabled="{ item }"><span class="admin-status" :class="item.enabled ? 'is-active' : 'is-disabled'">{{ t(item.enabled ? 'admin.enabled' : 'admin.disabled') }}</span></template>
+        <template #cell-is_default="{ item }"><span class="admin-badge" :class="{ 'is-admin': item.is_default }">{{ item.is_default ? t('admin.default') : '—' }}</span></template>
+        <template #cell-actions="{ item }"><AppButton size="sm" variant="soft" @click="open(item)"><Pencil :size="14" />{{ t('common.edit') }}</AppButton></template>
       </AppDataTable>
     </section>
 
-    <AdminDialog v-if="dialog.item" v-model:reason="dialog.reason" title="编辑模型配置" :description="`${dialog.item.media_type} · ${dialog.item.model_id}`" :submitting="dialog.submitting" @close="close" @submit="submit">
+    <AdminDialog v-if="dialog.item" v-model:reason="dialog.reason" :title="t('admin.models.edit')" :description="`${dialog.item.media_type} · ${dialog.item.model_id}`" :submitting="dialog.submitting" @close="close" @submit="submit">
       <div class="admin-form-grid">
-        <label class="admin-field"><span>展示名称</span><AppInput v-model="dialog.label" maxlength="100" required /></label>
-        <label class="admin-field"><span>启用状态</span><AppSelect v-model="dialog.enabled" :options="enabledOptions" aria-label="模型启用状态" /></label>
-        <label class="admin-field admin-field--wide"><span>默认模型</span><AppSelect v-model="dialog.isDefault" :options="defaultOptions" aria-label="默认模型状态" /></label>
+        <label class="admin-field"><span>{{ t('admin.models.label') }}</span><AppInput v-model="dialog.label" maxlength="100" required /></label>
+        <label class="admin-field"><span>{{ t('admin.models.enabledStatus') }}</span><AppSelect v-model="dialog.enabled" :options="enabledOptions" :aria-label="t('admin.models.enabledAria')" /></label>
+        <label class="admin-field admin-field--wide"><span>{{ t('admin.models.defaultModel') }}</span><AppSelect v-model="dialog.isDefault" :options="defaultOptions" :aria-label="t('admin.models.defaultAria')" /></label>
       </div>
     </AdminDialog>
   </section>

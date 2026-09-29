@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
 import { useAuthStore } from '../stores/auth'
 import { useStreamingTextTask } from './useStreamingTextTask'
+import { i18n } from '../i18n'
 
 const { updateNodeData } = vi.hoisted(() => ({ updateNodeData: vi.fn() }))
 
@@ -41,7 +42,7 @@ describe('streaming text task', () => {
     const { failure, runTextTask } = useStreamingTextTask('node-2')
     const streamer = async (_payload, onDelta) => {
       onDelta('部分结果')
-      throw { response: { data: { message: '上游中断' } } }
+      throw { response: { data: { message: '上游中断', error_key: 'upstream_unavailable' } } }
     }
 
     const result = await runTextTask(streamer, {}, {
@@ -50,11 +51,11 @@ describe('streaming text task', () => {
     })
 
     expect(result).toBe(null)
-    expect(failure.value).toBe('上游中断')
+    expect(failure.value).toBe(i18n.global.t('errors.upstream_unavailable'))
     expect(updateNodeData).toHaveBeenLastCalledWith('node-2', expect.objectContaining({
       status: 'failed',
       content: '部分结果',
-      generationError: '上游中断',
+      generationError: i18n.global.t('errors.upstream_unavailable'),
     }))
     expect(authStore.refreshCredits).toHaveBeenCalledOnce()
   })

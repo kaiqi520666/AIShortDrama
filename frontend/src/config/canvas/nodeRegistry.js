@@ -1,5 +1,8 @@
+import { i18n } from '../../i18n/index'
 import { defineAsyncComponent, defineComponent, h, markRaw } from 'vue'
 import { nodeDefinitions } from './nodeDefinitions'
+
+const { t } = i18n.global
 
 const componentLoaders = import.meta.glob([
   '../../components/canvas/*Node.vue',
@@ -14,14 +17,14 @@ const loaders = Object.fromEntries(Object.entries(componentLoaders).map(([path, 
 const loadingPlaceholder = markRaw(defineComponent({
   name: 'CanvasAsyncLoading',
   setup() {
-    return () => h('div', { class: 'canvas-async-placeholder', role: 'status' }, '节点加载中…')
+    return () => h('div', { class: 'canvas-async-placeholder', role: 'status' }, t('canvas.nodeLoading'))
   },
 }))
 
 const errorPlaceholder = markRaw(defineComponent({
   name: 'CanvasAsyncError',
   setup() {
-    return () => h('div', { class: 'canvas-async-placeholder canvas-async-placeholder--error', role: 'alert' }, '节点加载失败，请重试')
+    return () => h('div', { class: 'canvas-async-placeholder canvas-async-placeholder--error', role: 'alert' }, t('canvas.nodeLoadFailed'))
   },
 }))
 

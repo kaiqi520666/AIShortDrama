@@ -1,8 +1,13 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { i18n } from '../../i18n'
+
 import { ref } from 'vue'
 import { uploadMedia } from '../../api/uploads'
 import { readMediaMetadata } from '../../utils/mediaFiles'
 import { uploadRules, useCanvasDropUpload, validateUploadFile } from './useCanvasDropUpload'
+
+beforeEach(() => { i18n.global.locale.value = 'zh-CN' })
+afterEach(() => { i18n.global.locale.value = 'id' })
 
 vi.mock('../../api/uploads', () => ({ uploadMedia: vi.fn() }))
 vi.mock('../../utils/mediaFiles', async (importOriginal) => ({
@@ -93,13 +98,13 @@ describe('canvas drop uploads', () => {
     const { subject, store, updateNodeData, toast } = createUploadSubject()
     const file = { name: 'source.mp4', type: 'video/mp4', size: 1024 }
     readMediaMetadata.mockResolvedValue({ width: 1920, height: 1080, duration: 5 })
-    uploadMedia.mockRejectedValue({ response: { data: { message: '上传服务不可用' } } })
+    uploadMedia.mockRejectedValue({ response: { status: 503, data: { message: '上传服务不可用', error_key: 'service_unavailable' } } })
     subject.pendingUpload.value = { type: 'video', position: { x: 20, y: 30 } }
 
     await subject.handlePaneUpload({ target: { files: [file], value: 'selected' } })
 
     expect(store.deleteNode).toHaveBeenCalledWith('video-1')
     expect(updateNodeData).not.toHaveBeenCalled()
-    expect(toast.error).toHaveBeenCalledWith('上传服务不可用')
+    expect(toast.error).toHaveBeenCalledWith(i18n.global.t('errors.service_unavailable'))
   })
 })

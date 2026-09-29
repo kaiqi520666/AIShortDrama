@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed } from 'vue'
 import { ArrowUp, Coins, FileText, LoaderCircle } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
@@ -12,6 +13,8 @@ import AppButton from '../ui/AppButton.vue'
 import AppSelect from '../ui/AppSelect.vue'
 import AppTextarea from '../ui/AppTextarea.vue'
 import ProductWorkflowSteps from './ProductWorkflowSteps.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   nodeId: { type: String, required: true },
@@ -31,8 +34,8 @@ const running = computed(() => props.data.status === 'generating')
 const estimatedCredits = computed(() => authStore.estimateCredits('text', selectedModel.value.id))
 const insufficientCredits = computed(() => estimatedCredits.value !== null && (authStore.user?.credit_balance || 0) < estimatedCredits.value)
 const message = computed(() => failure.value || props.data.generationError || (!props.data.prompt?.trim()
-  ? '请先输入故事想法'
-  : insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : ''))
+  ? t('canvas.enterStoryIdea')
+  : insufficientCredits.value ? t('canvas.insufficientCredits', { p0: estimatedCredits.value }) : ''))
 const canSubmit = computed(() => !running.value && props.data.prompt?.trim() && !insufficientCredits.value)
 
 async function submitTask() {
@@ -43,7 +46,7 @@ async function submitTask() {
     model: selectedModel.value.id,
     prompt: buildWorldPrompt(props.data),
   }, {
-    failureMessage: '世界观生成失败',
+    failureMessage: t('canvas.worldGenerationFailed'),
     onSuccess: (content) => ({ world: parseWorldProfile(content), workflowStep: 'result' }),
   })
 }
@@ -56,25 +59,25 @@ async function submitTask() {
       :recognized="completed"
       first-step="setting"
       second-step="result"
-      first-label="设定输入"
-      second-label="世界观结果"
-      aria-label="世界观创作步骤"
+      :first-label="t('canvas.settingInput')"
+      :second-label="t('canvas.worldResult')"
+      :aria-label="t('canvas.worldSteps')"
       @update:step="updateNodeData(nodeId, { workflowStep: $event })"
     />
     <div class="world-creation-stage">
       <AppTextarea
         :model-value="data.prompt"
         maxlength="1200"
-        placeholder="输入故事的大概想法，例如：失忆记者调查一座只在雨夜出现的旅馆……"
+        :placeholder="t('canvas.worldIdeaPlaceholder')"
         @input="failure = ''; updateNodeData(nodeId, { prompt: $event.target.value, generationError: '' })"
       />
       <p v-if="message" class="panel-notice">{{ message }}</p>
       <footer>
         <FileText :size="16" />
-        <AppSelect :model-value="selectedModel.id" :options="modelOptions" aria-label="文本模型" @update:model-value="updateNodeData(nodeId, { model: $event })" />
+        <AppSelect :model-value="selectedModel.id" :options="modelOptions" :aria-label="t('canvas.textModel')" @update:model-value="updateNodeData(nodeId, { model: $event })" />
         <span class="panel-divider"></span>
-        <span class="task-credit-cost"><Coins :size="14" />本次 {{ estimatedCredits }} 积分</span>
-        <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '生成中' : completed ? '重新生成世界观' : '生成世界观'" @click="submitTask">
+        <span class="task-credit-cost"><Coins :size="14" />{{ t('canvas.creditCost', { p0: estimatedCredits }) }}</span>
+        <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? t('canvas.generating') : completed ? t('canvas.regenerateWorld') : t('canvas.generateWorld')" @click="submitTask">
           <LoaderCircle v-if="running" class="run-task-spinner" :size="18" />
           <ArrowUp v-else :size="18" />
         </AppButton>

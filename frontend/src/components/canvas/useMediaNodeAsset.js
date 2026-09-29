@@ -1,3 +1,4 @@
+import { i18n } from '../../i18n/index'
 import { computed, ref } from 'vue'
 import { Clapperboard, FileText, Images, Image as ImageIcon, Music2, Shirt, UserRound, Video } from 'lucide-vue-next'
 import { registerAssetPrivateAvatar } from '../../api/assets'
@@ -5,6 +6,8 @@ import { uploadMedia } from '../../api/uploads'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { downloadUrl } from '../../utils/download'
 import { mediaUploadRules, readMediaMetadata, validateMediaFile } from '../../utils/mediaFiles'
+
+const { t } = i18n.global
 
 const icons = { text: FileText, image: ImageIcon, video: Video, audio: Music2 }
 
@@ -30,26 +33,26 @@ export function useMediaNodeAsset({ props, store, toast, updateNodeData, mediaWi
     props.data.title === '角色节点' ? 'role' : props.data.title === '场景节点' ? 'scene' : ''
   ))
   const libraryCopy = computed(() => {
-    if (inputRole.value === 'role') return { label: '角色', icon: UserRound }
-    if (inputRole.value === 'scene') return { label: '场景', icon: Images }
+    if (inputRole.value === 'role') return { label: t('canvas.character'), icon: UserRound }
+    if (inputRole.value === 'scene') return { label: t('canvas.scene'), icon: Images }
     return {
-      model: { label: '模特', icon: UserRound },
-      garment: { label: '服饰', icon: Shirt },
-    }[resourceType.value] || { label: '素材', icon: Images }
+      model: { label: t('canvas.model'), icon: UserRound },
+      garment: { label: t('canvas.garment'), icon: Shirt },
+    }[resourceType.value] || { label: t('canvas.media'), icon: Images }
   })
   const libraryToolbarLabel = computed(() => (
     inputRole.value
-      ? `${libraryCopy.value.label}库`
-      : resourceType.value === 'asset' ? '资产库' : `${libraryCopy.value.label}库`
+      ? t('canvas.typedLibrary', { p0: libraryCopy.value.label })
+      : resourceType.value === 'asset' ? t('canvas.assetLibrary') : t('canvas.typedLibrary', { p0: libraryCopy.value.label })
   ))
   const storyboardAsset = computed(() => props.data.storyboardAsset || {})
   const storyboardRegistrationLabel = computed(() => {
-    if (!props.data.assetId) return '当前图片缺少资产记录，无法注册人物素材'
+    if (!props.data.assetId) return t('canvas.missingAssetRecord')
     return ({
-      active: 'Seedance 人物素材已可用',
-      processing: '刷新 Seedance 人物素材审核状态',
-      failed: '重新注册 Seedance 人物素材',
-    }[storyboardAsset.value.status] || '注册为 Seedance 人物素材')
+      active: t('canvas.seedanceCharacterReady'),
+      processing: t('canvas.refreshSeedanceReview'),
+      failed: t('canvas.retrySeedanceRegistration'),
+    }[storyboardAsset.value.status] || t('canvas.registerSeedanceCharacter'))
   })
   const imageResolution = computed(() => {
     if (props.type !== 'image') return ''
@@ -95,7 +98,7 @@ export function useMediaNodeAsset({ props, store, toast, updateNodeData, mediaWi
         ...(props.type === 'image' ? { storyboardAsset: null } : {}),
       })
     } catch (error) {
-      uploadNotice.value = getApiErrorMessage(error, '上传失败')
+      uploadNotice.value = getApiErrorMessage(error, t('canvas.uploadFailed'))
     } finally {
       uploading.value = false
     }
@@ -157,7 +160,7 @@ export function useMediaNodeAsset({ props, store, toast, updateNodeData, mediaWi
     try {
       await downloadUrl(props.data.asset, props.data.title)
     } catch (error) {
-      toast.error(error.message || '图片下载失败')
+      toast.error(error.message || t('canvas.imageDownloadFailed'))
     } finally {
       downloading.value = false
     }
@@ -169,7 +172,7 @@ export function useMediaNodeAsset({ props, store, toast, updateNodeData, mediaWi
   }
 
   function createStoryboardVideo() {
-    if (!store.addStoryboardVideoNode(props.id)) toast.error('请先生成分镜图片和视频脚本')
+    if (!store.addStoryboardVideoNode(props.id)) toast.error(t('canvas.generateStoryboardFirst'))
   }
 
   async function registerStoryboardAsset() {
@@ -183,12 +186,12 @@ export function useMediaNodeAsset({ props, store, toast, updateNodeData, mediaWi
       const seedance = result.data?.metadata?.seedance
       if (seedance) updateNodeData(props.id, { storyboardAsset: seedance })
       if (result.code !== 0) throw new Error(result.message)
-      if (seedance?.status === 'active') toast.success('人物素材已可用于 Seedance')
-      else toast.info('人物素材审核中，请稍后点击刷新')
+      if (seedance?.status === 'active') toast.success(t('canvas.characterSeedanceReady'))
+      else toast.info(t('canvas.characterReviewing'))
     } catch (error) {
       const seedance = error.response?.data?.data?.metadata?.seedance
       if (seedance) updateNodeData(props.id, { storyboardAsset: seedance })
-      toast.error(getApiErrorMessage(error, '人物素材注册失败'))
+      toast.error(getApiErrorMessage(error, t('canvas.characterAssetRegistrationFailed')))
     } finally {
       registeringStoryboard.value = false
     }

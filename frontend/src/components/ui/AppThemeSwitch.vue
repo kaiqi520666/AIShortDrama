@@ -2,14 +2,16 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { Check, Monitor, Moon, Sun } from 'lucide-vue-next'
 import { useTheme } from '../../composables/useTheme'
+import { useI18n } from 'vue-i18n'
 import AppButton from './AppButton.vue'
 import AppMenu from './AppMenu.vue'
 
 const options = [
-  { value: 'system', label: '跟随系统', icon: Monitor },
-  { value: 'light', label: '明亮模式', icon: Sun },
-  { value: 'dark', label: '暗黑模式', icon: Moon },
+  { value: 'system', key: 'system', icon: Monitor },
+  { value: 'light', key: 'light', icon: Sun },
+  { value: 'dark', key: 'dark', icon: Moon },
 ]
+const { t } = useI18n()
 const root = ref(null)
 const trigger = ref(null)
 const open = ref(false)
@@ -70,8 +72,8 @@ onBeforeUnmount(() => {
       class="theme-switch__trigger"
       icon-only
       size="sm"
-      :title="`主题：${options.find((option) => option.value === mode)?.label}`"
-      aria-label="切换显示主题"
+      :title="t('theme.title', { mode: t(`theme.${options.find((option) => option.value === mode)?.key}`) })"
+      :aria-label="t('theme.aria')"
       aria-haspopup="menu"
       :aria-expanded="open"
       @click="open ? closeMenu() : openMenu()"
@@ -79,7 +81,7 @@ onBeforeUnmount(() => {
       <component :is="currentIcon" :size="16" />
     </AppButton>
     <Transition name="theme-menu">
-      <AppMenu v-if="open" class="theme-switch__menu" aria-label="显示主题">
+      <AppMenu v-if="open" class="theme-switch__menu" :aria-label="t('theme.menu')">
         <AppButton
           v-for="(option, index) in options"
           :key="option.value"
@@ -92,7 +94,7 @@ onBeforeUnmount(() => {
           @click="selectMode(option.value)"
         >
           <component :is="option.icon" :size="15" />
-          <span>{{ option.label }}</span>
+          <span>{{ t(`theme.${option.key}`) }}</span>
           <Check :size="14" :class="{ hidden: mode !== option.value }" />
         </AppButton>
       </AppMenu>

@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
+from app.core.errors import LocalizedValueError
 from app.core.rate_limit import hashed_identifier, increment_fixed_window
 from app.models import User
 from app.providers.tencent_ses import send_verification_email
@@ -20,7 +21,7 @@ IP_HOURLY_LIMIT = 20
 MAX_VERIFY_ATTEMPTS = 5
 
 
-class EmailVerificationError(ValueError):
+class EmailVerificationError(LocalizedValueError):
     pass
 
 
@@ -49,7 +50,7 @@ def _keys(email: str) -> tuple[str, str, str, str]:
 
 async def _check_limit(redis, key: str, limit: int, message: str) -> None:
     if await increment_fixed_window(redis, key, 3600) > limit:
-        raise EmailVerificationError(message)
+        raise EmailVerificationError(message, error_key="rate_limited")
 
 
 async def issue_registration_code(
@@ -66,13 +67,13 @@ async def issue_registration_code(
     try:
         await verify_captcha(captcha_token, ip_address, "register_email")
     except TurnstileVerificationError as exc:
-        raise EmailVerificationError(str(exc)) from exc
+        raise EmailVerificationError(str(exc), error_key="captcha_failed") from exc
     if await db.scalar(select(User.id).where(User.email == email)):
-        raise EmailVerificationError("邮箱已注册")
+        raise EmailVerificationError("邮箱已注册", error_key="account_exists")
 
     code_key, attempts_key, cooldown_key, email_limit_key = _keys(email)
     if not await redis.set(cooldown_key, "1", ex=COOLDOWN_SECONDS, nx=True):
-        raise EmailVerificationError("请稍后再发送验证码")
+        raise EmailVerificationError("请稍后再发送验证码", error_key="code_cooldown")
     try:
         await _check_limit(
             redis,
@@ -94,7 +95,7 @@ async def issue_registration_code(
         raise
     except Exception as exc:
         await redis.delete(code_key, attempts_key, cooldown_key)
-        raise EmailVerificationError("验证码邮件发送失败，请稍后重试") from exc
+        raise EmailVerificationError("验证码邮件发送失败，请稍后重试", error_key="email_send_failed") from exc
 
 
 async def consume_registration_code(redis, email: str, code: str) -> None:
@@ -102,7 +103,7 @@ async def consume_registration_code(redis, email: str, code: str) -> None:
     code_key, attempts_key, cooldown_key, _ = _keys(email)
     stored = await redis.get(code_key)
     if stored is None:
-        raise EmailVerificationError("验证码已过期，请重新获取")
+        raise EmailVerificationError("验证码已过期，请重新获取", error_key="code_expired")
     if isinstance(stored, bytes):
         stored = stored.decode()
     attempts = await redis.incr(attempts_key)
@@ -111,6 +112,6 @@ async def consume_registration_code(redis, email: str, code: str) -> None:
     if not hmac.compare_digest(stored, _digest(email, code)):
         if attempts >= MAX_VERIFY_ATTEMPTS:
             await redis.delete(code_key, attempts_key)
-            raise EmailVerificationError("验证码错误次数过多，请重新获取")
-        raise EmailVerificationError("验证码错误")
+            raise EmailVerificationError("验证码错误次数过多，请重新获取", error_key="code_attempts_exceeded")
+        raise EmailVerificationError("验证码错误", error_key="code_invalid")
     await redis.delete(code_key, attempts_key, cooldown_key)

@@ -1,3 +1,4 @@
+import { i18n } from '../i18n/index'
 import { createAudioGeneration, createImageGeneration, createVideoGeneration } from '../api/generations'
 import { streamReversePrompt } from '../api/reversals'
 import { buildAudioRequest, normalizeAudioSettings } from '../config/audioModels'
@@ -5,6 +6,8 @@ import { mergeProductProfile, parseProductProfile } from '../config/canvas/ecomm
 import { maxProductReferenceImages } from '../config/canvas/connectionRules'
 import { buildImageRequest, normalizeImageSettings } from '../config/imageModels'
 import { buildVideoRequest, normalizeVideoSettings } from '../config/videoModels'
+
+const { t } = i18n.global
 
 function baseRequest(context, request) {
   return { workspace_id: context.workspaceId, node_id: context.nodeId, ...request }
@@ -61,7 +64,7 @@ const textAdapter = {
       ? context.imageReferences.slice(0, maxProductReferenceImages)
       : []
     const primaryReference = productReferences[0] || context.primaryReference
-    if (!primaryReference?.data.asset) throw new Error('请先上传参考图片')
+    if (!primaryReference?.data.asset) throw new Error(t('canvas.uploadReferenceFirst'))
     return baseRequest(context, {
       model: context.textModel.id,
       media_type: context.mediaType,
@@ -76,7 +79,7 @@ const textAdapter = {
   submit(payload, context) {
     const productRecognition = context.operation === 'productRecognition'
     return context.runTextTask(streamReversePrompt, payload, {
-      failureMessage: productRecognition ? '商品识别失败' : '反推生成失败',
+      failureMessage: productRecognition ? t('canvas.productRecognitionFailed') : t('canvas.reverseFailed'),
       preservePartial: !productRecognition,
       onSuccess: (content) => productRecognition
         ? { product: mergeProductProfile(context.data.product, parseProductProfile(content)), workflowStep: 'visual' }
@@ -94,6 +97,6 @@ export const generationAdapters = {
 
 export function getGenerationAdapter(type) {
   const adapter = generationAdapters[type]
-  if (!adapter) throw new Error(`生成类型 ${type} 未注册适配器`)
+  if (!adapter) throw new Error(t('canvas.adapterMissing', { p0: type }))
   return adapter
 }

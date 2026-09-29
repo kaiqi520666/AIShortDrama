@@ -1,5 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { formatDateTime } from '../../i18n'
 import { Copy, Pencil, Play, Plus, Trash2 } from 'lucide-vue-next'
 import { useRouter } from 'vue-router'
 import WorkspaceCreateDialog from '../../components/workspace/WorkspaceCreateDialog.vue'
@@ -13,6 +15,7 @@ import { getApiErrorMessage } from '../../utils/apiError'
 import { buildOssImageUrl } from '../../utils/ossImage'
 
 const router = useRouter()
+const { t, locale, n } = useI18n()
 const store = useWorkspaceStore()
 const toast = useGlobalToast()
 const { confirm } = useGlobalConfirm()
@@ -20,13 +23,13 @@ const { prompt } = useGlobalPrompt()
 const sortBy = ref('created')
 const createDialogOpen = ref(false)
 const creating = ref(false)
-const sortOptions = [
-  { value: 'updated', label: '最近更新' },
-  { value: 'created', label: '最近创建' },
-  { value: 'name', label: '名称排序' },
-]
+const sortOptions = computed(() => [
+  { value: 'updated', label: t('workspace.updated') },
+  { value: 'created', label: t('workspace.created') },
+  { value: 'name', label: t('workspace.nameSort') },
+])
 const displayedItems = computed(() => store.items.toSorted((a, b) => {
-  if (sortBy.value === 'name') return a.name.localeCompare(b.name, 'zh-CN')
+  if (sortBy.value === 'name') return a.name.localeCompare(b.name, locale.value)
   const key = sortBy.value === 'created' ? 'created_at' : 'updated_at'
   return new Date(b[key]) - new Date(a[key])
 }))
@@ -42,7 +45,7 @@ async function run(action, successMessage) {
     if (successMessage) toast.success(successMessage)
     return result
   } catch (error) {
-    toast.error(getApiErrorMessage(error, '操作失败'))
+    toast.error(getApiErrorMessage(error, t('common.operationFailed')))
   }
 }
 
@@ -60,27 +63,27 @@ async function create(workspaceType) {
 
 async function rename(workspace) {
   const name = await prompt({
-    title: '重命名项目',
-    message: '输入新的项目名称',
+    title: t('workspace.rename'),
+    message: t('workspace.renameDescription'),
     value: workspace.name,
-    placeholder: '项目名称',
+    placeholder: t('workspace.name'),
     maxLength: 100,
   })
-  if (name && name !== workspace.name) await run(() => store.rename(workspace.id, name), '项目名称已更新')
+  if (name && name !== workspace.name) await run(() => store.rename(workspace.id, name), t('workspace.renamed'))
 }
 
 async function duplicate(workspace) {
-  await run(() => store.duplicate(workspace.id), '项目副本已创建')
+  await run(() => store.duplicate(workspace.id), t('workspace.duplicated'))
 }
 
 async function remove(workspace) {
   const accepted = await confirm({
-    title: '删除项目',
-    message: `确定删除“${workspace.name}”吗？此操作无法撤销。`,
-    confirmText: '删除',
+    title: t('workspace.delete'),
+    message: t('workspace.deleteConfirmation', { name: workspace.name }),
+    confirmText: t('common.delete'),
     tone: 'danger',
   })
-  if (accepted) await run(() => store.remove(workspace.id), '项目已删除')
+  if (accepted) await run(() => store.remove(workspace.id), t('workspace.deleted'))
 }
 
 onMounted(() => store.load())
@@ -89,16 +92,16 @@ onMounted(() => store.load())
 <template>
   <section class="workspace-content">
     <div class="workspace-title-row">
-      <div><span class="section-kicker">PROJECT LIBRARY</span><h1>创作项目</h1><p>从上次停下的位置继续推进镜头</p></div>
-      <div class="workspace-filters"><span>{{ store.items.length }} 个项目</span><AppSelect v-model="sortBy" :options="sortOptions" aria-label="项目排序" /></div>
+      <div><span class="section-kicker">{{ t('workspace.library') }}</span><h1>{{ t('workspace.title') }}</h1><p>{{ t('workspace.description') }}</p></div>
+      <div class="workspace-filters"><span>{{ t('workspace.count', { count: n(store.items.length) }) }}</span><AppSelect v-model="sortBy" :options="sortOptions" :aria-label="t('workspace.sort')" /></div>
     </div>
     <p v-if="store.error" class="workspace-notice">{{ store.error }}</p>
-    <EmptyState v-if="store.loading" class="workspace-empty" title="正在加载项目" loading />
+    <EmptyState v-if="store.loading" class="workspace-empty" :title="t('workspace.loading')" loading />
     <div v-else class="workspace-grid">
-      <AppButton class="workspace-create-card" aria-label="新建项目" @click="createDialogOpen = true">
+      <AppButton class="workspace-create-card" :aria-label="t('workspace.new')" @click="createDialogOpen = true">
         <span class="workspace-create-icon"><Plus :size="22" /></span>
-        <strong>新建项目</strong>
-        <small>创建新的工作流画布</small>
+        <strong>{{ t('workspace.new') }}</strong>
+        <small>{{ t('workspace.newDescription') }}</small>
       </AppButton>
       <article v-for="workspace in displayedItems" :key="workspace.id" class="workspace-card" @dblclick="router.push({ name: 'canvas', params: { workspaceId: workspace.id } })">
         <AppButton class="workspace-open-area" @click="router.push({ name: 'canvas', params: { workspaceId: workspace.id } })">
@@ -107,13 +110,13 @@ onMounted(() => store.load())
             <b>{{ workspaceNumbers.get(workspace.id) }}</b><i></i><Play :size="17" fill="currentColor" />
           </span>
           <span class="workspace-card-name">{{ workspace.name }}</span>
-          <small>{{ getWorkspaceType(workspace.workspace_type).label }}</small>
+          <small>{{ t(`workspace.types.${getWorkspaceType(workspace.workspace_type).id}.label`) }}</small>
         </AppButton>
         <footer>
-          <time>{{ new Date(workspace.created_at).toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</time>
-          <AppButton icon-only size="sm" title="重命名" @click="rename(workspace)"><Pencil :size="14" /></AppButton>
-          <AppButton icon-only size="sm" title="复制" @click="duplicate(workspace)"><Copy :size="14" /></AppButton>
-          <AppButton icon-only size="sm" title="删除" variant="danger" @click="remove(workspace)"><Trash2 :size="14" /></AppButton>
+          <time>{{ formatDateTime(workspace.created_at, { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }) }}</time>
+          <AppButton icon-only size="sm" :title="t('common.rename')" @click="rename(workspace)"><Pencil :size="14" /></AppButton>
+          <AppButton icon-only size="sm" :title="t('common.copy')" @click="duplicate(workspace)"><Copy :size="14" /></AppButton>
+          <AppButton icon-only size="sm" :title="t('common.delete')" variant="danger" @click="remove(workspace)"><Trash2 :size="14" /></AppButton>
         </footer>
       </article>
     </div>

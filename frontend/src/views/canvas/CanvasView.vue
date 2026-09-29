@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, markRaw, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { VueFlow, useVueFlow } from '@vue-flow/core'
@@ -29,6 +30,8 @@ import { useCanvasStore } from '../../stores/canvas'
 import { useCanvasDropUpload } from './useCanvasDropUpload'
 import { useCanvasGrouping } from './useCanvasGrouping'
 import { useCanvasShortcuts } from './useCanvasShortcuts'
+
+const { t } = useI18n()
 
 const store = useCanvasStore()
 const authStore = useAuthStore()
@@ -182,31 +185,31 @@ function handleConnect(connection) {
   const target = nodes.value.find((node) => node.id === connection.target)
   if ((source?.data.workflowId || target?.data.workflowId) && !isEditableProductConnection(source, target)) {
     connectionSource.value = null
-    return toast.warning('自动流程节点的连接由系统管理')
+    return toast.warning(t('canvas.managedConnections'))
   }
   const incomingConnections = store.edges
     .filter((edge) => edge.target === target?.id)
     .map((edge) => ({ targetHandle: edge.targetHandle, type: nodes.value.find((node) => node.id === edge.source)?.type }))
   const targetHandle = connection.targetHandle || inferTargetHandle(source, target?.type, incomingConnections)
   const normalizedConnection = targetHandle ? { ...connection, targetHandle } : connection
-  const error = source && target ? getConnectionError(source.type, target.type, incomingConnections.map(({ type }) => type).filter(Boolean), store.workspaceType, targetHandle, incomingConnections) : '节点不存在'
+  const error = source && target ? getConnectionError(source.type, target.type, incomingConnections.map(({ type }) => type).filter(Boolean), store.workspaceType, targetHandle, incomingConnections) : t('canvas.nodeMissing')
   if (error) toast.warning(error)
-  else if (!store.addEdge(normalizedConnection)) toast.warning('节点已经连接')
+  else if (!store.addEdge(normalizedConnection)) toast.warning(t('canvas.alreadyConnected'))
   connectionSource.value = null
 }
 
 function connectSelected() {
-  if (selectedNodes.value.length !== 2) return toast.warning('请选择两个节点后连接')
+  if (selectedNodes.value.length !== 2) return toast.warning(t('canvas.selectTwoNodes'))
   let [source, target] = [...selectedNodes.value].sort((a, b) => a.position.x - b.position.x)
   if (!canConnect(source.type, target.type, store.workspaceType) && canConnect(target.type, source.type, store.workspaceType)) [source, target] = [target, source]
-  if ((source.data?.workflowId || target.data?.workflowId) && !isEditableProductConnection(source, target)) return toast.warning('自动流程节点的连接由系统管理')
+  if ((source.data?.workflowId || target.data?.workflowId) && !isEditableProductConnection(source, target)) return toast.warning(t('canvas.managedConnections'))
   const incomingConnections = store.edges
     .filter((edge) => edge.target === target.id)
     .map((edge) => ({ targetHandle: edge.targetHandle, type: nodes.value.find((node) => node.id === edge.source)?.type }))
   const targetHandle = inferTargetHandle(source, target.type, incomingConnections)
   const error = getConnectionError(source.type, target.type, incomingConnections.map(({ type }) => type).filter(Boolean), store.workspaceType, targetHandle, incomingConnections)
   if (error) return toast.warning(error)
-  if (!store.addEdge({ source: source.id, target: target.id, ...(targetHandle ? { targetHandle } : {}) })) toast.warning('节点已经连接')
+  if (!store.addEdge({ source: source.id, target: target.id, ...(targetHandle ? { targetHandle } : {}) })) toast.warning(t('canvas.alreadyConnected'))
 }
 
 function handleConnectEnd(event) {
@@ -224,7 +227,7 @@ function handleConnectEnd(event) {
 
 function openEdgeContextMenu({ event, edge }) {
   event.preventDefault()
-  if (edge.workflowId) return toast.warning('自动流程连接不可删除')
+  if (edge.workflowId) return toast.warning(t('canvas.managedConnectionDelete'))
   contextMenu.value = { x: event.clientX, y: event.clientY, edgeId: edge.id }
 }
 
@@ -265,11 +268,11 @@ function createPaneNode(option) {
 async function deleteAssetNode(id) {
   const node = nodes.value.find((item) => item.id === id)
   if (!node?.data.workflowId) return store.deleteNode(id)
-  if (!node.data.workflowRoot) return toast.warning('请从商品创作或服饰穿搭主节点删除整个流程')
+  if (!node.data.workflowRoot) return toast.warning(t('canvas.deleteFromWorkflowRoot'))
   const approved = await confirm({
-    title: `删除整个${node.data.workflowType === 'product' ? '商品创作' : '服饰穿搭'}流程`,
-    message: '将删除这条流程在画布中的全部节点和生成结果，素材库文件不会删除。',
-    confirmText: '删除整个流程',
+    title: t('canvas.deleteNamedWorkflow', { p0: node.data.workflowType === 'product' ? t('canvas.productCreation') : t('canvas.outfit') }),
+    message: t('canvas.deleteWorkflowConfirm'),
+    confirmText: t('canvas.deleteWorkflow'),
     tone: 'danger',
   })
   if (approved) store.deleteWorkflow(node.data.workflowId)
@@ -338,10 +341,10 @@ watch(() => store.saveConflict, async (conflict) => {
   if (!conflict) return
   cancelScheduledSave()
   const shouldReload = await confirm({
-    title: '画布内容已更新',
-    message: '该画布已在其他页面保存。当前页面已停止自动保存，刷新后可继续编辑。',
-    confirmText: '刷新画布',
-    cancelText: '暂不刷新',
+    title: t('canvas.canvasUpdated'),
+    message: t('canvas.canvasConflictDescription'),
+    confirmText: t('canvas.refreshCanvas'),
+    cancelText: t('canvas.notNow'),
     tone: 'danger',
   })
   if (shouldReload) window.location.reload()
@@ -352,7 +355,7 @@ onMounted(async () => {
   try {
     await store.loadWorkspace(props.workspace)
   } catch (error) {
-    toast.error(error.message || '画布版本不受支持')
+    toast.error(error.message || t('canvas.unsupportedCanvasVersion'))
     emit('back')
     return
   }
@@ -374,7 +377,7 @@ onBeforeUnmount(() => {
     <input ref="uploadInput" type="file" :accept="pendingUpload ? uploadRules[pendingUpload.type].accept : ''" hidden @change="handlePaneUpload" />
     <CanvasHeader
       :workspace-name="workspace.name"
-      :username="authStore.user?.username || '访客'"
+      :username="authStore.user?.username || t('canvas.guest')"
       :credit-balance="authStore.user?.credit_balance || 0"
       :credit-frozen="authStore.user?.credit_frozen || 0"
       :save-status="store.saveStatus"
@@ -445,9 +448,9 @@ onBeforeUnmount(() => {
     </Transition>
 
     <aside class="canvas-side-tools">
-      <AppButton class="asset-toggle-button" title="资产" @click="assetsVisible = !assetsVisible"><Library :size="17" /><span>资产</span></AppButton>
-      <AppTooltip text="整理画布"><AppButton icon-only aria-label="整理画布" @click="fitView({ padding: 0.24, duration: 350 })"><Scan :size="17" /></AppButton></AppTooltip>
-      <AppTooltip text="切换小地图"><AppButton icon-only aria-label="切换小地图" @click="minimapVisible = !minimapVisible"><Maximize2 :size="17" /></AppButton></AppTooltip>
+      <AppButton class="asset-toggle-button" :title="t('canvas.assets')" @click="assetsVisible = !assetsVisible"><Library :size="17" /><span>{{ t('canvas.assets') }}</span></AppButton>
+      <AppTooltip :text="t('canvas.arrangeCanvas')"><AppButton icon-only :aria-label="t('canvas.arrangeCanvas')" @click="fitView({ padding: 0.24, duration: 350 })"><Scan :size="17" /></AppButton></AppTooltip>
+      <AppTooltip :text="t('canvas.toggleMinimap')"><AppButton icon-only :aria-label="t('canvas.toggleMinimap')" @click="minimapVisible = !minimapVisible"><Maximize2 :size="17" /></AppButton></AppTooltip>
       <span>{{ Math.round(viewport.zoom * 100) }}%</span>
     </aside>
 
@@ -455,41 +458,42 @@ onBeforeUnmount(() => {
       <AppInput
         v-if="selectedGroup"
         class="selection-group-title"
-        :model-value="selectedGroup.title || '未命名编组'"
-        aria-label="编组标题"
+        :model-value="selectedGroup.title"
+        :placeholder="t('canvas.unnamedGroup')"
+        :aria-label="t('canvas.groupTitle')"
         @input="store.renameGroup(selectedGroup.id, $event.target.value)"
         @blur="store.renameGroup(selectedGroup.id, $event.target.value)"
         @keydown.enter="$event.target.blur()"
         @keydown.stop
       />
-      <span>{{ selectedGroup ? selectedGroup.nodeIds.length : selectedNodes.length }} 个节点</span>
-      <AppButton v-if="selectedNodes.length > 1 && !selectedGroup && !selectedPartialGroup && !selectedContainsWorkflow" size="sm" title="编组" @click="store.groupSelected"><Group :size="15" />编组</AppButton>
-      <AppButton v-if="selectedPartialGroup" size="sm" title="移出编组" @click="ungroupSelected"><Ungroup :size="15" />移出编组</AppButton>
-      <AppButton v-if="selectedGroup" size="sm" title="取消编组" @click="ungroupSelected"><Ungroup :size="15" />取消编组</AppButton>
+      <span>{{ t('canvas.nodeCount', { p0: selectedGroup ? selectedGroup.nodeIds.length : selectedNodes.length }) }}</span>
+      <AppButton v-if="selectedNodes.length > 1 && !selectedGroup && !selectedPartialGroup && !selectedContainsWorkflow" size="sm" :title="t('canvas.group')" @click="store.groupSelected"><Group :size="15" />{{ t('canvas.group') }}</AppButton>
+      <AppButton v-if="selectedPartialGroup" size="sm" :title="t('canvas.removeFromGroup')" @click="ungroupSelected"><Ungroup :size="15" />{{ t('canvas.removeFromGroup') }}</AppButton>
+      <AppButton v-if="selectedGroup" size="sm" :title="t('canvas.ungroup')" @click="ungroupSelected"><Ungroup :size="15" />{{ t('canvas.ungroup') }}</AppButton>
     </div>
 
-    <nav class="canvas-bottom-toolbar" aria-label="画布快捷工具">
-      <AppTooltip text="新增节点">
-        <AppButton class="canvas-add-button" icon-only variant="primary" aria-label="新增节点" @click="openGlobalMenu"><Plus :size="19" /></AppButton>
+    <nav class="canvas-bottom-toolbar" :aria-label="t('canvas.canvasTools')">
+      <AppTooltip :text="t('canvas.newNode')">
+        <AppButton class="canvas-add-button" icon-only variant="primary" :aria-label="t('canvas.newNode')" @click="openGlobalMenu"><Plus :size="19" /></AppButton>
       </AppTooltip>
       <div class="canvas-tool-picker" @pointerdown.stop>
-        <AppTooltip :text="canvasTool === 'move' ? '移动工具 (V)' : '抓手工具 (H)'">
-          <AppButton class="canvas-tool-button" :class="{ active: toolMenuOpen }" icon-only aria-label="切换画布工具" aria-haspopup="menu" :aria-expanded="toolMenuOpen" @click="toggleToolMenu">
+        <AppTooltip :text="canvasTool === 'move' ? t('canvas.moveToolShortcut') : t('canvas.handToolShortcut')">
+          <AppButton class="canvas-tool-button" :class="{ active: toolMenuOpen }" icon-only :aria-label="t('canvas.switchTool')" aria-haspopup="menu" :aria-expanded="toolMenuOpen" @click="toggleToolMenu">
             <MousePointer2 v-if="canvasTool === 'move'" :size="18" />
             <Hand v-else :size="18" />
           </AppButton>
         </AppTooltip>
         <AppMenu v-if="toolMenuOpen" class="canvas-tool-menu" @pointerdown.stop>
-          <AppButton :class="{ active: canvasTool === 'move' }" @click="selectCanvasTool('move')"><MousePointer2 :size="17" /><strong>移动</strong><kbd>V</kbd></AppButton>
-          <AppButton :class="{ active: canvasTool === 'hand' }" @click="selectCanvasTool('hand')"><Hand :size="17" /><strong>抓手工具</strong><kbd>H</kbd></AppButton>
+          <AppButton :class="{ active: canvasTool === 'move' }" @click="selectCanvasTool('move')"><MousePointer2 :size="17" /><strong>{{ t('canvas.move') }}</strong><kbd>V</kbd></AppButton>
+          <AppButton :class="{ active: canvasTool === 'hand' }" @click="selectCanvasTool('hand')"><Hand :size="17" /><strong>{{ t('canvas.handTool') }}</strong><kbd>H</kbd></AppButton>
         </AppMenu>
       </div>
       <span class="canvas-bottom-divider"></span>
-      <AppTooltip text="快捷键">
-        <AppButton class="canvas-bottom-secondary shortcut-toggle" icon-only aria-label="快捷键" :aria-pressed="shortcutPanelOpen" @click="shortcutPanelOpen = !shortcutPanelOpen"><Keyboard :size="18" /></AppButton>
+      <AppTooltip :text="t('canvas.shortcuts')">
+        <AppButton class="canvas-bottom-secondary shortcut-toggle" icon-only :aria-label="t('canvas.shortcuts')" :aria-pressed="shortcutPanelOpen" @click="shortcutPanelOpen = !shortcutPanelOpen"><Keyboard :size="18" /></AppButton>
       </AppTooltip>
-      <AppTooltip text="教程（即将上线）">
-        <AppButton class="canvas-bottom-secondary" icon-only aria-label="教程（即将上线）"><CircleHelp :size="18" /></AppButton>
+      <AppTooltip :text="t('canvas.tutorialSoon')">
+        <AppButton class="canvas-bottom-secondary" icon-only :aria-label="t('canvas.tutorialSoon')"><CircleHelp :size="18" /></AppButton>
       </AppTooltip>
     </nav>
 
@@ -506,32 +510,32 @@ onBeforeUnmount(() => {
     />
 
     <AppMenu v-if="contextMenu" class="context-menu" :class="{ 'context-menu--pane': contextMenu.kind === 'pane' }" :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }" @pointerdown.stop>
-      <AppButton v-if="contextMenu.edgeId" variant="danger" @click="runContextAction('deleteEdge')"><Trash2 :size="15" />删除连接</AppButton>
+      <AppButton v-if="contextMenu.edgeId" variant="danger" @click="runContextAction('deleteEdge')"><Trash2 :size="15" />{{ t('canvas.deleteConnection') }}</AppButton>
       <template v-else-if="contextMenu.kind === 'pane'">
-        <p class="context-menu-label">上传</p>
-        <AppButton @click="chooseUpload('image')"><ImageIcon :size="15" /><span>图片</span></AppButton>
-        <AppButton @click="chooseUpload('video')"><Video :size="15" /><span>视频</span></AppButton>
-        <AppButton @click="chooseUpload('audio')"><Music2 :size="15" /><span>音频</span></AppButton>
+        <p class="context-menu-label">{{ t('canvas.upload') }}</p>
+        <AppButton @click="chooseUpload('image')"><ImageIcon :size="15" /><span>{{ t('canvas.image') }}</span></AppButton>
+        <AppButton @click="chooseUpload('video')"><Video :size="15" /><span>{{ t('canvas.video') }}</span></AppButton>
+        <AppButton @click="chooseUpload('audio')"><Music2 :size="15" /><span>{{ t('canvas.audio') }}</span></AppButton>
         <span class="context-menu-divider"></span>
         <div class="context-submenu-trigger" @mouseenter="contextMenu.submenuOpen = true" @mouseleave="contextMenu.submenuOpen = false">
-          <AppButton @click="contextMenu.submenuOpen = true"><Plus :size="15" /><span>添加节点</span><ChevronRight class="context-menu-chevron" :size="14" /></AppButton>
+          <AppButton @click="contextMenu.submenuOpen = true"><Plus :size="15" /><span>{{ t('canvas.addNode') }}</span><ChevronRight class="context-menu-chevron" :size="14" /></AppButton>
           <AppMenu v-if="contextMenu.submenuOpen" class="context-submenu" :class="{ 'context-submenu--left': submenuOpensLeft }" @pointerdown.stop>
             <NodeTypeMenu @select="createPaneNode" />
           </AppMenu>
         </div>
         <span class="context-menu-divider"></span>
-        <AppButton :disabled="!canUndo" @click="undo"><Undo2 :size="15" /><span>撤销</span><kbd>Ctrl+Z</kbd></AppButton>
-        <AppButton :disabled="!canRedo" @click="redo"><Redo2 :size="15" /><span>重做</span><kbd>Ctrl+Y</kbd></AppButton>
+        <AppButton :disabled="!canUndo" @click="undo"><Undo2 :size="15" /><span>{{ t('canvas.undo') }}</span><kbd>Ctrl+Z</kbd></AppButton>
+        <AppButton :disabled="!canRedo" @click="redo"><Redo2 :size="15" /><span>{{ t('canvas.redo') }}</span><kbd>Ctrl+Y</kbd></AppButton>
         <span class="context-menu-divider"></span>
-        <AppButton @click="pasteFromMenu"><Clipboard :size="15" /><span>粘贴</span><kbd>Ctrl+V</kbd></AppButton>
+        <AppButton @click="pasteFromMenu"><Clipboard :size="15" /><span>{{ t('canvas.paste') }}</span><kbd>Ctrl+V</kbd></AppButton>
       </template>
       <template v-else>
-        <AppButton v-if="contextNodeIds.length > 1 && !contextCompleteGroup && !contextPartialGroup && !contextContainsWorkflow" @click="groupContextNodes"><Group :size="15" />编组</AppButton>
-        <AppButton v-if="contextCompleteGroup" @click="ungroupContextNodes"><Ungroup :size="15" />取消编组</AppButton>
-        <AppButton v-if="contextPartialGroup" @click="removeContextNodesFromGroup"><Ungroup :size="15" />移出编组</AppButton>
-        <AppButton v-if="!contextContainsWorkflow" @click="duplicateContextNodes"><Copy :size="15" />创建副本</AppButton>
+        <AppButton v-if="contextNodeIds.length > 1 && !contextCompleteGroup && !contextPartialGroup && !contextContainsWorkflow" @click="groupContextNodes"><Group :size="15" />{{ t('canvas.group') }}</AppButton>
+        <AppButton v-if="contextCompleteGroup" @click="ungroupContextNodes"><Ungroup :size="15" />{{ t('canvas.ungroup') }}</AppButton>
+        <AppButton v-if="contextPartialGroup" @click="removeContextNodesFromGroup"><Ungroup :size="15" />{{ t('canvas.removeFromGroup') }}</AppButton>
+        <AppButton v-if="!contextContainsWorkflow" @click="duplicateContextNodes"><Copy :size="15" />{{ t('canvas.duplicate') }}</AppButton>
         <span v-if="contextNodeIds.length > 1" class="context-menu-divider"></span>
-        <AppButton v-if="!contextContainsWorkflow || contextWorkflowRoot" variant="danger" @click="deleteContextNodes"><Trash2 :size="15" />{{ contextWorkflowRoot ? '删除整个流程' : contextNodeIds.length > 1 ? `删除所选（${contextNodeIds.length}）` : '删除' }}</AppButton>
+        <AppButton v-if="!contextContainsWorkflow || contextWorkflowRoot" variant="danger" @click="deleteContextNodes"><Trash2 :size="15" />{{ contextWorkflowRoot ? t('canvas.deleteWorkflow') : contextNodeIds.length > 1 ? t('canvas.deleteSelectedCount', { p0: contextNodeIds.length }) : t('canvas.delete') }}</AppButton>
       </template>
     </AppMenu>
   </main>

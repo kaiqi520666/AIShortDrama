@@ -29,10 +29,10 @@ function settleConfirm(result) {
 function confirm(options) {
   if (confirmResolver) settleConfirm(false)
   confirmState.value = {
-    title: '确认操作',
+    title: '',
     message: '',
-    confirmText: '确认',
-    cancelText: '取消',
+    confirmText: '',
+    cancelText: '',
     tone: 'default',
     ...options,
   }
@@ -48,12 +48,12 @@ function settlePrompt(result) {
 function prompt(options) {
   if (promptResolver) settlePrompt(null)
   promptState.value = {
-    title: '输入内容',
+    title: '',
     message: '',
     value: '',
     placeholder: '',
-    confirmText: '保存',
-    cancelText: '取消',
+    confirmText: '',
+    cancelText: '',
     maxLength: 100,
     ...options,
   }

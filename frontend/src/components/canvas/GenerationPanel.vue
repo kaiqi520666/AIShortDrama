@@ -1,8 +1,10 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import { ArrowUp, Check, ChevronDown, Clapperboard, Coins, Eye, EyeOff, FileText, Image, Images, LoaderCircle, Music2, Package, Shirt, Video as VideoIcon, WandSparkles } from 'lucide-vue-next'
 import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
+import { canvasLabel } from '../../i18n/canvas'
 import { useGlobalConfirm, useGlobalToast } from '../../composables/useGlobalUI'
 import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import { useCanvasStore } from '../../stores/canvas'
@@ -19,6 +21,8 @@ import ImageGenerationControls from './ImageGenerationControls.vue'
 import PromptReferenceEditor from './PromptReferenceEditor.vue'
 import TextGenerationControls from './TextGenerationControls.vue'
 import VideoGenerationSettings from './VideoGenerationSettings.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   nodeId: { type: String, required: true },
@@ -186,7 +190,7 @@ onBeforeUnmount(() => {
 <template>
   <section v-if="!data.assetSource && (type !== 'text' || data.textMode === 'task')" class="generation-panel nodrag nowheel" :class="{ embedded }" @pointerdown.stop>
     <div v-if="displayReferences.length" class="reference-strip">
-      <div v-for="reference in displayReferences" :key="reference.key" class="reference-item" :class="{ 'is-disabled': !reference.enabled }" :title="`${reference.label} · ${reference.enabled ? '已启用' : '已禁用'}`" :aria-label="`${reference.label} · ${reference.enabled ? '已启用' : '已禁用'}`">
+      <div v-for="reference in displayReferences" :key="reference.key" class="reference-item" :class="{ 'is-disabled': !reference.enabled }" :title="`${reference.label} · ${reference.enabled ? t('canvas.enabled') : t('canvas.disabled')}`" :aria-label="`${reference.label} · ${reference.enabled ? t('canvas.enabled') : t('canvas.disabled')}`">
         <AppImageHoverPreview v-if="reference.node.type === 'image' && reference.node.data.asset" :src="reference.node.data.asset" :preview-src="buildOssImageUrl(reference.node.data.asset, { width: 1200, quality: 90 })" :alt="reference.label">
           <img :src="buildOssImageUrl(reference.node.data.asset)" alt="" />
         </AppImageHoverPreview>
@@ -205,8 +209,8 @@ onBeforeUnmount(() => {
           icon-only
           size="sm"
           variant="ghost"
-          :title="`${reference.enabled ? '禁用' : '启用'}${reference.label}`"
-          :aria-label="`${reference.enabled ? '禁用' : '启用'}${reference.label}`"
+          :title="`${reference.enabled ? t('canvas.disable') : t('canvas.enable')} ${reference.label}`"
+          :aria-label="`${reference.enabled ? t('canvas.disable') : t('canvas.enable')} ${reference.label}`"
           :aria-pressed="reference.enabled"
           @pointerdown.stop
           @click.stop="toggleReference(reference)"
@@ -217,10 +221,10 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div v-if="isStoryboardImage" class="storyboard-prompt-tabs" role="tablist" aria-label="分镜提示词类型">
-      <AppButton :class="{ active: storyboardPromptView === 'image' }" role="tab" :aria-selected="storyboardPromptView === 'image'" @click="storyboardPromptView = 'image'"><Clapperboard :size="14" />分镜图</AppButton>
-      <AppButton :class="{ active: storyboardPromptView === 'video' }" role="tab" :aria-selected="storyboardPromptView === 'video'" @click="storyboardPromptView = 'video'"><VideoIcon :size="14" />视频脚本</AppButton>
-      <span>{{ data.storyboardShotCount }} 镜头 · {{ data.storyboardDuration }}s</span>
+    <div v-if="isStoryboardImage" class="storyboard-prompt-tabs" role="tablist" :aria-label="t('canvas.storyboardPromptType')">
+      <AppButton :class="{ active: storyboardPromptView === 'image' }" role="tab" :aria-selected="storyboardPromptView === 'image'" @click="storyboardPromptView = 'image'"><Clapperboard :size="14" />{{ t('canvas.storyboardImage') }}</AppButton>
+      <AppButton :class="{ active: storyboardPromptView === 'video' }" role="tab" :aria-selected="storyboardPromptView === 'video'" @click="storyboardPromptView = 'video'"><VideoIcon :size="14" />{{ t('canvas.videoScript') }}</AppButton>
+      <span>{{ t('canvas.shotDuration', { p0: data.storyboardShotCount, p1: data.storyboardDuration }) }}</span>
     </div>
 
     <PromptReferenceEditor
@@ -228,8 +232,8 @@ onBeforeUnmount(() => {
       :model-value="promptParts"
       :references="mentionReferences"
       :reference-type="type"
-      :reference-label="type === 'video' ? '素材' : type === 'audio' ? '音频' : '图片'"
-      :placeholder="nodeDefinitions[type].placeholder"
+      :reference-label="type === 'video' ? t('canvas.media') : type === 'audio' ? t('canvas.audio') : t('canvas.image')"
+      :placeholder="canvasLabel(nodeDefinitions[type].placeholder)"
       @update:model-value="updatePrompt"
       @pointerdown="settingsOpen = false; modelOpen = false"
     />
@@ -238,15 +242,15 @@ onBeforeUnmount(() => {
       class="storyboard-video-prompt nodrag nopan"
       :model-value="data.videoPrompt"
       :maxlength="promptLimit"
-      placeholder="输入 Seedance 视频提示词…"
-      aria-label="视频脚本"
+      :placeholder="t('canvas.seedancePlaceholder')"
+      :aria-label="t('canvas.videoScript')"
       @input="updateVideoPrompt"
       @pointerdown="settingsOpen = false; modelOpen = false"
     />
     <AppTextarea
       v-else
       :model-value="data.prompt"
-      :placeholder="nodeDefinitions[type].placeholder"
+      :placeholder="canvasLabel(nodeDefinitions[type].placeholder)"
       :maxlength="promptLimit"
       @input="updateTextPrompt"
       @pointerdown="settingsOpen = false; modelOpen = false"
@@ -309,7 +313,7 @@ onBeforeUnmount(() => {
     </footer>
     <footer v-else>
       <AppButton v-if="isStoryboardVideo && data.status === 'ready'" class="storyboard-confirm-button" variant="soft" @click="confirmStoryboardSegment">
-        <Check :size="15" />{{ hasNextStoryboardSegment ? `继续第${data.storyboardSegmentIndex + 1}段` : '完成' }}
+        <Check :size="15" />{{ hasNextStoryboardSegment ? t('canvas.continueSegment', { p0: data.storyboardSegmentIndex + 1 }) : t('canvas.done') }}
       </AppButton>
       <AppButton v-if="type === 'video'" ref="modelTrigger" class="model-select model-select-trigger" @click="toggleModelMenu">
         <component :is="modelIcon" :size="16" />{{ selectedModel.label }}<ChevronDown :size="14" :class="{ rotated: modelOpen }" />
@@ -321,7 +325,7 @@ onBeforeUnmount(() => {
       </AppButton>
       <span v-else class="setting-select"><Image :size="16" />{{ settingLabel }}</span>
       <span v-if="estimatedCredits !== null" class="task-credit-cost"><Coins :size="14" />{{ creditLabel }}</span>
-      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '执行中' : '执行'" @click="submitTask">
+      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? t('canvas.running') : t('canvas.run')" @click="submitTask">
         <LoaderCircle v-if="running" class="run-task-spinner" :size="20" />
         <ArrowUp v-else :size="20" />
       </AppButton>

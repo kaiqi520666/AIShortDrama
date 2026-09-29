@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { Check, ChevronRight } from 'lucide-vue-next'
 import AppButton from '../ui/AppButton.vue'
 
@@ -7,24 +8,25 @@ defineProps({
   recognized: Boolean,
   firstStep: { type: String, default: 'recognition' },
   secondStep: { type: String, default: 'visual' },
-  firstLabel: { type: String, default: '商品识别' },
-  secondLabel: { type: String, default: '出图设置' },
-  ariaLabel: { type: String, default: '商品创作步骤' },
+  firstLabel: { type: String, default: '' },
+  secondLabel: { type: String, default: '' },
+  ariaLabel: { type: String, default: '' },
 })
 
 defineEmits(['update:step'])
+const { t } = useI18n()
 </script>
 
 <template>
-  <nav class="product-workflow-steps" :aria-label="ariaLabel">
+  <nav class="product-workflow-steps" :aria-label="ariaLabel || t('canvas.productSteps')">
     <AppButton :class="{ active: step === firstStep, complete: recognized }" @click.stop="$emit('update:step', firstStep)">
       <span class="product-workflow-step-index"><Check v-if="recognized" :size="12" /><template v-else>1</template></span>
-      <span>{{ firstLabel }}</span>
+      <span>{{ firstLabel || t('canvas.productRecognition') }}</span>
     </AppButton>
     <ChevronRight class="product-workflow-step-arrow" :size="15" />
     <AppButton :class="{ active: step === secondStep }" :disabled="!recognized" @click.stop="$emit('update:step', secondStep)">
       <span class="product-workflow-step-index">2</span>
-      <span>{{ secondLabel }}</span>
+      <span>{{ secondLabel || t('canvas.imagePlanSettings') }}</span>
     </AppButton>
   </nav>
 </template>

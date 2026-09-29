@@ -29,11 +29,11 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
               <TriangleAlert v-if="confirmState.tone === 'danger'" :size="19" />
               <CircleHelp v-else :size="19" />
             </span>
-            <div><h2 id="global-confirm-title">{{ confirmState.title }}</h2><p id="global-confirm-message">{{ confirmState.message }}</p></div>
+            <div><h2 id="global-confirm-title">{{ confirmState.title || $t('common.confirmAction') }}</h2><p id="global-confirm-message">{{ confirmState.message }}</p></div>
           </header>
           <footer>
-            <AppButton ref="cancelButton" variant="soft" @click="cancelConfirm">{{ confirmState.cancelText }}</AppButton>
-            <AppButton :variant="confirmState.tone === 'danger' ? 'danger-solid' : 'primary'" @click="acceptConfirm">{{ confirmState.confirmText }}</AppButton>
+            <AppButton ref="cancelButton" variant="soft" @click="cancelConfirm">{{ confirmState.cancelText || $t('common.cancel') }}</AppButton>
+            <AppButton :variant="confirmState.tone === 'danger' ? 'danger-solid' : 'primary'" @click="acceptConfirm">{{ confirmState.confirmText || $t('common.confirm') }}</AppButton>
           </footer>
         </section>
       </div>

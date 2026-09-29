@@ -1,6 +1,9 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
 import AppInput from '../ui/AppInput.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   id: { type: String, required: true },
@@ -23,7 +26,7 @@ const { updateNodeData } = useVueFlow()
       <AppInput
         class="node-title-input nodrag nopan"
         :model-value="data.title"
-        aria-label="节点标题"
+        :aria-label="t('canvas.nodeTitle')"
         @input="updateNodeData(id, { title: $event.target.value })"
         @keydown.stop
       />
@@ -35,7 +38,7 @@ const { updateNodeData } = useVueFlow()
         type="target"
         :position="Position.Left"
         :style="{ top: handle.top }"
-        :aria-label="handle.label ? `${handle.label}输入` : undefined"
+        :aria-label="handle.label ? t('canvas.handleInput', { p0: handle.label }) : undefined"
       />
       <span v-if="handle.label" class="structured-node-handle-label" :style="{ top: handle.top }">{{ handle.label }}</span>
     </template>

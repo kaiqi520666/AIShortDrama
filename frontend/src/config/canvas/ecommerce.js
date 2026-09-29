@@ -1,3 +1,6 @@
+import { i18n } from '../../i18n/index'
+
+const { t } = i18n.global
 const productFields = [
   'name', 'brand', 'category', 'price', 'specifications', 'packagingType', 'productDimensions',
   'packageDimensions', 'packageRelation', 'scaleReference', 'sellingPoints', 'audience', 'scenario', 'additionalInfo',
@@ -7,18 +10,18 @@ export function parseProductProfile(content) {
   const source = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
   const start = source.indexOf('{')
   const end = source.lastIndexOf('}')
-  if (start < 0 || end <= start) throw new Error('未识别到有效的商品档案')
+  if (start < 0 || end <= start) throw new Error(t('canvas.invalidProductResult'))
   let parsed
   try {
     parsed = JSON.parse(source.slice(start, end + 1))
   } catch {
-    throw new Error('商品档案识别结果格式异常')
+    throw new Error(t('canvas.invalidProductFormat'))
   }
   const product = Object.fromEntries(productFields.map((key) => {
     const value = Array.isArray(parsed[key]) ? parsed[key].join('\n') : parsed[key]
     return [key, typeof value === 'string' || typeof value === 'number' ? String(value).trim() : '']
   }))
-  if (!Object.values(product).some(Boolean)) throw new Error('图片中未识别到商品信息')
+  if (!Object.values(product).some(Boolean)) throw new Error(t('canvas.productNotFound'))
   return product
 }
 

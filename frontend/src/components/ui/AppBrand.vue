@@ -8,7 +8,7 @@ defineProps({
 </script>
 
 <template>
-  <RouterLink class="app-brand" :to="to" aria-label="Mooncut 首页">
+  <RouterLink class="app-brand" :to="to" :aria-label="$t('common.brandHome')">
     <img class="app-brand__symbol" :src="brandMark" alt="" aria-hidden="true" />
     <strong v-if="!iconOnly">Mooncut</strong>
   </RouterLink>

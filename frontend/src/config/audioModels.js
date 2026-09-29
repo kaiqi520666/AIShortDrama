@@ -1,3 +1,6 @@
+import { i18n } from '../i18n/index'
+
+const { t } = i18n.global
 export function normalizeAudioCapability(section) {
   const model = section?.models?.find(({ id }) => id === section.default_model)
   if (!model) return null
@@ -25,7 +28,7 @@ export function normalizeAudioCapability(section) {
 }
 
 function requireCapability(capability) {
-  if (!capability) throw new Error('音频模型能力尚未加载')
+  if (!capability) throw new Error(t('canvas.audioCapabilityMissing'))
   return capability
 }
 
@@ -49,13 +52,13 @@ export function getAudioReferenceError(references = [], audioCapability) {
   const capability = requireCapability(audioCapability)
   const images = references.filter((node) => node.type === 'image')
   const audios = references.filter((node) => node.type === 'audio')
-  if (images.length && audios.length) return '参考图片和参考音频不能混用'
-  if (images.length > capability.referenceLimits.image) return `最多支持 ${capability.referenceLimits.image} 张参考图片`
-  if (audios.length > capability.referenceLimits.audio) return `最多支持 ${capability.referenceLimits.audio} 条参考音频`
-  if ([...images, ...audios].some((node) => !node.data.asset)) return '参考资源尚未准备完成'
-  if (audios.some((node) => node.data.sourceDuration > capability.referenceAudioMaxSeconds)) return `参考音频每条不能超过 ${capability.referenceAudioMaxSeconds} 秒`
-  if (audios.some((node) => node.data.sourceByteSize > capability.referenceMaxBytes)) return `参考音频每条不能超过 ${capability.referenceMaxBytes / 1024 / 1024}MB`
-  if (images.some((node) => node.data.sourceByteSize > capability.referenceMaxBytes)) return `参考图片不能超过 ${capability.referenceMaxBytes / 1024 / 1024}MB`
+  if (images.length && audios.length) return t('canvas.mixedAudioImage')
+  if (images.length > capability.referenceLimits.image) return t('canvas.audioImageLimit', { p0: capability.referenceLimits.image })
+  if (audios.length > capability.referenceLimits.audio) return t('canvas.audioReferenceLimit', { p0: capability.referenceLimits.audio })
+  if ([...images, ...audios].some((node) => !node.data.asset)) return t('canvas.referencesNotReady')
+  if (audios.some((node) => node.data.sourceDuration > capability.referenceAudioMaxSeconds)) return t('canvas.referenceAudioDuration', { p0: capability.referenceAudioMaxSeconds })
+  if (audios.some((node) => node.data.sourceByteSize > capability.referenceMaxBytes)) return t('canvas.referenceAudioSize', { p0: capability.referenceMaxBytes / 1024 / 1024 })
+  if (images.some((node) => node.data.sourceByteSize > capability.referenceMaxBytes)) return t('canvas.referenceImageSize', { p0: capability.referenceMaxBytes / 1024 / 1024 })
   return ''
 }
 
@@ -63,8 +66,8 @@ export function buildAudioRequest(data, references = [], audioCapability) {
   const capability = requireCapability(audioCapability)
   const settings = normalizeAudioSettings(data, capability)
   const prompt = data.prompt?.trim()
-  if (!prompt) throw new Error('音频提示词不能为空')
-  if (prompt.length > capability.maxPromptLength) throw new Error(`音频提示词不能超过 ${capability.maxPromptLength} 个字符`)
+  if (!prompt) throw new Error(t('canvas.audioPromptRequired'))
+  if (prompt.length > capability.maxPromptLength) throw new Error(t('canvas.audioPromptLimit', { p0: capability.maxPromptLength }))
   return {
     model: capability.model.id,
     prompt,

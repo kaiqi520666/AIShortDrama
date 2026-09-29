@@ -1,4 +1,8 @@
+import { i18n } from '../i18n/index'
 import { apiClient } from './client'
+import { createApiError } from '../utils/apiError'
+
+const { t } = i18n.global
 
 export async function getGenerationCapabilities() {
   return (await apiClient.get('/generations/capabilities')).data
@@ -21,12 +25,12 @@ export async function streamGeneration(path, payload, onDelta, onMeta, errorLabe
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
-  })
+  }).catch(() => { throw createApiError({ error_key: 'network_error' }) })
   if (!response.ok) {
     const error = await response.json().catch(() => null)
-    throw new Error(error?.message || `${errorLabel}（${response.status}）`)
+    throw createApiError(error, response.status)
   }
-  if (!response.body) throw new Error('浏览器不支持流式响应')
+  if (!response.body) throw new Error(t('canvas.streamUnsupported'))
 
   const reader = response.body.getReader()
   const decoder = new TextDecoder()
@@ -38,7 +42,7 @@ export async function streamGeneration(path, payload, onDelta, onMeta, errorLabe
     const event = JSON.parse(line)
     if (event.type === 'meta') onMeta?.(event.task_id, event)
     else if (event.type === 'delta') onDelta(event.content)
-    else if (event.type === 'error') throw new Error(event.message || errorLabel)
+    else if (event.type === 'error') throw createApiError(event)
     else if (event.type === 'done') completed = true
   }
 
@@ -52,7 +56,7 @@ export async function streamGeneration(path, payload, onDelta, onMeta, errorLabe
       if (done) break
     }
     consume(buffer)
-    if (!completed) throw new Error('文本流式响应异常中断')
+    if (!completed) throw new Error(t('canvas.streamInterrupted'))
   } catch (error) {
     await reader.cancel().catch(() => {})
     throw error
@@ -62,7 +66,7 @@ export async function streamGeneration(path, payload, onDelta, onMeta, errorLabe
 }
 
 export function streamTextGeneration(payload, onDelta, onMeta) {
-  return streamGeneration('/generations/texts', payload, onDelta, onMeta, '文本生成失败')
+  return streamGeneration('/generations/texts', payload, onDelta, onMeta, t('canvas.textGenerationFailed'))
 }
 
 export async function getGenerationTask(taskId, config) {

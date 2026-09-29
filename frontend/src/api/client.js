@@ -1,6 +1,21 @@
 import axios from 'axios'
+import { createApiError, getApiErrorMessage } from '../utils/apiError'
 
 export const apiClient = axios.create({ baseURL: '/api', withCredentials: true })
+
+apiClient.interceptors.response.use(
+  (response) => {
+    if (response.data?.code === 1) throw createApiError(response.data, response.status)
+    return response
+  },
+  (error) => {
+    if (error.response || ['ERR_NETWORK', 'ECONNABORTED', 'ETIMEDOUT'].includes(error.code)) {
+      const message = getApiErrorMessage(error)
+      error.message = message
+    }
+    return Promise.reject(error)
+  },
+)
 
 let refreshPromise = null
 

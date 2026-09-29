@@ -1,6 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { i18n } from '../i18n'
+
 import { modelCapabilitiesFixture } from '../test/modelCapabilities'
 import { buildAudioRequest as buildRequest, getAudioReferenceError as getReferenceError, normalizeAudioCapability, normalizeAudioSettings as normalizeSettings } from './audioModels'
+
+beforeEach(() => { i18n.global.locale.value = 'zh-CN' })
+afterEach(() => { i18n.global.locale.value = 'id' })
 
 const audioCapability = normalizeAudioCapability(modelCapabilitiesFixture.audio)
 const normalizeAudioSettings = (data) => normalizeSettings(data, audioCapability)

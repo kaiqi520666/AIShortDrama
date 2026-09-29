@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ArrowUp, ChevronDown, Coins, Image, LoaderCircle } from 'lucide-vue-next'
 import { getImageModel, normalizeImageSettings } from '../../config/imageModels'
@@ -6,12 +7,14 @@ import { useModelCapabilitiesStore } from '../../stores/modelCapabilities'
 import AppButton from '../ui/AppButton.vue'
 import AppMenu from '../ui/AppMenu.vue'
 
+const { t } = useI18n()
+
 const props = defineProps({
   settings: { type: Object, required: true },
   estimatedCredits: { type: Number, required: true },
   disabled: Boolean,
   running: Boolean,
-  submitLabel: { type: String, default: '生成图片' },
+  submitLabel: { type: String, default: '' },
 })
 const emit = defineEmits(['update:settings', 'submit'])
 
@@ -118,32 +121,32 @@ onBeforeUnmount(() => {
     </AppMenu>
 
     <AppMenu v-if="settingsOpen" ref="settingsMenu" class="image-settings-menu media-settings-menu" :style="settingsStyle" @pointerdown.stop>
-      <h3>清晰度</h3>
+      <h3>{{ t('canvas.resolution') }}</h3>
       <div class="image-resolution-options">
         <AppButton v-for="value in model.resolutions" :key="value" :class="{ active: normalized.resolution === value }" @click="updateSetting('resolution', value)">{{ value }}</AppButton>
       </div>
-      <h3>比例</h3>
+      <h3>{{ t('canvas.ratio') }}</h3>
       <div class="image-ratio-grid">
         <AppButton v-for="value in model.aspectRatios" :key="value" :class="{ active: normalized.aspectRatio === value }" @click="updateSetting('aspectRatio', value)">
           <span class="image-ratio-icon" :style="ratioIconStyle(value)"></span><strong>{{ value }}</strong>
         </AppButton>
       </div>
       <template v-if="model.search">
-        <h3>搜索增强</h3>
-        <label class="setting-toggle-row"><span>Google 文字搜索</span><input type="checkbox" :checked="normalized.googleSearch" @change="updateSearch($event.target.checked)" /></label>
-        <label class="setting-toggle-row" :class="{ disabled: !normalized.googleSearch }"><span>Google 图片搜索</span><input type="checkbox" :checked="normalized.googleImageSearch" :disabled="!normalized.googleSearch" @change="updateSetting('googleImageSearch', $event.target.checked)" /></label>
+        <h3>{{ t('canvas.searchGrounding') }}</h3>
+        <label class="setting-toggle-row"><span>{{ t('canvas.googleTextSearch') }}</span><input type="checkbox" :checked="normalized.googleSearch" @change="updateSearch($event.target.checked)" /></label>
+        <label class="setting-toggle-row" :class="{ disabled: !normalized.googleSearch }"><span>{{ t('canvas.googleImageSearch') }}</span><input type="checkbox" :checked="normalized.googleImageSearch" :disabled="!normalized.googleSearch" @change="updateSetting('googleImageSearch', $event.target.checked)" /></label>
       </template>
     </AppMenu>
 
-    <AppButton ref="modelTrigger" class="model-select model-select-trigger" aria-label="图片模型" @click="toggleModelMenu">
+    <AppButton ref="modelTrigger" class="model-select model-select-trigger" :aria-label="t('canvas.imageModel')" @click="toggleModelMenu">
       <Image :size="16" />{{ model.label }}<ChevronDown :size="14" :class="{ rotated: modelOpen }" />
     </AppButton>
     <span class="panel-divider"></span>
-    <AppButton ref="settingsTrigger" class="image-settings-trigger media-settings-trigger" aria-label="图片规格" @click="toggleSettings">
+    <AppButton ref="settingsTrigger" class="image-settings-trigger media-settings-trigger" :aria-label="t('canvas.imageSettings')" @click="toggleSettings">
       <Image :size="16" />{{ normalized.aspectRatio }} · {{ normalized.resolution }}<ChevronDown :size="14" :class="{ rotated: settingsOpen }" />
     </AppButton>
-    <span class="task-credit-cost"><Coins :size="14" />本次 {{ estimatedCredits }} 积分</span>
-    <AppButton class="run-task-button" icon-only variant="primary" :disabled="disabled" :title="running ? '执行中' : submitLabel" @click="emit('submit')">
+    <span class="task-credit-cost"><Coins :size="14" />{{ t('canvas.creditCost', { p0: estimatedCredits }) }}</span>
+    <AppButton class="run-task-button" icon-only variant="primary" :disabled="disabled" :title="running ? t('canvas.running') : submitLabel || t('canvas.generateImage')" @click="emit('submit')">
       <LoaderCircle v-if="running" class="run-task-spinner" :size="20" /><ArrowUp v-else :size="20" />
     </AppButton>
   </footer>

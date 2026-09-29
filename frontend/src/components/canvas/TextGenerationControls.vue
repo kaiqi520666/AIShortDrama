@@ -1,7 +1,10 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { ref } from 'vue'
 import { ArrowUp, ChevronDown, Coins, LoaderCircle } from 'lucide-vue-next'
 import AppButton from '../ui/AppButton.vue'
+
+const { t } = useI18n()
 
 defineProps({
   model: { type: Object, required: true },
@@ -25,7 +28,7 @@ defineExpose({ element })
   </AppButton>
   <span v-else class="model-select"><component :is="modelIcon" :size="16" />{{ model.label }}</span>
   <span v-if="estimatedCredits !== null" class="task-credit-cost"><Coins :size="14" />{{ creditLabel }}</span>
-  <AppButton class="run-task-button" icon-only variant="primary" :disabled="disabled" :title="running ? '执行中' : '执行'" @click="emit('submit')">
+  <AppButton class="run-task-button" icon-only variant="primary" :disabled="disabled" :title="running ? t('canvas.running') : t('canvas.run')" @click="emit('submit')">
     <LoaderCircle v-if="running" class="run-task-spinner" :size="20" />
     <ArrowUp v-else :size="20" />
   </AppButton>

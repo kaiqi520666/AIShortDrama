@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { i18n } from '../../i18n'
+
 import { apparelPromptContext, parseApparelProfile } from './apparel'
+
+beforeEach(() => { i18n.global.locale.value = 'zh-CN' })
+afterEach(() => { i18n.global.locale.value = 'id' })
 
 describe('apparel profile', () => {
   it('parses a multi-item outfit into an editable array', () => {

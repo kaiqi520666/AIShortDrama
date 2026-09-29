@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from fastapi import UploadFile
+from app.core.errors import LocalizedValueError
 
 from app.services.image_processing import normalize_image
 from app.services.storage import AUDIO_MAX_BYTES, IMAGE_MAX_BYTES, VIDEO_MAX_BYTES, OssStorage
@@ -66,16 +67,16 @@ class MediaUploadService:
         try:
             rule = rules.get(media_type)
             if not rule:
-                raise ValueError("不支持的媒体类型")
+                raise LocalizedValueError("不支持的媒体类型", error_key="unsupported_media")
             content_type = file.content_type or ""
             content_types = rule["content_types"]
             if content_type not in content_types:
                 label = {"image": "图片", "video": "视频", "audio": "音频"}[media_type]
-                raise ValueError(f"不支持的{label}格式")
+                raise LocalizedValueError(f"不支持的{label}格式", error_key="unsupported_format")
             if not file.size:
-                raise ValueError("上传文件不能为空")
+                raise LocalizedValueError("上传文件不能为空", error_key="empty_file")
             if file.size > rule["max_size"]:
-                raise ValueError(f"文件不能超过 {self._format_size(rule['max_size'])}")
+                raise LocalizedValueError(f"文件不能超过 {self._format_size(rule['max_size'])}", error_key="file_size_limit", error_params={"limit": self._format_size(rule["max_size"])})
 
             await file.seek(0)
             upload_stream = file.file
@@ -84,8 +85,9 @@ class MediaUploadService:
             if media_type == "image":
                 normalized = await asyncio.to_thread(normalize_image, file.file, content_type)
                 if normalized.size > rule["max_size"]:
-                    raise ValueError(
-                        f"重编码后的图片不能超过 {self._format_size(rule['max_size'])}"
+                    raise LocalizedValueError(
+                        f"重编码后的图片不能超过 {self._format_size(rule['max_size'])}",
+                        error_key="file_size_limit", error_params={"limit": self._format_size(rule["max_size"])}
                     )
                 upload_stream = normalized.stream
                 byte_size = normalized.size

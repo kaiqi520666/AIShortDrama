@@ -148,7 +148,7 @@ onBeforeUnmount(stopPolling)
         <div class="recharge-panel__title"><div><span>微信支付</span><small>积分到账以支付平台异步通知为准</small></div></div>
         <div v-if="!order" class="recharge-payment__empty"><WalletCards :size="32" /><p>选择金额并创建支付订单</p></div>
         <div v-else-if="order.status === 'paid'" class="recharge-payment__success"><CheckCircle2 :size="48" /><h2>充值成功</h2><p>{{ order.total_credits }} 积分已到账</p><strong>当前余额 {{ order.credit_balance }}</strong></div>
-        <div v-else-if="order.status === 'failed'" class="recharge-payment__failed"><h2>订单创建失败</h2><p>{{ order.error_message || '请重新创建支付订单' }}</p></div>
+        <div v-else-if="order.status === 'failed'" class="recharge-payment__failed"><h2>{{ $t('errors.order_failed') }}</h2><p>{{ $t('errors.payment_unavailable') }}</p></div>
         <div v-else class="recharge-payment__pending">
           <img v-if="order.qr_img" :src="order.qr_img" alt="微信支付二维码" />
           <div v-else class="recharge-payment__placeholder">请打开支付页面完成付款</div>

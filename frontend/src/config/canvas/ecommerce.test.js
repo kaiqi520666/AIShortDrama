@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { i18n } from '../../i18n'
+
 import { mergeProductProfile, parseProductProfile, productPromptContext } from './ecommerce'
+
+beforeEach(() => { i18n.global.locale.value = 'zh-CN' })
+afterEach(() => { i18n.global.locale.value = 'id' })
 
 describe('product profile parsing', () => {
   it('parses fenced JSON and normalizes selling point arrays', () => {

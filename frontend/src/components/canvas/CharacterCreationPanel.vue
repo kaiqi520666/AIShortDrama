@@ -1,10 +1,13 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import { characterReady } from '../../config/canvas/character'
 import CharacterProfilePanel from './CharacterProfilePanel.vue'
 import CharacterVisualPanel from './CharacterVisualPanel.vue'
 import ProductWorkflowSteps from './ProductWorkflowSteps.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   nodeId: { type: String, required: true },
@@ -23,9 +26,9 @@ const completed = computed(() => characterReady(props.data.profile))
       :recognized="completed"
       first-step="profile"
       second-step="visual"
-      first-label="角色设定"
-      second-label="设定图"
-      aria-label="角色创作步骤"
+      :first-label="t('canvas.characterSetting')"
+      :second-label="t('canvas.characterSheet')"
+      :aria-label="t('canvas.characterSteps')"
       @update:step="updateNodeData(nodeId, { workflowStep: $event })"
     />
     <div class="product-creation-stage">

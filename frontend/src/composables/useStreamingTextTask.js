@@ -1,7 +1,10 @@
+import { i18n } from '../i18n/index'
 import { ref } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import { useAuthStore } from '../stores/auth'
 import { getApiErrorMessage } from '../utils/apiError'
+
+const { t } = i18n.global
 
 export function useStreamingTextTask(nodeId) {
   const authStore = useAuthStore()
@@ -12,7 +15,7 @@ export function useStreamingTextTask(nodeId) {
 
   async function runTextTask(streamer, payload, {
     onSuccess,
-    failureMessage = '文本任务生成失败',
+    failureMessage = t('canvas.textTaskFailed'),
     preservePartial = false,
   } = {}) {
     if (running.value) return null

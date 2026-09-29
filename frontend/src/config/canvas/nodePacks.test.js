@@ -1,7 +1,12 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { i18n } from '../../i18n'
+
 import { canConnect, getConnectionError } from './connectionRules'
 import { createNodeData, getNodeDescriptor, nodeCatalog } from './nodeCatalog'
 import { getNodeTypes, getWorkspaceType, isNodeTypeAvailable } from './nodePacks'
+
+beforeEach(() => { i18n.global.locale.value = 'zh-CN' })
+afterEach(() => { i18n.global.locale.value = 'id' })
 
 describe('canvas node packs', () => {
   it('derives node metadata and workspace packs from one catalog', () => {

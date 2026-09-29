@@ -1,3 +1,6 @@
+import { i18n } from '../i18n/index'
+
+const { t } = i18n.global
 export function normalizeImageModels(section) {
   return (section?.models || []).map((model) => ({
     id: model.id,
@@ -15,7 +18,7 @@ export function normalizeImageModels(section) {
 
 export function getImageModel(models, defaultModel, modelId) {
   const model = models.find((item) => item.id === modelId) || defaultModel
-  if (!model) throw new Error('图片模型能力尚未加载')
+  if (!model) throw new Error(t('canvas.imageCapabilityMissing'))
   return model
 }
 
@@ -33,12 +36,12 @@ export function normalizeImageSettings(data = {}, models, defaultModel) {
 export function buildImageRequest(data, references = [], models, defaultModel) {
   const settings = normalizeImageSettings(data, models, defaultModel)
   const prompt = data.prompt?.trim()
-  if (!prompt) throw new Error('图片提示词不能为空')
-  if (prompt.length > settings.model.maxPromptLength) throw new Error(`图片提示词不能超过 ${settings.model.maxPromptLength} 个字符`)
+  if (!prompt) throw new Error(t('canvas.imagePromptRequired'))
+  if (prompt.length > settings.model.maxPromptLength) throw new Error(t('canvas.imagePromptLimit', { p0: settings.model.maxPromptLength }))
 
   const urls = references.map((reference) => typeof reference === 'string' ? reference : reference?.data?.asset).filter(Boolean)
-  if (urls.length > settings.model.maxReferences) throw new Error(`参考图片不能超过 ${settings.model.maxReferences} 张`)
-  if (urls.some((url) => !/^https?:\/\//i.test(url))) throw new Error('参考图片必须是公开可访问的 URL')
+  if (urls.length > settings.model.maxReferences) throw new Error(t('canvas.imageReferenceLimit', { p0: settings.model.maxReferences }))
+  if (urls.some((url) => !/^https?:\/\//i.test(url))) throw new Error(t('canvas.publicReferenceRequired'))
 
   return {
     model: settings.model.id,

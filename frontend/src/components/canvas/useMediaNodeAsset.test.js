@@ -1,10 +1,15 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { i18n } from '../../i18n'
+
 import { ref } from 'vue'
 import { registerAssetPrivateAvatar } from '../../api/assets'
 import { uploadMedia } from '../../api/uploads'
 import { downloadUrl } from '../../utils/download'
 import { readMediaMetadata } from '../../utils/mediaFiles'
 import { useMediaNodeAsset } from './useMediaNodeAsset'
+
+beforeEach(() => { i18n.global.locale.value = 'zh-CN' })
+afterEach(() => { i18n.global.locale.value = 'id' })
 
 vi.mock('../../api/assets', () => ({ registerAssetPrivateAvatar: vi.fn() }))
 vi.mock('../../api/uploads', () => ({ uploadMedia: vi.fn() }))
@@ -67,13 +72,13 @@ describe('useMediaNodeAsset', () => {
   it('keeps a public error when upload fails', async () => {
     const { subject } = createSubject()
     readMediaMetadata.mockResolvedValue({ width: 640, height: 480 })
-    uploadMedia.mockRejectedValue({ response: { data: { message: '上传服务不可用' } } })
+    uploadMedia.mockRejectedValue({ response: { status: 503, data: { message: '上传服务不可用', error_key: 'service_unavailable' } } })
 
     await subject.handleUpload({
       target: { files: [{ type: 'image/png', size: 1024 }], value: 'selected' },
     })
 
-    expect(subject.uploadNotice.value).toBe('上传服务不可用')
+    expect(subject.uploadNotice.value).toBe(i18n.global.t('errors.service_unavailable'))
     expect(subject.uploading.value).toBe(false)
   })
 

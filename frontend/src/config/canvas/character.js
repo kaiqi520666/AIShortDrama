@@ -1,3 +1,6 @@
+import { i18n } from '../../i18n/index'
+
+const { t } = i18n.global
 const profileFields = ['name', 'identity', 'background', 'appearance', 'personality', 'costume', 'signature', 'constraints']
 
 export const characterOptions = {
@@ -38,15 +41,15 @@ export function parseCharacterProfile(content) {
   const source = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
   const start = source.indexOf('{')
   const end = source.lastIndexOf('}')
-  if (start < 0 || end <= start) throw new Error('未生成有效的角色档案')
+  if (start < 0 || end <= start) throw new Error(t('canvas.invalidCharacterResult'))
   let parsed
   try {
     parsed = JSON.parse(source.slice(start, end + 1))
   } catch {
-    throw new Error('角色档案生成结果格式异常')
+    throw new Error(t('canvas.invalidCharacterFormat'))
   }
   const profile = Object.fromEntries(profileFields.map((key) => [key, typeof parsed[key] === 'string' ? parsed[key].trim() : '']))
-  if (profileFields.some((key) => !profile[key])) throw new Error('角色档案生成结果缺少必要内容')
+  if (profileFields.some((key) => !profile[key])) throw new Error(t('canvas.incompleteCharacterResult'))
   return profile
 }
 
@@ -75,16 +78,16 @@ export function parseCharacterVisualPlan(content) {
   const source = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
   const start = source.indexOf('[')
   const end = source.lastIndexOf(']')
-  if (start < 0 || end <= start) throw new Error('未生成有效的角色设定图方案')
+  if (start < 0 || end <= start) throw new Error(t('canvas.invalidCharacterPlan'))
   let parsed
   try {
     parsed = JSON.parse(source.slice(start, end + 1))
   } catch {
-    throw new Error('角色设定图方案格式异常')
+    throw new Error(t('canvas.invalidCharacterPlanFormat'))
   }
   const prompts = new Map((Array.isArray(parsed) ? parsed : []).map((item) => [item?.type, typeof item?.prompt === 'string' ? item.prompt.trim() : '']))
   const plans = characterVisualTypes.map((item) => ({ ...item, prompt: prompts.get(item.id) || '' }))
   const missing = plans.filter((item) => !item.prompt).map((item) => item.label)
-  if (missing.length) throw new Error(`角色设定图方案缺少：${missing.join('、')}`)
+  if (missing.length) throw new Error(t('canvas.missingCharacterPlan', { p0: missing.join('、') }))
   return plans
 }

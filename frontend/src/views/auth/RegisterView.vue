@@ -1,5 +1,6 @@
 <script setup>
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { ArrowRight, CircleAlert, KeyRound, LockKeyhole, Mail, UserRound } from 'lucide-vue-next'
 import AuthFormShell from '../../components/auth/AuthFormShell.vue'
@@ -11,6 +12,7 @@ import { useAuthStore } from '../../stores/auth'
 import { getApiErrorMessage } from '../../utils/apiError'
 
 const router = useRouter()
+const { t } = useI18n()
 const authStore = useAuthStore()
 const username = ref('')
 const email = ref('')
@@ -30,7 +32,7 @@ onMounted(async () => {
     const result = await getCaptchaConfig()
     siteKey.value = result.data?.site_key || ''
   } catch (error) {
-    errorMessage.value = getApiErrorMessage(error, '人机验证配置加载失败')
+    errorMessage.value = getApiErrorMessage(error, t('auth.captchaConfigFailed'))
   }
 })
 
@@ -39,11 +41,11 @@ onBeforeUnmount(() => window.clearInterval(cooldownTimer))
 async function sendCode() {
   errorMessage.value = ''
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.value)) {
-    errorMessage.value = '请先输入有效邮箱'
+    errorMessage.value = t('auth.invalidEmail')
     return
   }
   if (!captchaToken.value || codeSubmitting.value || cooldown.value) {
-    if (!captchaToken.value) errorMessage.value = '请先完成人机验证'
+    if (!captchaToken.value) errorMessage.value = t('auth.captchaRequired')
     return
   }
   codeSubmitting.value = true
@@ -58,7 +60,7 @@ async function sendCode() {
       if (cooldown.value <= 0) window.clearInterval(cooldownTimer)
     }, 1000)
   } catch (error) {
-    errorMessage.value = getApiErrorMessage(error, '验证码发送失败')
+    errorMessage.value = getApiErrorMessage(error, t('auth.codeFailed'))
   } finally {
     codeSubmitting.value = false
     captchaToken.value = ''
@@ -78,7 +80,7 @@ async function submit() {
     })
     await router.replace({ name: 'workspaces' })
   } catch (error) {
-    errorMessage.value = getApiErrorMessage(error, '注册失败')
+    errorMessage.value = getApiErrorMessage(error, t('auth.registerFailed'))
   } finally {
     submitting.value = false
   }
@@ -86,18 +88,18 @@ async function submit() {
 </script>
 
 <template>
-  <AuthFormShell title="创建账号" subtitle="注册后即可开始创建工作台">
+  <AuthFormShell :title="t('auth.createAccount')" :subtitle="t('auth.registerSubtitle')">
     <form class="auth-form" @submit.prevent="submit">
-      <AuthInputField v-model.trim="username" label="用户名" :icon="UserRound" autocomplete="username" minlength="2" maxlength="32" required />
-      <AuthInputField v-model.trim="email" label="邮箱" :icon="Mail" type="email" autocomplete="email" required />
-      <AuthInputField v-model.trim="verificationCode" label="验证码" :icon="KeyRound" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" pattern="[0-9]{6}" required>
+      <AuthInputField v-model.trim="username" :label="t('auth.username')" :icon="UserRound" autocomplete="username" minlength="2" maxlength="32" required />
+      <AuthInputField v-model.trim="email" :label="t('auth.email')" :icon="Mail" type="email" autocomplete="email" required />
+      <AuthInputField v-model.trim="verificationCode" :label="t('auth.code')" :icon="KeyRound" inputmode="numeric" autocomplete="one-time-code" minlength="6" maxlength="6" pattern="[0-9]{6}" required>
         <template #action>
           <AppButton class="auth-code-button" type="button" variant="soft" size="sm" :disabled="codeSubmitting || cooldown > 0" @click="sendCode">
-            {{ cooldown > 0 ? `${cooldown}s 后重发` : codeSubmitting ? '发送中…' : '发送验证码' }}
+            {{ cooldown > 0 ? t('auth.resendAfter', { seconds: cooldown }) : codeSubmitting ? t('auth.sending') : t('auth.sendCode') }}
           </AppButton>
         </template>
       </AuthInputField>
-      <AuthInputField v-model="password" label="密码" :icon="LockKeyhole" type="password" autocomplete="new-password" minlength="8" maxlength="72" revealable required />
+      <AuthInputField v-model="password" :label="t('auth.password')" :icon="LockKeyhole" type="password" autocomplete="new-password" minlength="8" maxlength="72" revealable required />
       <TurnstileWidget
         v-if="cooldown === 0"
         :site-key="siteKey"
@@ -105,11 +107,11 @@ async function submit() {
         :reset-key="captchaResetKey"
         @verified="captchaToken = $event; errorMessage = ''"
         @expired="captchaToken = ''"
-        @error="captchaToken = ''; errorMessage = '人机验证加载失败，请刷新重试'"
+        @error="captchaToken = ''; errorMessage = t('auth.captchaFailed')"
       />
       <p v-if="errorMessage" class="auth-error"><CircleAlert :size="14" />{{ errorMessage }}</p>
-      <AppButton type="submit" variant="primary" size="lg" block :disabled="submitting"><span>{{ submitting ? '注册中…' : '注册并登录' }}</span><ArrowRight :size="17" /></AppButton>
+      <AppButton type="submit" variant="primary" size="lg" block :disabled="submitting"><span>{{ submitting ? t('auth.registering') : t('auth.registerAndLogin') }}</span><ArrowRight :size="17" /></AppButton>
     </form>
-    <p class="auth-switch">已有账号？<RouterLink to="/login">登录</RouterLink></p>
+    <p class="auth-switch">{{ t('auth.hasAccount') }} <RouterLink to="/login">{{ t('auth.login') }}</RouterLink></p>
   </AuthFormShell>
 </template>

@@ -8,8 +8,8 @@ const props = defineProps({
   items: { type: Array, default: () => [] },
   rowKey: { type: [String, Function], default: 'id' },
   loading: { type: Boolean, default: false },
-  loadingTitle: { type: String, default: '正在加载数据' },
-  emptyTitle: { type: String, default: '暂无数据' },
+  loadingTitle: { type: String, default: '' },
+  emptyTitle: { type: String, default: '' },
   emptyDescription: { type: String, default: '' },
   minWidth: { type: String, default: '720px' },
   pagination: { type: Object, default: null },
@@ -25,8 +25,8 @@ function itemKey(item, index) {
 
 <template>
   <div class="app-data-table">
-    <EmptyState v-if="loading" compact loading :title="loadingTitle" />
-    <EmptyState v-else-if="!items.length" compact :title="emptyTitle" :description="emptyDescription" />
+    <EmptyState v-if="loading" compact loading :title="loadingTitle || $t('common.loading')" />
+    <EmptyState v-else-if="!items.length" compact :title="emptyTitle || $t('common.empty')" :description="emptyDescription" />
     <template v-else>
       <div class="app-data-table__scroll">
         <table class="app-data-table__table" :style="{ minWidth }">
@@ -56,11 +56,11 @@ function itemKey(item, index) {
         </table>
       </div>
       <footer v-if="pagination" class="app-data-table__pagination">
-        <span>共 {{ pagination.total }} 条</span>
+        <span>{{ $t('common.totalRecords', { count: $n(pagination.total) }) }}</span>
         <div>
-          <AppButton variant="soft" :disabled="pagination.page <= 1" @click="emit('page-change', pagination.page - 1)">上一页</AppButton>
-          <b>{{ pagination.page }} / {{ totalPages }}</b>
-          <AppButton variant="soft" :disabled="pagination.page >= totalPages" @click="emit('page-change', pagination.page + 1)">下一页</AppButton>
+          <AppButton variant="soft" :disabled="pagination.page <= 1" @click="emit('page-change', pagination.page - 1)">{{ $t('common.previousPage') }}</AppButton>
+          <b>{{ $n(pagination.page) }} / {{ $n(totalPages) }}</b>
+          <AppButton variant="soft" :disabled="pagination.page >= totalPages" @click="emit('page-change', pagination.page + 1)">{{ $t('common.nextPage') }}</AppButton>
         </div>
       </footer>
     </template>

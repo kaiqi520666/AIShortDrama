@@ -1,25 +1,28 @@
 <script setup>
-import { nextTick, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { computed, nextTick, onMounted, ref } from 'vue'
 import { X } from 'lucide-vue-next'
 import AppButton from '../ui/AppButton.vue'
+
+const { t } = useI18n()
 
 defineEmits(['close'])
 
 const closeButton = ref(null)
-const sections = [
-  { title: '创建', items: [['新建节点', ['Tab']], ['编组 / 合并', ['Ctrl', 'G']], ['解组', ['Ctrl', 'Shift', 'G']], ['连接', ['Ctrl', 'L']], ['复制节点和连线', ['Ctrl', 'D']], ['生成', ['Ctrl', 'Enter']]] },
-  { title: '视图', items: [['放大', ['Ctrl', '+']], ['缩小', ['Ctrl', '-']], ['适应画布', ['Ctrl', '0']], ['整理画布', ['Alt', 'Shift', 'F']]] },
-  { title: '工具', items: [['移动', ['V']], ['抓手工具', ['H']], ['临时抓手', ['Space']], ['拖动复制', ['Alt', '拖动']]] },
-  { title: '其他', items: [['撤销', ['Ctrl', 'Z']], ['重做', ['Ctrl', 'Shift', 'Z']], ['删除', ['Delete']]] },
-]
+const sections = computed(() => ([
+  { title: t('canvas.create'), items: [[t('canvas.createNode'), ['Tab']], [t('canvas.groupMerge'), ['Ctrl', 'G']], [t('canvas.ungroupShort'), ['Ctrl', 'Shift', 'G']], [t('canvas.connect'), ['Ctrl', 'L']], [t('canvas.duplicateNodesEdges'), ['Ctrl', 'D']], [t('canvas.generate'), ['Ctrl', 'Enter']]] },
+  { title: t('canvas.view'), items: [[t('canvas.zoomIn'), ['Ctrl', '+']], [t('canvas.zoomOut'), ['Ctrl', '-']], [t('canvas.fitCanvas'), ['Ctrl', '0']], [t('canvas.arrangeCanvas'), ['Alt', 'Shift', 'F']]] },
+  { title: t('canvas.tools'), items: [[t('canvas.move'), ['V']], [t('canvas.handTool'), ['H']], [t('canvas.temporaryHand'), ['Space']], [t('canvas.dragDuplicate'), ['Alt', t('canvas.drag')]]] },
+  { title: t('canvas.other'), items: [[t('canvas.undo'), ['Ctrl', 'Z']], [t('canvas.redo'), ['Ctrl', 'Shift', 'Z']], [t('canvas.delete'), ['Delete']]] },
+]))
 
 onMounted(() => nextTick(() => closeButton.value?.element?.focus()))
 </script>
 
 <template>
   <div class="shortcut-panel-backdrop" @pointerdown.self="$emit('close')">
-    <section class="shortcut-panel" role="dialog" aria-modal="true" aria-label="快捷键">
-      <header><AppButton ref="closeButton" icon-only aria-label="关闭快捷键" @click="$emit('close')"><X :size="18" /></AppButton></header>
+    <section class="shortcut-panel" role="dialog" aria-modal="true" :aria-label="t('canvas.shortcuts')">
+      <header><AppButton ref="closeButton" icon-only :aria-label="t('canvas.closeShortcuts')" @click="$emit('close')"><X :size="18" /></AppButton></header>
       <div class="shortcut-sections">
         <section v-for="section in sections" :key="section.title">
           <h3>{{ section.title }}</h3>

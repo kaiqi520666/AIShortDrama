@@ -84,7 +84,10 @@ async def test_stream_text_events_fail_task_and_emit_error():
         async for line in service.stream_text_events(prepared, text_request())
     ]
 
-    assert events[-1] == {"type": "error", "message": "文本生成服务暂时不可用"}
+    assert events[-1] == {
+        "type": "error", "message": "文本生成服务暂时不可用",
+        "error_key": "upstream_unavailable", "error_params": {},
+    }
     failed.assert_awaited_once()
     args = failed.await_args.args
     assert args[:3] == (task_id, "failed", "文本生成服务暂时不可用")

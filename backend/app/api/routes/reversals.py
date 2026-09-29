@@ -17,6 +17,7 @@ from app.core.errors import (
     ServiceUnavailableError,
     RequestError,
     diagnostic_snapshot,
+    error_fields,
     public_error_message,
 )
 from app.core.identity import get_current_user_id
@@ -61,9 +62,9 @@ async def stream_reverse_prompt(
             or TEMPLATE_DEFINITIONS.get(template.key, {}).get("label")
         ) or "商品模板"
         if not template.enabled or not option_enabled:
-            raise ConflictError(f"{template_label}模板已停用，请重新加载")
+            raise ConflictError(f"{template_label}模板已停用，请重新加载", error_key="template_disabled")
         if template.version != payload.template_version:
-            raise ConflictError(f"{template_label}模板已更新，请重新加载")
+            raise ConflictError(f"{template_label}模板已更新，请重新加载", error_key="template_updated")
         try:
             prompt = TEMPLATE_BUILDERS[payload.template_key](
                 template.config,
@@ -164,7 +165,7 @@ async def stream_reverse_prompt(
                 message,
                 diagnostic_snapshot(exc, "submit"),
             )
-            yield json.dumps({"type": "error", "message": message}, ensure_ascii=False) + "\n"
+            yield json.dumps({"type": "error", "message": message, **error_fields(exc, status_code=502)}, ensure_ascii=False) + "\n"
 
     return StreamingResponse(
         events(),

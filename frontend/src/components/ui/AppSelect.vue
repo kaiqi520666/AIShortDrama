@@ -86,7 +86,7 @@ onBeforeUnmount(() => window.removeEventListener('pointerdown', handleOutside, t
       :aria-activedescendant="open ? `${listboxId}-${activeIndex}` : undefined"
       @click="open ? closeMenu() : openMenu()"
     >
-      <span>{{ selectedOption?.label || '请选择' }}</span>
+      <span>{{ selectedOption?.label || $t('common.select') }}</span>
       <ChevronDown :size="14" aria-hidden="true" />
     </AppButton>
     <Transition name="ui-select-menu">

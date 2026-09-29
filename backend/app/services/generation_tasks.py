@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.model_capabilities import get_model_capability
-from app.core.errors import diagnostic_snapshot
+from app.core.errors import diagnostic_snapshot, task_error_fields
 from app.models import GenerationTask, Workspace
 from app.services.admin_configuration import ensure_model_enabled
 from app.schemas.generation import (
@@ -18,11 +18,11 @@ from app.services.billing import freeze_task_credits, refund_task_credits
 
 
 class WorkspaceNotFoundError(RuntimeError):
-    pass
+    error_key = "workspace_not_found"
 
 
 class GenerationQueueError(RuntimeError):
-    pass
+    error_key = "queue_failed"
 
 
 def task_payload(task: GenerationTask) -> dict[str, Any]:
@@ -36,6 +36,7 @@ def task_payload(task: GenerationTask) -> dict[str, Any]:
         "progress": task.progress,
         "result": task.result,
         "error_message": task.error_message,
+        **task_error_fields(task.status),
         "frozen_credits": task.frozen_credits,
         "charged_credits": task.charged_credits,
         "credit_status": task.credit_status,

@@ -5,16 +5,16 @@ import AppModal from './AppModal.vue'
 
 defineProps({
   src: { type: String, required: true },
-  title: { type: String, default: '图片预览' },
+  title: { type: String, default: '' },
   downloading: Boolean,
 })
 defineEmits(['close', 'download'])
 </script>
 
 <template>
-  <AppModal :title="title" content-class="app-media-preview" @close="$emit('close')">
+  <AppModal :title="title || $t('canvas.previewOriginal')" content-class="app-media-preview" @close="$emit('close')">
     <template #header-actions>
-      <AppButton icon-only size="sm" :disabled="downloading" title="下载原图" aria-label="下载原图" @click="$emit('download')">
+      <AppButton icon-only size="sm" :disabled="downloading" :title="$t('canvas.downloadOriginal')" :aria-label="$t('canvas.downloadOriginal')" @click="$emit('download')">
         <LoaderCircle v-if="downloading" class="media-action-spinner" :size="16" />
         <Download v-else :size="16" />
       </AppButton>

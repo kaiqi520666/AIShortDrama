@@ -1,6 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { i18n } from '../../i18n'
+
 import { buildProductVisualRequest, createProductVisualItems, parseProductVisualPlan } from './productVisual'
 import { contentTemplatesFixture } from '../../test/contentTemplates'
+
+beforeEach(() => { i18n.global.locale.value = 'zh-CN' })
+afterEach(() => { i18n.global.locale.value = 'id' })
 
 const template = contentTemplatesFixture.product_visual
 const productVisualTypes = createProductVisualItems(template)

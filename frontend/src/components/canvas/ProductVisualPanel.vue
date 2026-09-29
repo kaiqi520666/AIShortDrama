@@ -1,4 +1,6 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
+import { canvasTemplateText } from '../../i18n/canvas'
 import { computed } from 'vue'
 import { ArrowUp, BadgeCheck, Box, Coins, FileText, Images, LoaderCircle, Package, ScanSearch } from 'lucide-vue-next'
 import { useVueFlow } from '@vue-flow/core'
@@ -15,6 +17,8 @@ import { useGlobalConfirm } from '../../composables/useGlobalUI'
 import { useStreamingTextTask } from '../../composables/useStreamingTextTask'
 import AppButton from '../ui/AppButton.vue'
 import AppSelect from '../ui/AppSelect.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   nodeId: { type: String, required: true },
@@ -60,19 +64,19 @@ const textModelOptions = computed(() => capabilityStore.textModels.map(({ id, la
 const ratioOptions = computed(() => selectedImageSettings.value.model.aspectRatios.map((value) => ({ value, label: value })))
 const resolutionOptions = computed(() => selectedImageSettings.value.model.resolutions.map((value) => ({ value, label: value })))
 const message = computed(() => failure.value || props.data.generationError || (!templateEnabled.value
-  ? '商品图种模板已停用'
+  ? t('canvas.productVisualTemplateDisabled')
   : !productNode.value
-  ? '请先连接商品资料节点'
+  ? t('canvas.connectProductProfileFirst')
   : !allReferenceImages.value.length
-    ? '请先上传商品参考图'
+    ? t('canvas.uploadProductFirst')
     : !referenceImage.value
-      ? '请至少启用一张商品参考图'
+      ? t('canvas.enableProductReferenceFirst')
     : !productContext.value
-      ? '请先填写商品资料'
+      ? t('canvas.fillProductFirst')
       : !selectedItems.value.length
-        ? '至少选择一个出图类型'
+        ? t('canvas.selectImageTypeFirst')
         : insufficientCredits.value
-          ? `积分不足，本次需要 ${estimatedCredits.value} 积分`
+          ? t('canvas.insufficientCredits', { p0: estimatedCredits.value })
           : ''))
 const canSubmit = computed(() => templateEnabled.value && !running.value && productNode.value && referenceImage.value && productContext.value && selectedItems.value.length && !insufficientCredits.value)
 
@@ -96,9 +100,9 @@ function updateImageModel(imageModel) {
 async function submitTask() {
   if (!canSubmit.value) return
   if (existingGeneratedNodes.value.length && !await confirm({
-    title: '重新生成出图方案',
-    message: `将新增 ${selectedItems.value.length} 个图片节点，已有节点不会删除。`,
-    confirmText: '继续生成',
+    title: t('canvas.regenerateImagePlan'),
+    message: t('canvas.addImageNodes', { p0: selectedItems.value.length }),
+    confirmText: t('canvas.continueGeneration'),
   })) return
 
   updateNodeData(props.nodeId, { templateVersion: template.value.version })
@@ -113,7 +117,7 @@ async function submitTask() {
     resolution: selectedImageSettings.value.resolution,
     templateVersion: template.value.version,
   }), {
-    failureMessage: '商品出图方案生成失败',
+    failureMessage: t('canvas.productImagePlanFailed'),
     onSuccess: (content) => {
       const settings = selectedImageSettings.value
       const generatedNodeIds = store.addProductVisualNodes(
@@ -134,13 +138,13 @@ defineExpose({ submitTask })
 <template>
   <section class="generation-panel product-visual-panel nodrag nowheel" :class="{ embedded }" @pointerdown.stop>
     <header class="product-visual-panel-header">
-      <span><Images :size="16" />商品出图</span>
+      <span><Images :size="16" />{{ t('canvas.productVisual') }}</span>
       <small v-if="productNode"><Package :size="13" />{{ productNode.data.product?.name || productNode.data.title }}</small>
     </header>
 
     <div class="product-visual-groups">
       <section v-for="group in productVisualGroups" :key="group.id" class="product-visual-group">
-        <h3><component :is="groupIcons[group.id]" :size="14" />{{ group.label }}</h3>
+        <h3><component :is="groupIcons[group.id]" :size="14" />{{ canvasTemplateText(group.id, group.label) }}</h3>
         <div class="product-visual-options">
           <label v-for="item in group.items" :key="item.id" class="product-visual-option" :class="{ active: data.items.find((value) => value.id === item.id)?.enabled }">
             <input
@@ -148,25 +152,25 @@ defineExpose({ submitTask })
               :checked="data.items.find((value) => value.id === item.id)?.enabled"
               @change="updateItem(item.id, $event.target.checked)"
             />
-            <span>{{ item.label }}</span>
+            <span>{{ canvasTemplateText(item.id, item.label) }}</span>
           </label>
         </div>
       </section>
     </div>
 
     <div class="product-visual-settings">
-      <label><span>图片模型</span><AppSelect :model-value="selectedImageSettings.model.id" :options="imageModelOptions" aria-label="图片模型" @update:model-value="updateImageModel" /></label>
-      <label><span>画面比例</span><AppSelect :model-value="selectedImageSettings.aspectRatio" :options="ratioOptions" aria-label="画面比例" @update:model-value="updateNodeData(nodeId, { aspectRatio: $event })" /></label>
-      <label><span>清晰度</span><AppSelect :model-value="selectedImageSettings.resolution" :options="resolutionOptions" aria-label="清晰度" @update:model-value="updateNodeData(nodeId, { resolution: $event })" /></label>
+      <label><span>{{ t('canvas.imageModel') }}</span><AppSelect :model-value="selectedImageSettings.model.id" :options="imageModelOptions" :aria-label="t('canvas.imageModel')" @update:model-value="updateImageModel" /></label>
+      <label><span>{{ t('canvas.aspectRatio') }}</span><AppSelect :model-value="selectedImageSettings.aspectRatio" :options="ratioOptions" :aria-label="t('canvas.aspectRatio')" @update:model-value="updateNodeData(nodeId, { aspectRatio: $event })" /></label>
+      <label><span>{{ t('canvas.resolution') }}</span><AppSelect :model-value="selectedImageSettings.resolution" :options="resolutionOptions" :aria-label="t('canvas.resolution')" @update:model-value="updateNodeData(nodeId, { resolution: $event })" /></label>
     </div>
 
     <p v-if="message" class="panel-notice">{{ message }}</p>
     <footer class="product-visual-panel-footer">
       <FileText :size="16" />
-      <AppSelect :model-value="selectedTextModel.id" :options="textModelOptions" aria-label="文本模型" @update:model-value="updateNodeData(nodeId, { textModel: $event })" />
+      <AppSelect :model-value="selectedTextModel.id" :options="textModelOptions" :aria-label="t('canvas.textModel')" @update:model-value="updateNodeData(nodeId, { textModel: $event })" />
       <span class="panel-divider"></span>
-      <span class="task-credit-cost"><Coins :size="14" />本次 {{ estimatedCredits }} 积分</span>
-      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? '生成中' : '生成出图方案'" @click="submitTask">
+      <span class="task-credit-cost"><Coins :size="14" />{{ t('canvas.creditCost', { p0: estimatedCredits }) }}</span>
+      <AppButton class="run-task-button" icon-only variant="primary" :disabled="!canSubmit" :title="running ? t('canvas.generating') : t('canvas.generateImagePlan')" @click="submitTask">
         <LoaderCircle v-if="running" class="run-task-spinner" :size="18" />
         <ArrowUp v-else :size="18" />
       </AppButton>

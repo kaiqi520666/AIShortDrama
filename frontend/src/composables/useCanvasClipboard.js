@@ -1,7 +1,10 @@
+import { i18n } from '../i18n/index'
 import { getCurrentInstance, onBeforeUnmount, onMounted } from 'vue'
 import { uploadMedia } from '../api/uploads'
 import { getApiErrorMessage } from '../utils/apiError'
 import { mediaUploadRules, readMediaMetadata } from '../utils/mediaFiles'
+
+const { t } = i18n.global
 
 export function useCanvasClipboard({ store, nodes, project, updateNodeData, toast, eventTarget = globalThis.window }) {
   let pastePoint = null
@@ -14,8 +17,8 @@ export function useCanvasClipboard({ store, nodes, project, updateNodeData, toas
 
   async function pasteImage(file, position) {
     const rule = mediaUploadRules.image
-    if (!rule.types.includes(file.type)) return toast.warning('仅支持粘贴 JPG、PNG 或 WebP 图片')
-    if (file.size > rule.maxSize) return toast.warning('粘贴图片不能超过 20MB')
+    if (!rule.types.includes(file.type)) return toast.warning(t('canvas.pasteImageFormats'))
+    if (file.size > rule.maxSize) return toast.warning(t('canvas.pasteImageSize'))
 
     const id = store.addNode('image', position)
     const node = nodes.value.find((item) => item.id === id)
@@ -39,10 +42,10 @@ export function useCanvasClipboard({ store, nodes, project, updateNodeData, toas
         sourceHeight,
         sourceAspectRatio: sourceWidth / sourceHeight,
       })
-      toast.success('图片已粘贴到画布')
+      toast.success(t('canvas.imagePasted'))
     } catch (error) {
       store.deleteNode(id)
-      toast.error(error.code === 'ECONNABORTED' ? '图片上传超时，请重试' : getApiErrorMessage(error, '图片粘贴失败'))
+      toast.error(error.code === 'ECONNABORTED' ? t('canvas.imageUploadTimeout') : getApiErrorMessage(error, t('canvas.imagePasteFailed')))
     }
   }
 
@@ -50,7 +53,7 @@ export function useCanvasClipboard({ store, nodes, project, updateNodeData, toas
     try {
       if (!navigator.clipboard?.read) {
         const text = (await navigator.clipboard.readText()).trim()
-        return text ? pasteText(text, position) : toast.warning('剪贴板中没有可粘贴内容')
+        return text ? pasteText(text, position) : toast.warning(t('canvas.clipboardEmpty'))
       }
       const items = await navigator.clipboard.read()
       for (const item of items) {
@@ -62,9 +65,9 @@ export function useCanvasClipboard({ store, nodes, project, updateNodeData, toas
       }
       const textItem = items.find((item) => item.types.includes('text/plain'))
       const text = textItem ? (await (await textItem.getType('text/plain')).text()).trim() : ''
-      return text ? pasteText(text, position) : toast.warning('剪贴板中没有可粘贴内容')
+      return text ? pasteText(text, position) : toast.warning(t('canvas.clipboardEmpty'))
     } catch {
-      toast.error('无法读取剪贴板，请允许浏览器访问剪贴板')
+      toast.error(t('canvas.clipboardDenied'))
     }
   }
 
@@ -84,7 +87,7 @@ export function useCanvasClipboard({ store, nodes, project, updateNodeData, toas
     event.preventDefault()
     const position = project(pastePoint)
     const imageFile = imageItem?.getAsFile()
-    if (imageItem && !imageFile) return toast.error('无法读取剪贴板图片')
+    if (imageItem && !imageFile) return toast.error(t('canvas.clipboardImageFailed'))
     if (imageFile) pasteImage(imageFile, position)
     else pasteText(text, position)
   }

@@ -1,3 +1,6 @@
+import { i18n } from '../../i18n/index'
+
+const { t } = i18n.global
 const worldFields = ['overview', 'timeSpace', 'society', 'rules', 'conflict', 'visualGuide']
 
 export const worldOptions = {
@@ -30,15 +33,15 @@ export function parseWorldProfile(content) {
   const source = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
   const start = source.indexOf('{')
   const end = source.lastIndexOf('}')
-  if (start < 0 || end <= start) throw new Error('未生成有效的世界观设定')
+  if (start < 0 || end <= start) throw new Error(t('canvas.invalidWorldResult'))
   let parsed
   try {
     parsed = JSON.parse(source.slice(start, end + 1))
   } catch {
-    throw new Error('世界观生成结果格式异常')
+    throw new Error(t('canvas.invalidWorldFormat'))
   }
   const world = Object.fromEntries(worldFields.map((key) => [key, typeof parsed[key] === 'string' ? parsed[key].trim() : '']))
-  if (worldFields.some((key) => !world[key])) throw new Error('世界观生成结果缺少必要内容')
+  if (worldFields.some((key) => !world[key])) throw new Error(t('canvas.incompleteWorldResult'))
   return world
 }
 

@@ -1,7 +1,12 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { i18n } from '../../i18n'
+
 import { reactive, ref } from 'vue'
 import { createAudioGeneration, createImageGeneration, createVideoGeneration } from '../../api/generations'
 import { useGenerationContext } from './useGenerationContext'
+
+beforeEach(() => { i18n.global.locale.value = 'zh-CN' })
+afterEach(() => { i18n.global.locale.value = 'id' })
 
 vi.mock('../../api/generations', () => ({
   createAudioGeneration: vi.fn(),

@@ -35,13 +35,13 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
         <section class="global-confirm-dialog global-prompt-dialog" role="dialog" aria-modal="true" aria-labelledby="global-prompt-title" :aria-describedby="promptState.message ? 'global-prompt-message' : undefined">
           <header>
             <span class="global-confirm-icon"><PencilLine :size="18" /></span>
-            <div><h2 id="global-prompt-title">{{ promptState.title }}</h2><p v-if="promptState.message" id="global-prompt-message">{{ promptState.message }}</p></div>
+            <div><h2 id="global-prompt-title">{{ promptState.title || $t('common.enterContent') }}</h2><p v-if="promptState.message" id="global-prompt-message">{{ promptState.message }}</p></div>
           </header>
           <form @submit.prevent="submit">
-            <AppInput ref="input" v-model="value" :placeholder="promptState.placeholder" :maxlength="promptState.maxLength" :aria-label="promptState.title" />
+            <AppInput ref="input" v-model="value" :placeholder="promptState.placeholder" :maxlength="promptState.maxLength" :aria-label="promptState.title || $t('common.enterContent')" />
             <footer>
-              <AppButton type="button" variant="soft" @click="cancelPrompt">{{ promptState.cancelText }}</AppButton>
-              <AppButton type="submit" variant="primary" :disabled="!value.trim()">{{ promptState.confirmText }}</AppButton>
+              <AppButton type="button" variant="soft" @click="cancelPrompt">{{ promptState.cancelText || $t('common.cancel') }}</AppButton>
+              <AppButton type="submit" variant="primary" :disabled="!value.trim()">{{ promptState.confirmText || $t('common.save') }}</AppButton>
             </footer>
           </form>
         </section>

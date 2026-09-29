@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { Activity, CircleDollarSign, Clock3, Layers3, RefreshCw, WalletCards } from 'lucide-vue-next'
 import { getAdminDashboard } from '../../api/admin'
 import AppButton from '../../components/ui/AppButton.vue'
@@ -10,36 +11,33 @@ import { useGlobalToast } from '../../composables/useGlobalUI'
 import { getApiErrorMessage } from '../../utils/apiError'
 
 const toast = useGlobalToast()
+const { t, n } = useI18n()
 const days = ref(7)
 const dashboard = ref(null)
 const loading = ref(false)
 const error = ref('')
-const periods = [
-  { value: 1, label: '近 1 天' },
-  { value: 7, label: '近 7 天' },
-  { value: 30, label: '近 30 天' },
-]
-const modelColumns = [
-  { key: 'model', label: '模型' },
-  { key: 'count', label: '调用次数', align: 'right' },
-]
+const periods = computed(() => [1, 7, 30].map((value) => ({ value, label: t('admin.overview.lastDays', { days: n(value) }) })))
+const modelColumns = computed(() => [
+  { key: 'model', label: t('admin.model') },
+  { key: 'count', label: t('admin.overview.calls'), align: 'right' },
+])
 const metrics = computed(() => {
   const value = dashboard.value
   if (!value) return []
   return [
-    { label: '已支付充值', value: formatMoney(value.recharge_amount_cents), detail: `${value.recharge_order_count} 笔订单`, icon: CircleDollarSign },
-    { label: '已消耗积分', value: value.consumed_credits.toLocaleString('zh-CN'), detail: '已完成任务结算', icon: WalletCards },
-    { label: '生成任务', value: value.task_count.toLocaleString('zh-CN'), detail: `成功率 ${formatRate(value.success_rate)}`, icon: Activity },
-    { label: '队列积压', value: value.queued_task_count.toLocaleString('zh-CN'), detail: value.queue_depth == null ? 'Redis 队列不可用' : `Redis 深度 ${value.queue_depth}`, icon: Clock3 },
+    { label: t('admin.overview.paidRecharge'), value: formatMoney(value.recharge_amount_cents), detail: t('admin.overview.orders', { count: n(value.recharge_order_count) }), icon: CircleDollarSign },
+    { label: t('admin.overview.consumed'), value: n(value.consumed_credits), detail: t('admin.overview.settled'), icon: WalletCards },
+    { label: t('navigation.tasks'), value: n(value.task_count), detail: t('admin.overview.rateValue', { rate: formatRate(value.success_rate) }), icon: Activity },
+    { label: t('admin.overview.queue'), value: n(value.queued_task_count), detail: value.queue_depth == null ? t('admin.overview.redisUnavailable') : t('admin.overview.queueDepth', { count: n(value.queue_depth) }), icon: Clock3 },
   ]
 })
 
 function formatMoney(cents) {
-  return `¥${(Number(cents || 0) / 100).toLocaleString('zh-CN', { minimumFractionDigits: 2 })}`
+  return n(Number(cents || 0) / 100, { style: 'currency', currency: 'CNY' })
 }
 
 function formatRate(rate) {
-  return rate == null ? '—' : `${(Number(rate) * 100).toFixed(1)}%`
+  return rate == null ? '—' : n(Number(rate), { style: 'percent', minimumFractionDigits: 1, maximumFractionDigits: 1 })
 }
 
 async function load() {
@@ -50,7 +48,7 @@ async function load() {
     if (result.code !== 0) throw new Error(result.message)
     dashboard.value = result.data
   } catch (requestError) {
-    error.value = getApiErrorMessage(requestError, '后台概览加载失败')
+    error.value = getApiErrorMessage(requestError, t('admin.overview.loadFailed'))
     toast.error(error.value)
   } finally {
     loading.value = false
@@ -68,17 +66,17 @@ onMounted(load)
 <template>
   <section class="admin-page admin-overview">
     <header class="admin-page__header">
-      <div><span>OPERATIONS OVERVIEW</span><h1>后台概览</h1><p>汇总充值、积分、生成任务与队列运行状态</p></div>
-      <AppButton variant="soft" :disabled="loading" title="刷新概览" @click="load"><RefreshCw :size="15" :class="{ 'is-spinning': loading }" />刷新</AppButton>
+      <div><span>{{ t('navigation.operations') }}</span><h1>{{ t('navigation.adminOverview') }}</h1><p>{{ t('admin.overview.description') }}</p></div>
+      <AppButton variant="soft" :disabled="loading" :title="t('admin.overview.refreshAria')" @click="load"><RefreshCw :size="15" :class="{ 'is-spinning': loading }" />{{ t('admin.overview.refresh') }}</AppButton>
     </header>
 
     <div class="admin-overview__controls">
-      <AppTabs :model-value="days" :options="periods" aria-label="统计周期" @update:model-value="changePeriod" />
-      <small>统计周期：最近 {{ days }} 天</small>
+      <AppTabs :model-value="days" :options="periods" :aria-label="t('admin.overview.period')" @update:model-value="changePeriod" />
+      <small>{{ t('admin.overview.periodDescription', { days: n(days) }) }}</small>
     </div>
 
-    <EmptyState v-if="error" tone="error" compact title="后台概览加载失败" :description="error">
-      <AppButton variant="primary" @click="load">重新加载</AppButton>
+    <EmptyState v-if="error" tone="error" compact :title="t('admin.overview.loadFailed')" :description="error">
+      <AppButton variant="primary" @click="load">{{ t('common.reload') }}</AppButton>
     </EmptyState>
     <template v-else>
       <div class="admin-metrics" :aria-busy="loading">
@@ -90,17 +88,19 @@ onMounted(load)
 
       <div class="admin-overview__grid">
         <section class="admin-summary-block">
-          <header><div><Layers3 :size="16" /><h2>任务状态</h2></div><small>{{ dashboard?.task_count || 0 }} 个任务</small></header>
+          <header><div><Layers3 :size="16" /><h2>{{ t('admin.overview.taskStatus') }}</h2></div><small>{{ t('admin.overview.tasks', { count: n(dashboard?.task_count || 0) }) }}</small></header>
           <dl class="admin-summary-list">
-            <div><dt>成功</dt><dd>{{ dashboard?.succeeded_count || 0 }}</dd></div>
-            <div><dt>失败</dt><dd>{{ dashboard?.failed_count || 0 }}</dd></div>
-            <div><dt>超时</dt><dd>{{ dashboard?.timeout_count || 0 }}</dd></div>
-            <div><dt>成功率</dt><dd>{{ formatRate(dashboard?.success_rate) }}</dd></div>
+            <div><dt>{{ t('admin.overview.succeeded') }}</dt><dd>{{ n(dashboard?.succeeded_count || 0) }}</dd></div>
+            <div><dt>{{ t('admin.overview.failed') }}</dt><dd>{{ n(dashboard?.failed_count || 0) }}</dd></div>
+            <div><dt>{{ t('admin.overview.timeout') }}</dt><dd>{{ n(dashboard?.timeout_count || 0) }}</dd></div>
+            <div><dt>{{ t('admin.overview.rate') }}</dt><dd>{{ formatRate(dashboard?.success_rate) }}</dd></div>
           </dl>
         </section>
         <section class="admin-summary-block">
-          <header><div><Activity :size="16" /><h2>模型调用</h2></div><small>按任务创建时间统计</small></header>
-          <AppDataTable :columns="modelColumns" :items="dashboard?.model_calls || []" :loading="loading" loading-title="正在加载模型调用" empty-title="当前周期暂无模型调用" min-width="360px" />
+          <header><div><Activity :size="16" /><h2>{{ t('admin.overview.modelCalls') }}</h2></div><small>{{ t('admin.overview.byCreation') }}</small></header>
+          <AppDataTable :columns="modelColumns" :items="dashboard?.model_calls || []" :loading="loading" :loading-title="t('admin.overview.loadingCalls')" :empty-title="t('admin.overview.emptyCalls')" min-width="360px">
+            <template #cell-count="{ value }">{{ n(value) }}</template>
+          </AppDataTable>
         </section>
       </div>
     </template>

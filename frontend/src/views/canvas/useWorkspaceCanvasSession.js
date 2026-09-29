@@ -1,5 +1,8 @@
+import { i18n } from '../../i18n/index'
 import { ref } from 'vue'
 import { getApiErrorMessage } from '../../utils/apiError'
+
+const { t } = i18n.global
 
 function isCancelled(error) {
   return error?.code === 'ERR_CANCELED' || error?.name === 'CanceledError'
@@ -28,7 +31,7 @@ export function useWorkspaceCanvasSession({ workspaceStore, capabilityStore, con
     cancelLoad()
     const currentSequence = ++requestSequence
     controller = new AbortController()
-    loadingId = loading.showLoading('正在打开工作台…')
+    loadingId = loading.showLoading(t('canvas.openingWorkspace'))
     loadError.value = ''
     let workspace = null
     try {
@@ -42,7 +45,7 @@ export function useWorkspaceCanvasSession({ workspaceStore, capabilityStore, con
       return currentSequence === requestSequence ? workspace : null
     } catch (error) {
       if (currentSequence === requestSequence && !isCancelled(error)) {
-        const message = getApiErrorMessage(error, '画布配置加载失败')
+        const message = getApiErrorMessage(error, t('canvas.canvasConfigFailed'))
         if (initial) loadError.value = message
         else toast.error(message)
       }

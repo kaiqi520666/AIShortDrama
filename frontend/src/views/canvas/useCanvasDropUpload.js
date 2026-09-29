@@ -1,8 +1,12 @@
+import { i18n } from '../../i18n/index'
+import { canvasLabel } from '../../i18n/canvas'
 import { nextTick, ref } from 'vue'
 import { uploadMedia } from '../../api/uploads'
 import { getNodeDescriptor } from '../../config/canvas/nodeCatalog'
 import { getApiErrorMessage } from '../../utils/apiError'
 import { mediaUploadRules, readMediaMetadata } from '../../utils/mediaFiles'
+
+const { t } = i18n.global
 
 export const uploadRules = {
   image: { ...mediaUploadRules.image, accept: 'image/jpeg,image/png,image/webp' },
@@ -12,9 +16,9 @@ export const uploadRules = {
 
 export function validateUploadFile(type, file) {
   const rule = uploadRules[type]
-  if (!rule) return '不支持的上传类型'
-  if (!rule.types.includes(file.type)) return `不支持的${getNodeDescriptor(type).label}格式`
-  if (file.size > rule.maxSize) return `文件不能超过 ${rule.maxSize / 1024 / 1024}MB`
+  if (!rule) return t('canvas.unsupportedUploadType')
+  if (!rule.types.includes(file.type)) return t('canvas.unsupportedMediaFormat', { p0: canvasLabel(getNodeDescriptor(type).label) })
+  if (file.size > rule.maxSize) return t('canvas.fileSizeLimit', { p0: rule.maxSize / 1024 / 1024 })
   return ''
 }
 
@@ -45,7 +49,7 @@ export function useCanvasDropUpload({ store, nodes, contextMenu, activeGroupId, 
       store.addAssetNode(item.asset, screenToFlowCoordinate({ x: event.clientX, y: event.clientY }))
       activeGroupId.value = null
     } catch {
-      toast.error('无法添加拖拽内容')
+      toast.error(t('canvas.dropFailed'))
     }
   }
 
@@ -83,7 +87,7 @@ export function useCanvasDropUpload({ store, nodes, contextMenu, activeGroupId, 
       })
     } catch (error) {
       store.deleteNode(id)
-      toast.error(error.code === 'ECONNABORTED' ? '上传超时，请重试' : getApiErrorMessage(error, '上传失败'))
+      toast.error(error.code === 'ECONNABORTED' ? t('canvas.uploadTimeout') : getApiErrorMessage(error, t('canvas.uploadFailed')))
     }
   }
 

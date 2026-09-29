@@ -1,3 +1,6 @@
+import { i18n } from '../i18n/index'
+
+const { t } = i18n.global
 const mimeExtensions = {
   'image/jpeg': 'jpg',
   'image/png': 'png',
@@ -13,7 +16,7 @@ export function buildDownloadFilename(name, mimeType, url) {
 
 export async function downloadUrl(url, name) {
   const response = await fetch(url, { cache: 'no-store' })
-  if (!response.ok) throw new Error(`图片下载失败（${response.status}）`)
+  if (!response.ok) throw new Error(t('canvas.imageDownloadStatus', { p0: response.status }))
   const blob = await response.blob()
   const objectUrl = URL.createObjectURL(blob)
   const link = document.createElement('a')

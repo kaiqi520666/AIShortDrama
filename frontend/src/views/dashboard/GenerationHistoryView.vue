@@ -8,7 +8,7 @@ import AppButton from '../../components/ui/AppButton.vue'
 import AppDataTable from '../../components/ui/AppDataTable.vue'
 import AppSelect from '../../components/ui/AppSelect.vue'
 import { useGlobalToast } from '../../composables/useGlobalUI'
-import { getApiErrorMessage } from '../../utils/apiError'
+import { getApiErrorMessage, getTaskErrorMessage } from '../../utils/apiError'
 import { buildOssImageUrl } from '../../utils/ossImage'
 
 const router = useRouter()
@@ -137,7 +137,7 @@ onMounted(load)
         <dl class="generation-specs"><div v-for="spec in detail.specs" :key="spec.label"><dt>{{ spec.label }}</dt><dd>{{ spec.value }}</dd></div></dl>
       </section>
       <section class="generation-detail-section"><h3>提示词</h3><p class="generation-prompt">{{ detail.prompt || '—' }}</p></section>
-      <section v-if="detail.error_message" class="generation-detail-section generation-detail-error"><h3>失败原因</h3><p>{{ detail.error_message }}</p></section>
+      <section v-if="detail.error_message" class="generation-detail-section generation-detail-error"><h3>{{ $t('errors.failure_reason') }}</h3><p>{{ getTaskErrorMessage(detail) }}</p></section>
       <section v-if="detail.result" class="generation-detail-section">
         <h3>生成结果</h3>
         <p v-if="detail.result.type === 'text'" class="generation-result-text">{{ detail.result.content }}</p>

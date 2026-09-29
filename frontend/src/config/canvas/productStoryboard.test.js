@@ -1,4 +1,6 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { i18n } from '../../i18n'
+
 import {
   buildStoryboardReferenceManifest,
   buildProductStoryboardRequest,
@@ -18,6 +20,9 @@ import { modelCapabilitiesFixture } from '../../test/modelCapabilities'
 import { contentTemplatesFixture } from '../../test/contentTemplates'
 import { normalizeImageModels } from '../imageModels'
 import { normalizeVideoModels } from '../videoModels'
+
+beforeEach(() => { i18n.global.locale.value = 'zh-CN' })
+afterEach(() => { i18n.global.locale.value = 'id' })
 
 const imageModels = normalizeImageModels(modelCapabilitiesFixture.image)
 const defaultImageModel = imageModels.find(({ id }) => id === modelCapabilitiesFixture.image.default_model)

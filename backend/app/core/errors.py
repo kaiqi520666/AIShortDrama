@@ -7,10 +7,15 @@ import httpx
 class ApiError(RuntimeError):
     status_code = 500
 
-    def __init__(self, message: str, data: Any = None):
+    def __init__(
+        self, message: str, data: Any = None, *,
+        error_key: str | None = None, error_params: dict | None = None,
+    ):
         super().__init__(message)
         self.message = message
         self.data = data
+        self.error_key = error_key
+        self.error_params = error_params or {}
 
 
 class NotFoundError(ApiError):
@@ -35,6 +40,39 @@ class UpstreamMediaError(ApiError):
 
 class ServiceUnavailableError(ApiError):
     status_code = 503
+
+
+class LocalizedValueError(ValueError):
+    def __init__(
+        self, message: str, *,
+        error_key: str = "invalid_request", error_params: dict | None = None,
+    ):
+        super().__init__(message)
+        self.error_key = error_key
+        self.error_params = error_params or {}
+
+
+def error_fields(exc: Exception | None = None, *, status_code: int = 500) -> dict[str, Any]:
+    current = exc
+    seen = set()
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if getattr(current, "error_key", None):
+            return {"error_key": current.error_key, "error_params": getattr(current, "error_params", {})}
+        current = current.__cause__
+    key = {
+        400: "invalid_request", 401: "unauthorized", 402: "insufficient_credits",
+        403: "forbidden", 404: "not_found", 405: "method_not_allowed",
+        409: "conflict", 413: "file_too_large", 422: "invalid_request",
+        429: "rate_limited", 502: "upstream_unavailable", 503: "service_unavailable",
+        504: "task_timeout",
+    }.get(status_code, "service_unavailable" if status_code >= 500 else "request_failed")
+    return {"error_key": key, "error_params": {}}
+
+
+def task_error_fields(status: str) -> dict[str, Any]:
+    key = {"failed": "generation_failed", "cancelled": "task_cancelled", "timeout": "task_timeout"}.get(status)
+    return {"error_key": key, "error_params": {}} if key else {}
 
 
 _UPSTREAM_ERROR_NAMES = {

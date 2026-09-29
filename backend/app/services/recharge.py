@@ -15,9 +15,11 @@ from app.services.admin_configuration import get_billing_policy, policy_snapshot
 
 
 class RechargeError(RuntimeError):
-    def __init__(self, message: str, status_code: int = 422):
+    def __init__(self, message: str, status_code: int = 422, *, error_key: str | None = None, error_params: dict | None = None):
         super().__init__(message)
         self.status_code = status_code
+        self.error_key = error_key or ("payment_unavailable" if status_code == 503 else "invalid_request")
+        self.error_params = error_params or {}
 
 
 @dataclass(slots=True)
@@ -69,7 +71,8 @@ async def calculate_recharge(db: AsyncSession, amount_cents: int) -> RechargeQuo
     policy = await get_billing_policy(db)
     if amount_cents < policy.recharge_min_cents or amount_cents > policy.recharge_max_cents or amount_cents % 100:
         raise RechargeError(
-            f"充值金额必须为 {policy.recharge_min_cents // 100}–{policy.recharge_max_cents // 100} 元的整数"
+            f"充值金额必须为 {policy.recharge_min_cents // 100}–{policy.recharge_max_cents // 100} 元的整数",
+            error_key="recharge_amount", error_params={"min": policy.recharge_min_cents // 100, "max": policy.recharge_max_cents // 100},
         )
     tier = await db.scalar(
         select(RechargeTier)
@@ -78,7 +81,7 @@ async def calculate_recharge(db: AsyncSession, amount_cents: int) -> RechargeQuo
         .limit(1)
     )
     if not tier:
-        raise RechargeError("当前没有可用的充值阶梯")
+        raise RechargeError("当前没有可用的充值阶梯", error_key="recharge_unavailable")
     base_credits = amount_cents * policy.unit_credits // policy.unit_amount_cents
     bonus_credits = base_credits * tier.bonus_rate_bps // 10000
     return RechargeQuote(tier, policy, base_credits, bonus_credits)
@@ -87,9 +90,9 @@ async def calculate_recharge(db: AsyncSession, amount_cents: int) -> RechargeQuo
 def validate_tiers(tiers: list[RechargeTier], policy: BillingPolicy) -> None:
     enabled = sorted((tier for tier in tiers if tier.enabled), key=lambda tier: tier.min_amount_cents)
     if not enabled or not any(tier.min_amount_cents == policy.recharge_min_cents for tier in enabled):
-        raise RechargeError(f"启用阶梯必须包含 {policy.recharge_min_cents // 100} 元基础档")
+        raise RechargeError(f"启用阶梯必须包含 {policy.recharge_min_cents // 100} 元基础档", error_key="recharge_base_tier", error_params={"min": policy.recharge_min_cents // 100})
     if any(current.bonus_rate_bps < previous.bonus_rate_bps for previous, current in zip(enabled, enabled[1:])):
-        raise RechargeError("金额越高，赠送比例不能降低")
+        raise RechargeError("金额越高，赠送比例不能降低", error_key="recharge_bonus_order")
 
 
 def _out_trade_no() -> str:

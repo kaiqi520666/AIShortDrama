@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed } from 'vue'
 import { Handle, Position, useVueFlow } from '@vue-flow/core'
 import { AudioWaveform, BadgeCheck, Clapperboard, Download, Eye, FileText, GripVertical, Images, Image as ImageIcon, LoaderCircle, LockKeyhole, MoveDiagonal2, Music2, RefreshCw, Shirt, UserRound, Video } from 'lucide-vue-next'
@@ -16,6 +17,8 @@ import { useMediaNodeAsset } from './useMediaNodeAsset'
 import { useMediaNodeResize } from './useMediaNodeResize'
 import { useNodeGenerationPolling } from './useNodeGenerationPolling'
 
+const { t } = useI18n()
+
 const props = defineProps({
   id: { type: String, required: true },
   type: { type: String, required: true },
@@ -23,7 +26,7 @@ const props = defineProps({
   selected: Boolean,
 })
 
-const mediaLabels = { image: '图片', video: '视频', audio: '音频' }
+const mediaLabels = computed(() => ({ image: t('canvas.image'), video: t('canvas.video'), audio: t('canvas.audio') }))
 const textMode = computed(() => props.type === 'text' ? (props.data.textMode ?? (props.data.content ? 'manual' : null)) : null)
 const acceptsInput = computed(() => props.type === 'text' ? textMode.value === 'task' : !props.data.assetSource)
 const sourceAspectRatio = computed(() => props.data.assetSource && props.data.sourceAspectRatio > 0 ? props.data.sourceAspectRatio : null)
@@ -131,11 +134,11 @@ function openOutfitVideoFlow() {
       <AppTooltip v-if="data.assetSource" :text="libraryToolbarLabel">
         <AppButton class="media-node-toolbar-button" icon-only :aria-label="libraryToolbarLabel" @click.stop="openAssetPicker"><component :is="libraryCopy.icon" :size="16" /></AppButton>
       </AppTooltip>
-      <AppTooltip v-if="data.storyboardSourceId" text="创建视频节点">
-        <AppButton class="media-node-toolbar-button" icon-only aria-label="创建视频节点" @click.stop="createStoryboardVideo"><Video :size="16" /></AppButton>
+      <AppTooltip v-if="data.storyboardSourceId" :text="t('canvas.createVideoNode')">
+        <AppButton class="media-node-toolbar-button" icon-only :aria-label="t('canvas.createVideoNode')" @click.stop="createStoryboardVideo"><Video :size="16" /></AppButton>
       </AppTooltip>
-      <AppTooltip v-if="isOutfitReference" text="确认定妆图并生成服饰视频">
-        <AppButton class="media-node-toolbar-button" icon-only aria-label="确认定妆图并生成服饰视频" @click.stop="openOutfitVideoFlow"><Video :size="16" /></AppButton>
+      <AppTooltip v-if="isOutfitReference" :text="t('canvas.confirmOutfitGenerate')">
+        <AppButton class="media-node-toolbar-button" icon-only :aria-label="t('canvas.confirmOutfitGenerate')" @click.stop="openOutfitVideoFlow"><Video :size="16" /></AppButton>
       </AppTooltip>
       <AppTooltip :text="storyboardRegistrationLabel">
         <AppButton class="media-node-toolbar-button" icon-only :disabled="registeringStoryboard || !data.assetId" :aria-label="storyboardRegistrationLabel" @click.stop="registerStoryboardAsset">
@@ -145,11 +148,11 @@ function openOutfitVideoFlow() {
           <UserRound v-else :size="16" />
         </AppButton>
       </AppTooltip>
-      <AppTooltip text="预览原图">
-        <AppButton class="media-node-toolbar-button" icon-only aria-label="预览原图" @click.stop="openImagePreview"><Eye :size="16" /></AppButton>
+      <AppTooltip :text="t('canvas.previewOriginal')">
+        <AppButton class="media-node-toolbar-button" icon-only :aria-label="t('canvas.previewOriginal')" @click.stop="openImagePreview"><Eye :size="16" /></AppButton>
       </AppTooltip>
-      <AppTooltip text="下载原图">
-        <AppButton class="media-node-toolbar-button" icon-only :disabled="downloading" aria-label="下载原图" @click.stop="downloadImage">
+      <AppTooltip :text="t('canvas.downloadOriginal')">
+        <AppButton class="media-node-toolbar-button" icon-only :disabled="downloading" :aria-label="t('canvas.downloadOriginal')" @click.stop="downloadImage">
           <LoaderCircle v-if="downloading" class="media-action-spinner" :size="16" /><Download v-else :size="16" />
         </AppButton>
       </AppTooltip>
@@ -159,7 +162,7 @@ function openOutfitVideoFlow() {
       <AppInput
         class="node-title-input nodrag nopan"
         :model-value="data.title"
-        aria-label="节点标题"
+        :aria-label="t('canvas.nodeTitle')"
         @input="updateNodeData(id, { title: $event.target.value })"
         @keydown.stop
       />
@@ -172,51 +175,51 @@ function openOutfitVideoFlow() {
 
       <div v-if="data.segmentLocked" class="generation-locked-state">
         <LockKeyhole :size="28" />
-        <p>等待上一段确认</p>
+        <p>{{ t('canvas.waitingPreviousSegment') }}</p>
       </div>
 
       <div v-else-if="['generating', 'uploading'].includes(data.status) && type !== 'text'" class="generating-state">
         <template v-if="data.generationPollingPaused">
-          <p>{{ data.generationError || '状态同步中断' }}</p>
-          <AppButton class="nodrag nopan" size="sm" @click.stop="resumeGenerationPolling"><RefreshCw :size="14" />继续同步</AppButton>
+          <p>{{ data.generationError || t('canvas.syncInterrupted') }}</p>
+          <AppButton class="nodrag nopan" size="sm" @click.stop="resumeGenerationPolling"><RefreshCw :size="14" />{{ t('canvas.resumeSync') }}</AppButton>
         </template>
         <template v-else>
           <span></span>
-          <p>{{ data.status === 'uploading' ? '上传中' : `生成中 ${data.generationProgress || 0}%` }}</p>
+          <p>{{ data.status === 'uploading' ? t('canvas.uploading') : t('canvas.generationProgress', { p0: data.generationProgress || 0 }) }}</p>
         </template>
       </div>
 
       <div v-else-if="data.status === 'failed' && type !== 'text'" class="generation-failed-state">
-        <p>{{ mediaLabels[type] || '内容' }}生成失败</p>
+        <p>{{ t('canvas.generationFailed', { p0: mediaLabels[type] || t('canvas.content') }) }}</p>
       </div>
 
       <div v-else-if="type === 'text' && !textMode" class="text-mode-chooser">
-        <p>选择文本节点用途</p>
-        <AppButton class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'manual')"><FileText :size="18" /><span><strong>自己编写内容</strong><small>记录任意文本内容</small></span></AppButton>
-        <AppButton class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'imageReverse')"><ImageIcon :size="18" /><span><strong>反推图片提示词</strong><small>创建图片上传与 AI 文本任务</small></span></AppButton>
+        <p>{{ t('canvas.chooseTextPurpose') }}</p>
+        <AppButton class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'manual')"><FileText :size="18" /><span><strong>{{ t('canvas.writeManually') }}</strong><small>{{ t('canvas.recordText') }}</small></span></AppButton>
+        <AppButton class="nodrag nopan" @pointerdown.stop @click.stop="store.setTextMode(id, 'imageReverse')"><ImageIcon :size="18" /><span><strong>{{ t('canvas.reverseImagePrompt') }}</strong><small>{{ t('canvas.createReverseTask') }}</small></span></AppButton>
       </div>
 
       <AppTextarea
         v-else-if="type === 'text'"
         class="text-node-editor nodrag nopan nowheel"
         :model-value="data.content"
-        :placeholder="textMode === 'task' ? (data.status === 'generating' ? '正在生成…' : '等待生成…') : '输入内容…'"
+        :placeholder="textMode === 'task' ? (data.status === 'generating' ? t('canvas.generatingEllipsis') : t('canvas.waitingGenerationEllipsis')) : t('canvas.contentPlaceholder')"
         :readonly="textMode === 'task' && data.status === 'generating'"
-        aria-label="文本节点内容"
+        :aria-label="t('canvas.textNodeContent')"
         @input="updateNodeData(id, { content: $event.target.value, status: 'ready' })"
         @keydown.stop
       />
 
       <template v-else-if="data.asset && type === 'image'">
-        <img class="node-image" :src="buildOssImageUrl(data.asset)" :alt="data.title" title="双击预览原图" draggable="false" referrerpolicy="no-referrer" @load="captureImageDimensions" @dblclick.stop="openImagePreview" />
+        <img class="node-image" :src="buildOssImageUrl(data.asset)" :alt="data.title" :title="t('canvas.doubleClickPreview')" draggable="false" referrerpolicy="no-referrer" @load="captureImageDimensions" @dblclick.stop="openImagePreview" />
       </template>
 
       <video v-else-if="data.assetId && type === 'video'" class="node-video nodrag nopan nowheel" :src="`/api/assets/${data.assetId}/content`" :poster="data.poster || data.lastFrameUrl" controls playsinline preload="none"></video>
 
       <div v-else-if="['image', 'video'].includes(type) && data.assetSource === 'upload'" class="media-upload-state">
         <div class="media-upload-actions">
-          <AppButton v-if="resourceType === 'asset'" class="nodrag nopan" :disabled="uploading" @pointerdown.stop @click.stop="fileInput?.click()"><component :is="icon" :size="28" stroke-width="1.35" /><span>{{ uploading ? `上传中 ${uploadProgress}%` : `上传${type === 'video' ? '视频' : '图片'}` }}</span></AppButton>
-          <AppButton v-if="type === 'image'" class="nodrag nopan" @pointerdown.stop @click.stop="openAssetPicker"><component :is="libraryCopy.icon" :size="28" stroke-width="1.35" /><span>选择{{ libraryCopy.label }}</span></AppButton>
+          <AppButton v-if="resourceType === 'asset'" class="nodrag nopan" :disabled="uploading" @pointerdown.stop @click.stop="fileInput?.click()"><component :is="icon" :size="28" stroke-width="1.35" /><span>{{ uploading ? t('canvas.uploadProgress', { p0: uploadProgress }) : t('canvas.uploadType', { p0: type === 'video' ? t('canvas.video') : t('canvas.image') }) }}</span></AppButton>
+          <AppButton v-if="type === 'image'" class="nodrag nopan" @pointerdown.stop @click.stop="openAssetPicker"><component :is="libraryCopy.icon" :size="28" stroke-width="1.35" /><span>{{ t('canvas.selectType', { p0: libraryCopy.label }) }}</span></AppButton>
         </div>
         <p v-if="uploadNotice">{{ uploadNotice }}</p>
       </div>
@@ -235,11 +238,11 @@ function openOutfitVideoFlow() {
         <component :is="icon" :size="42" stroke-width="1.35" />
       </div>
 
-      <span v-if="type === 'video' || (type === 'text' && textMode)" class="node-drag-handle" title="拖动节点"><GripVertical :size="16" /></span>
-      <AppButton v-if="type === 'text' && textMode" class="text-resize-handle nodrag nopan" icon-only title="调整尺寸" @pointerdown.stop.prevent="startResize">
+      <span v-if="type === 'video' || (type === 'text' && textMode)" class="node-drag-handle" :title="t('canvas.dragNode')"><GripVertical :size="16" /></span>
+      <AppButton v-if="type === 'text' && textMode" class="text-resize-handle nodrag nopan" icon-only :title="t('canvas.resize')" @pointerdown.stop.prevent="startResize">
         <MoveDiagonal2 :size="15" />
       </AppButton>
-      <AppButton v-if="selected && ['image', 'video', 'audio'].includes(type)" class="media-resize-handle nodrag nopan" icon-only title="调整显示尺寸" @pointerdown.stop.prevent="startResize">
+      <AppButton v-if="selected && ['image', 'video', 'audio'].includes(type)" class="media-resize-handle nodrag nopan" icon-only :title="t('canvas.resizeDisplay')" @pointerdown.stop.prevent="startResize">
         <MoveDiagonal2 :size="15" />
       </AppButton>
     </div>

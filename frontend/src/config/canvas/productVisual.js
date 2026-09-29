@@ -1,4 +1,7 @@
+import { i18n } from '../../i18n/index'
 import { requireTemplate } from './contentTemplates'
+
+const { t } = i18n.global
 
 export function getProductVisualGroups(template) {
   const record = requireTemplate(template, '商品图种模板')
@@ -52,19 +55,19 @@ export function parseProductVisualPlan(content, items) {
   const source = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
   const start = source.indexOf('[')
   const end = source.lastIndexOf(']')
-  if (start < 0 || end <= start) throw new Error('未生成有效的商品出图方案')
+  if (start < 0 || end <= start) throw new Error(t('canvas.invalidProductPlan'))
 
   let parsed
   try {
     parsed = JSON.parse(source.slice(start, end + 1))
   } catch {
-    throw new Error('商品出图方案格式异常')
+    throw new Error(t('canvas.invalidProductPlanFormat'))
   }
-  if (!Array.isArray(parsed)) throw new Error('商品出图方案格式异常')
+  if (!Array.isArray(parsed)) throw new Error(t('canvas.invalidProductPlanFormat'))
 
   const prompts = new Map(parsed.map((item) => [item?.type, typeof item?.prompt === 'string' ? item.prompt.trim() : '']))
   const plans = items.map((item) => ({ ...item, prompt: prompts.get(item.id) || '' }))
   const missing = plans.filter((item) => !item.prompt).map((item) => item.label)
-  if (missing.length) throw new Error(`商品出图方案缺少：${missing.join('、')}`)
+  if (missing.length) throw new Error(t('canvas.missingProductPlan', { p0: missing.join('、') }))
   return plans
 }

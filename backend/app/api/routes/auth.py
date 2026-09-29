@@ -45,7 +45,7 @@ DUMMY_PASSWORD_HASH = hash_password("invalid-password-placeholder")
 
 
 def unauthorized(message: str) -> JSONResponse:
-    response = JSONResponse(status_code=401, content=fail(message))
+    response = JSONResponse(status_code=401, content=fail(message, error_key="unauthorized"))
     clear_auth_cookies(response)
     return response
 
@@ -98,7 +98,7 @@ async def register(
         ).limit(1)
     )
     if duplicate:
-        raise RequestError("用户名或邮箱已注册")
+        raise RequestError("用户名或邮箱已注册", error_key="account_exists")
     try:
         await consume_registration_code(
             request.app.state.redis,
@@ -140,7 +140,7 @@ async def login(
     if security.rate_limited:
         return JSONResponse(
             status_code=429,
-            content=fail("登录尝试过于频繁，请稍后再试", login_security_payload(security)),
+            content=fail("登录尝试过于频繁，请稍后再试", login_security_payload(security), error_key="rate_limited"),
         )
     if security.captcha_required:
         try:
@@ -148,7 +148,7 @@ async def login(
         except TurnstileVerificationError as exc:
             return JSONResponse(
                 status_code=401,
-                content=fail(str(exc), login_security_payload(security)),
+                content=fail(str(exc), login_security_payload(security), error_key="captcha_failed"),
             )
 
     user = await db.scalar(
@@ -164,10 +164,10 @@ async def login(
         message = "登录尝试过于频繁，请稍后再试" if security.rate_limited else "邮箱或密码错误"
         return JSONResponse(
             status_code=429 if security.rate_limited else 401,
-            content=fail(message, login_security_payload(security)),
+            content=fail(message, login_security_payload(security), error_key="rate_limited" if security.rate_limited else "invalid_credentials"),
         )
     if user.status != "active":
-        return JSONResponse(status_code=403, content=fail("账号已被禁用"))
+        return JSONResponse(status_code=403, content=fail("账号已被禁用", error_key="account_disabled"))
 
     await clear_login_failures(redis, email, ip_address)
     access_token, refresh_token = await create_refresh_session(
@@ -234,9 +234,9 @@ async def change_password(
 ):
     current = await db.scalar(select(User).where(User.id == user.id).with_for_update())
     if not await asyncio.to_thread(verify_password, payload.current_password, current.password_hash):
-        raise RequestError("原密码错误")
+        raise RequestError("原密码错误", error_key="incorrect_password")
     if payload.current_password == payload.new_password:
-        raise RequestError("新密码不能与原密码相同")
+        raise RequestError("新密码不能与原密码相同", error_key="password_unchanged")
 
     current.password_hash = await asyncio.to_thread(hash_password, payload.new_password)
     current.auth_version += 1

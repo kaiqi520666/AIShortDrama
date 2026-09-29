@@ -1,6 +1,7 @@
 <script setup>
 import { ShieldCheck } from 'lucide-vue-next'
 import AppBrand from '../ui/AppBrand.vue'
+import AppLanguageSelect from '../ui/AppLanguageSelect.vue'
 
 defineProps({
   title: { type: String, required: true },
@@ -10,6 +11,7 @@ defineProps({
 
 <template>
   <main class="auth-page auth-form-page">
+    <div class="auth-language"><AppLanguageSelect /></div>
     <div class="auth-form-stack">
       <AppBrand class="auth-brand" icon-only />
       <section class="auth-form-shell">
@@ -22,3 +24,7 @@ defineProps({
     </div>
   </main>
 </template>
+
+<style scoped>
+.auth-language { position: absolute; top: 20px; right: 20px; z-index: 2; }
+</style>

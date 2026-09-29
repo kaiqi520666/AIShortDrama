@@ -1,4 +1,7 @@
+import { i18n } from '../../i18n/index'
 import { requireTemplate } from './contentTemplates'
+
+const { t } = i18n.global
 
 export const storyboardSegmentShotCount = 6;
 export const MAX_STORYBOARD_REFERENCES = 6;
@@ -89,7 +92,7 @@ export function storyboardGrid(duration, videoAspectRatio = "9:16") {
 }
 
 export function recommendStoryboardSettings(duration, videoAspectRatio = "9:16", model) {
-  if (!model) throw new Error("图片模型能力尚未加载");
+  if (!model) throw new Error(t('canvas.imageCapabilityMissing'));
   const grid = storyboardGrid(duration, videoAspectRatio);
   const targetRatio = (grid.columns * ratioValue(videoAspectRatio)) / grid.rows;
   const aspectRatio = model.aspectRatios.reduce((best, value) =>
@@ -150,37 +153,37 @@ export function parseProductStoryboardPlan(content, template) {
     .replace(/\s*```$/, "");
   const start = source.indexOf("{");
   const end = source.lastIndexOf("}");
-  if (start < 0 || end <= start) throw new Error("未生成有效的商品分镜方案");
+  if (start < 0 || end <= start) throw new Error(t('canvas.invalidStoryboardResult'));
   let parsed;
   try {
     parsed = JSON.parse(source.slice(start, end + 1));
   } catch {
-    throw new Error("商品分镜方案格式异常");
+    throw new Error(t('canvas.invalidStoryboardFormat'));
   }
   if (!parsed || parsed.templateId !== expectedTemplateId || !Array.isArray(parsed.segments)) {
-    throw new Error(`商品分镜方案必须为${templateLabel} JSON 对象`);
+    throw new Error(t('canvas.storyboardObjectRequired', { p0: templateLabel }));
   }
   const totalDuration = Number(parsed.totalDuration || parsed.duration || parsed.segments.length * 15);
   const expectedSegments = storyboardSegmentCount(totalDuration, storyboardDurations);
-  if (parsed.segments.length !== expectedSegments) throw new Error(`商品分镜段落数量应为 ${expectedSegments} 条`);
+  if (parsed.segments.length !== expectedSegments) throw new Error(t('canvas.storyboardSegmentCount', { p0: expectedSegments }));
   const segments = parsed.segments.map((segment, index) => {
     const segmentIndex = Number(segment?.segmentIndex);
     if (segmentIndex !== index + 1 || Number(segment?.duration) !== 15 || Number(segment?.shotCount) !== storyboardSegmentShotCount) {
-      throw new Error("商品分镜段落顺序、时长或镜头数量异常");
+      throw new Error(t('canvas.invalidStoryboardSegments'));
     }
     if (!['cut', 'extend'].includes(segment?.continuityMode) || (index === 0 && segment.continuityMode !== 'cut')) {
-      throw new Error("商品分镜衔接方式异常");
+      throw new Error(t('canvas.invalidStoryboardContinuity'));
     }
     if (![segment.plotGoal, segment.openingState, segment.endingState, segment.prompt, segment.videoPrompt]
       .every((value) => typeof value === "string" && value.trim())) {
-      throw new Error("商品分镜段落内容不完整");
+      throw new Error(t('canvas.incompleteStoryboardSegment'));
     }
     if (expectedTemplateId === 'commerce-drama' && ![segment.dramaticBeat, segment.productPlacement]
       .every((value) => typeof value === 'string' && value.trim())) {
-      throw new Error('短剧带货段落缺少剧情节拍或商品植入');
+      throw new Error(t('canvas.incompleteCommerceDrama'));
     }
     if (!hasStoryboardShotLabels(segment.prompt) || !hasStoryboardShotLabels(segment.videoPrompt)) {
-      throw new Error(`第${index + 1}段必须包含镜头1至镜头${storyboardSegmentShotCount}`);
+      throw new Error(t('canvas.storyboardShotsRequired', { p0: index + 1, p1: storyboardSegmentShotCount }));
     }
     return {
       segmentIndex,

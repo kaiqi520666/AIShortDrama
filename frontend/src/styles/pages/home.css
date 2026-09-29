@@ -215,3 +215,6 @@
     width: 10px;
   }
 }
+@media (max-width: 360px) {
+  .home-content h1 { font-size: 38px; overflow-wrap: anywhere; }
+}

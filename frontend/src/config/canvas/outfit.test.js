@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { i18n } from '../../i18n'
+
 import { buildApparelVisualRequest, parseOutfitPrompt, resolveOutfitReference } from './outfit'
+
+beforeEach(() => { i18n.global.locale.value = 'zh-CN' })
+afterEach(() => { i18n.global.locale.value = 'id' })
 
 describe('outfit planning', () => {
   it('builds one structured server-template request without a prompt', () => {

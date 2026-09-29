@@ -8,7 +8,7 @@ defineProps({
 </script>
 
 <template>
-  <RouterLink :to="{ name: 'recharge' }" class="app-credit-balance" :title="`冻结积分 ${frozen}`" :aria-label="`可用积分 ${balance}，冻结积分 ${frozen}，前往充值`">
-    <Coins :size="15" />{{ balance }}
+  <RouterLink :to="{ name: 'recharge' }" class="app-credit-balance" :title="$t('account.frozenCount', { count: $n(frozen) })" :aria-label="$t('account.balanceAria', { balance: $n(balance), frozen: $n(frozen) })">
+    <Coins :size="15" />{{ $n(balance) }}
   </RouterLink>
 </template>

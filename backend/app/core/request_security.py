@@ -17,9 +17,9 @@ class SameOriginMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
         source = request.headers.get("origin") or request.headers.get("referer")
         if not source and get_settings().app_env == "production":
-            return JSONResponse(status_code=403, content=fail("请求来源无效"))
+            return JSONResponse(status_code=403, content=fail("请求来源无效", error_key="invalid_origin"))
         if source and not self._allowed(source, request.headers.get("host", "")):
-            return JSONResponse(status_code=403, content=fail("请求来源无效"))
+            return JSONResponse(status_code=403, content=fail("请求来源无效", error_key="invalid_origin"))
         return await call_next(request)
 
     @staticmethod

@@ -10,7 +10,7 @@ from typing import Any, Protocol
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import ServiceUnavailableError, diagnostic_snapshot, public_error_message
+from app.core.errors import ServiceUnavailableError, diagnostic_snapshot, error_fields, public_error_message
 from app.models import GenerationTask, Workspace
 from app.providers.openai_responses import OpenAIResponsesProvider
 from app.schemas.generation import TextGenerationRequest
@@ -134,5 +134,5 @@ class TextGenerationService:
                 diagnostic_snapshot(exc, "submit"),
             )
             yield json.dumps(
-                {"type": "error", "message": message}, ensure_ascii=False
+                {"type": "error", "message": message, **error_fields(exc, status_code=502)}, ensure_ascii=False
             ) + "\n"

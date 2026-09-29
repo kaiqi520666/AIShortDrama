@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { i18n } from '../i18n'
 
 import { modelCapabilitiesFixture } from '../test/modelCapabilities'
 import { buildVideoRequest as buildRequest, getVideoReferenceError as getReferenceError, normalizeVideoModels, normalizeVideoSettings as normalizeSettings } from './videoModels'
+
+beforeEach(() => { i18n.global.locale.value = 'zh-CN' })
+afterEach(() => { i18n.global.locale.value = 'id' })
 
 const videoModels = normalizeVideoModels(modelCapabilitiesFixture.video)
 const defaultVideoModel = videoModels.find(({ id }) => id === modelCapabilitiesFixture.video.default_model)

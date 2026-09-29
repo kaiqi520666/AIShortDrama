@@ -9,12 +9,12 @@ const { toasts, removeToast } = useGlobalToast()
 
 <template>
   <Teleport to="body">
-    <div class="global-toast-stack" aria-live="polite" aria-label="系统通知">
+    <div class="global-toast-stack" aria-live="polite" :aria-label="$t('canvas.notifications')">
       <TransitionGroup name="global-toast">
         <article v-for="item in toasts" :key="item.id" class="global-toast" :class="`global-toast--${item.type}`" :role="item.type === 'error' ? 'alert' : 'status'">
           <component :is="icons[item.type]" :size="18" />
           <p>{{ item.message }}</p>
-          <AppButton icon-only size="sm" title="关闭通知" @click="removeToast(item.id)"><X :size="14" /></AppButton>
+          <AppButton icon-only size="sm" :title="$t('common.close')" @click="removeToast(item.id)"><X :size="14" /></AppButton>
         </article>
       </TransitionGroup>
     </div>

@@ -1,3 +1,6 @@
+import { i18n } from '../i18n/index'
+
+const { t } = i18n.global
 export function normalizeVideoModels(section) {
   return (section?.models || []).map((model) => ({
     id: model.id,
@@ -20,7 +23,7 @@ export function normalizeVideoModels(section) {
 
 export function getVideoModel(models, defaultModel, modelId) {
   const model = models.find((item) => item.id === modelId) || defaultModel
-  if (!model) throw new Error('视频模型能力尚未加载')
+  if (!model) throw new Error(t('canvas.videoCapabilityMissing'))
   return model
 }
 
@@ -56,8 +59,8 @@ function normalizeReferences(references, usePrivateAssets = false) {
   }))
 }
 
-const referenceLabels = { image: '图片', video: '视频', audio: '音频' }
-const referenceUnits = { image: '张', video: '条', audio: '条' }
+const referenceLabels = { image: 'canvas.image', video: 'canvas.video', audio: 'canvas.audio' }
+const referenceLimitKeys = { image: 'canvas.videoImageReferenceLimit', video: 'canvas.videoVideoReferenceLimit', audio: 'canvas.videoAudioReferenceLimit' }
 
 export function getVideoModelError(data, references = [], models, defaultModel) {
   const model = getVideoModel(models, defaultModel, data.model)
@@ -66,7 +69,7 @@ export function getVideoModelError(data, references = [], models, defaultModel) 
 
   for (const type of ['image', 'video', 'audio']) {
     const limit = model.referenceLimits[type]
-    if (counts[type] > limit) return limit ? `${model.label} 最多支持 ${limit} ${referenceUnits[type]}参考${referenceLabels[type]}` : `${model.label} 不支持参考${referenceLabels[type]}`
+    if (counts[type] > limit) return limit ? t(referenceLimitKeys[type], { model: model.label, count: limit }) : t('canvas.videoReferenceUnsupported', { p0: model.label, p1: t(referenceLabels[type]) })
   }
   return ''
 }
@@ -77,28 +80,28 @@ export function getVideoReferenceError(data, references = [], models, defaultMod
   const modelError = getVideoModelError(data, references, models, defaultModel)
   if (modelError) return modelError
   if (model.requiresPrivateAsset && normalized.some((reference) => reference.type === 'image' && reference.privateAssetStatus === 'processing')) {
-    return '人物素材审核中，请在图片节点工具栏刷新状态'
+    return t('canvas.refreshCharacterReview')
   }
   if (model.requiresPrivateAsset && normalized.some((reference) => reference.type === 'image' && reference.privateAssetStatus === 'failed')) {
-    return '人物素材注册失败，请在图片节点工具栏重新注册'
+    return t('canvas.retryCharacterRegistration')
   }
   if (model.requiresPrivateAsset && normalized.some((reference) => reference.type === 'image' && reference.requiresPrivateRegistration && !reference.providerAsset)) {
-    return '请先在定妆图节点工具栏注册 Seedance 人物素材'
+    return t('canvas.registerOutfitFirst')
   }
   if (model.requiresPrivateAsset && normalized.some((reference) => reference.type === 'image' && reference.storyboard && (reference.storyboardCharacterReferences?.some((character) => character.assetUrl) || reference.storyboardRequiresRegistration || reference.storyboardOutfitBoard) && !reference.providerAsset)) {
-    return '请先在图片节点工具栏注册 Seedance 人物素材'
+    return t('canvas.registerImageFirst')
   }
   const types = normalized.map((reference) => reference.type)
-  if (types.includes('audio') && !types.some((type) => ['image', 'video'].includes(type))) return '参考音频需同时连接图片或视频'
-  if (normalized.some((reference) => reference.type in referenceLabels && !reference.url)) return '请先上传已连接的参考素材'
+  if (types.includes('audio') && !types.some((type) => ['image', 'video'].includes(type))) return t('canvas.audioNeedsVisual')
+  if (normalized.some((reference) => reference.type in referenceLabels && !reference.url)) return t('canvas.uploadConnectedReferences')
   return ''
 }
 
 export function buildVideoRequest(data, references = [], models, defaultModel) {
   const settings = normalizeVideoSettings(data, models, defaultModel)
   const prompt = data.prompt?.trim()
-  if (!prompt) throw new Error('视频提示词不能为空')
-  if (prompt.length > settings.model.maxPromptLength) throw new Error(`视频提示词不能超过 ${settings.model.maxPromptLength} 个字符`)
+  if (!prompt) throw new Error(t('canvas.videoPromptRequired'))
+  if (prompt.length > settings.model.maxPromptLength) throw new Error(t('canvas.videoPromptLimit', { p0: settings.model.maxPromptLength }))
 
   const referenceError = getVideoReferenceError(data, references, models, defaultModel)
   if (referenceError) throw new Error(referenceError)

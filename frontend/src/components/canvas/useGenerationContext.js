@@ -1,3 +1,5 @@
+import { i18n } from '../../i18n/index'
+import { canvasLabel } from '../../i18n/canvas'
 import { computed, ref, watch } from 'vue'
 import { getAudioReferenceError } from '../../config/audioModels'
 import { getEffectivePrompt } from '../../config/generationPrompt'
@@ -7,6 +9,8 @@ import { nodeDefinitions } from '../../config/canvas/nodeDefinitions'
 import { getVideoModelError, getVideoReferenceError } from '../../config/videoModels'
 import { getGenerationAdapter } from '../../services/generationAdapters'
 import { getApiErrorMessage } from '../../utils/apiError'
+
+const { t } = i18n.global
 
 const supportedGenerationTypes = new Set(['text', 'image', 'video', 'audio'])
 
@@ -163,7 +167,7 @@ export function useGenerationContext({
   })
   const promptError = computed(() => {
     const prompt = props.type === 'video' ? videoGenerationPrompt.value : effectivePrompt.value
-    return prompt.length > promptLimit.value ? `提示词不能超过 ${promptLimit.value} 个字符` : ''
+    return prompt.length > promptLimit.value ? t('canvas.promptLimit', { p0: promptLimit.value }) : ''
   })
   const promptParts = computed(() => (
     props.data.promptParts ?? (props.data.prompt ? [{ type: 'text', value: props.data.prompt }] : [])
@@ -190,7 +194,7 @@ export function useGenerationContext({
     estimatedCredits.value !== null
     && (authStore.user?.credit_balance || 0) < estimatedCredits.value
   ))
-  const creditLabel = computed(() => `${props.type === 'audio' ? '冻结' : '本次'} ${estimatedCredits.value} 积分`)
+  const creditLabel = computed(() => t('canvas.creditLabel', { p0: props.type === 'audio' ? t('canvas.frozen') : t('canvas.thisRun'), p1: estimatedCredits.value }))
   const referenceError = computed(() => {
     if (props.type === 'video') {
       return getVideoReferenceError(
@@ -201,29 +205,29 @@ export function useGenerationContext({
       )
     }
     if (props.type === 'audio') return getAudioReferenceError(activeReferences.value, audioCapability.value)
-    if (isProductRecognition.value && !allImageReferences.value.length) return '请先上传商品参考图'
-    if (isProductRecognition.value && !imageReferences.value.length) return '请至少启用一张商品参考图片'
+    if (isProductRecognition.value && !allImageReferences.value.length) return t('canvas.uploadProductFirst')
+    if (isProductRecognition.value && !imageReferences.value.length) return t('canvas.enableProductReferenceImage')
     if (isProductRecognition.value && imageReferences.value.length > maxProductReferenceImages) {
-      return `商品创作最多支持 ${maxProductReferenceImages} 张参考图片`
+      return t('canvas.productReferenceLimit', { p0: maxProductReferenceImages })
     }
     if (isStoryboardImage.value && imageReferences.value.length > MAX_STORYBOARD_REFERENCES) {
-      return `商品分镜生图最多支持 ${MAX_STORYBOARD_REFERENCES} 张参考图片`
+      return t('canvas.storyboardReferenceLimit', { p0: MAX_STORYBOARD_REFERENCES })
     }
     return props.type === 'image'
       && selectedImageModel.value.maxReferences
       && imageReferences.value.length > selectedImageModel.value.maxReferences
-      ? `当前模型最多支持 ${selectedImageModel.value.maxReferences} 张参考图片`
+      ? t('canvas.modelReferenceLimit', { p0: selectedImageModel.value.maxReferences })
       : ''
   })
   const panelMessage = computed(() => {
-    if (storyboardLocked.value) return `等待第 ${props.data.storyboardSegmentIndex - 1} 段确认后解锁`
+    if (storyboardLocked.value) return t('canvas.waitingSegment', { p0: props.data.storyboardSegmentIndex - 1 })
     if (running.value) return ''
     return notice.value
       || failure.value
       || props.data.generationError
       || referenceError.value
       || promptError.value
-      || (insufficientCredits.value ? `积分不足，本次需要 ${estimatedCredits.value} 积分` : '')
+      || (insufficientCredits.value ? t('canvas.insufficientCredits', { p0: estimatedCredits.value }) : '')
   })
   const settingLabel = computed(() => {
     if (props.type === 'video') {
@@ -233,7 +237,7 @@ export function useGenerationContext({
       const format = audioFormatOptions.value.find(({ value }) => value === selectedAudioSettings.value.format)
       return `${format?.label} · ${selectedAudioSettings.value.sampleRate / 1000} kHz`
     }
-    return nodeDefinitions[props.type].setting
+    return canvasLabel(nodeDefinitions[props.type].setting)
   })
   const displayReferences = computed(() => {
     const counts = {}
@@ -245,7 +249,7 @@ export function useGenerationContext({
         key: node.id,
         node,
         number: counts[node.type],
-        label: `${nodeDefinitions[node.type].label}${counts[node.type]}`,
+        label: `${canvasLabel(nodeDefinitions[node.type].label)}${counts[node.type]}`,
         enabled,
         toggleable,
       }
@@ -326,9 +330,9 @@ export function useGenerationContext({
   async function submitTask() {
     if (!canSubmit.value) return
     if (isStoryboardSegment.value && props.data.status === 'ready' && !await confirm({
-      title: `重新生成第 ${props.data.storyboardSegmentIndex} 段${props.type === 'video' ? '视频' : '分镜'}`,
-      message: '当前结果会保留到历史记录，并锁定后续段落。',
-      confirmText: '继续重做',
+      title: t('canvas.regenerateSegment', { p0: props.data.storyboardSegmentIndex, p1: props.type === 'video' ? t('canvas.video') : t('canvas.storyboard') }),
+      message: t('canvas.regenerateSegmentConfirm'),
+      confirmText: t('canvas.continueRedo'),
     })) return
     if (isStoryboardSegment.value && props.data.status === 'ready') {
       store.invalidateStoryboardFrom(props.nodeId)
@@ -368,7 +372,7 @@ export function useGenerationContext({
     } catch (error) {
       updateNodeData(nodeId, {
         status: 'failed',
-        generationError: getApiErrorMessage(error, '任务提交失败'),
+        generationError: getApiErrorMessage(error, t('canvas.taskSubmitFailed')),
       })
     }
   }
@@ -420,7 +424,7 @@ export function useGenerationContext({
 
   function confirmStoryboardSegment() {
     const result = store.confirmStoryboardSegment(props.nodeId)
-    if (result !== true) toast.warning('请先完成当前视频生成')
+    if (result !== true) toast.warning(t('canvas.completeCurrentVideo'))
   }
 
   watch(() => props.nodeId, () => {

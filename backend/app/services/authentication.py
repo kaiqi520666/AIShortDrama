@@ -14,7 +14,7 @@ REGISTRATION_LOCK_ID = 827_104_221
 
 
 class RegistrationError(RuntimeError):
-    pass
+    error_key = "account_exists"
 
 
 def user_payload(user: User) -> dict[str, Any]:

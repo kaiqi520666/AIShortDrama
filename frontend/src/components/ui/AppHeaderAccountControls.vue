@@ -2,6 +2,7 @@
 import AppAccountMenu from '../account/AppAccountMenu.vue'
 import AppCreditBalance from './AppCreditBalance.vue'
 import AppThemeSwitch from './AppThemeSwitch.vue'
+import AppLanguageSelect from './AppLanguageSelect.vue'
 
 defineProps({
   username: { type: String, required: true },
@@ -14,6 +15,7 @@ const emit = defineEmits(['logout'])
 <template>
   <div class="app-header-account-controls">
     <AppThemeSwitch />
+    <AppLanguageSelect />
     <AppCreditBalance :balance="creditBalance" :frozen="creditFrozen" />
     <AppAccountMenu :username="username" @logout="emit('logout')" />
   </div>

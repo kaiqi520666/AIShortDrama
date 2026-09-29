@@ -1,6 +1,9 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import AppSelect from '../ui/AppSelect.vue'
 import AppSlider from '../ui/AppSlider.vue'
+
+const { t } = useI18n()
 
 defineProps({
   settings: { type: Object, required: true },
@@ -13,18 +16,18 @@ const emit = defineEmits(['update'])
 <template>
   <div class="audio-setting-grid">
     <div>
-      <span>格式</span>
-      <AppSelect :model-value="settings.format" :options="formatOptions" aria-label="音频格式" @update:model-value="emit('update', 'format', $event)" />
+      <span>{{ t('canvas.format') }}</span>
+      <AppSelect :model-value="settings.format" :options="formatOptions" :aria-label="t('canvas.audioFormat')" @update:model-value="emit('update', 'format', $event)" />
     </div>
     <div>
-      <span>采样率</span>
-      <AppSelect class="audio-sample-select" :model-value="settings.sampleRate" :options="sampleRateOptions" aria-label="音频采样率" @update:model-value="emit('update', 'sampleRate', $event)" />
+      <span>{{ t('canvas.sampleRate') }}</span>
+      <AppSelect class="audio-sample-select" :model-value="settings.sampleRate" :options="sampleRateOptions" :aria-label="t('canvas.audioSampleRate')" @update:model-value="emit('update', 'sampleRate', $event)" />
     </div>
   </div>
-  <h3>声音调整</h3>
+  <h3>{{ t('canvas.voiceAdjustment') }}</h3>
   <div class="audio-slider-list">
-    <AppSlider :model-value="settings.speechRate" :min="-50" :max="100" label="语速" @update:model-value="emit('update', 'speechRate', $event)" />
-    <AppSlider :model-value="settings.loudnessRate" :min="-50" :max="100" label="音量" @update:model-value="emit('update', 'loudnessRate', $event)" />
-    <AppSlider :model-value="settings.pitchRate" :min="-12" :max="12" label="音调" @update:model-value="emit('update', 'pitchRate', $event)" />
+    <AppSlider :model-value="settings.speechRate" :min="-50" :max="100" :label="t('canvas.speechRate')" @update:model-value="emit('update', 'speechRate', $event)" />
+    <AppSlider :model-value="settings.loudnessRate" :min="-50" :max="100" :label="t('canvas.volume')" @update:model-value="emit('update', 'loudnessRate', $event)" />
+    <AppSlider :model-value="settings.pitchRate" :min="-12" :max="12" :label="t('canvas.pitch')" @update:model-value="emit('update', 'pitchRate', $event)" />
   </div>
 </template>

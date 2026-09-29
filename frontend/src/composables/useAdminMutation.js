@@ -1,13 +1,14 @@
 import { useGlobalConfirm } from './useGlobalUI'
+import { i18n } from '../i18n'
 
 export function useAdminMutation() {
   const { confirm } = useGlobalConfirm()
 
   function confirmMutation({ title, message }) {
     return confirm({
-      title: `确认${title}`,
-      message: `${message}\n此操作会立即生效并写入操作审计。`,
-      confirmText: '确认提交',
+      title: i18n.global.t('admin.confirmTitle', { title }),
+      message: i18n.global.t('admin.confirmMessage', { message }),
+      confirmText: i18n.global.t('admin.confirmSubmit'),
       tone: 'danger',
     })
   }

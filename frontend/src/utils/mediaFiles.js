@@ -6,9 +6,9 @@ export const mediaUploadRules = {
 
 export function validateMediaFile(type, file) {
   const rule = mediaUploadRules[type]
-  const label = type === 'video' ? '视频' : type === 'audio' ? '音频' : '图片'
-  if (!rule?.types.includes(file.type)) return `不支持的${label}格式`
-  if (file.size > rule.maxSize) return `文件不能超过 ${rule.maxSize / 1024 / 1024}MB`
+  const label = t(type === 'video' ? 'canvas.video' : type === 'audio' ? 'canvas.audio' : 'canvas.image')
+  if (!rule?.types.includes(file.type)) return t('canvas.unsupportedMediaFormat', { p0: label })
+  if (file.size > rule.maxSize) return t('canvas.fileSizeLimit', { p0: rule.maxSize / 1024 / 1024 })
   return ''
 }
 
@@ -21,14 +21,17 @@ export function readMediaMetadata(type, file) {
       const width = media.naturalWidth || media.videoWidth
       const height = media.naturalHeight || media.videoHeight
       cleanup()
-      if (type === 'audio') return Number.isFinite(media.duration) ? resolve({ duration: media.duration }) : reject(new Error('无法读取音频时长'))
-      width && height ? resolve({ width, height, duration: media.duration || null }) : reject(new Error('无法读取媒体尺寸'))
+      if (type === 'audio') return Number.isFinite(media.duration) ? resolve({ duration: media.duration }) : reject(new Error(t('canvas.audioDurationReadFailed')))
+      width && height ? resolve({ width, height, duration: media.duration || null }) : reject(new Error(t('canvas.mediaDimensionsReadFailed')))
     }
     media.onerror = () => {
       cleanup()
-      reject(new Error('无法读取媒体文件'))
+      reject(new Error(t('canvas.mediaReadFailed')))
     }
     media.preload = 'metadata'
     media.src = url
   })
 }
+import { i18n } from '../i18n'
+
+const { t } = i18n.global

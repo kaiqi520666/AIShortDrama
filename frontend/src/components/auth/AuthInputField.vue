@@ -33,7 +33,7 @@ function updateValue(value) {
         v-if="revealable"
         class="auth-password-toggle"
         type="button"
-        :aria-label="revealed ? '隐藏密码' : '显示密码'"
+        :aria-label="$t(revealed ? 'auth.hidePassword' : 'auth.showPassword')"
         :aria-pressed="revealed"
         @click="revealed = !revealed"
       >

@@ -1,4 +1,5 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed, ref } from 'vue'
 import { ChevronDown, ChevronRight, FileText, Folder, Image, LayoutGrid, Library, Music2, Package, Pencil, RefreshCw, Trash2, Video, Workflow, X } from 'lucide-vue-next'
 import { deleteAsset, listAssets, renameAsset } from '../../api/assets'
@@ -10,6 +11,8 @@ import AppInput from '../ui/AppInput.vue'
 import AppTabs from '../ui/AppTabs.vue'
 import EmptyState from '../ui/EmptyState.vue'
 
+const { t } = useI18n()
+
 const props = defineProps({
   nodes: { type: Array, required: true },
   groups: { type: Array, required: true },
@@ -17,13 +20,13 @@ const props = defineProps({
 })
 const emit = defineEmits(['focus', 'focus-group', 'rename-node', 'rename-group', 'delete-node', 'delete-group', 'close'])
 const icons = { text: FileText, image: Image, video: Video, audio: Music2, product: Package }
-const drawerTabs = [{ value: 'nodes', label: '节点', icon: Workflow }, { value: 'assets', label: '资产', icon: Library }]
-const assetTypeOptions = [
-  { value: '', label: '全部', icon: LayoutGrid },
-  { value: 'image', label: '图片', icon: Image },
-  { value: 'video', label: '视频', icon: Video },
-  { value: 'audio', label: '音频', icon: Music2 },
-]
+const drawerTabs = computed(() => ([{ value: 'nodes', label: t('canvas.nodes'), icon: Workflow }, { value: 'assets', label: t('canvas.assets'), icon: Library }]))
+const assetTypeOptions = computed(() => ([
+  { value: '', label: t('canvas.all'), icon: LayoutGrid },
+  { value: 'image', label: t('canvas.image'), icon: Image },
+  { value: 'video', label: t('canvas.video'), icon: Video },
+  { value: 'audio', label: t('canvas.audio'), icon: Music2 },
+]))
 const PAGE_SIZE = 30
 const activeTab = ref('nodes')
 const assetType = ref('')
@@ -45,7 +48,6 @@ const ungroupedNodes = computed(() => sortedNodes.value.filter((node) => !props.
 const groupItems = computed(() => props.groups.map((group) => ({
   ...group,
   active: group.id === props.activeGroupId,
-  title: group.title || '未命名编组',
   nodes: sortedNodes.value.filter((node) => group.nodeIds.includes(node.id)),
 })))
 const nodeSections = computed(() => {
@@ -105,7 +107,7 @@ async function loadAssetItems({ reset = false } = {}) {
     assetLoaded.value = true
   } catch (error) {
     if (requestId !== assetRequestId) return
-    assetError.value = getApiErrorMessage(error, '资产加载失败')
+    assetError.value = getApiErrorMessage(error, t('canvas.assetsLoadFailed'))
   } finally {
     if (requestId === assetRequestId) loadingAssets.value = false
   }
@@ -113,10 +115,10 @@ async function loadAssetItems({ reset = false } = {}) {
 
 async function renameAssetItem(asset) {
   const name = await prompt({
-    title: '重命名资产',
-    message: '输入新的资产名称',
+    title: t('canvas.renameAsset'),
+    message: t('canvas.newAssetName'),
     value: asset.name,
-    placeholder: '资产名称',
+    placeholder: t('canvas.assetName'),
     maxLength: 255,
   })
   if (!name || name === asset.name) return
@@ -124,17 +126,17 @@ async function renameAssetItem(asset) {
     const result = await renameAsset(asset.id, name)
     if (result.code !== 0) throw new Error(result.message)
     Object.assign(asset, result.data)
-    toast.success('资产名称已更新')
+    toast.success(t('canvas.assetRenamed'))
   } catch (error) {
-    toast.error(getApiErrorMessage(error, '资产重命名失败'))
+    toast.error(getApiErrorMessage(error, t('canvas.assetRenameFailed')))
   }
 }
 
 async function deleteAssetItem(asset) {
   const accepted = await confirm({
-    title: '删除资产',
-    message: `确定删除“${asset.name}”吗？画布中已使用的节点不会被删除。`,
-    confirmText: '删除',
+    title: t('canvas.deleteAsset'),
+    message: t('canvas.deleteAssetConfirm', { p0: asset.name }),
+    confirmText: t('canvas.delete'),
     tone: 'danger',
   })
   if (!accepted) return
@@ -143,29 +145,29 @@ async function deleteAssetItem(asset) {
     if (result.code !== 0) throw new Error(result.message)
     assets.value = assets.value.filter((item) => item.id !== asset.id)
     assetOffset.value = Math.max(0, assetOffset.value - 1)
-    toast.success('资产已删除')
+    toast.success(t('canvas.assetDeleted'))
   } catch (error) {
-    toast.error(getApiErrorMessage(error, '资产删除失败'))
+    toast.error(getApiErrorMessage(error, t('canvas.assetDeleteFailed')))
   }
 }
 
 async function deleteNodeItem(node) {
   const accepted = await confirm({
-    title: '删除节点',
-    message: `确定删除“${node.data.title}”吗？相关连线也会一并删除。`,
-    confirmText: '删除',
+    title: t('canvas.deleteNode'),
+    message: t('canvas.deleteNodeConfirm', { p0: node.data.title }),
+    confirmText: t('canvas.delete'),
     tone: 'danger',
   })
   if (accepted) emit('delete-node', node.id)
 }
 
 async function renameNodeItem(node) {
-  const currentTitle = node.data.title || '未命名节点'
+  const currentTitle = node.data.title || ''
   const title = await prompt({
-    title: '重命名节点',
-    message: '输入新的节点名称',
+    title: t('canvas.renameNode'),
+    message: t('canvas.newNodeName'),
     value: currentTitle,
-    placeholder: '节点名称',
+    placeholder: t('canvas.nodeName'),
     maxLength: 100,
   })
   if (!title || title.trim() === currentTitle) return
@@ -174,9 +176,9 @@ async function renameNodeItem(node) {
 
 async function deleteGroupItem(group) {
   const accepted = await confirm({
-    title: '删除编组',
-    message: `确定删除“${group.title}”及其中的 ${group.nodes.length} 个节点吗？相关连线也会一并删除。`,
-    confirmText: '全部删除',
+    title: t('canvas.deleteGroup'),
+    message: t('canvas.deleteGroupConfirm', { p0: group.title, p1: group.nodes.length }),
+    confirmText: t('canvas.deleteAll'),
     tone: 'danger',
   })
   if (accepted) emit('delete-group', group.id)
@@ -211,16 +213,16 @@ function handleAssetScroll(event) {
 <template>
   <aside class="asset-drawer">
     <header>
-      <strong>资产</strong>
+      <strong>{{ t('canvas.assets') }}</strong>
       <span>{{ activeTab === 'nodes' ? nodes.length : `${assets.length}${assetHasMore ? '+' : ''}` }}</span>
-      <AppButton v-if="activeTab === 'assets'" icon-only size="sm" title="刷新资产" @click="loadAssetItems({ reset: true })"><RefreshCw :size="15" /></AppButton>
-      <AppButton icon-only size="sm" title="关闭资产" @click="emit('close')"><X :size="17" /></AppButton>
+      <AppButton v-if="activeTab === 'assets'" icon-only size="sm" :title="t('canvas.refreshAssets')" @click="loadAssetItems({ reset: true })"><RefreshCw :size="15" /></AppButton>
+      <AppButton icon-only size="sm" :title="t('canvas.closeAssets')" @click="emit('close')"><X :size="17" /></AppButton>
     </header>
 
-    <AppTabs class="asset-tabs" :model-value="activeTab" :options="drawerTabs" aria-label="资产面板" @update:model-value="selectTab" />
+    <AppTabs class="asset-tabs" :model-value="activeTab" :options="drawerTabs" :aria-label="t('canvas.assetPanel')" @update:model-value="selectTab" />
 
     <div v-if="activeTab === 'nodes'" class="asset-list" @scroll.passive="handleNodeScroll">
-      <EmptyState v-if="!nodes.length" compact title="暂无节点" description="在画布中创建节点后会显示在这里" />
+      <EmptyState v-if="!nodes.length" compact :title="t('canvas.noNodes')" :description="t('canvas.noNodesDescription')" />
       <div v-for="node in nodeSections.ungrouped" :key="node.id" class="asset-node-row">
         <AppButton
           class="asset-item"
@@ -234,8 +236,8 @@ function handleAssetScroll(event) {
           </span>
           <span>{{ node.data.title }}</span>
         </AppButton>
-        <AppButton class="asset-row-action asset-row-edit" icon-only size="sm" :title="`重命名 ${node.data.title}`" :aria-label="`重命名 ${node.data.title}`" @click.stop="renameNodeItem(node)"><Pencil :size="14" /></AppButton>
-        <AppButton class="asset-row-delete" icon-only size="sm" variant="danger" :title="`删除 ${node.data.title}`" :aria-label="`删除 ${node.data.title}`" @click.stop="deleteNodeItem(node)"><Trash2 :size="14" /></AppButton>
+        <AppButton class="asset-row-action asset-row-edit" icon-only size="sm" :title="t('canvas.renameNamed', { p0: node.data.title })" :aria-label="t('canvas.renameNamed', { p0: node.data.title })" @click.stop="renameNodeItem(node)"><Pencil :size="14" /></AppButton>
+        <AppButton class="asset-row-delete" icon-only size="sm" variant="danger" :title="t('canvas.deleteNamed', { p0: node.data.title })" :aria-label="t('canvas.deleteNamed', { p0: node.data.title })" @click.stop="deleteNodeItem(node)"><Trash2 :size="14" /></AppButton>
       </div>
 
       <section v-for="group in nodeSections.groups" :key="group.id" class="asset-group">
@@ -250,17 +252,18 @@ function handleAssetScroll(event) {
               v-if="editingGroupId === group.id"
               class="asset-group-title-input"
               :model-value="group.title"
-              aria-label="编组名称"
+              :placeholder="t('canvas.unnamedGroup')"
+              :aria-label="t('canvas.groupName')"
               @click.stop
               @input="renameGroup(group.id, $event)"
               @blur="editingGroupId = null"
               @keydown.enter="editingGroupId = null"
               @keydown.esc="editingGroupId = null"
             />
-            <span v-else class="asset-group-title" @dblclick.stop="startRename(group.id)">{{ group.title }}</span>
+            <span v-else class="asset-group-title" @dblclick.stop="startRename(group.id)">{{ group.title || t('canvas.unnamedGroup') }}</span>
             <small>{{ group.nodes.length }}</small>
           </AppButton>
-          <AppButton class="asset-row-delete" icon-only size="sm" variant="danger" :title="`删除 ${group.title}`" :aria-label="`删除 ${group.title}`" @click.stop="deleteGroupItem(group)"><Trash2 :size="14" /></AppButton>
+          <AppButton class="asset-row-delete" icon-only size="sm" variant="danger" :title="t('canvas.deleteNamed', { p0: group.title })" :aria-label="t('canvas.deleteNamed', { p0: group.title })" @click.stop="deleteGroupItem(group)"><Trash2 :size="14" /></AppButton>
         </div>
 
         <div v-if="!collapsedGroupIds.includes(group.id)" class="asset-group-items">
@@ -277,22 +280,22 @@ function handleAssetScroll(event) {
               </span>
               <span>{{ node.data.title }}</span>
             </AppButton>
-            <AppButton class="asset-row-action asset-row-edit" icon-only size="sm" :title="`重命名 ${node.data.title}`" :aria-label="`重命名 ${node.data.title}`" @click.stop="renameNodeItem(node)"><Pencil :size="14" /></AppButton>
-            <AppButton class="asset-row-delete" icon-only size="sm" variant="danger" :title="`删除 ${node.data.title}`" :aria-label="`删除 ${node.data.title}`" @click.stop="deleteNodeItem(node)"><Trash2 :size="14" /></AppButton>
+            <AppButton class="asset-row-action asset-row-edit" icon-only size="sm" :title="t('canvas.renameNamed', { p0: node.data.title })" :aria-label="t('canvas.renameNamed', { p0: node.data.title })" @click.stop="renameNodeItem(node)"><Pencil :size="14" /></AppButton>
+            <AppButton class="asset-row-delete" icon-only size="sm" variant="danger" :title="t('canvas.deleteNamed', { p0: node.data.title })" :aria-label="t('canvas.deleteNamed', { p0: node.data.title })" @click.stop="deleteNodeItem(node)"><Trash2 :size="14" /></AppButton>
           </div>
         </div>
       </section>
-      <div v-if="nodeHasMore" class="asset-list-status">继续滚动加载</div>
+      <div v-if="nodeHasMore" class="asset-list-status">{{ t('canvas.scrollToLoad') }}</div>
     </div>
 
     <div v-else class="asset-library">
-      <AppTabs class="asset-filters" :model-value="assetType" :options="assetTypeOptions" aria-label="资产类型" @update:model-value="selectAssetType" />
-      <EmptyState v-if="loadingAssets && !assets.length" compact title="正在加载资产" loading />
-      <EmptyState v-else-if="assetError && !assets.length" compact title="资产加载失败" :description="assetError" tone="error" />
-      <EmptyState v-else-if="!assets.length" compact title="暂无资产" description="上传或生成的媒体会显示在这里" />
+      <AppTabs class="asset-filters" :model-value="assetType" :options="assetTypeOptions" :aria-label="t('canvas.assetType')" @update:model-value="selectAssetType" />
+      <EmptyState v-if="loadingAssets && !assets.length" compact :title="t('canvas.loadingAssets')" loading />
+      <EmptyState v-else-if="assetError && !assets.length" compact :title="t('canvas.assetsLoadFailed')" :description="assetError" tone="error" />
+      <EmptyState v-else-if="!assets.length" compact :title="t('canvas.noAssets')" :description="t('canvas.noAssetsDescription')" />
       <div v-else class="asset-list asset-library-list" @scroll.passive="handleAssetScroll">
         <div v-for="asset in assets" :key="asset.id" class="asset-library-row">
-          <AppButton class="asset-item" :class="{ dragging: draggingItem === `asset:${asset.id}` }" :title="`拖动 ${asset.name}`" draggable="true" @dragstart="startAssetDrag($event, asset)" @dragend="draggingItem = ''">
+          <AppButton class="asset-item" :class="{ dragging: draggingItem === `asset:${asset.id}` }" :title="t('canvas.dragNamed', { p0: asset.name })" draggable="true" @dragstart="startAssetDrag($event, asset)" @dragend="draggingItem = ''">
             <span class="asset-preview">
               <img v-if="asset.media_type === 'image'" :src="buildOssImageUrl(asset.url)" :alt="asset.name" draggable="false" />
               <component v-else :is="icons[asset.media_type]" :size="20" />
@@ -300,13 +303,13 @@ function handleAssetScroll(event) {
             <span>{{ asset.name }}</span>
           </AppButton>
           <span class="asset-library-actions">
-            <AppButton icon-only size="sm" :title="`重命名 ${asset.name}`" @click="renameAssetItem(asset)"><Pencil :size="13" /></AppButton>
-            <AppButton icon-only size="sm" variant="danger" :title="`删除 ${asset.name}`" @click="deleteAssetItem(asset)"><Trash2 :size="13" /></AppButton>
+            <AppButton icon-only size="sm" :title="t('canvas.renameNamed', { p0: asset.name })" @click="renameAssetItem(asset)"><Pencil :size="13" /></AppButton>
+            <AppButton icon-only size="sm" variant="danger" :title="t('canvas.deleteNamed', { p0: asset.name })" @click="deleteAssetItem(asset)"><Trash2 :size="13" /></AppButton>
           </span>
         </div>
-        <div v-if="loadingAssets" class="asset-list-status">正在加载</div>
+        <div v-if="loadingAssets" class="asset-list-status">{{ t('canvas.loading') }}</div>
         <div v-else-if="assetError" class="asset-list-status error">{{ assetError }}</div>
-        <div v-else-if="assetHasMore" class="asset-list-status">继续滚动加载</div>
+        <div v-else-if="assetHasMore" class="asset-list-status">{{ t('canvas.scrollToLoad') }}</div>
       </div>
     </div>
   </aside>

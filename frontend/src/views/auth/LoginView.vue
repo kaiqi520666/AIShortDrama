@@ -1,5 +1,6 @@
 <script setup>
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useRoute, useRouter } from 'vue-router'
 import { ArrowRight, CircleAlert, LockKeyhole, Mail } from 'lucide-vue-next'
 import AuthFormShell from '../../components/auth/AuthFormShell.vue'
@@ -11,6 +12,7 @@ import { useAuthStore } from '../../stores/auth'
 import { getApiErrorMessage } from '../../utils/apiError'
 
 const route = useRoute()
+const { t } = useI18n()
 const router = useRouter()
 const authStore = useAuthStore()
 const email = ref('')
@@ -28,14 +30,14 @@ async function loadCaptchaConfig() {
     const result = await getCaptchaConfig()
     siteKey.value = result.data?.site_key || ''
   } catch {
-    errorMessage.value = '人机验证配置加载失败'
+    errorMessage.value = t('auth.captchaConfigFailed')
   }
 }
 
 async function submit() {
   errorMessage.value = ''
   if (captchaRequired.value && !captchaToken.value) {
-    errorMessage.value = '请先完成人机验证'
+    errorMessage.value = t('auth.captchaRequired')
     return
   }
   submitting.value = true
@@ -48,7 +50,7 @@ async function submit() {
     const redirect = typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') ? route.query.redirect : '/dashboard/workspaces'
     await router.replace(redirect)
   } catch (error) {
-    errorMessage.value = getApiErrorMessage(error, '登录失败')
+    errorMessage.value = getApiErrorMessage(error, t('auth.loginFailed'))
     if (error?.response?.data?.data?.captcha_required) {
       captchaRequired.value = true
       await loadCaptchaConfig()
@@ -64,10 +66,10 @@ async function submit() {
 </script>
 
 <template>
-  <AuthFormShell title="登录" subtitle="继续进入你的工作台">
+  <AuthFormShell :title="t('auth.login')" :subtitle="t('auth.loginSubtitle')">
     <form class="auth-form" @submit.prevent="submit">
-      <AuthInputField v-model.trim="email" label="邮箱" :icon="Mail" type="email" autocomplete="email" required />
-      <AuthInputField v-model="password" label="密码" :icon="LockKeyhole" type="password" autocomplete="current-password" minlength="8" maxlength="72" revealable required />
+      <AuthInputField v-model.trim="email" :label="t('auth.email')" :icon="Mail" type="email" autocomplete="email" required />
+      <AuthInputField v-model="password" :label="t('auth.password')" :icon="LockKeyhole" type="password" autocomplete="current-password" minlength="8" maxlength="72" revealable required />
       <TurnstileWidget
         v-if="captchaRequired"
         :site-key="siteKey"
@@ -75,11 +77,11 @@ async function submit() {
         :reset-key="captchaResetKey"
         @verified="captchaToken = $event; errorMessage = ''"
         @expired="captchaToken = ''"
-        @error="captchaToken = ''; errorMessage = '人机验证加载失败，请刷新重试'"
+        @error="captchaToken = ''; errorMessage = t('auth.captchaFailed')"
       />
       <p v-if="errorMessage" class="auth-error"><CircleAlert :size="14" />{{ errorMessage }}</p>
-      <AppButton type="submit" variant="primary" size="lg" block :disabled="submitting"><span>{{ submitting ? '登录中…' : '登录' }}</span><ArrowRight :size="17" /></AppButton>
+      <AppButton type="submit" variant="primary" size="lg" block :disabled="submitting"><span>{{ submitting ? t('auth.loggingIn') : t('auth.login') }}</span><ArrowRight :size="17" /></AppButton>
     </form>
-    <p class="auth-switch">还没有账号？<RouterLink to="/register">注册</RouterLink></p>
+    <p class="auth-switch">{{ t('auth.noAccount') }} <RouterLink to="/register">{{ t('auth.register') }}</RouterLink></p>
   </AuthFormShell>
 </template>

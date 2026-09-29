@@ -1,10 +1,13 @@
 <script setup>
+import { useI18n } from 'vue-i18n'
 import { computed } from 'vue'
 import { Clapperboard, Package } from 'lucide-vue-next'
 import { getStoryboardDurations, storyboardSegmentCount, storyboardShotCount } from '../../config/canvas/productStoryboard'
 import { useCanvasStore } from '../../stores/canvas'
 import { useContentTemplatesStore } from '../../stores/contentTemplates'
 import StructuredNodeShell from './StructuredNodeShell.vue'
+
+const { t } = useI18n()
 
 const props = defineProps({
   id: { type: String, required: true },
@@ -26,18 +29,18 @@ const segmentCount = computed(() => storyboardSegmentCount(
   <StructuredNodeShell :id="id" :type="type" :data="data" :icon="Clapperboard" :selected="selected" has-target>
     <div class="product-visual-node-content storyboard-node-content nowheel">
       <div class="structured-node-summary">
-        <span><Clapperboard :size="15" />商品分镜</span>
-        <small>UGC 种草</small>
+        <span><Clapperboard :size="15" />{{ t('canvas.productStoryboard') }}</span>
+        <small>{{ t('canvas.ugc') }}</small>
       </div>
       <div class="product-visual-source" :class="{ empty: !productNode }">
         <Package :size="15" />
-        <span>{{ productNode?.data.product?.name || productNode?.data.title || '未连接商品创作' }}</span>
+        <span>{{ productNode?.data.product?.name || productNode?.data.title || t('canvas.productCreationDisconnected') }}</span>
       </div>
       <div class="product-visual-tags storyboard-node-tags">
-        <span>UGC 种草</span>
+        <span>{{ t('canvas.ugc') }}</span>
       </div>
       <div class="product-creation-settings-summary storyboard-node-summary">
-        <span>{{ data.duration }} 秒 · {{ segmentCount }} 段</span><span>每段 {{ storyboardShotCount(15) }} 格</span><span>{{ data.characterReferences?.length || 0 }} 个角色 · {{ data.productReferences?.length || 0 }} 张商品图</span><span>{{ data.videoAspectRatio }}</span>
+        <span>{{ t('canvas.durationSegments', { p0: data.duration, p1: segmentCount }) }}</span><span>{{ t('canvas.shotsPerSegment', { p0: storyboardShotCount(15) }) }}</span><span>{{ t('canvas.referenceCounts', { p0: data.characterReferences?.length || 0, p1: data.productReferences?.length || 0 }) }}</span><span>{{ data.videoAspectRatio }}</span>
       </div>
     </div>
   </StructuredNodeShell>
