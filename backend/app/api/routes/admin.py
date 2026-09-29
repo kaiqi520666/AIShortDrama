@@ -55,7 +55,7 @@ from app.services.content_templates import (
     template_data,
     validate_template_config,
 )
-from app.services.recharge import RechargeError, order_data, tier_data, validate_tiers
+from app.services.recharge import RechargeError, admin_order_data, order_data, sync_cahaya_order, tier_data, validate_tiers
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -345,7 +345,7 @@ async def update_billing_policy(
     policy = await get_billing_policy(db, lock=True)
     tiers = list(await db.scalars(select(RechargeTier).with_for_update()))
     before = policy_data(policy)
-    for field, value in payload.model_dump(exclude={"reason"}).items():
+    for field, value in payload.model_dump(exclude={"reason"}, exclude_none=True).items():
         setattr(policy, field, value)
     try:
         validate_tiers(tiers, policy)
@@ -664,7 +664,7 @@ async def list_recharge_tiers(
     _admin: User = Depends(get_current_admin),
 ):
     tiers = list(
-        await db.scalars(select(RechargeTier).order_by(RechargeTier.min_amount_cents))
+        await db.scalars(select(RechargeTier).order_by(RechargeTier.currency, RechargeTier.min_amount_cents))
     )
     return success([tier_data(tier) for tier in tiers])
 
@@ -676,7 +676,7 @@ async def create_recharge_tier(
     admin: User = Depends(get_current_admin),
 ):
     tiers = list(await db.scalars(select(RechargeTier).with_for_update()))
-    if any(tier.min_amount_cents == payload.min_amount_cents for tier in tiers):
+    if any(tier.currency == payload.currency and tier.min_amount_cents == payload.min_amount_cents for tier in tiers):
         raise RequestError("该充值金额阶梯已存在")
     tier = RechargeTier(**payload.model_dump(exclude={"reason"}))
     try:
@@ -712,11 +712,12 @@ async def update_recharge_tier(
     if not tier:
         raise NotFoundError("充值阶梯不存在")
     if any(
-        item.id != tier_id and item.min_amount_cents == payload.min_amount_cents
+        item.id != tier_id and item.currency == payload.currency and item.min_amount_cents == payload.min_amount_cents
         for item in tiers
     ):
         raise RequestError("该充值金额阶梯已存在")
     before = tier_data(tier)
+    tier.currency = payload.currency
     tier.min_amount_cents = payload.min_amount_cents
     tier.bonus_rate_bps = payload.bonus_rate_bps
     tier.enabled = payload.enabled
@@ -790,4 +791,34 @@ async def list_recharge_orders(
         for order, user in rows
     ]
     return success(page_data(page, page_size, total, items))
+
+
+@router.get("/recharge/orders/{order_id}")
+async def get_admin_recharge_order(
+    order_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+):
+    order = await db.get(RechargeOrder, order_id)
+    if not order:
+        raise NotFoundError("充值订单不存在")
+    return success(admin_order_data(order))
+
+
+@router.post("/recharge/orders/{order_id}/query")
+async def query_admin_recharge_order(
+    order_id: uuid.UUID,
+    db: AsyncSession = Depends(get_db),
+    _admin: User = Depends(get_current_admin),
+):
+    order = await db.get(RechargeOrder, order_id)
+    if not order:
+        raise NotFoundError("充值订单不存在")
+    try:
+        if order.provider == "cahaya":
+            order = await sync_cahaya_order(db, order)
+    except RechargeError as exc:
+        error_type = ServiceUnavailableError if exc.status_code == 503 else RequestError
+        raise error_type(str(exc)) from exc
+    return success(admin_order_data(order))
     ModelAdminSettingUpdateRequest,

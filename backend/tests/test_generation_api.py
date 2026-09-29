@@ -144,7 +144,7 @@ async def test_generation_requires_owned_workspace(monkeypatch, path, payload, g
     response = await post_generation(monkeypatch, path, request, FakeRedis())
 
     assert response.status_code == 404
-    assert response.json() == {"code": 1, "message": "工作台不存在", "data": None}
+    assert response.json() == {"code": 1, "message": "工作台不存在", "data": None, "error_key": "workspace_not_found", "error_params": {}}
 
 
 @pytest.mark.asyncio
@@ -178,7 +178,7 @@ async def test_generation_returns_503_and_refunds_when_enqueue_fails(
     )
 
     assert response.status_code == 503
-    assert response.json() == {"code": 1, "message": "任务入队失败", "data": None}
+    assert response.json() == {"code": 1, "message": "任务入队失败", "data": None, "error_key": "queue_failed", "error_params": {}}
     async with SessionLocal() as db:
         task = await db.scalar(select(GenerationTask).where(GenerationTask.node_id == node_id))
         user = await db.get(User, generation_user_id)
@@ -195,7 +195,7 @@ async def test_generation_query_returns_404(generation_user_id):
         response = await client.get(f"/api/generations/{uuid.uuid4()}")
 
     assert response.status_code == 404
-    assert response.json() == {"code": 1, "message": "任务不存在", "data": None}
+    assert response.json() == {"code": 1, "message": "任务不存在", "data": None, "error_key": "not_found", "error_params": {}}
 
 
 @pytest.mark.asyncio
@@ -206,4 +206,4 @@ async def test_generation_validation_uses_error_envelope(generation_user_id):
         response = await client.post("/api/generations/images", json={})
 
     assert response.status_code == 422
-    assert response.json() == {"code": 1, "message": "请求参数无效", "data": None}
+    assert response.json() == {"code": 1, "message": "请求参数无效", "data": None, "error_key": "invalid_request", "error_params": {}}

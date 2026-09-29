@@ -5,6 +5,8 @@
 .recharge-panel__title div { display: grid; gap: 4px; }
 .recharge-panel__title span { font-size: 16px; font-weight: 700; }
 .recharge-panel__title small { color: var(--color-text-secondary); font-size: 12px; }
+.recharge-panel__title--amount { margin-top: 20px; margin-bottom: 12px; }
+.recharge-page .ui-select { width: 100%; }
 .recharge-tiers { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
 .recharge-tiers button { min-height: 76px; padding: 12px; border: 1px solid var(--color-border-default); border-radius: 6px; background: var(--color-surface-raised); color: var(--color-text-primary); cursor: pointer; text-align: left; }
 .recharge-tiers button:hover, .recharge-tiers button.active { border-color: var(--color-brand); background: var(--color-brand-soft); }
@@ -30,6 +32,7 @@
 .recharge-payment h2 { margin: 14px 0 6px; color: var(--color-text-primary); font-size: 18px; }
 .recharge-payment p { margin: 0; color: var(--color-text-secondary); font-size: 13px; }
 .recharge-payment__pending img { width: 210px; height: 210px; border: 1px solid var(--color-border-default); border-radius: 6px; object-fit: contain; background: #fff; }
+.recharge-qr { width: 210px; height: 210px; padding: 8px; border: 1px solid var(--color-border-default); border-radius: 6px; background: #fff; }
 .recharge-payment__placeholder { display: grid; place-items: center; width: 210px; height: 210px; border: 1px dashed var(--color-border-default); color: var(--color-text-secondary); }
 .recharge-payment__pending > div:last-child { display: flex; gap: 8px; margin-top: 18px; }
 .admin-toolbar { display: flex; align-items: center; justify-content: space-between; min-height: 42px; margin-bottom: 12px; }

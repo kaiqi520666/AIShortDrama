@@ -37,6 +37,13 @@ class Settings(BaseSettings):
     zpay_gateway: str = "https://zpayz.cn"
     zpay_notify_url: str = ""
     zpay_return_url: str = ""
+    cahaya_enabled: bool = False
+    cahaya_gateway: str = "https://api-pay.cahayatech.com"
+    cahaya_merchant_no: str = ""
+    cahaya_terminal_no: str = ""
+    cahaya_access_token: str = ""
+    cahaya_notify_url: str = ""
+    cahaya_timeout_seconds: int = 20
     frontend_base_url: str = "http://localhost:5173"
     trusted_proxy_cidrs: str = "127.0.0.1/32,::1/128,172.16.0.0/12"
     turnstile_site_key: str = ""

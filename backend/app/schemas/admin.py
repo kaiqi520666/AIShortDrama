@@ -60,16 +60,16 @@ class PriceRuleUpdateRequest(AdminMutation):
 
 
 class RechargeTierMutationRequest(AdminMutation):
-    min_amount_cents: int = Field(gt=0, le=10_000_000)
+    currency: Literal["CNY", "IDR"] = "CNY"
+    min_amount_cents: int = Field(gt=0, le=100_000_000)
     bonus_rate_bps: int = Field(ge=0, le=3000)
     enabled: bool = True
 
-    @field_validator("min_amount_cents")
-    @classmethod
-    def require_whole_yuan(cls, value: int) -> int:
-        if value % 100:
+    @model_validator(mode="after")
+    def validate_amount(self):
+        if self.currency == "CNY" and self.min_amount_cents % 100:
             raise ValueError("阶梯金额必须为整数元")
-        return value
+        return self
 
 
 class BillingPolicyUpdateRequest(AdminMutation):
@@ -77,6 +77,10 @@ class BillingPolicyUpdateRequest(AdminMutation):
     recharge_max_cents: int = Field(gt=0, le=10_000_000)
     unit_amount_cents: int = Field(gt=0, le=10_000_000)
     unit_credits: int = Field(gt=0, le=10_000_000)
+    idr_recharge_min: int | None = Field(default=None, gt=0, le=100_000_000)
+    idr_recharge_max: int | None = Field(default=None, gt=0, le=100_000_000)
+    idr_unit_amount: int | None = Field(default=None, gt=0, le=100_000_000)
+    idr_unit_credits: int | None = Field(default=None, gt=0, le=10_000_000)
 
     @field_validator("recharge_min_cents", "recharge_max_cents", "unit_amount_cents")
     @classmethod
@@ -88,6 +92,8 @@ class BillingPolicyUpdateRequest(AdminMutation):
     @model_validator(mode="after")
     def validate_range(self):
         if self.recharge_max_cents < self.recharge_min_cents:
+            raise ValueError("充值封顶金额不能小于起充金额")
+        if self.idr_recharge_max is not None and self.idr_recharge_min is not None and self.idr_recharge_max < self.idr_recharge_min:
             raise ValueError("充值封顶金额不能小于起充金额")
         return self
 

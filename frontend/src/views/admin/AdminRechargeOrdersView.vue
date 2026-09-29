@@ -21,7 +21,8 @@ const statusOptions = computed(() => [{ value: 'all', label: t('admin.allStatuse
 const columns = computed(() => [
   { key: 'user', label: t('common.user') },
   { key: 'out_trade_no', label: t('admin.orders.number') },
-  { key: 'amount_cents', label: t('admin.orders.amount') },
+  { key: 'provider', label: t('admin.orders.provider') },
+  { key: 'amount_minor', label: t('admin.orders.amount') },
   { key: 'credits', label: t('admin.orders.credits') },
   { key: 'status', label: t('admin.status') },
   { key: 'created_at', label: t('common.createdAt') },
@@ -52,7 +53,8 @@ onMounted(load)
     <AppDataTable :columns="columns" :items="result.items" :loading="loading" :loading-title="t('admin.orders.loading')" :empty-title="t('admin.orders.empty')" min-width="980px" :pagination="{ page: result.page, pageSize: result.page_size, total: result.total }" @page-change="load">
       <template #cell-user="{ item }"><strong>{{ item.user.username }}</strong><small>{{ item.user.email }}</small></template>
       <template #cell-out_trade_no="{ item }"><strong>{{ item.out_trade_no }}</strong><small>{{ item.provider_trade_no || '—' }}</small></template>
-      <template #cell-amount_cents="{ value }">{{ n(value / 100, { style: 'currency', currency: 'CNY' }) }}</template>
+      <template #cell-provider="{ item }">{{ item.provider === 'cahaya' ? 'Cahaya QRIS' : 'ZPay / WeChat Pay' }}</template>
+      <template #cell-amount_minor="{ item }">{{ n(item.currency === 'CNY' ? item.amount_minor / 100 : item.amount_minor, { style: 'currency', currency: item.currency, maximumFractionDigits: item.currency === 'CNY' ? 2 : 0 }) }}</template>
       <template #cell-credits="{ item }">{{ n(item.base_credits) }} / +{{ n(item.bonus_credits) }} / {{ n(item.total_credits) }}</template>
       <template #cell-status="{ item }"><span class="admin-status" :class="`is-${item.status}`">{{ t(`admin.orders.${item.status}`) }}</span></template>
       <template #cell-created_at="{ value }">{{ formatDate(value) }}</template>

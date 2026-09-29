@@ -122,4 +122,4 @@ async def test_missing_workspace_uses_not_found_envelope(override_business_user)
         response = await client.get(f"/api/workspaces/{uuid.uuid4()}")
 
     assert response.status_code == 404
-    assert response.json() == {"code": 1, "message": "工作台不存在", "data": None}
+    assert response.json() == {"code": 1, "message": "工作台不存在", "data": None, "error_key": "not_found", "error_params": {}}

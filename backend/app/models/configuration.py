@@ -25,6 +25,10 @@ class BillingPolicy(Base):
     recharge_max_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     unit_amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     unit_credits: Mapped[int] = mapped_column(Integer, nullable=False)
+    idr_recharge_min: Mapped[int] = mapped_column(Integer, server_default=text("150000"), nullable=False)
+    idr_recharge_max: Mapped[int] = mapped_column(Integer, server_default=text("15000000"), nullable=False)
+    idr_unit_amount: Mapped[int] = mapped_column(Integer, server_default=text("150000"), nullable=False)
+    idr_unit_credits: Mapped[int] = mapped_column(Integer, server_default=text("1000"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

@@ -20,6 +20,10 @@ def policy_data(policy: BillingPolicy) -> dict[str, Any]:
         "recharge_max_cents": policy.recharge_max_cents,
         "unit_amount_cents": policy.unit_amount_cents,
         "unit_credits": policy.unit_credits,
+        "idr_recharge_min": policy.idr_recharge_min,
+        "idr_recharge_max": policy.idr_recharge_max,
+        "idr_unit_amount": policy.idr_unit_amount,
+        "idr_unit_credits": policy.idr_unit_credits,
     }
 
 
