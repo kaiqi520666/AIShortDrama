@@ -22,6 +22,7 @@ export function useStreamingTextTask(nodeId) {
     running.value = true
     failure.value = ''
     partialContent.value = ''
+    let generatedLocale
     updateNodeData(nodeId, { status: 'generating', generationError: '' })
     try {
       await streamer(
@@ -30,15 +31,19 @@ export function useStreamingTextTask(nodeId) {
           partialContent.value += delta
           if (preservePartial) updateNodeData(nodeId, { content: partialContent.value })
         },
-        (taskId, meta = {}) => updateNodeData(nodeId, {
-          generationTaskId: taskId,
-          generationStatus: 'running',
-          ...(meta.template_version ? { templateVersion: meta.template_version } : {}),
-        }),
+        (taskId, meta = {}) => {
+          generatedLocale = meta.generated_locale
+          updateNodeData(nodeId, {
+            generationTaskId: taskId,
+            generationStatus: 'running',
+            ...(meta.template_version ? { templateVersion: meta.template_version } : {}),
+          })
+        },
       )
       const result = await onSuccess?.(partialContent.value)
       updateNodeData(nodeId, {
         ...(result || {}),
+        ...(generatedLocale ? { generated_locale: generatedLocale } : {}),
         status: 'ready',
         generationStatus: 'succeeded',
         generationError: '',

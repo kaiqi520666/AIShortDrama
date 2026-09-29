@@ -1,4 +1,5 @@
 from copy import deepcopy
+import json
 import re
 from string import Formatter
 from typing import Any, Callable
@@ -7,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import ContentTemplate
+from app.core.generation_locale import output_language_instruction
 
 
 PRODUCT_VISUAL_KEY = "product_visual"
@@ -886,6 +888,8 @@ def build_ugc_storyboard_prompt(config: dict[str, Any], context: dict[str, Any])
         raise ValueError("商品分镜参考图数量无效")
     ratio = context["video_aspect_ratio"]
     columns, rows = _storyboard_grid(ratio)
+    if context.get("locale") == "id":
+        return _build_indonesian_storyboard(validated, context, columns, rows, drama=False)
     image_references, video_references = _reference_instructions(
         character_count, product_count
     )
@@ -949,6 +953,8 @@ def build_commerce_drama_prompt(config: dict[str, Any], context: dict[str, Any])
         raise ValueError("短剧带货参考图数量无效")
     ratio = context["video_aspect_ratio"]
     columns, rows = _storyboard_grid(ratio)
+    if context.get("locale") == "id":
+        return _build_indonesian_storyboard(validated, context, columns, rows, drama=True)
     image_references, video_references = _reference_instructions(character_count, product_count)
     segment_count = duration // 15
     if not character_count:
@@ -998,6 +1004,100 @@ def build_commerce_drama_prompt(config: dict[str, Any], context: dict[str, Any])
         f"连续性规则：{blocks['continuity_rules']}\n\n"
         f"禁止项：{blocks['forbidden_rules']}{extra}\n\n"
         f"{output_contract}"
+    )
+
+
+def _build_indonesian_storyboard(config, context, columns, rows, *, drama):
+    count = context["character_count"]
+    products = context["product_count"]
+    duration = context["duration"]
+    ratio = context["video_aspect_ratio"]
+    template_id = "commerce-drama" if drama else "ugc-seeding"
+    image_refs = "; ".join(
+        [f"Gambar {i + 1}: Tokoh {i + 1}" for i in range(count)]
+        + [f"Gambar {count + i + 1}: produk {i + 1}" for i in range(products)]
+    )
+    video_refs = "; ".join(
+        ["Gambar 1: storyboard segmen ini"]
+        + [f"Gambar {i + 2}: Tokoh {i + 1}" for i in range(count)]
+        + [f"Gambar {count + i + 2}: produk {i + 1}" for i in range(products)]
+    )
+    shots = " ".join(f"Adegan {i}: deskripsi lengkap." for i in range(1, 7))
+    segment = {
+        "segmentIndex": 1, "duration": 15, "shotCount": 6,
+        "plotGoal": "tujuan segmen", "openingState": "keadaan awal",
+        "endingState": "keadaan akhir", "continuityMode": "cut",
+        "prompt": shots, "videoPrompt": "Gambar 1 adalah storyboard segmen ini. " + shots,
+    }
+    schema = {
+        "templateId": template_id, "title": "judul dalam bahasa Indonesia" if drama else "Rekomendasi UGC",
+        "globalScript": "arah cerita keseluruhan", "totalDuration": duration,
+        "segments": [segment],
+    }
+    if drama:
+        segment.update(dramaticBeat="konflik, perubahan atau hasil", productPlacement="peran produk dalam cerita")
+        schema["characters"] = [{"characterIndex": 1, "name": "nama tokoh", "role": "peran",
+                                 "goal": "tujuan", "relationship": "hubungan antartokoh"}]
+    direction = (
+        "Buat drama pendek e-commerce dengan pembuka menarik, konflik, perubahan dan penyelesaian. "
+        "Produk berperan alami dalam cerita, bukan klaim manfaat yang dibuat-buat."
+        if drama else
+        "Buat rekomendasi produk UGC seperti rekaman ponsel sehari-hari. Gunakan kamera depan sudut lebar "
+        "untuk swafoto dan kamera belakang 1x untuk produk atau pengambilan oleh teman. Pertahankan "
+        "goyangan ringan, fokus dan pencahayaan otomatis, tekstur kulit alami serta latar yang jelas. "
+        "Tanpa tripod, stabilizer, gerakan kamera sinematik, slow motion, bokeh atau musik latar."
+    )
+    character_rule = (
+        f"Gunakan tepat {count} tokoh referensi dengan identitas tetap; jangan menambahkan tokoh lain."
+        if count else
+        ("Tokoh cerita harus konsisten; jangan mengarang identitas tokoh referensi yang tidak tersedia."
+         if drama else "Jangan tampilkan wajah yang dapat dikenali. Gunakan narasi di luar layar.")
+    )
+    # Admin-authored business rules remain authoritative; language and schema come from this contract.
+    variables = {
+        "character_count": count, "segment_count": duration // 15,
+        "columns": columns, "rows": rows, "ratio": ratio,
+        "speaker_examples": 'Tokoh 1 berkata: "..."',
+    }
+    rules = json.dumps({
+        key: value.format(**variables)
+        for key, value in config["prompt_blocks"].items()
+        if key not in {"first_segment_rule", "extend_segment_rule"}
+    }, ensure_ascii=False)
+    segment_rules = "\n".join(
+        config["prompt_blocks"]["first_segment_rule"].format(segment=index)
+        if index == 1 else config["prompt_blocks"]["extend_segment_rule"].format(
+            segment=index, previous_segment=index - 1,
+        )
+        for index in range(1, duration // 15 + 1)
+    ) if not drama else ""
+    return (
+        f"{output_language_instruction('id')}\n{direction}\n{character_rule}\n"
+        f"Referensi untuk gambar: {image_refs}. Tidak ada storyboard dalam masukan tahap gambar.\n"
+        f"Referensi untuk video: {video_refs}. Nomor gambar wajib sesuai urutan ini.\n"
+        f"Informasi produk: {context['product_context'] or 'Gunakan hanya fakta yang terlihat pada referensi.'}\n"
+        f"Persyaratan pengguna: {context.get('user_requirement', '')}\n"
+        f"Aturan bisnis tersimpan (ikuti maknanya, bukan bahasa atau label contoh): {rules}\n"
+        f"Aturan segmen tersimpan: {segment_rules}\n"
+        f"Arah bisnis tambahan: {config.get('business_instruction', '')}\n"
+        "Kontrak keluaran berikut menggantikan bahasa, judul contoh, dan label adegan pada aturan lama:\n"
+        f"Keluarkan hanya objek JSON valid: {json.dumps(schema, ensure_ascii=False)}\n"
+        f"templateId wajib {template_id}. Buat tepat {duration // 15} segmen berurutan, masing-masing "
+        "15 detik dengan 6 adegan. segmentIndex mulai dari 1. continuityMode segmen pertama wajib cut; "
+        "segmen berikutnya cut atau extend. Untuk extend, awali videoPrompt dengan instruksi memperpanjang "
+        "video segmen sebelumnya dan mempertahankan subjek, lokasi, cahaya, suara serta keadaan akhirnya.\n"
+        f"Setiap prompt gambar membuat storyboard enam panel, {columns} kolom dan {rows} baris, "
+        f"setiap panel berasio {ratio}, berurutan kiri ke kanan lalu atas ke bawah. "
+        "Tulis Adegan 1 hingga Adegan 6 secara lengkap pada prompt dan videoPrompt. "
+        "Label panel hanya Adegan 1 sampai Adegan 6, tanpa subtitle, harga, watermark atau teks tambahan. "
+        "Prompt gambar hanya mendeskripsikan visual, tanpa dialog, musik atau efek suara.\n"
+        f"Video berasio {ratio}. Setiap adegan menjelaskan lokasi, aksi, ukuran shot, satu gerakan kamera, "
+        "cahaya dan suara. Satu aksi berkesinambungan per adegan, potong setelah aksi selesai, tanpa montase cepat. "
+        "videoPrompt memuat minimal enam ucapan singkat yang sesuai aksi dan muat dalam 15 detik. "
+        'Tulis Tokoh 1 berkata: "..." atau Narator berkata: "..." dengan dialog bahasa Indonesia alami, '
+        "suara terdengar jelas dan bibir sinkron untuk tokoh yang terlihat. Escape tanda kutip dalam JSON. "
+        "Jaga bentuk, warna, bahan, kemasan, ukuran produk dan identitas tokoh tetap konsisten. "
+        "Jangan mengarang fakta, manfaat produk atau referensi tambahan. Semua nilai deskriptif berbahasa Indonesia."
     )
 
 

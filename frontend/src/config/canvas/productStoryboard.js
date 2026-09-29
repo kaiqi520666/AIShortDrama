@@ -220,5 +220,5 @@ function ratioValue(value) {
 
 function hasStoryboardShotLabels(value) {
   return Array.from({ length: storyboardSegmentShotCount }, (_, index) => index + 1)
-    .every((number) => new RegExp(`(?:镜头|第)\\s*${number}(?:格)?`).test(value));
+    .every((number) => new RegExp(`(?:镜头|第|\\bAdegan\\s+)\\s*${number}(?!\\d)(?:格)?`, 'i').test(value));
 }

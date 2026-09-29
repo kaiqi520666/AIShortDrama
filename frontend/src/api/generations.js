@@ -24,7 +24,7 @@ export async function streamGeneration(path, payload, onDelta, onMeta, errorLabe
   const response = await fetch(`/api${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
+    body: JSON.stringify({ ...payload, locale: i18n.global.locale.value }),
   }).catch(() => { throw createApiError({ error_key: 'network_error' }) })
   if (!response.ok) {
     const error = await response.json().catch(() => null)

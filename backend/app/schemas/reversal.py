@@ -2,6 +2,7 @@ import uuid
 from typing import Literal
 
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, model_validator
+from app.core.generation_locale import GenerationLocale
 
 
 class StoryboardTemplateContext(BaseModel):
@@ -66,6 +67,7 @@ class ApparelVideoTemplateContext(BaseModel):
 
 class ReversePromptRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    locale: GenerationLocale = "zh-CN"
 
     workspace_id: uuid.UUID
     node_id: str = Field(min_length=1, max_length=64)

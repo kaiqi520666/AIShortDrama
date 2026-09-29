@@ -291,6 +291,23 @@ def test_backend_ugc_builder_matches_accepted_frontend_prompt_byte_for_byte():
         assert hashlib.sha256(prompt.encode()).hexdigest() == item["sha256"], item["name"]
 
 
+@pytest.mark.parametrize("drama", [False, True])
+def test_indonesian_storyboard_contract(drama):
+    config = default_commerce_drama_config() if drama else default_ugc_config()
+    builder = build_commerce_drama_prompt if drama else build_ugc_storyboard_prompt
+    prompt = builder(config, {
+        "locale": "id", "product_context": "Kopi", "duration": 30,
+        "video_aspect_ratio": "9:16", "character_count": 1, "product_count": 1,
+        "user_requirement": "Dapur terang",
+    })
+    assert "Bahasa keluaran wajib bahasa Indonesia" in prompt
+    assert "Adegan 6" in prompt
+    assert "Gambar 3: produk 1" in prompt
+    assert "tepat 2 segmen" in prompt
+    assert "Dapur terang" in prompt
+    assert ("commerce-drama" if drama else "ugc-seeding") in prompt
+
+
 def test_commerce_drama_migration_preserves_operator_blocks_and_is_idempotent():
     migration = load_commerce_drama_migration()
     existing = {

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { streamTextGeneration } from './generations'
+import { streamReversePrompt } from './reversals'
 import { i18n } from '../i18n'
 
 afterEach(() => {
@@ -8,6 +9,18 @@ afterEach(() => {
 })
 
 describe('localized stream errors', () => {
+  it.each(['zh-CN', 'id'])('sends current language on both AI endpoints: %s', async (locale) => {
+    i18n.global.locale.value = locale
+    const fetch = vi.fn().mockImplementation(() => Promise.resolve(new Response('{"type":"done"}\n')))
+    vi.stubGlobal('fetch', fetch)
+    const payload = { prompt: '保留原文' }
+    await streamTextGeneration(payload, vi.fn())
+    await streamReversePrompt(payload, vi.fn())
+    for (const [, request] of fetch.mock.calls) {
+      expect(JSON.parse(request.body)).toEqual({ ...payload, locale })
+    }
+    expect(payload).not.toHaveProperty('locale')
+  })
   it('translates non-2xx errors and preserves the request prompt', async () => {
     const fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({
       code: 1, error_key: 'insufficient_credits', message: '积分不足',
@@ -15,7 +28,7 @@ describe('localized stream errors', () => {
     vi.stubGlobal('fetch', fetch)
     const payload = { prompt: '保留用户提示词', model: 'test-model' }
     await expect(streamTextGeneration(payload, vi.fn())).rejects.toThrow(i18n.global.t('errors.insufficient_credits'))
-    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual(payload)
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ ...payload, locale: i18n.global.locale.value })
   })
 
   it('translates stream errors without translating deltas or metadata', async () => {

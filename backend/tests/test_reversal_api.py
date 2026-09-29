@@ -124,6 +124,36 @@ def apparel_storyboard_payload(**overrides):
     return payload
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("locale", ["zh-CN", "id"])
+@pytest.mark.parametrize("template_key", ["product_storyboard", "commerce_drama"])
+async def test_storyboard_locale_persisted_and_forwarded(monkeypatch, locale, template_key):
+    monkeypatch.setattr(reversals_route, "OpenAIResponsesProvider", FakeProvider)
+    async with SessionLocal() as db:
+        template = await db.get(ContentTemplate, template_key)
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+        response = await client.post("/api/reversals/stream", json=storyboard_payload(
+            locale=locale, template_key=template_key, template_version=template.version,
+        ))
+    assert response.status_code == 200
+    events = [json.loads(line) for line in response.text.splitlines()]
+    assert events[-1]["type"] == "done"
+    assert events[0]["generated_locale"] == locale
+    assert FakeProvider.last_kwargs["locale"] == locale
+    if locale == "id":
+        assert "Adegan 6" in FakeProvider.last_kwargs["prompt"]
+    async with SessionLocal() as db:
+        task = await db.get(GenerationTask, uuid.UUID(events[0]["task_id"]))
+        assert task.request_snapshot["locale"] == locale
+
+
+def test_generation_locale_validation():
+    payload = storyboard_payload()
+    assert ReversePromptRequest(**payload).locale == "zh-CN"
+    with pytest.raises(ValidationError):
+        ReversePromptRequest(**{**payload, "locale": "invalid"})
+
+
 def test_product_visual_plan_requires_server_template():
     payload = product_visual_payload()
     assert ReversePromptRequest(**payload).template_key == "product_visual"
@@ -299,6 +329,7 @@ async def test_product_visual_stream_uses_server_template(monkeypatch):
         "template_key": "product_visual",
         "template_version": template.version,
         "output_protocol_id": "product-visual-v1",
+        "generated_locale": "zh-CN",
     }
     assert "white-bg=白底图、core-selling=核心卖点" in FakeProvider.last_kwargs["prompt"]
     assert FakeProvider.last_kwargs["instructions"].startswith(
@@ -334,6 +365,7 @@ async def test_commerce_drama_stream_uses_server_template(monkeypatch):
         "template_key": "commerce_drama",
         "template_version": template.version,
         "output_protocol_id": "commerce-drama-v1",
+        "generated_locale": "zh-CN",
     }
     assert '"templateId":"commerce-drama"' in FakeProvider.last_kwargs["prompt"]
     assert FakeProvider.last_kwargs["instructions"].startswith("你是专业的中文电商短剧分镜策划师")

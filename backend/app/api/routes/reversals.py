@@ -68,7 +68,7 @@ async def stream_reverse_prompt(
         try:
             prompt = TEMPLATE_BUILDERS[payload.template_key](
                 template.config,
-                payload.template_context.model_dump(),
+                {**payload.template_context.model_dump(), "locale": payload.locale},
             )
         except (KeyError, ValueError) as exc:
             raise RequestError(str(exc)) from exc
@@ -125,7 +125,7 @@ async def stream_reverse_prompt(
 
     async def events():
         content = ""
-        meta = {"type": "meta", "task_id": str(task.id)}
+        meta = {"type": "meta", "task_id": str(task.id), "generated_locale": payload.locale}
         if payload.template_key:
             meta.update(
                 {
@@ -145,6 +145,7 @@ async def stream_reverse_prompt(
                     prompt=prompt,
                     response_mode=payload.response_mode,
                     instructions=provider_instruction,
+                    locale=payload.locale,
                 ):
                     content += content_chunk
                     yield (

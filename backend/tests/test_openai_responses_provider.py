@@ -30,6 +30,38 @@ def settings():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("locale", ["zh-CN", "id"])
+@pytest.mark.parametrize("mode", ["text", "prompt", "product_profile", "product_storyboard_plan"])
+async def test_generation_language_reaches_provider(monkeypatch, locale, mode):
+    requests = []
+
+    async def handler(request):
+        requests.append(json.loads(request.content))
+        return httpx.Response(200, stream=ChunkStream([
+            frame({"type": "response.output_text.delta", "delta": "hasil"}),
+            frame({"type": "response.completed", "response": {}}),
+        ]))
+
+    monkeypatch.setattr(provider_module, "get_settings", settings)
+    async with OpenAIResponsesProvider(transport=httpx.MockTransport(handler)) as provider:
+        if mode == "text":
+            stream = provider.stream_text(model="gpt-5.6-sol", prompt="保留输入", locale=locale)
+        else:
+            stream = provider.stream_reverse_prompt(
+                model="gpt-5.6-sol", media_type="image", media_url="https://example.com/a.png",
+                prompt="保留输入", response_mode=mode, locale=locale,
+            )
+        assert [part async for part in stream] == ["hasil"]
+    request = requests[0]
+    assert ("Bahasa keluaran wajib bahasa Indonesia" if locale == "id" else "输出语言为简体中文") in request["instructions"]
+    if mode == "text":
+        assert request["input"] == "保留输入"
+    elif mode == "product_profile" and locale == "id":
+        assert '"sellingPoints"' in request["input"][0]["content"][-1]["text"]
+        assert "Identifikasi produk" in request["input"][0]["content"][-1]["text"]
+
+
+@pytest.mark.asyncio
 async def test_stream_reverse_prompt_uses_responses_image_format(monkeypatch):
     requests = []
 

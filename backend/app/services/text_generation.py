@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ServiceUnavailableError, diagnostic_snapshot, error_fields, public_error_message
+from app.core.generation_locale import GenerationLocale
 from app.models import GenerationTask, Workspace
 from app.providers.openai_responses import OpenAIResponsesProvider
 from app.schemas.generation import TextGenerationRequest
@@ -28,7 +29,7 @@ class TextProvider(Protocol):
 
     async def __aexit__(self, *args: Any) -> None: ...
 
-    def stream_text(self, *, model: str, prompt: str) -> AsyncIterator[str]: ...
+    def stream_text(self, *, model: str, prompt: str, locale: GenerationLocale = "zh-CN") -> AsyncIterator[str]: ...
 
 
 @dataclass
@@ -105,11 +106,11 @@ class TextGenerationService:
         payload: TextGenerationRequest,
     ) -> AsyncIterator[str]:
         content = ""
-        yield json.dumps({"type": "meta", "task_id": str(prepared.task.id)}) + "\n"
+        yield json.dumps({"type": "meta", "task_id": str(prepared.task.id), "generated_locale": payload.locale}) + "\n"
         try:
             async with prepared.provider:
                 async for chunk in prepared.provider.stream_text(
-                    model=payload.model, prompt=payload.prompt
+                    model=payload.model, prompt=payload.prompt, locale=payload.locale
                 ):
                     content += chunk
                     yield json.dumps(

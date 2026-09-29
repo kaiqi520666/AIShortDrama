@@ -57,6 +57,12 @@ function planJson(overrides = {}) {
 }
 
 describe('product storyboard planning', () => {
+  it('accepts Indonesian shot labels without rewriting generated content', () => {
+    const shots = Array.from({ length: 6 }, (_, i) => `Adegan ${i + 1}: Produk terlihat jelas.`).join(' ')
+    const plan = parseProductStoryboardPlan(planJson({ prompt: shots, videoPrompt: shots }), template)
+    expect(plan.segments[0].prompt).toBe(shots)
+    expect(() => parseProductStoryboardPlan(planJson({ prompt: shots.replace('Adegan 6', 'Adegan 60') }), template)).toThrow()
+  })
   it('only exposes the UGC seeding template', () => {
     expect(storyboardTemplates).toEqual([{ id: 'ugc-seeding', label: 'UGC 种草', description: '用户视角真实分享体验', enabled: true }])
     expect(createStoryboardTemplates(template)).toEqual(storyboardTemplates)

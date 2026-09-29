@@ -4,6 +4,7 @@ from typing import Literal
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.core.model_capabilities import get_default_model, get_model_capability
+from app.core.generation_locale import GenerationLocale
 
 DEFAULT_IMAGE_CAPABILITY = get_model_capability("image", get_default_model("image"))
 DEFAULT_AUDIO_CAPABILITY = get_model_capability("audio", get_default_model("audio"))
@@ -22,6 +23,7 @@ def validate_prompt_length(prompt: str, model: str, rules: dict) -> None:
 
 class TextGenerationRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    locale: GenerationLocale = "zh-CN"
 
     workspace_id: uuid.UUID
     node_id: str = Field(min_length=1, max_length=64)

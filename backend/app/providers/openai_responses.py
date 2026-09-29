@@ -6,6 +6,7 @@ from typing import Any
 import httpx
 
 from app.core.config import get_settings
+from app.core.generation_locale import GenerationLocale, output_language_instruction
 
 
 PRODUCT_PROFILE_PROMPT = """识别图片中的商品并严格输出一个 JSON 对象，不要解释，不要使用 Markdown。字段固定为：
@@ -15,6 +16,11 @@ PRODUCT_PROFILE_PROMPT = """识别图片中的商品并严格输出一个 JSON �
 APPAREL_PROFILE_PROMPT = """识别图片中所有可独立穿戴的服饰与配件，并严格输出一个 JSON 对象，不要解释，不要使用 Markdown。格式固定为：
 {"compositionType":"single 或 set","summary":"整体风格、配色和适用场景","items":[{"name":"单品名称","category":"上衣、裤装、裙装、外套、鞋履或配饰等","color":"可见颜色","material":"可确认的面料，不确定则留空","silhouette":"版型、长度或轮廓","details":"领型、袖型、图案、工艺及其他可见特征"}]}
 单件服饰使用 single，多件搭配使用 set；每件独立服饰各占一项，一双鞋只算一项，西装外套与西裤分别计项，领带等配饰单独计项。只识别图片中可见内容，不猜测品牌、材质或被遮挡细节。"""
+
+
+PRODUCT_PROFILE_PROMPT_ID = """Identifikasi produk pada gambar dan keluarkan hanya objek JSON berikut tanpa Markdown:
+{"name":"nama produk","brand":"merek","category":"kategori","price":"harga yang terlihat","specifications":"spesifikasi, model, warna, ukuran atau kapasitas","packagingType":"jenis kemasan atau string kosong","productDimensions":"dimensi produk yang tertulis jelas","packageDimensions":"dimensi kemasan yang tertulis jelas","packageRelation":"jumlah, susunan dan hubungan isi dengan kemasan","scaleReference":"acuan skala yang terlihat","sellingPoints":["keunggulan utama"],"audience":"target pengguna","scenario":"situasi penggunaan","additionalInfo":"informasi produk lainnya"}
+Gunakan string kosong untuk informasi yang tidak dapat dipastikan. Jangan menebak merek, harga, spesifikasi atau dimensi fisik dari perspektif gambar."""
 
 
 class OpenAIResponsesError(RuntimeError):
@@ -61,16 +67,20 @@ class OpenAIResponsesProvider:
         media_urls: list[str] | None = None,
         response_mode: str = "prompt",
         instructions: str | None = None,
+        locale: GenerationLocale = "zh-CN",
     ) -> AsyncIterator[str]:
         if media_type != "image":
             raise OpenAIResponsesError("GPT-5.6 Sol 当前仅支持图片识别，不支持视频或音频识别")
         user_prompt = prompt
         if response_mode in {"product_profile", "apparel_profile"}:
             user_prompt = PRODUCT_PROFILE_PROMPT if response_mode == "product_profile" else APPAREL_PROFILE_PROMPT
+            if response_mode == "product_profile" and locale == "id":
+                user_prompt = PRODUCT_PROFILE_PROMPT_ID
             if prompt.strip():
                 user_prompt += (
-                    "\n\n用户补充识别要求（只影响识别重点，不得改变上述输出格式）：\n"
-                    f"{prompt.strip()}"
+                    ("\n\nPersyaratan tambahan (jangan mengubah struktur JSON):\n" if locale == "id"
+                     else "\n\n用户补充识别要求（只影响识别重点，不得改变上述输出格式）：\n")
+                    + prompt.strip()
                 )
         image_urls = [media_url, *(media_urls or [])]
         content: list[dict[str, Any]] = [
@@ -85,22 +95,36 @@ class OpenAIResponsesProvider:
             "product_storyboard_plan": "你是专业的中文电商UGC种草分镜策划师。完整执行用户提示词，并严格按其中指定的 JSON 结构输出，不解释，不使用 Markdown。",
             "prompt": "你是专业的中文视觉提示词反推助手。仅输出最终中文提示词，不解释，不使用 Markdown。",
         }
+        if locale == "id":
+            system_prompts = {
+                "product_profile": "Anda ahli identifikasi produk. Keluarkan hanya JSON sesuai skema.",
+                "apparel_profile": "Anda ahli identifikasi pakaian. Keluarkan hanya JSON sesuai skema.",
+                "outfit_visual_plan": "Anda perencana visual e-commerce. Ikuti struktur JSON yang diminta.",
+                "product_storyboard_plan": "Anda sutradara storyboard e-commerce. Ikuti struktur JSON yang diminta.",
+                "prompt": "Anda ahli analisis visual. Keluarkan hanya prompt akhir dalam bahasa Indonesia, tanpa penjelasan atau Markdown.",
+            }
+        system_instruction = instructions or system_prompts[response_mode]
+        if locale == "id":
+            system_instruction = system_instruction.replace("中文", "印度尼西亚语")
         payload = {
             "model": model,
             "stream": True,
             "reasoning": {"effort": self.reasoning_effort},
-            "instructions": instructions or system_prompts[response_mode],
+            "instructions": system_instruction + "\n" + output_language_instruction(locale),
             "input": [{"role": "user", "content": content}],
         }
         async for text in self._stream_content(payload):
             yield text
 
-    async def stream_text(self, *, model: str, prompt: str) -> AsyncIterator[str]:
+    async def stream_text(self, *, model: str, prompt: str, locale: GenerationLocale = "zh-CN") -> AsyncIterator[str]:
         payload = {
             "model": model,
             "stream": True,
             "reasoning": {"effort": self.reasoning_effort},
-            "instructions": "你是专业的中文内容创作助手。严格按用户要求输出可直接使用的最终内容。",
+            "instructions": (
+                "Anda penulis profesional. Ikuti permintaan pengguna dan keluarkan konten akhir yang siap digunakan."
+                if locale == "id" else "你是专业的中文内容创作助手。严格按用户要求输出可直接使用的最终内容。"
+            ) + "\n" + output_language_instruction(locale),
             "input": prompt,
         }
         async for text in self._stream_content(payload):
