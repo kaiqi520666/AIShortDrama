@@ -20,8 +20,9 @@ def upgrade() -> None:
             "UPDATE generation_tasks "
             "SET credit_status = CASE "
             "WHEN credit_status IS NULL OR btrim(credit_status) = '' THEN 'none' "
-            "WHEN btrim(credit_status) IN ('none', 'frozen', 'consumed', 'refunded') "
-            "THEN btrim(credit_status) "
+            "WHEN btrim(btrim(credit_status), chr(39)) IN "
+            "('none', 'frozen', 'consumed', 'refunded') "
+            "THEN btrim(btrim(credit_status), chr(39)) "
             "ELSE credit_status END"
         )
     )
@@ -30,8 +31,9 @@ def upgrade() -> None:
             "UPDATE generation_tasks "
             "SET status = CASE "
             "WHEN status IS NULL OR btrim(status) = '' THEN 'queued' "
-            "WHEN btrim(status) IN ('queued', 'running', 'succeeded', 'failed', 'timeout', 'cancelled', 'needs_review') "
-            "THEN btrim(status) "
+            "WHEN btrim(btrim(status), chr(39)) IN "
+            "('queued', 'running', 'succeeded', 'failed', 'timeout', 'cancelled', 'needs_review') "
+            "THEN btrim(btrim(status), chr(39)) "
             "ELSE status END"
         )
     )
