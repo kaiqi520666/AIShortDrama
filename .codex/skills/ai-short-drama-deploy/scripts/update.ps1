@@ -135,7 +135,18 @@ try {
 
     Invoke-Ssh -Command "sudo docker load --input '$remoteArchive'"
     $deploymentSwitched = $true
-    Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo sed -i -E 's|^BACKEND_IMAGE=.*$|BACKEND_IMAGE=$backendImage|' .env && sudo sed -i -E 's|^FRONTEND_IMAGE=.*$|FRONTEND_IMAGE=$frontendImage|' .env && sudo docker compose -p '$composeProject' up -d"
+    Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo sed -i -E 's|^BACKEND_IMAGE=.*$|BACKEND_IMAGE=$backendImage|' .env && sudo sed -i -E 's|^FRONTEND_IMAGE=.*$|FRONTEND_IMAGE=$frontendImage|' .env"
+
+    # Run the one-shot migration separately so its exit code and output are
+    # unambiguous. The application services are started only after migration
+    # succeeds, avoiding Compose's service_completed_successfully wait race.
+    Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo docker compose -p '$composeProject' up -d --wait db redis"
+    $migrationOutput = Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo docker compose -p '$composeProject' run --rm migrate" -Capture
+    if ($migrationOutput) {
+        Write-Output $migrationOutput
+    }
+    Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo docker compose -p '$composeProject' up -d --no-deps backend worker"
+    Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo docker compose -p '$composeProject' up -d --no-deps frontend"
 
     $runningBackendImage = Invoke-Ssh -Command "sudo docker inspect --format '{{.Config.Image}}' ai-short-drama-backend-1" -Capture
     $runningWorkerImage = Invoke-Ssh -Command "sudo docker inspect --format '{{.Config.Image}}' ai-short-drama-worker-1" -Capture
@@ -169,7 +180,7 @@ catch {
     if ($deploymentSwitched -and $oldBackendImage -and $oldFrontendImage) {
         Write-Warning 'Deployment failed. Restoring the previous image tags; database migrations are not reversed.'
         try {
-            Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo sed -i -E 's|^BACKEND_IMAGE=.*$|BACKEND_IMAGE=$oldBackendImage|' .env && sudo sed -i -E 's|^FRONTEND_IMAGE=.*$|FRONTEND_IMAGE=$oldFrontendImage|' .env && sudo docker compose -p '$composeProject' up -d"
+            Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo sed -i -E 's|^BACKEND_IMAGE=.*$|BACKEND_IMAGE=$oldBackendImage|' .env && sudo sed -i -E 's|^FRONTEND_IMAGE=.*$|FRONTEND_IMAGE=$oldFrontendImage|' .env && sudo docker compose -p '$composeProject' up -d --no-deps backend worker frontend"
         }
         catch {
             Write-Warning "Automatic image rollback also failed: $($_.Exception.Message)"
