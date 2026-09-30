@@ -126,7 +126,7 @@ export const useCanvasStore = defineStore('canvas', {
       const persistent = stripTransientNodes(this.nodes, this.edges, this.groups)
       return {
         schema_version: CURRENT_CANVAS_SCHEMA_VERSION,
-        nodes: persistent.nodes.map(({ id, type, position, data }) => ({ id, type, position, data })),
+        nodes: persistent.nodes.map(({ id, type, position, data: { generationProgress, ...data } }) => ({ id, type, position, data })),
         edges: persistent.edges.map(({ id, source, target, sourceHandle, targetHandle, type, workflowId }) => ({ id, source, target, ...(sourceHandle ? { sourceHandle } : {}), ...(targetHandle ? { targetHandle } : {}), ...(workflowId ? { workflowId } : {}), type: type || 'cinematic' })),
         groups: persistent.groups,
         sequence: this.sequence,

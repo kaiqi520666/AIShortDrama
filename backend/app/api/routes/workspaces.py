@@ -7,11 +7,12 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_db
-from app.core.errors import ConflictError, NotFoundError
+from app.core.errors import ConflictError, NotFoundError, RequestError
 from app.core.identity import get_current_user_id
 from app.models import Workspace
 from app.schemas.response import success
 from app.schemas.workspace import CanvasUpdate, WorkspaceCreate, WorkspaceUpdate, empty_canvas
+from app.services.canvas_validation import CanvasValidationError, validate_canvas_payload
 
 router = APIRouter()
 
@@ -160,7 +161,12 @@ async def save_canvas(
         raise NotFoundError("工作台不存在")
     if workspace.version != payload.version:
         raise ConflictError("画布已在其他页面更新，请刷新后继续", error_key="canvas_conflict")
-    workspace.canvas = payload.model_dump(mode="json", exclude={"version"})
+    canvas = payload.model_dump(mode="json", exclude={"version"})
+    try:
+        validate_canvas_payload(canvas)
+    except CanvasValidationError as exc:
+        raise RequestError(str(exc), error_key="invalid_canvas") from exc
+    workspace.canvas = canvas
     workspace.version += 1
     await db.commit()
     await db.refresh(workspace)

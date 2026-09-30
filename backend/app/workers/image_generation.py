@@ -4,7 +4,9 @@ from datetime import UTC, datetime
 
 from app.core.database import SessionLocal
 from app.core.errors import diagnostic_snapshot, public_error_message
+from app.core.generation_state import TERMINAL_TASK_STATUSES, transition_task
 from app.models import GenerationTask
+from app.providers.protocols import ImageVideoProvider
 from app.providers.toapis import ToApisError, ToApisProvider
 from app.services.storage import OssStorage
 from app.workers.generation import (
@@ -26,7 +28,7 @@ async def generate_image(_ctx, task_id: str):
 
 async def run_image_generation(
     task_id: str,
-    provider: ToApisProvider | None = None,
+    provider: ImageVideoProvider | None = None,
     storage: OssStorage | None = None,
     poll_interval: int = 5,
     max_polls: int = 120,
@@ -34,11 +36,10 @@ async def run_image_generation(
     task_uuid = uuid.UUID(task_id)
     async with SessionLocal() as db:
         task = await db.get(GenerationTask, task_uuid)
-        if not task or task.status in {"succeeded", "failed", "timeout", "cancelled"}:
+        if not task or task.status in TERMINAL_TASK_STATUSES:
             return
         payload = task.request_snapshot
-        task.status = "running"
-        task.progress = 0
+        transition_task(task, "running", progress=0)
         task.started_at = datetime.now(UTC)
         await db.commit()
 

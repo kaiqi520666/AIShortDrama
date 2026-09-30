@@ -1,41 +1,33 @@
 # Local Agent Rules (MVP Phase Patch)
 
 ## 📌 Core Context
+
 1. **Project Phase**: Strictly **MVP (Minimum Viable Product)** core verification phase.
-2. **Ultimate Goal**: Validate core business flows at maximum speed with minimum code volume. Speed and simplicity > perfect architecture.
+2. **Ultimate Goal**: Validate core business flows at maximum speed with minimum code volume. Speed and simplicity take priority over perfect architecture.
 
-## ⚠️ Global Rules Overrides
-*The following rules override or patch the global AGENTS.md for this specific project:*
+## ⚠️ Project-Specific Overrides and Additions
 
-1. **Hardcoding Authorization**:
-   - To achieve maximum speed, if hardcoding a configuration (e.g., API base URL, platform enums, price tiers) saves over 10 lines of abstraction, **hardcoding is preferred and allowed** in this stage.
-2. **Conditional Exemption for Reuse**:
-   - While global rules enforce "extract at 2+ instances", **you may keep duplicate code** if the repeated logic is under 5 lines or if the two business cases are expected to diverge soon. Avoid over-engineering components.
-3. **Tech Stack Specs**:
-   - **Front-end**: Vue 3 (`<script setup>`) with pure JS. Fully utilize Composition API and lightweight Composables.
-   - **Back-end/Scripts**: Python 3.11+, fully managed by `uv`.
-   - **UI Tolerance**: Focus on interaction flows. Ignore perfect visual pixel-matching, complex animations, or non-fatal transition states.
+These rules supplement or override the global `AGENTS.md` for this project:
 
-## 🤖 MVP Self-Correction (Before Output)
-- [ ] Can I solve this using a single line (One-liner via ternary, `??`, `?.`, list comprehension) or a cruder method?
-- [ ] Did I build a complex, generic component with 10+ props just to handle 2 simple pages? (If yes, simplify it immediately)
-- [ ] Am I wasting time writing overly safe error-handling for non-fatal edge cases? (If yes, let it fail or just print a basic log)
+1. **Hardcoding Authorization**
+   - To achieve maximum speed, if hardcoding a configuration such as an API base URL, platform enum, or price tier saves more than 10 lines of abstraction, hardcoding is preferred and allowed during the MVP phase.
 
-## CodeGraph
+2. **Conditional Reuse Exemption**
+   - For repeated logic under 5 lines, or for business cases expected to diverge soon, keeping the duplication is allowed. Avoid abstractions that add complexity without reducing maintenance cost.
 
-- 项目存在 `.codegraph/` 时，理解代码先用 CodeGraph。
-- 已由 CodeGraph 返回且未发生修改的源码，不重复读取；避免宽泛查询，优先指定文件或符号；仅对缺失或截断的内容定点补查。
+3. **Tech Stack**
+   - **Front-end**: Vue 3 with `<script setup>` and pure JavaScript; use the Composition API and lightweight composables.
+   - **Back-end/Scripts**: Python 3.11+, managed by `uv`.
+   - **UI**: Prioritize interaction flows. Pixel-perfect matching, complex animations, and non-fatal transition states are out of scope for MVP verification.
 
-## Testing Rules
+## 🤖 MVP Self-Correction
 
-- 默认采用“最小必要测试”，只运行与本次改动直接相关的定向测试或检查。
-- 仅在生产部署、高风险改动或用户明确要求时运行完整测试。
+- Can this be solved with a one-liner or a simpler implementation?
+- Did I create a generic component with 10+ props for only two simple pages? If so, simplify it.
+- Am I adding defensive handling for a non-fatal edge case that is not relevant to MVP validation? If so, keep the handling minimal.
 
-## Git Rules
+## Project-Specific Validation and Git Additions
 
-- 普通修改不自动提交。
-- 一批关联功能完成后统一提交。
-- 用户明确说“提交”时才立即提交。
-- Do not use destructive commands such as `git reset --hard` or `git checkout --` unless the user explicitly requests them.
-- Do not revert changes that the user has not asked to revert.
-- Before committing, inspect the diff to confirm that it contains no unrelated files or generated artifacts.
+- Under the global validation rules, default to the smallest targeted test or check directly related to the change. Run the full test suite only for production deployment, high-risk changes, or when explicitly requested.
+- Do not use destructive commands such as `git reset --hard` or `git checkout --` unless explicitly requested.
+- Before committing, inspect the diff and confirm that it contains no unrelated files or generated artifacts.

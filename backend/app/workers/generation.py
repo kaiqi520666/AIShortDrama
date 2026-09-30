@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import uuid
 from collections.abc import Awaitable, Callable
 from datetime import UTC, datetime, timedelta
@@ -9,13 +10,18 @@ from sqlalchemy import or_, select
 
 from app.core.database import SessionLocal
 from app.core.errors import diagnostic_snapshot
+from app.core.generation_state import TERMINAL_TASK_STATUSES, transition_task
 from app.models import Asset, GenerationTask, Workspace
 from app.providers.toapis import ToApisError
 from app.services.billing import refund_task_credits, settle_task_credits
+from app.core.observability import task_log_extra
 
 
 class GenerationPollTimeout(RuntimeError):
     pass
+
+
+logger = logging.getLogger(__name__)
 
 
 def result_urls(state: dict[str, Any], media_label: str) -> list[str]:
@@ -70,6 +76,19 @@ async def update_task(task_id: uuid.UUID, **values):
         task = await db.get(GenerationTask, task_id)
         if not task:
             return
+        status = values.pop("status", None)
+        progress = values.pop("progress", None)
+        if status is not None:
+            previous_status = task.status
+            transition_task(task, status, progress=progress)
+            logger.info(
+                "generation_task_status_transition",
+                extra=task_log_extra(task.id, from_status=previous_status, to_status=status),
+            )
+        elif progress is not None:
+            if not 0 <= progress <= 100:
+                raise ValueError("任务进度必须在 0 到 100 之间")
+            task.progress = progress
         for key, value in values.items():
             setattr(task, key, value)
         await db.commit()
@@ -88,10 +107,9 @@ async def complete_task(
         task = await db.scalar(
             select(GenerationTask).where(GenerationTask.id == task_id).with_for_update()
         )
-        if not task or task.status in {"succeeded", "failed", "timeout", "cancelled"}:
+        if not task or task.status in TERMINAL_TASK_STATUSES:
             return
-        task.status = "succeeded"
-        task.progress = 100
+        transition_task(task, "succeeded", progress=100)
         task.finished_at = datetime.now(UTC)
         asset_duration = duration
         if asset_duration is None and media_type == "video":
@@ -141,6 +159,10 @@ async def complete_task(
             if workspace:
                 workspace.thumbnail_url = urls[0]
         await settle_task_credits(db, task, original_duration=original_duration)
+        logger.info(
+            "generation_task_completed",
+            extra=task_log_extra(task.id, media_type=media_type, asset_count=len(assets)),
+        )
         await db.commit()
 
 
@@ -154,13 +176,17 @@ async def fail_task(
         task = await db.scalar(
             select(GenerationTask).where(GenerationTask.id == task_id).with_for_update()
         )
-        if not task or task.status in {"succeeded", "failed", "timeout", "cancelled"}:
+        if not task or task.status in TERMINAL_TASK_STATUSES:
             return
-        task.status = status
+        transition_task(task, status)
         task.error_message = message[:2000]
         task.diagnostic_snapshot = diagnostic
         task.finished_at = datetime.now(UTC)
         await refund_task_credits(db, task, f"{message[:220]}，退还冻结积分")
+        logger.warning(
+            "generation_task_failed",
+            extra=task_log_extra(task.id, status=status, error_message=message[:220]),
+        )
         await db.commit()
 
 
@@ -204,9 +230,11 @@ async def compensate_stale_generation_tasks(ctx) -> None:
                 await ctx["redis"].enqueue_job("generate_video", str(task.id))
             continue
         error = GenerationPollTimeout("生成任务超时")
-        await fail_task(
-            task.id,
-            "timeout",
-            str(error),
-            diagnostic_snapshot(error, "poll"),
-        )
+        if task.status == "queued":
+            await update_task(
+                task.id,
+                status="running",
+                error_message=str(error),
+                diagnostic_snapshot=diagnostic_snapshot(error, "poll"),
+            )
+        await fail_task(task.id, "timeout", str(error), diagnostic_snapshot(error, "poll"))

@@ -2,12 +2,14 @@ import { defineStore } from 'pinia'
 import { changePassword as changePasswordRequest, getCurrentUser, login as loginRequest, logout as logoutRequest, register as registerRequest } from '../api/auth'
 import { getCredits } from '../api/credits'
 import { useModelCapabilitiesStore } from './modelCapabilities'
+import { createRequestState, failRequest, finishRequest, startRequest } from '../utils/requestState'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
     initialized: false,
     creditPrices: [],
+    requestState: createRequestState(),
   }),
   actions: {
     setUser(user) {
@@ -20,13 +22,16 @@ export const useAuthStore = defineStore('auth', {
     },
     async restore() {
       if (this.initialized) return
+      const requestId = startRequest(this.requestState)
       try {
         const result = await getCurrentUser()
         if (result.code === 0) this.user = result.data
       } catch {
         this.user = null
+        failRequest(this.requestState, requestId, '登录状态恢复失败')
       } finally {
         this.initialized = true
+        if (this.requestState.status === 'loading') finishRequest(this.requestState, requestId)
       }
     },
     async register(payload) {

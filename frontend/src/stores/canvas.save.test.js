@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { effectScope, nextTick } from 'vue'
+import { useCanvasAutosave } from '../composables/useCanvasAutosave'
 import { saveWorkspaceCanvas } from '../api/workspaces'
 import { seedModelCapabilities } from '../test/modelCapabilities'
 import { seedContentTemplates } from '../test/contentTemplates'
@@ -20,6 +22,60 @@ beforeEach(() => {
 })
 
 describe('canvas transient uploads', () => {
+  it('keeps progress live without saving it, while persisting recovery and result fields', async () => {
+    vi.useFakeTimers()
+    const scope = effectScope()
+    const store = useCanvasStore()
+    store.$patch({
+      workspaceId: 'workspace-1', workspaceVersion: 1, ready: true,
+      nodes: [{ id: 'video-1', type: 'video', position: { x: 0, y: 0 }, data: {
+        status: 'generating', generationTaskId: 'task-1', generationStatus: 'running',
+        generationProgress: 12, generationPollingPaused: false,
+      } }],
+    })
+    const autosave = scope.run(() => useCanvasAutosave({
+      store, getPayload: () => store.canvasPayload(), confirm: vi.fn(), eventTarget: globalThis,
+    }))
+    autosave.enable()
+    try {
+      store.nodes[0].data.generationProgress = 18
+      await nextTick()
+      await vi.advanceTimersByTimeAsync(800)
+      store.nodes[0].data = { ...store.nodes[0].data, generationProgress: 25 }
+      await nextTick()
+      await vi.advanceTimersByTimeAsync(800)
+      expect(saveWorkspaceCanvas).not.toHaveBeenCalled()
+      expect(autosave.dirty.value).toBe(false)
+      expect(store.nodes[0].data.generationProgress).toBe(25)
+      expect(store.canvasPayload().nodes[0].data).not.toHaveProperty('generationProgress')
+
+      store.nodes[0].data.prompt = 'Updated prompt'
+      await nextTick()
+      await vi.advanceTimersByTimeAsync(800)
+      expect(saveWorkspaceCanvas).toHaveBeenCalledOnce()
+      expect(saveWorkspaceCanvas.mock.calls[0][1].nodes[0].data).toEqual({
+        status: 'generating', generationTaskId: 'task-1', generationStatus: 'running',
+        generationPollingPaused: false, prompt: 'Updated prompt',
+      })
+
+      Object.assign(store.nodes[0].data, {
+        status: 'ready', generationStatus: 'succeeded', generationProgress: 100,
+        asset: 'https://example.com/video.mp4', lastFrameUrl: 'https://example.com/frame.jpg',
+      })
+      await nextTick()
+      await vi.advanceTimersByTimeAsync(800)
+      expect(saveWorkspaceCanvas).toHaveBeenCalledTimes(2)
+      const saved = saveWorkspaceCanvas.mock.calls[1][1].nodes[0].data
+      expect(saved).toMatchObject({ status: 'ready', generationTaskId: 'task-1',
+        asset: 'https://example.com/video.mp4', lastFrameUrl: 'https://example.com/frame.jpg' })
+      expect(saved).not.toHaveProperty('generationProgress')
+    } finally {
+      autosave.cancelScheduledSave()
+      scope.stop()
+      vi.useRealTimers()
+    }
+  })
+
   it('excludes uploading nodes and their relations from the saved payload', () => {
     const store = useCanvasStore()
     store.$patch({

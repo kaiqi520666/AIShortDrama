@@ -6,7 +6,9 @@ from datetime import UTC, datetime
 
 from app.core.database import SessionLocal
 from app.core.errors import diagnostic_snapshot, public_error_message
+from app.core.generation_state import TERMINAL_TASK_STATUSES, transition_task
 from app.models import GenerationTask
+from app.providers.protocols import AudioProvider
 from app.providers.volcengine_audio import VolcengineAudioError, VolcengineAudioProvider
 from app.services.storage import OssStorage
 from app.workers.generation import complete_task, fail_task, update_task
@@ -28,17 +30,16 @@ async def generate_audio(_ctx, task_id: str):
 
 async def run_audio_generation(
     task_id: str,
-    provider: VolcengineAudioProvider | None = None,
+    provider: AudioProvider | None = None,
     storage: OssStorage | None = None,
 ):
     task_uuid = uuid.UUID(task_id)
     async with SessionLocal() as db:
         task = await db.get(GenerationTask, task_uuid)
-        if not task or task.status in {"succeeded", "failed", "timeout", "cancelled"}:
+        if not task or task.status in TERMINAL_TASK_STATUSES:
             return
         payload = task.request_snapshot
-        task.status = "running"
-        task.progress = 5
+        transition_task(task, "running", progress=5)
         task.started_at = datetime.now(UTC)
         await db.commit()
 

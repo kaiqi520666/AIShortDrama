@@ -2,7 +2,19 @@ import uuid
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import BigInteger, DateTime, ForeignKey, Index, SmallInteger, String, Text, Uuid, func, text
+from sqlalchemy import (
+    BigInteger,
+    CheckConstraint,
+    DateTime,
+    ForeignKey,
+    Index,
+    SmallInteger,
+    String,
+    Text,
+    Uuid,
+    func,
+    text,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -15,6 +27,17 @@ class GenerationTask(Base):
         Index("ix_generation_tasks_node_created_at", "node_id", "created_at"),
         Index("ix_generation_tasks_status", "status"),
         Index("ix_generation_tasks_provider_task_id", "provider_task_id"),
+        Index("ix_generation_tasks_workspace_status_created_at", "workspace_id", "status", "created_at"),
+        Index("ix_generation_tasks_user_status_created_at", "user_id", "status", "created_at"),
+        CheckConstraint(
+            "status IN ('queued', 'running', 'succeeded', 'failed', 'timeout', 'cancelled', 'needs_review')",
+            name="ck_generation_tasks_status",
+        ),
+        CheckConstraint(
+            "credit_status IN ('none', 'frozen', 'consumed', 'refunded')",
+            name="ck_generation_tasks_credit_status",
+        ),
+        CheckConstraint("progress BETWEEN 0 AND 100", name="ck_generation_tasks_progress"),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
@@ -24,8 +47,8 @@ class GenerationTask(Base):
     task_type: Mapped[str] = mapped_column(String(32))
     provider: Mapped[str] = mapped_column(String(32))
     model: Mapped[str] = mapped_column(String(64))
-    status: Mapped[str] = mapped_column(String(20), server_default=text("'queued'"))
-    progress: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))
+    status: Mapped[str] = mapped_column(String(20), default="queued", server_default=text("'queued'"))
+    progress: Mapped[int] = mapped_column(SmallInteger, default=0, server_default=text("0"))
     prompt: Mapped[str | None] = mapped_column(Text)
     provider_task_id: Mapped[str | None] = mapped_column(String(128))
     request_snapshot: Mapped[dict[str, Any]] = mapped_column(
@@ -40,7 +63,7 @@ class GenerationTask(Base):
     )
     frozen_credits: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))
     charged_credits: Mapped[int] = mapped_column(BigInteger, server_default=text("0"))
-    credit_status: Mapped[str] = mapped_column(String(20), server_default=text("'none'"))
+    credit_status: Mapped[str] = mapped_column(String(20), default="none", server_default=text("'none'"))
     result: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     error_message: Mapped[str | None] = mapped_column(Text)
     diagnostic_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB)

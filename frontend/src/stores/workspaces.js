@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { createWorkspace, deleteWorkspace, duplicateWorkspace, getWorkspace, listWorkspaces, renameWorkspace } from '../api/workspaces'
 import { getWorkspaceType } from '../config/canvas/nodePacks'
 import { getApiErrorMessage } from '../utils/apiError'
+import { createRequestState, failRequest, finishRequest, startRequest } from '../utils/requestState'
 
 let workspaceRequestSequence = 0
 
@@ -11,19 +12,24 @@ export const useWorkspaceStore = defineStore('workspaces', {
     current: null,
     loading: false,
     error: '',
+    requestState: createRequestState(),
   }),
   actions: {
     async load() {
+      const requestId = startRequest(this.requestState)
       this.loading = true
       this.error = ''
       try {
         const result = await listWorkspaces()
         if (result.code !== 0) throw new Error(result.message)
         this.items = result.data
+        finishRequest(this.requestState, requestId)
       } catch (error) {
         this.error = getApiErrorMessage(error, '工作台加载失败')
+        failRequest(this.requestState, requestId, this.error)
       } finally {
         this.loading = false
+        this.error = this.requestState.error
       }
     },
     async fetch(id, config = {}) {

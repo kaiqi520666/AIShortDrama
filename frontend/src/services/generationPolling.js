@@ -3,6 +3,12 @@ import { getGenerationTask } from '../api/generations'
 import { useAuthStore } from '../stores/auth'
 import { useCanvasStore } from '../stores/canvas'
 import { getApiErrorMessage, getTaskErrorMessage } from '../utils/apiError'
+import {
+  generationSuccessNodeData,
+  isTerminalGenerationStatus,
+  MEDIA_LABEL_KEYS,
+  normalizeGenerationResult,
+} from './generationAdapters'
 
 const { t } = i18n.global
 
@@ -10,8 +16,6 @@ const POLL_INTERVAL = 5000
 const RETRY_DELAYS = [5000, 10000, 20000, 40000, 60000, 60000]
 const MAX_POLL_DURATION = 30 * 60 * 1000
 const polls = new Map()
-
-const mediaLabels = { image: 'canvas.image', video: 'canvas.video', audio: 'canvas.audio' }
 
 function clearRecord(record) {
   if (record.timer !== null) globalThis.clearTimeout(record.timer)
@@ -67,37 +71,23 @@ async function pollTask(record) {
     })
     if (task.status === 'succeeded') {
       useAuthStore().refreshCredits().catch(() => {})
-      if (task.result?.type === 'text') {
+      const generatedResult = normalizeGenerationResult(task)
+      if (generatedResult.type === 'text') {
         clearRecord(record)
-        record.updateNodeData(record.nodeId, {
-          content: task.result.content || '',
-          status: 'ready',
-          generationProgress: 100,
-          generationError: '',
-        })
+        record.updateNodeData(record.nodeId, generationSuccessNodeData(task))
         return
       }
-      const generated = task.result?.data?.[0]
-      const asset = generated?.url
-      const mediaLabel = t(mediaLabels[task.task_type] || 'canvas.content')
-      if (!asset) {
+      const mediaLabel = t(MEDIA_LABEL_KEYS[task.task_type] || 'canvas.content')
+      if (!generatedResult.asset) {
         failNode(record, t('canvas.missingMediaUrl', { p0: mediaLabel }))
         return
       }
       clearRecord(record)
-      record.updateNodeData(record.nodeId, {
-        asset,
-        ...(generated.asset_id ? { assetId: generated.asset_id } : {}),
-        status: 'ready',
-        generationProgress: 100,
-        generationError: '',
-        ...(generated.duration ? { sourceDuration: generated.duration } : {}),
-        ...(task.task_type === 'video' && task.result?.last_frame_url ? { lastFrameUrl: task.result.last_frame_url } : {}),
-      })
+      record.updateNodeData(record.nodeId, generationSuccessNodeData(task))
       if (task.task_type === 'image') useCanvasStore().unlockStoryboardVideo(record.nodeId)
       return
     }
-    if (['failed', 'cancelled', 'timeout'].includes(task.status)) {
+    if (isTerminalGenerationStatus(task.status) && task.status !== 'succeeded') {
       useAuthStore().refreshCredits().catch(() => {})
       failNode(record, getTaskErrorMessage(task))
       return

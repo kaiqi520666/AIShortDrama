@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.model_capabilities import get_model_capability
 from app.core.errors import diagnostic_snapshot, task_error_fields
-from app.models import GenerationTask, Workspace
+from app.models import GenerationTask, User, Workspace
 from app.services.admin_configuration import ensure_model_enabled
 from app.schemas.generation import (
     AudioGenerationRequest,
@@ -186,6 +186,7 @@ async def _create_task(
     )
     if not workspace:
         raise WorkspaceNotFoundError("工作台不存在")
+    await db.scalar(select(User).where(User.id == user_id).with_for_update())
     task_id = uuid.uuid4()
     if include_client_business_id:
         provider_payload["client_business_id"] = str(task_id)
@@ -201,6 +202,7 @@ async def _create_task(
         request_snapshot=provider_payload,
     )
     db.add(task)
+    await db.flush()
     resolution = None
     duration = None
     if task_type == "image":

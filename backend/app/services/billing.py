@@ -5,11 +5,15 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.model_capabilities import get_model_capability
+from app.core.generation_state import CREDIT_STATUSES
 from app.models import CreditLedger, GenerationTask, ModelPriceRule, User
 from app.services.admin_configuration import get_billing_policy, policy_snapshot
+from app.core.observability import task_log_extra
+import logging
 
 
 LEGACY_CREDIT_VALUE_YUAN = Decimal("0.035")
+logger = logging.getLogger(__name__)
 
 
 class BillingError(RuntimeError):
@@ -121,6 +125,9 @@ async def freeze_task_credits(
     resolution: str | None = None,
     duration: int | None = None,
 ) -> None:
+    credit_status = task.credit_status or "none"
+    if credit_status != "none":
+        return
     snapshot = await build_price_snapshot(
         db,
         media_type,
@@ -137,6 +144,7 @@ async def freeze_task_credits(
     task.pricing_snapshot = snapshot
     task.frozen_credits = amount
     task.credit_status = "frozen"
+    await db.flush()
     db.add(
         CreditLedger(
             user_id=user.id,
@@ -150,6 +158,7 @@ async def freeze_task_credits(
             note=f"冻结 {task.model} 生成积分",
         )
     )
+    logger.info("credit_freeze", extra=task_log_extra(task.id, amount=amount, user_id=str(user.id)))
 
 
 def _audio_charge(task: GenerationTask, original_duration: float) -> int:
@@ -173,6 +182,8 @@ async def settle_task_credits(
     )
     if not task:
         raise BillingError("生成任务不存在")
+    if task.credit_status not in CREDIT_STATUSES:
+        raise BillingError("生成任务积分状态无效")
     if task.credit_status != "frozen":
         return
     user = await db.scalar(select(User).where(User.id == task.user_id).with_for_update())
@@ -216,6 +227,7 @@ async def settle_task_credits(
             )
         )
     task.credit_status = "consumed"
+    logger.info("credit_consume", extra=task_log_extra(task.id, charged=charged, refund=refund))
 
 
 async def refund_task_credits(db: AsyncSession, task: GenerationTask, note: str) -> None:
@@ -224,6 +236,8 @@ async def refund_task_credits(db: AsyncSession, task: GenerationTask, note: str)
     )
     if not task:
         raise BillingError("生成任务不存在")
+    if task.credit_status not in CREDIT_STATUSES:
+        raise BillingError("生成任务积分状态无效")
     if task.credit_status != "frozen":
         return
     user = await db.scalar(select(User).where(User.id == task.user_id).with_for_update())
@@ -244,6 +258,10 @@ async def refund_task_credits(db: AsyncSession, task: GenerationTask, note: str)
             idempotency_key=f"task:{task.id}:refund",
             note=note[:255],
         )
+    )
+    logger.info(
+        "credit_refund",
+        extra=task_log_extra(task.id, amount=task.frozen_credits, user_id=str(user.id)),
     )
 
 

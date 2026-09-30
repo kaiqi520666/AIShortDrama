@@ -310,6 +310,18 @@ async def process_cahaya_notification(db: AsyncSession, form: Any) -> Literal["s
 async def settle_recharge_order(db: AsyncSession, order: RechargeOrder, provider_trade_no: str | None = None) -> None:
     if order.status == "paid":
         return
+    if provider_trade_no:
+        existing = await db.scalar(
+            select(RechargeOrder)
+            .where(
+                RechargeOrder.provider == order.provider,
+                RechargeOrder.provider_trade_no == provider_trade_no,
+                RechargeOrder.id != order.id,
+            )
+            .with_for_update()
+        )
+        if existing:
+            raise RechargeError("支付交易号已关联其他订单", error_key="invalid_request")
     user = await db.scalar(select(User).where(User.id == order.user_id).with_for_update())
     if not user:
         raise RechargeError("充值用户不存在", status_code=404, error_key="not_found")

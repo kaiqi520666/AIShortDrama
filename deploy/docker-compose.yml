@@ -31,6 +31,11 @@ services:
     restart: "no"
     env_file: ${APP_ENV_FILE:-.env}
     command: alembic upgrade head
+    healthcheck:
+      test: ["CMD-SHELL", "exit 0"]
+      interval: 5s
+      timeout: 5s
+      retries: 1
     depends_on:
       db:
         condition: service_healthy

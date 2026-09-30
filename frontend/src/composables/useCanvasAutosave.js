@@ -57,7 +57,7 @@ export function useCanvasAutosave({ store, getPayload, getViewport, confirm, del
     event.returnValue = ''
   }
 
-  watch(getPayload, scheduleSave, { deep: true })
+  watch(() => JSON.stringify(getPayload()), scheduleSave)
 
   if (getCurrentInstance()) {
     onBeforeRouteLeave(saveBeforeLeave)

@@ -126,6 +126,13 @@ class RechargeOrder(Base):
     __table_args__ = (
         Index("ix_recharge_orders_user_created_at", "user_id", "created_at"),
         Index("ix_recharge_orders_status_created_at", "status", "created_at"),
+        Index(
+            "uq_recharge_orders_provider_trade_no",
+            "provider",
+            "provider_trade_no",
+            unique=True,
+            postgresql_where=text("provider_trade_no IS NOT NULL"),
+        ),
         CheckConstraint(
             "status IN ('pending', 'paid', 'failed')", name="ck_recharge_orders_status"
         ),
@@ -137,7 +144,7 @@ class RechargeOrder(Base):
         ForeignKey("recharge_tiers.id", ondelete="SET NULL")
     )
     out_trade_no: Mapped[str] = mapped_column(String(32), unique=True, nullable=False)
-    provider: Mapped[str] = mapped_column(String(32), server_default=text("'zpay'"))
+    provider: Mapped[str] = mapped_column(String(32), default="zpay", server_default=text("'zpay'"))
     provider_trade_no: Mapped[str | None] = mapped_column(String(64))
     amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
     currency: Mapped[str] = mapped_column(String(3), server_default=text("'CNY'"), nullable=False)
@@ -149,7 +156,7 @@ class RechargeOrder(Base):
         JSONB, default=dict, server_default=text("'{}'::jsonb")
     )
     pay_type: Mapped[str] = mapped_column(String(20), server_default=text("'wxpay'"))
-    status: Mapped[str] = mapped_column(String(20), server_default=text("'pending'"))
+    status: Mapped[str] = mapped_column(String(20), default="pending", server_default=text("'pending'"))
     pay_url: Mapped[str | None] = mapped_column(String(500))
     qr_code: Mapped[str | None] = mapped_column(String(500))
     qr_img: Mapped[str | None] = mapped_column(String(500))

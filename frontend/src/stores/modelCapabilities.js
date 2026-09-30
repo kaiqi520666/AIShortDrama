@@ -7,6 +7,7 @@ import { normalizeTextModels } from '../config/reverseModels'
 import { normalizeVideoModels } from '../config/videoModels'
 import { validateModelCapabilities } from '../config/modelCapabilitiesValidation'
 import { getApiErrorMessage } from '../utils/apiError'
+import { createRequestState, failRequest, finishRequest, startRequest } from '../utils/requestState'
 
 const { t } = i18n.global
 
@@ -17,6 +18,7 @@ export const useModelCapabilitiesStore = defineStore('modelCapabilities', {
     capabilities: null,
     loading: false,
     error: '',
+    requestState: createRequestState(),
   }),
   getters: {
     textModels: (state) => normalizeTextModels(state.capabilities?.text),
@@ -37,6 +39,7 @@ export const useModelCapabilitiesStore = defineStore('modelCapabilities', {
     async load(force = false) {
       if (this.capabilities && !force) return this.capabilities
       if (loadPromise && !force) return loadPromise
+      const requestId = startRequest(this.requestState)
       this.loading = true
       this.error = ''
       loadPromise = getGenerationCapabilities()
@@ -45,14 +48,17 @@ export const useModelCapabilitiesStore = defineStore('modelCapabilities', {
           const validationError = validateModelCapabilities(response.data)
           if (validationError) throw new Error(validationError)
           this.capabilities = response.data
+          finishRequest(this.requestState, requestId)
           return response.data
         })
         .catch((error) => {
           this.error = getApiErrorMessage(error, t('canvas.modelCapabilitiesFailed'))
+          failRequest(this.requestState, requestId, this.error)
           throw error
         })
         .finally(() => {
           this.loading = false
+          this.error = this.requestState.error
           loadPromise = null
         })
       return loadPromise
@@ -60,6 +66,8 @@ export const useModelCapabilitiesStore = defineStore('modelCapabilities', {
     clear() {
       this.capabilities = null
       this.error = ''
+      this.requestState.status = 'idle'
+      this.requestState.error = ''
       loadPromise = null
     },
   },

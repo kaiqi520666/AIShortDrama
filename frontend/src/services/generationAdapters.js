@@ -9,6 +9,48 @@ import { buildVideoRequest, normalizeVideoSettings } from '../config/videoModels
 
 const { t } = i18n.global
 
+export const TERMINAL_GENERATION_STATUSES = new Set(['succeeded', 'failed', 'cancelled', 'timeout'])
+export const MEDIA_LABEL_KEYS = { image: 'canvas.image', video: 'canvas.video', audio: 'canvas.audio' }
+
+export function isTerminalGenerationStatus(status) {
+  return TERMINAL_GENERATION_STATUSES.has(status)
+}
+
+export function normalizeGenerationResult(task) {
+  if (task?.result?.type === 'text') {
+    return { type: 'text', content: task.result.content || '' }
+  }
+  const generated = task?.result?.data?.[0]
+  return {
+    type: task?.task_type || task?.result?.type,
+    asset: generated?.url || '',
+    assetId: generated?.asset_id || '',
+    duration: generated?.duration,
+    lastFrameUrl: task?.result?.last_frame_url || '',
+  }
+}
+
+export function generationSuccessNodeData(task) {
+  const result = normalizeGenerationResult(task)
+  if (result.type === 'text') {
+    return {
+      content: result.content,
+      status: 'ready',
+      generationProgress: 100,
+      generationError: '',
+    }
+  }
+  return {
+    ...(result.asset ? { asset: result.asset } : {}),
+    ...(result.assetId ? { assetId: result.assetId } : {}),
+    status: 'ready',
+    generationProgress: 100,
+    generationError: '',
+    ...(result.duration ? { sourceDuration: result.duration } : {}),
+    ...(result.type === 'video' && result.lastFrameUrl ? { lastFrameUrl: result.lastFrameUrl } : {}),
+  }
+}
+
 function baseRequest(context, request) {
   return { workspace_id: context.workspaceId, node_id: context.nodeId, ...request }
 }

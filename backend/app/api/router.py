@@ -14,6 +14,12 @@ from app.api.routes.uploads import router as uploads_router
 from app.api.routes.workspaces import router as workspaces_router
 from app.api.routes.content_templates import router as content_templates_router
 from app.api.routes.admin_reference_assets import router as admin_reference_assets_router
+from app.api.routes.admin_models import router as admin_models_router
+from app.api.routes.admin_tasks import router as admin_tasks_router
+from app.api.routes.admin_users import router as admin_users_router
+from app.api.routes.admin_billing import router as admin_billing_router
+from app.api.routes.admin_templates import router as admin_templates_router
+from app.api.routes.admin_audits import router as admin_audits_router
 
 api_router = APIRouter(prefix="/api")
 api_router.include_router(health_router, tags=["health"])
@@ -30,3 +36,9 @@ api_router.include_router(workspaces_router, prefix="/workspaces", tags=["worksp
 api_router.include_router(assets_router, prefix="/assets", tags=["assets"])
 api_router.include_router(content_templates_router, prefix="/content-templates", tags=["content-templates"])
 api_router.include_router(admin_reference_assets_router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin_models_router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin_tasks_router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin_users_router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin_billing_router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin_templates_router, prefix="/admin", tags=["admin"])
+api_router.include_router(admin_audits_router, prefix="/admin", tags=["admin"])

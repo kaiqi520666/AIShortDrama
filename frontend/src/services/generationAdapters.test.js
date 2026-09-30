@@ -2,7 +2,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { i18n } from '../i18n'
 
 import { createImageGeneration } from '../api/generations'
-import { generationAdapters, getGenerationAdapter } from './generationAdapters'
+import {
+  generationAdapters,
+  generationSuccessNodeData,
+  getGenerationAdapter,
+  isTerminalGenerationStatus,
+} from './generationAdapters'
 
 beforeEach(() => { i18n.global.locale.value = 'zh-CN' })
 afterEach(() => { i18n.global.locale.value = 'id' })
@@ -18,6 +23,23 @@ vi.mock('../api/reversals', () => ({ streamReversePrompt: vi.fn() }))
 beforeEach(() => vi.clearAllMocks())
 
 describe('generation adapters', () => {
+  it('owns shared task status and result normalization', () => {
+    expect(isTerminalGenerationStatus('succeeded')).toBe(true)
+    expect(isTerminalGenerationStatus('running')).toBe(false)
+    expect(generationSuccessNodeData({
+      task_type: 'video',
+      result: { data: [{ url: 'video.mp4', asset_id: 'asset-1', duration: 5 }], last_frame_url: 'frame.jpg' },
+    })).toEqual({
+      asset: 'video.mp4',
+      assetId: 'asset-1',
+      status: 'ready',
+      generationProgress: 100,
+      generationError: '',
+      sourceDuration: 5,
+      lastFrameUrl: 'frame.jpg',
+    })
+  })
+
   it('exposes a consistent interface for every media type', () => {
     Object.values(generationAdapters).forEach((adapter) => {
       expect(adapter).toEqual(expect.objectContaining({
