@@ -15,8 +15,26 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(text("UPDATE generation_tasks SET credit_status = 'none' WHERE credit_status IS NULL OR credit_status = ''"))
-    op.execute(text("UPDATE generation_tasks SET status = 'queued' WHERE status IS NULL OR status = ''"))
+    op.execute(
+        text(
+            "UPDATE generation_tasks "
+            "SET credit_status = CASE "
+            "WHEN credit_status IS NULL OR btrim(credit_status) = '' THEN 'none' "
+            "WHEN btrim(credit_status) IN ('none', 'frozen', 'consumed', 'refunded') "
+            "THEN btrim(credit_status) "
+            "ELSE credit_status END"
+        )
+    )
+    op.execute(
+        text(
+            "UPDATE generation_tasks "
+            "SET status = CASE "
+            "WHEN status IS NULL OR btrim(status) = '' THEN 'queued' "
+            "WHEN btrim(status) IN ('queued', 'running', 'succeeded', 'failed', 'timeout', 'cancelled', 'needs_review') "
+            "THEN btrim(status) "
+            "ELSE status END"
+        )
+    )
     op.execute(text("UPDATE generation_tasks SET progress = 0 WHERE progress IS NULL"))
     op.create_check_constraint(
         "ck_generation_tasks_status",

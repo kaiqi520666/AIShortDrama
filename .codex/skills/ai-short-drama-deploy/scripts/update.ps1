@@ -139,9 +139,10 @@ try {
 
     # Run the one-shot migration separately so its exit code and output are
     # unambiguous. The application services are started only after migration
-    # succeeds, avoiding Compose's service_completed_successfully wait race.
+    # succeeds. Stop writers first so old workers cannot race the new checks.
+    Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo docker compose -p '$composeProject' stop backend worker frontend"
     Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo docker compose -p '$composeProject' up -d --wait db redis"
-    $migrationOutput = Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo docker compose -p '$composeProject' run --rm migrate" -Capture
+    $migrationOutput = Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo docker compose -p '$composeProject' run --rm --no-deps migrate" -Capture
     if ($migrationOutput) {
         Write-Output $migrationOutput
     }
