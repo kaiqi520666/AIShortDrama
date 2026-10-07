@@ -1,10 +1,19 @@
 import json
+from types import SimpleNamespace
 
 import httpx
 import pytest
 
 from app.core.errors import public_error_message
 from app.providers.toapis import ToApisError, ToApisProvider
+
+
+@pytest.fixture(autouse=True)
+def configure_mock_provider(monkeypatch):
+    monkeypatch.setattr(
+        "app.providers.toapis.get_settings",
+        lambda: SimpleNamespace(toapis_key="mock-provider-token", toapis_url="https://toapis.test"),
+    )
 
 
 @pytest.mark.asyncio
@@ -30,6 +39,7 @@ async def test_submit_and_query_image_task():
         completed = await provider.get_image_task(submitted["id"])
 
     assert completed["result"]["data"][0]["url"] == "https://example.com/a.png"
+    assert requests[0].headers["Authorization"] == "Bearer mock-provider-token"
     assert requests[0].url.path == "/v1/images/generations"
     assert json.loads(requests[0].content)["model"] == "gpt-image-2"
     assert requests[1].url.path == "/v1/images/generations/task-1"
