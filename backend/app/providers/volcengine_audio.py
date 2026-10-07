@@ -32,8 +32,10 @@ class VolcengineAudioProvider:
             transport=transport,
         )
 
-    async def synthesize(self, payload: dict[str, Any]) -> dict[str, Any]:
-        client_request_id = str(uuid.uuid4())
+    async def synthesize(
+        self, payload: dict[str, Any], *, client_request_id: str | None = None
+    ) -> dict[str, Any]:
+        client_request_id = client_request_id or str(uuid.uuid4())
         try:
             response = await self.client.post(
                 self.url,
@@ -57,14 +59,28 @@ class VolcengineAudioProvider:
         try:
             data = response.json()
         except ValueError as exc:
-            raise VolcengineAudioError("火山音频接口返回格式异常") from exc
-        if not isinstance(data, dict) or data.get("code") != 0:
-            message = data.get("message") if isinstance(data, dict) else None
+            raise VolcengineAudioError(
+                "火山音频接口返回格式异常", retryable=True,
+                request_id=self._request_id(response) or client_request_id,
+            ) from exc
+        if not isinstance(data, dict):
+            raise VolcengineAudioError(
+                "火山音频接口返回格式异常", retryable=True,
+                request_id=self._request_id(response) or client_request_id,
+            )
+        if "code" not in data:
+            raise VolcengineAudioError(
+                "火山音频接口未返回结果状态", retryable=True,
+                request_id=self._request_id(response) or client_request_id,
+            )
+        if data.get("code") != 0:
+            message = data.get("message")
             raise VolcengineAudioError(
                 message or "火山音频生成失败",
                 request_id=self._request_id(response) or client_request_id,
             )
-        return data
+        request_id = self._request_id(response)
+        return {**data, "provider_request_id": request_id} if request_id else data
 
     @staticmethod
     def _request_id(response: httpx.Response) -> str | None:

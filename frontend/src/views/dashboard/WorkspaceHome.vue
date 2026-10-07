@@ -93,7 +93,7 @@ onMounted(() => store.load())
   <section class="workspace-content">
     <div class="workspace-title-row">
       <div><span class="section-kicker">{{ t('workspace.library') }}</span><h1>{{ t('workspace.title') }}</h1><p>{{ t('workspace.description') }}</p></div>
-      <div class="workspace-filters"><span>{{ t('workspace.count', { count: n(store.items.length) }) }}</span><AppSelect v-model="sortBy" :options="sortOptions" :aria-label="t('workspace.sort')" /></div>
+      <div class="workspace-filters"><span>{{ t('workspace.count', { count: n(store.items.length) }) }}</span><span v-if="locale === 'id'" class="workspace-filter-label">{{ t('workspace.sort') }}</span><AppSelect v-model="sortBy" :options="sortOptions" :aria-label="t('workspace.sort')" /></div>
     </div>
     <p v-if="store.error" class="workspace-notice">{{ store.error }}</p>
     <EmptyState v-if="store.loading" class="workspace-empty" :title="t('workspace.loading')" loading />

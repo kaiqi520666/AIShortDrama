@@ -87,6 +87,10 @@ async function pollTask(record) {
       if (task.task_type === 'image') useCanvasStore().unlockStoryboardVideo(record.nodeId)
       return
     }
+    if (task.status === 'needs_review') {
+      pauseNode(record, getTaskErrorMessage(task))
+      return
+    }
     if (isTerminalGenerationStatus(task.status) && task.status !== 'succeeded') {
       useAuthStore().refreshCredits().catch(() => {})
       failNode(record, getTaskErrorMessage(task))

@@ -125,6 +125,13 @@ async def freeze_task_credits(
     resolution: str | None = None,
     duration: int | None = None,
 ) -> None:
+    await db.flush()
+    task = await db.scalar(
+        select(GenerationTask).where(GenerationTask.id == task.id).with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if not task:
+        raise BillingError("生成任务不存在")
     credit_status = task.credit_status or "none"
     if credit_status != "none":
         return
@@ -136,7 +143,10 @@ async def freeze_task_credits(
         duration=duration,
     )
     amount = snapshot["frozen_credits"]
-    user = await db.scalar(select(User).where(User.id == task.user_id).with_for_update())
+    user = await db.scalar(
+        select(User).where(User.id == task.user_id).with_for_update()
+        .execution_options(populate_existing=True)
+    )
     if not user or user.credit_balance < amount:
         raise InsufficientCredits(f"积分不足，本次需要 {amount} 积分")
     user.credit_balance -= amount
@@ -179,6 +189,7 @@ async def settle_task_credits(
 ) -> None:
     task = await db.scalar(
         select(GenerationTask).where(GenerationTask.id == task.id).with_for_update()
+        .execution_options(populate_existing=True)
     )
     if not task:
         raise BillingError("生成任务不存在")
@@ -186,7 +197,10 @@ async def settle_task_credits(
         raise BillingError("生成任务积分状态无效")
     if task.credit_status != "frozen":
         return
-    user = await db.scalar(select(User).where(User.id == task.user_id).with_for_update())
+    user = await db.scalar(
+        select(User).where(User.id == task.user_id).with_for_update()
+        .execution_options(populate_existing=True)
+    )
     if not user:
         raise BillingError("积分账户不存在")
     charged = (
@@ -233,6 +247,7 @@ async def settle_task_credits(
 async def refund_task_credits(db: AsyncSession, task: GenerationTask, note: str) -> None:
     task = await db.scalar(
         select(GenerationTask).where(GenerationTask.id == task.id).with_for_update()
+        .execution_options(populate_existing=True)
     )
     if not task:
         raise BillingError("生成任务不存在")
@@ -240,7 +255,10 @@ async def refund_task_credits(db: AsyncSession, task: GenerationTask, note: str)
         raise BillingError("生成任务积分状态无效")
     if task.credit_status != "frozen":
         return
-    user = await db.scalar(select(User).where(User.id == task.user_id).with_for_update())
+    user = await db.scalar(
+        select(User).where(User.id == task.user_id).with_for_update()
+        .execution_options(populate_existing=True)
+    )
     if not user:
         raise BillingError("积分账户不存在")
     user.credit_frozen -= task.frozen_credits

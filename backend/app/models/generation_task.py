@@ -27,6 +27,18 @@ class GenerationTask(Base):
         Index("ix_generation_tasks_node_created_at", "node_id", "created_at"),
         Index("ix_generation_tasks_status", "status"),
         Index("ix_generation_tasks_provider_task_id", "provider_task_id"),
+        Index(
+            "uq_generation_tasks_provider_client",
+            "provider", "client_request_id",
+            unique=True,
+            postgresql_where=text("client_request_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_generation_tasks_provider_remote",
+            "provider", "task_type", "provider_task_id",
+            unique=True,
+            postgresql_where=text("provider_task_id IS NOT NULL"),
+        ),
         Index("ix_generation_tasks_workspace_status_created_at", "workspace_id", "status", "created_at"),
         Index("ix_generation_tasks_user_status_created_at", "user_id", "status", "created_at"),
         CheckConstraint(
@@ -51,6 +63,14 @@ class GenerationTask(Base):
     progress: Mapped[int] = mapped_column(SmallInteger, default=0, server_default=text("0"))
     prompt: Mapped[str | None] = mapped_column(Text)
     provider_task_id: Mapped[str | None] = mapped_column(String(128))
+    client_request_id: Mapped[str | None] = mapped_column(
+        String(128), default=lambda: str(uuid.uuid4())
+    )
+    provider_request_id: Mapped[str | None] = mapped_column(String(128))
+    submission_started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    provider_response: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    worker_lease_token: Mapped[str | None] = mapped_column(String(36))
+    worker_lease_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     request_snapshot: Mapped[dict[str, Any]] = mapped_column(
         JSONB,
         default=dict,
@@ -68,6 +88,7 @@ class GenerationTask(Base):
     error_message: Mapped[str | None] = mapped_column(Text)
     diagnostic_snapshot: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
     retry_count: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))
+    recovery_attempts: Mapped[int] = mapped_column(SmallInteger, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now(),

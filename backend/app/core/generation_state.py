@@ -6,7 +6,7 @@ TASK_STATUSES: Final[frozenset[str]] = frozenset(
     {"queued", "running", "succeeded", "failed", "timeout", "cancelled", "needs_review"}
 )
 TERMINAL_TASK_STATUSES: Final[frozenset[str]] = frozenset(
-    {"succeeded", "failed", "timeout", "cancelled"}
+    {"succeeded", "failed", "timeout", "cancelled", "needs_review"}
 )
 CREDIT_STATUSES: Final[frozenset[str]] = frozenset({"none", "frozen", "consumed", "refunded"})
 
@@ -27,10 +27,14 @@ class InvalidTaskTransition(ValueError):
     pass
 
 
-def transition_task(task: Any, status: str, *, progress: int | None = None) -> bool:
+def transition_task(
+    task: Any, status: str, *, progress: int | None = None, manual: bool = False
+) -> bool:
     if status not in TASK_STATUSES:
         raise InvalidTaskTransition(f"未知任务状态: {status}")
     current_status = task.status or "queued"
+    if current_status == "needs_review" and status != current_status and not manual:
+        raise InvalidTaskTransition("待核查任务只能由人工处理")
     if status not in ALLOWED_TASK_TRANSITIONS.get(current_status, frozenset()):
         raise InvalidTaskTransition(f"任务不能从 {current_status} 转为 {status}")
     if progress is not None and not 0 <= progress <= 100:

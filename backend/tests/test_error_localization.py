@@ -88,6 +88,7 @@ def test_recharge_error_parameters_survive_route_wrapper():
 
 @pytest.mark.parametrize("status,key", [
     ("failed", "generation_failed"), ("cancelled", "task_cancelled"), ("timeout", "task_timeout"),
+    ("needs_review", "task_needs_review"),
 ])
 def test_task_projection_leaves_stored_error_content_and_result_unchanged(status, key):
     task = GenerationTask(

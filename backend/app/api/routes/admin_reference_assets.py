@@ -10,7 +10,6 @@ from app.core.database import get_db
 from app.core.errors import NotFoundError, RequestError, ServiceUnavailableError, public_error_message
 from app.core.identity import get_current_admin
 from app.models import Character, Garment, OutfitModel, Scene, User
-from app.providers.toapis import ToApisProvider
 from app.schemas.admin import SystemReferenceAssetUpdateRequest
 from app.schemas.response import success
 from app.services.admin import add_audit
@@ -34,7 +33,7 @@ def get_media_upload_service() -> MediaUploadService:
 
 
 def get_private_avatar_service() -> PrivateAvatarService:
-    return PrivateAvatarService(provider_factory=ToApisProvider)
+    return PrivateAvatarService()
 
 
 def _resource_config(resource_type: str):

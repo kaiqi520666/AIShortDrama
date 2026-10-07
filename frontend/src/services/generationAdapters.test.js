@@ -25,6 +25,7 @@ beforeEach(() => vi.clearAllMocks())
 describe('generation adapters', () => {
   it('owns shared task status and result normalization', () => {
     expect(isTerminalGenerationStatus('succeeded')).toBe(true)
+    expect(isTerminalGenerationStatus('needs_review')).toBe(true)
     expect(isTerminalGenerationStatus('running')).toBe(false)
     expect(generationSuccessNodeData({
       task_type: 'video',

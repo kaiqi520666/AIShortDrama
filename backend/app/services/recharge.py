@@ -1,11 +1,14 @@
 import ipaddress
 import json
+import logging
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from decimal import Decimal, InvalidOperation
 from typing import Any, Literal
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
@@ -15,6 +18,8 @@ from app.providers.cahaya import CahayaError, CahayaProvider
 from app.providers.zpay import ZPayError, ZPayProvider, parse_amount_cents, verify_signature
 from app.services.admin_configuration import get_billing_policy, policy_snapshot
 
+
+logger = logging.getLogger(__name__)
 
 
 class RechargeError(RuntimeError):
@@ -79,7 +84,8 @@ def _redact_snapshot(value: Any, key: str = "") -> Any:
     if isinstance(value, dict):
         return {
             str(item_key): "[REDACTED]"
-            if any(token in str(item_key).lower() for token in ("token", "secret", "password", "signature", "key_sign"))
+            if str(item_key).lower() == "sign"
+            or any(token in str(item_key).lower() for token in ("token", "secret", "password", "signature", "key_sign"))
             else _redact_snapshot(item, str(item_key))
             for item_key, item in value.items()
         }
@@ -217,22 +223,46 @@ async def create_order(db: AsyncSession, user: User, amount_cents: int, client_i
                 result = await provider.create_payment(order_id=str(order.id), out_trade_no=order.out_trade_no, amount_cents=order.amount_cents, client_ip=client_ip)
     except (ZPayError, CahayaError) as exc:
         message = _payment_error_message(exc)
-        order.status = "failed"
-        order.error_message = message[:255]
+        order = await db.scalar(
+            select(RechargeOrder)
+            .where(RechargeOrder.id == order.id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if order.status == "pending":
+            order.status = "failed"
+            order.error_message = message[:255]
         await db.commit()
+        if order.status == "paid":
+            await db.refresh(user)
+            return order
         raise RechargeError(message, status_code=503) from exc
-    order.provider_trade_no = str(result.get("trade_no") or result.get("O_id") or "") or None
+    response_params = json.loads(result.get("resp_params") or "{}") if provider_name == "cahaya" else {}
+    provider_trade_no = (
+        response_params.get("out_trade_no")
+        if provider_name == "cahaya"
+        else str(result.get("trade_no") or result.get("O_id") or "") or None
+    )
+    order = await db.scalar(
+        select(RechargeOrder)
+        .where(RechargeOrder.id == order.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if order.status == "paid" and provider_trade_no and order.provider_trade_no != provider_trade_no:
+        raise RechargeError("下单结果与已支付订单的交易号不匹配")
+    if order.status == "pending":
+        order.provider_trade_no = provider_trade_no or order.provider_trade_no
     order.pay_url = result.get("payurl") or None
     order.qr_code = result.get("qrcode") or None
     order.qr_img = result.get("img") or None
     order.provider_payload = result
     if provider_name == "cahaya":
-        response_params = json.loads(result.get("resp_params") or "{}")
-        order.provider_trade_no = response_params.get("out_trade_no")
         order.qr_code = response_params.get("qr_code")
         order.pay_type = "qris"
     await db.commit()
     await db.refresh(order)
+    await db.refresh(user)
     return order
 
 
@@ -252,6 +282,12 @@ async def process_notification(
     out_trade_no = params.get("out_trade_no")
     if amount_cents is None or not out_trade_no:
         return "fail"
+    try:
+        precise_amount = Decimal(params["money"]) * 100
+    except (InvalidOperation, TypeError, ValueError):
+        return "fail"
+    if not precise_amount.is_finite() or precise_amount != amount_cents:
+        return "fail"
 
     async with db.begin():
         order = await db.scalar(
@@ -259,12 +295,17 @@ async def process_notification(
             .where(RechargeOrder.out_trade_no == out_trade_no)
             .with_for_update()
         )
-        if not order or order.provider != "zpay" or order.currency != "CNY" or order.amount_cents != amount_cents:
+        if not order:
             return "fail"
-        order.callback_payload = {"request": _redact_snapshot(params)}
-        order.callback_received_at = datetime.now(UTC)
-        await settle_recharge_order(db, order, params.get("trade_no"))
-    return "success"
+        return await _process_order_payment(
+            db,
+            order,
+            provider="zpay",
+            currency="CNY",
+            amount=amount_cents,
+            provider_trade_no=params.get("trade_no"),
+            snapshot={"request": _redact_snapshot(params)},
+        )
 
 
 async def process_cahaya_notification(db: AsyncSession, form: Any) -> Literal["success", "fail"]:
@@ -284,6 +325,8 @@ async def process_cahaya_notification(db: AsyncSession, form: Any) -> Literal["s
         payload = json.loads(params.get("req_params") or "{}")
     except json.JSONDecodeError:
         return "fail"
+    if not isinstance(payload, dict):
+        return "fail"
     if payload.get("merchant_no") != settings.cahaya_merchant_no or payload.get("pay_type") != "2":
         return "fail"
     if payload.get("order_state") != "PAYSUCCESS":
@@ -299,49 +342,114 @@ async def process_cahaya_notification(db: AsyncSession, form: Any) -> Literal["s
         return "fail"
     async with db.begin():
         order = await db.scalar(select(RechargeOrder).where(RechargeOrder.out_trade_no == out_trade_no).with_for_update())
-        if not order or order.provider != "cahaya" or order.currency != "IDR" or order.amount_minor != amount_minor:
+        if not order:
             return "fail"
-        order.callback_payload = {"request": _redact_snapshot(params), "params": _redact_snapshot(payload)}
-        order.callback_received_at = datetime.now(UTC)
-        await settle_recharge_order(db, order, payload.get("out_trade_no"))
-    return "success"
-
-
-async def settle_recharge_order(db: AsyncSession, order: RechargeOrder, provider_trade_no: str | None = None) -> None:
-    if order.status == "paid":
-        return
-    if provider_trade_no:
-        existing = await db.scalar(
-            select(RechargeOrder)
-            .where(
-                RechargeOrder.provider == order.provider,
-                RechargeOrder.provider_trade_no == provider_trade_no,
-                RechargeOrder.id != order.id,
-            )
-            .with_for_update()
+        return await _process_order_payment(
+            db,
+            order,
+            provider="cahaya",
+            currency="IDR",
+            amount=amount_minor,
+            provider_trade_no=payload.get("out_trade_no"),
+            snapshot={"request": _redact_snapshot(params), "params": _redact_snapshot(payload)},
         )
-        if existing:
-            raise RechargeError("支付交易号已关联其他订单", error_key="invalid_request")
-    user = await db.scalar(select(User).where(User.id == order.user_id).with_for_update())
-    if not user:
-        raise RechargeError("充值用户不存在", status_code=404, error_key="not_found")
-    order.status = "paid"
-    order.provider_trade_no = provider_trade_no or order.provider_trade_no
-    order.paid_at = datetime.now(UTC)
-    order.error_message = None
-    user.credit_balance += order.total_credits
-    db.add(
-        CreditLedger(
-            user_id=user.id,
-            recharge_order_id=order.id,
-            entry_type="recharge",
-            amount=order.total_credits,
-            balance_after=user.credit_balance,
-            frozen_after=user.credit_frozen,
-            idempotency_key=f"recharge:{order.id}:paid",
-            note=f"充值 {order.currency} {order.amount_minor or order.amount_cents}，赠送 {order.bonus_credits} 积分",
+
+
+async def _process_order_payment(
+    db: AsyncSession,
+    order: RechargeOrder,
+    *,
+    provider: str,
+    currency: str,
+    amount: int,
+    provider_trade_no: str | None,
+    snapshot: dict[str, Any],
+) -> Literal["success", "fail"]:
+    expected_amount = order.amount_minor if provider == "cahaya" else order.amount_cents
+    try:
+        if order.provider != provider or order.currency != currency or expected_amount != amount:
+            raise RechargeError("支付通知与订单信息不匹配")
+        outcome = await settle_recharge_order(db, order, provider_trade_no)
+    except RechargeError as exc:
+        outcome = "rejected"
+        snapshot = {**snapshot, "reason": str(exc)}
+    order.callback_received_at = datetime.now(UTC)
+    order.callback_payload = {**snapshot, "result": outcome}
+    log = logger.warning if outcome in {"rejected", "failed_order"} else logger.info
+    log(
+        "recharge_callback_processed",
+        extra={"order_id": str(order.id), "provider": provider, "status": order.status, "result": outcome},
+    )
+    return "fail" if outcome == "rejected" else "success"
+
+
+async def settle_recharge_order(
+    db: AsyncSession,
+    order: RechargeOrder,
+    provider_trade_no: str | None = None,
+) -> Literal["paid", "already_paid", "failed_order"]:
+    order = await db.scalar(
+        select(RechargeOrder)
+        .where(RechargeOrder.id == order.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if not order:
+        raise RechargeError("充值订单不存在", status_code=404, error_key="not_found")
+    provider_trade_no = str(provider_trade_no or "").strip()
+    if not provider_trade_no:
+        raise RechargeError("支付交易号缺失")
+    if order.provider_trade_no and order.provider_trade_no != provider_trade_no:
+        raise RechargeError("支付交易号与订单不匹配")
+    if order.status == "paid":
+        if order.provider_trade_no != provider_trade_no:
+            raise RechargeError("已支付订单缺少一致的支付交易号")
+        return "already_paid"
+    if order.status == "failed":
+        return "failed_order"
+    if order.status != "pending":
+        raise RechargeError("充值订单状态无效")
+    existing = await db.scalar(
+        select(RechargeOrder.id).where(
+            RechargeOrder.provider == order.provider,
+            RechargeOrder.provider_trade_no == provider_trade_no,
+            RechargeOrder.id != order.id,
         )
     )
+    if existing:
+        raise RechargeError("支付交易号已关联其他订单", error_key="invalid_request")
+    try:
+        async with db.begin_nested():
+            user = await db.scalar(
+                select(User)
+                .where(User.id == order.user_id)
+                .with_for_update()
+                .execution_options(populate_existing=True)
+            )
+            if not user:
+                raise RechargeError("充值用户不存在", status_code=404, error_key="not_found")
+            order.status = "paid"
+            order.provider_trade_no = provider_trade_no
+            order.paid_at = datetime.now(UTC)
+            order.error_message = None
+            user.credit_balance += order.total_credits
+            db.add(
+                CreditLedger(
+                    user_id=user.id,
+                    recharge_order_id=order.id,
+                    entry_type="recharge",
+                    amount=order.total_credits,
+                    balance_after=user.credit_balance,
+                    frozen_after=user.credit_frozen,
+                    idempotency_key=f"recharge:{order.id}:paid",
+                    note=f"充值 {order.currency} {order.amount_minor or order.amount_cents}，赠送 {order.bonus_credits} 积分",
+                )
+            )
+            await db.flush()
+    except IntegrityError as exc:
+        await db.refresh(order)
+        raise RechargeError("充值结算记录冲突，请人工核查", error_key="invalid_request") from exc
+    return "paid"
 
 
 async def sync_cahaya_order(db: AsyncSession, order: RechargeOrder) -> RechargeOrder:
@@ -351,9 +459,12 @@ async def sync_cahaya_order(db: AsyncSession, order: RechargeOrder) -> RechargeO
         select(RechargeOrder)
         .where(RechargeOrder.id == order.id)
         .with_for_update()
+        .execution_options(populate_existing=True)
     )
     if not order or order.status != "pending":
         return order
+    if order.currency != "IDR":
+        raise RechargeError("支付状态查询币种不匹配", error_key="invalid_request")
     try:
         async with CahayaProvider(require_enabled=False) as provider:
             result = await provider.query_payment(out_trade_no=order.out_trade_no)
@@ -363,6 +474,8 @@ async def sync_cahaya_order(db: AsyncSession, order: RechargeOrder) -> RechargeO
         params = json.loads(result.get("resp_params") or "{}")
     except json.JSONDecodeError as exc:
         raise RechargeError("支付状态查询失败", status_code=503, error_key="payment_unavailable") from exc
+    if not isinstance(params, dict):
+        raise RechargeError("支付状态查询失败", status_code=503, error_key="payment_unavailable")
     order.provider_payload = {"query": result}
     if params.get("merchant_order_no") != order.out_trade_no:
         raise RechargeError("支付状态查询订单不匹配", error_key="invalid_request")

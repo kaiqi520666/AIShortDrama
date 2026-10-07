@@ -71,7 +71,10 @@ def error_fields(exc: Exception | None = None, *, status_code: int = 500) -> dic
 
 
 def task_error_fields(status: str) -> dict[str, Any]:
-    key = {"failed": "generation_failed", "cancelled": "task_cancelled", "timeout": "task_timeout"}.get(status)
+    key = {
+        "failed": "generation_failed", "cancelled": "task_cancelled",
+        "timeout": "task_timeout", "needs_review": "task_needs_review",
+    }.get(status)
     return {"error_key": key, "error_params": {}} if key else {}
 
 

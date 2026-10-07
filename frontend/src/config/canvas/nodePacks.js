@@ -1,8 +1,8 @@
 import { nodeCatalog } from './nodeCatalog'
 
 export const workspaceTypes = [
-  { id: 'general', label: '通用画布', defaultName: '未命名通用项目', description: '自由组合文本、图片、视频和音频' },
-  { id: 'ecommerce', label: '电商画布', defaultName: '未命名电商项目', description: '用于商品内容与营销素材生产' },
+  { id: 'general', label: '通用画布', description: '自由组合文本、图片、视频和音频' },
+  { id: 'ecommerce', label: '电商画布', description: '用于商品内容与营销素材生产' },
 ]
 
 export const nodePacks = Object.fromEntries(workspaceTypes.map(({ id }) => [id, Object.values(nodeCatalog)

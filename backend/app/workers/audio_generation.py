@@ -2,16 +2,15 @@ import base64
 import binascii
 import logging
 import uuid
-from datetime import UTC, datetime
 
-from app.core.database import SessionLocal
 from app.core.errors import diagnostic_snapshot, public_error_message
-from app.core.generation_state import TERMINAL_TASK_STATUSES, transition_task
-from app.models import GenerationTask
 from app.providers.protocols import AudioProvider
-from app.providers.volcengine_audio import VolcengineAudioError, VolcengineAudioProvider
+from app.providers.volcengine_audio import VolcengineAudioError
+from app.providers.registry import create_generation_provider, adapt_generation_provider
+from app.services.provider_execution import SubmissionNeedsReview, submit_provider_task
+from app.services.task_lifecycle import mark_needs_review, queue_task, start_task
 from app.services.storage import OssStorage
-from app.workers.generation import complete_task, fail_task, update_task
+from app.workers.generation import complete_task, fail_task, update_task, run_queued_worker
 
 
 logger = logging.getLogger(__name__)
@@ -25,7 +24,7 @@ AUDIO_MIME_TYPES = {
 
 
 async def generate_audio(_ctx, task_id: str):
-    await run_audio_generation(task_id)
+    await run_queued_worker(run_audio_generation, task_id)
 
 
 async def run_audio_generation(
@@ -34,24 +33,25 @@ async def run_audio_generation(
     storage: OssStorage | None = None,
 ):
     task_uuid = uuid.UUID(task_id)
-    async with SessionLocal() as db:
-        task = await db.get(GenerationTask, task_uuid)
-        if not task or task.status in TERMINAL_TASK_STATUSES:
-            return
-        payload = task.request_snapshot
-        transition_task(task, "running", progress=5)
-        task.started_at = datetime.now(UTC)
-        await db.commit()
+    task = await start_task(task_uuid)
+    if task is None:
+        return
+    token = task.worker_lease_token
+    payload = task.request_snapshot
 
     owns_provider = provider is None
-    stage = "submit"
+    stage = "recover" if task.submission_started_at or task.provider_response else "submit"
     try:
-        provider = provider or VolcengineAudioProvider()
-        storage = storage or OssStorage()
-        response = await provider.synthesize(payload)
+        provider = (
+            adapt_generation_provider(provider, "audio") if provider is not None
+            else create_generation_provider(task.provider, "audio")
+        )
+        response = await submit_provider_task(task, provider)
         audio_format = payload["audio_config"]["format"]
-        await update_task(task_uuid, progress=90)
+        if not await update_task(task_uuid, progress=90, worker_token=token):
+            raise SubmissionNeedsReview("任务已暂停或交由其他 worker 处理")
         stage = "storage"
+        storage = storage or OssStorage()
         if response.get("url"):
             urls = await storage.store_remote_audios(task_id, [response["url"]], audio_format)
         elif response.get("audio"):
@@ -74,16 +74,35 @@ async def run_audio_generation(
             duration=float(duration) if isinstance(duration, (int, float)) else None,
             original_duration=float(original_duration),
             mime_type=AUDIO_MIME_TYPES[audio_format],
+            worker_token=token,
         )
+    except SubmissionNeedsReview as exc:
+        await mark_needs_review(task_uuid, str(exc), worker_token=token)
     except Exception as exc:
         logger.exception("Audio generation failed", extra={"task_id": str(task_uuid)})
-        await fail_task(
-            task_uuid,
-            "failed",
-            public_error_message(exc, "音频生成服务暂时不可用"),
-            diagnostic_snapshot(exc, stage),
-        )
+        if stage == "recover":
+            await queue_task(
+                task_uuid, "上游结果恢复暂时失败，等待重试",
+                diagnostic_snapshot(exc, stage), worker_token=token,
+            )
+        elif (
+            stage == "submit" and task.submission_started_at
+            and (getattr(exc, "retryable", False) or not isinstance(exc, VolcengineAudioError))
+        ):
+            await mark_needs_review(
+                task_uuid, "上游提交结果未知，请人工核对后再处理",
+                diagnostic_snapshot(exc, stage), worker_token=token,
+            )
+        elif stage in {"storage", "billing"}:
+            await queue_task(
+                task_uuid, "生成结果处理失败，等待重试", diagnostic_snapshot(exc, stage), worker_token=token,
+            )
+        else:
+            await fail_task(
+                task_uuid, "failed", public_error_message(exc, "音频生成服务暂时不可用"),
+                diagnostic_snapshot(exc, stage), worker_token=token,
+            )
         raise
     finally:
         if owns_provider and provider:
-            await provider.client.aclose()
+            await provider.aclose()

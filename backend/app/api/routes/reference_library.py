@@ -10,7 +10,6 @@ from app.core.database import get_db
 from app.core.errors import NotFoundError, RequestError, ServiceUnavailableError, public_error_message
 from app.core.identity import get_current_user_id
 from app.models import Asset, Character, Garment, OutfitModel, Scene
-from app.providers.toapis import ToApisProvider
 from app.schemas.response import success
 from app.services.media_upload import MEDIA_UPLOAD_RULES, MediaUploadService, StoredMedia
 from app.services.private_avatar import PrivateAvatarService
@@ -28,7 +27,7 @@ def get_media_upload_service() -> MediaUploadService:
 
 
 def get_private_avatar_service() -> PrivateAvatarService:
-    return PrivateAvatarService(provider_factory=ToApisProvider)
+    return PrivateAvatarService()
 
 
 async def register_virtual_character(

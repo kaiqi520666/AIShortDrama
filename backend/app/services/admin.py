@@ -68,7 +68,10 @@ async def adjust_credits(
     amount: int,
     reason: str,
 ) -> User:
-    user = await db.scalar(select(User).where(User.id == user_id, User.is_system.is_(False)).with_for_update())
+    user = await db.scalar(
+        select(User).where(User.id == user_id, User.is_system.is_(False)).with_for_update()
+        .execution_options(populate_existing=True)
+    )
     if not user:
         raise ValueError("用户不存在")
     if user.credit_balance + amount < 0:

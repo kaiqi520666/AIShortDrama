@@ -1,8 +1,9 @@
+from app.api.routes.admin_presenters import page_data, task_detail_data, task_summary_data
 import logging
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,48 +11,14 @@ from app.core.database import get_db
 from app.core.errors import NotFoundError, RequestError, ServiceUnavailableError
 from app.core.identity import get_current_admin
 from app.models import GenerationTask, User
+from app.providers.registry import create_generation_provider
+from app.schemas.admin import ResolveReviewRequest
 from app.schemas.response import success
+from app.services.admin import add_audit
+from app.services.task_lifecycle import lock_task, resolve_review_task
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
-
-
-def page_data(page: int, page_size: int, total: int, items: list[dict]) -> dict:
-    return {"items": items, "page": page, "page_size": page_size, "total": total}
-
-
-def task_summary_data(task: GenerationTask, user: User) -> dict:
-    return {
-        "id": str(task.id),
-        "user": {"id": str(user.id), "username": user.username, "email": user.email},
-        "task_type": task.task_type,
-        "provider": task.provider,
-        "model": task.model,
-        "status": task.status,
-        "progress": task.progress,
-        "provider_task_id": task.provider_task_id,
-        "frozen_credits": task.frozen_credits,
-        "charged_credits": task.charged_credits,
-        "credit_status": task.credit_status,
-        "error_message": task.error_message,
-        "created_at": task.created_at.isoformat(),
-        "finished_at": task.finished_at.isoformat() if task.finished_at else None,
-    }
-
-
-def task_detail_data(task: GenerationTask, user: User) -> dict:
-    return {
-        **task_summary_data(task, user),
-        "workspace_id": str(task.workspace_id),
-        "node_id": task.node_id,
-        "diagnostic_snapshot": task.diagnostic_snapshot,
-        "request_snapshot": task.request_snapshot,
-        "pricing_snapshot": task.pricing_snapshot,
-        "result": task.result,
-        "retry_count": task.retry_count,
-        "started_at": task.started_at.isoformat() if task.started_at else None,
-        "updated_at": task.updated_at.isoformat(),
-    }
 
 
 @router.get("/tasks")
@@ -118,15 +85,16 @@ async def get_task_provider_status(
         raise RequestError("该任务没有 Provider 任务 ID，无法查询上游状态")
     if task.provider != "toapis" or task.task_type not in {"image", "video"}:
         raise RequestError("该任务暂不支持查询上游状态")
+    provider = None
     try:
-        from app.api.routes import admin as admin_routes
-
-        async with admin_routes.ToApisProvider() as provider:
-            fetch = provider.get_image_task if task.task_type == "image" else provider.get_video_task
-            state = await fetch(task.provider_task_id)
+        provider = create_generation_provider(task.provider, task.task_type)
+        state = await provider.get_task(task.provider_task_id)
     except Exception as exc:
         logger.exception("Admin provider status query failed", extra={"task_id": str(task.id)})
         raise ServiceUnavailableError("上游状态查询失败，请稍后重试") from exc
+    finally:
+        if provider is not None:
+            await provider.aclose()
     error = state.get("error") or {}
     error_message = error.get("message") if isinstance(error, dict) else str(error)
     return success({
@@ -136,3 +104,57 @@ async def get_task_provider_status(
         "error_message": str(error_message) if error_message else None,
         "checked_at": datetime.now(UTC).isoformat(),
     })
+
+
+@router.post("/tasks/{task_id}/resolve-review")
+async def resolve_task_review(
+    task_id: uuid.UUID,
+    payload: ResolveReviewRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    admin: User = Depends(get_current_admin),
+):
+    if payload.action != "resume" and payload.provider_task_id:
+        raise RequestError("只有恢复任务时才能指定 Provider 任务 ID")
+    existing = await lock_task(db, task_id)
+    if existing is None:
+        raise NotFoundError("生成任务不存在")
+    before = {
+        "status": existing.status,
+        "provider_task_id": existing.provider_task_id,
+        "credit_status": existing.credit_status,
+    }
+    task = await resolve_review_task(
+        db, task_id, payload.action, provider_task_id=payload.provider_task_id
+    )
+    add_audit(
+        db,
+        admin_id=admin.id,
+        action=f"resolve_task_review_{payload.action}",
+        target_type="generation_task",
+        target_id=task.id,
+        reason=payload.reason,
+        before=before,
+        after={
+            "status": task.status,
+            "provider_task_id": task.provider_task_id,
+            "credit_status": task.credit_status,
+        },
+    )
+    await db.commit()
+    await db.refresh(task)
+    if payload.action == "resume":
+        try:
+            await request.app.state.redis.enqueue_job(
+                f"generate_{task.task_type}",
+                str(task.id),
+                _job_id=f"generation:{task.id}:review:{task.retry_count}",
+            )
+        except Exception as exc:
+            logger.exception(
+                "Failed to enqueue manually resumed task",
+                extra={"task_id": str(task.id)},
+            )
+            raise ServiceUnavailableError("任务已恢复，但重新入队失败") from exc
+    owner = await db.get(User, task.user_id)
+    return success(task_detail_data(task, owner or admin))

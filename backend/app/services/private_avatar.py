@@ -1,21 +1,9 @@
 from collections.abc import Callable
-from typing import Any, Protocol
+from typing import Any
 
-from app.providers.toapis import ToApisError, ToApisProvider
-
-
-class PrivateAvatarProvider(Protocol):
-    async def __aenter__(self) -> "PrivateAvatarProvider": ...
-
-    async def __aexit__(self, *args: Any) -> None: ...
-
-    async def create_private_avatar_group(self, name: str) -> dict[str, Any]: ...
-
-    async def upload_private_avatar(
-        self, group_id: str, source_url: str, name: str
-    ) -> dict[str, Any]: ...
-
-    async def get_private_avatar(self, asset_id: str) -> dict[str, Any]: ...
+from app.providers.protocols import PrivateAvatarProvider
+from app.providers.registry import create_private_avatar_provider
+from app.providers.toapis import ToApisError
 
 
 def private_avatar_metadata(data: dict[str, Any]) -> dict[str, Any]:
@@ -31,7 +19,9 @@ def private_avatar_metadata(data: dict[str, Any]) -> dict[str, Any]:
 
 
 class PrivateAvatarService:
-    def __init__(self, provider_factory: Callable[[], PrivateAvatarProvider] = ToApisProvider):
+    def __init__(
+        self, provider_factory: Callable[[], PrivateAvatarProvider] = create_private_avatar_provider
+    ):
         self.provider_factory = provider_factory
 
     async def register(

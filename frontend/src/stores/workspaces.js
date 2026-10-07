@@ -51,8 +51,9 @@ export const useWorkspaceStore = defineStore('workspaces', {
       this.current = null
     },
     async create(workspaceType) {
-      const definition = getWorkspaceType(workspaceType)
-      const result = await createWorkspace(definition.defaultName, workspaceType)
+      getWorkspaceType(workspaceType)
+      const name = String(this.items.length + 1).padStart(2, '0')
+      const result = await createWorkspace(name, workspaceType)
       if (result.code !== 0) throw new Error(result.message)
       this.items.unshift(result.data)
       return result.data

@@ -128,7 +128,7 @@ def apparel_storyboard_payload(**overrides):
 @pytest.mark.parametrize("locale", ["zh-CN", "id"])
 @pytest.mark.parametrize("template_key", ["product_storyboard", "commerce_drama"])
 async def test_storyboard_locale_persisted_and_forwarded(monkeypatch, locale, template_key):
-    monkeypatch.setattr(reversals_route, "OpenAIResponsesProvider", FakeProvider)
+    monkeypatch.setattr(reversals_route, "create_text_provider", FakeProvider)
     async with SessionLocal() as db:
         template = await db.get(ContentTemplate, template_key)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -251,7 +251,7 @@ def test_product_storyboard_limits_total_reference_images():
 
 @pytest.mark.asyncio
 async def test_stream_reverse_prompt(monkeypatch):
-    monkeypatch.setattr(reversals_route, "OpenAIResponsesProvider", FakeProvider)
+    monkeypatch.setattr(reversals_route, "create_text_provider", FakeProvider)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/reversals/stream",
@@ -287,7 +287,7 @@ async def test_stream_reverse_prompt(monkeypatch):
 async def test_stream_reverse_prompt_keeps_content_over_3000_characters(monkeypatch):
     chunks = ("甲" * 2000, "乙" * 2000)
     monkeypatch.setattr(FakeProvider, "chunks", chunks)
-    monkeypatch.setattr(reversals_route, "OpenAIResponsesProvider", FakeProvider)
+    monkeypatch.setattr(reversals_route, "create_text_provider", FakeProvider)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         async with SessionLocal() as db:
             template = await db.get(ContentTemplate, "product_storyboard")
@@ -312,7 +312,7 @@ async def test_stream_reverse_prompt_keeps_content_over_3000_characters(monkeypa
 
 @pytest.mark.asyncio
 async def test_product_visual_stream_uses_server_template(monkeypatch):
-    monkeypatch.setattr(reversals_route, "OpenAIResponsesProvider", FakeProvider)
+    monkeypatch.setattr(reversals_route, "create_text_provider", FakeProvider)
     async with SessionLocal() as db:
         template = await db.get(ContentTemplate, "product_visual")
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -344,7 +344,7 @@ async def test_product_visual_stream_uses_server_template(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_commerce_drama_stream_uses_server_template(monkeypatch):
-    monkeypatch.setattr(reversals_route, "OpenAIResponsesProvider", FakeProvider)
+    monkeypatch.setattr(reversals_route, "create_text_provider", FakeProvider)
     async with SessionLocal() as db:
         template = await db.get(ContentTemplate, "commerce_drama")
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:

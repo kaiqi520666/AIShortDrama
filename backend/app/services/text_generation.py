@@ -5,31 +5,23 @@ import uuid
 from collections.abc import AsyncIterator, Awaitable, Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from typing import Any, Protocol
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ServiceUnavailableError, diagnostic_snapshot, error_fields, public_error_message
-from app.core.generation_locale import GenerationLocale
 from app.models import GenerationTask, Workspace
-from app.providers.openai_responses import OpenAIResponsesProvider
+from app.providers.protocols import TextProvider
+from app.providers.registry import create_text_provider
 from app.schemas.generation import TextGenerationRequest
 from app.services.billing import freeze_task_credits
 from app.services.admin_configuration import ensure_model_enabled
 from app.services.generation_tasks import WorkspaceNotFoundError
+from app.services.task_lifecycle import create_task, transition_task
 from app.workers.generation import complete_text_task, fail_task
 
 
 logger = logging.getLogger(__name__)
-
-
-class TextProvider(Protocol):
-    async def __aenter__(self) -> "TextProvider": ...
-
-    async def __aexit__(self, *args: Any) -> None: ...
-
-    def stream_text(self, *, model: str, prompt: str, locale: GenerationLocale = "zh-CN") -> AsyncIterator[str]: ...
 
 
 @dataclass
@@ -45,7 +37,7 @@ class TextGenerationService:
         complete_task: Callable[[uuid.UUID, str], Awaitable[None]] = complete_text_task,
         fail_task_handler: Callable[..., Awaitable[None]] = fail_task,
     ):
-        self.provider_factory = provider_factory or OpenAIResponsesProvider
+        self.provider_factory = provider_factory or create_text_provider
         self.complete_task = complete_task
         self.fail_task = fail_task_handler
 
@@ -65,23 +57,23 @@ class TextGenerationService:
         )
         if not workspace:
             raise WorkspaceNotFoundError("工作台不存在")
-        task = GenerationTask(
+        task = create_task(
+            db,
             user_id=user_id,
             workspace_id=payload.workspace_id,
             node_id=payload.node_id,
             task_type="text",
             provider="aijws",
             model=payload.model,
-            status="running",
             prompt=payload.prompt,
             request_snapshot=payload.model_dump(
                 mode="json", exclude={"workspace_id", "node_id"}
             ),
             started_at=datetime.now(UTC),
         )
-        db.add(task)
         try:
             await freeze_task_credits(db, task, "text")
+            await transition_task(db, task.id, "running", source="text_stream")
             await db.commit()
         except Exception:
             await db.rollback()

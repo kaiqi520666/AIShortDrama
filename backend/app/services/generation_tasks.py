@@ -1,5 +1,5 @@
 import uuid
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from sqlalchemy import select
@@ -14,7 +14,8 @@ from app.schemas.generation import (
     ImageGenerationRequest,
     VideoGenerationRequest,
 )
-from app.services.billing import freeze_task_credits, refund_task_credits
+from app.services.billing import freeze_task_credits
+from app.services.task_lifecycle import create_task, fail_task_in_transaction
 
 
 class WorkspaceNotFoundError(RuntimeError):
@@ -190,7 +191,8 @@ async def _create_task(
     task_id = uuid.uuid4()
     if include_client_business_id:
         provider_payload["client_business_id"] = str(task_id)
-    task = GenerationTask(
+    task = create_task(
+        db,
         id=task_id,
         user_id=user_id,
         workspace_id=request.workspace_id,
@@ -201,7 +203,6 @@ async def _create_task(
         prompt=request.prompt,
         request_snapshot=provider_payload,
     )
-    db.add(task)
     await db.flush()
     resolution = None
     duration = None
@@ -224,11 +225,10 @@ async def _create_task(
         if job is None:
             raise RuntimeError("任务重复入队")
     except Exception as exc:
-        task.status = "failed"
-        task.error_message = "任务入队失败"
-        task.diagnostic_snapshot = diagnostic_snapshot(exc, "enqueue")
-        task.finished_at = datetime.now(UTC)
-        await refund_task_credits(db, task, "任务入队失败，退还冻结积分")
+        await fail_task_in_transaction(
+            db, task_id, "failed", "任务入队失败",
+            diagnostic_snapshot(exc, "enqueue"), source="enqueue",
+        )
         await db.commit()
         raise GenerationQueueError("任务入队失败") from exc
     return task

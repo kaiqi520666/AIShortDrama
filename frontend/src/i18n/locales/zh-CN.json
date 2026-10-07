@@ -129,6 +129,7 @@
     "generation_failed": "生成失败，请重试。",
     "task_cancelled": "任务已取消。",
     "task_timeout": "任务超时，请重试。",
+    "task_needs_review": "上游结果待人工核查，积分仍被冻结。请联系管理员。",
     "workspace_not_found": "工作台不存在。",
     "queue_failed": "任务入队失败，请重试。",
     "template_disabled": "模板已停用，请重新加载。",
@@ -235,7 +236,25 @@
       "rawError": "上游原始错误",
       "requestSnapshot": "请求快照",
       "pricingSnapshot": "计费快照",
-      "resultSnapshot": "结果快照"
+      "resultSnapshot": "结果快照",
+      "resolveReview": "处理核查",
+      "reviewDescription": "上游结果仍待核查，积分保持冻结；请核对上游状态后处理。",
+      "reviewAction": "处理方式",
+      "reviewFailed": "人工核查处理失败",
+      "reviewProviderId": "Provider 任务 ID（可选）",
+      "reviewProviderPlaceholder": "核实上游任务后填写",
+      "reviewProviderHint": "已有 ID 不能替换。补充 ID 后将继续查询同一上游任务。",
+      "reviewAudioNote": "音频只能恢复已保存的上游结果；结果未保存时请判定失败或取消。",
+      "reviewActions": {
+        "resume": "恢复任务",
+        "fail": "判定失败",
+        "cancel": "取消任务"
+      },
+      "reviewNotes": {
+        "resume": "任务将重新排队，冻结积分在生成完成后结算。提交前请确认可恢复的上游任务或结果。",
+        "fail": "任务将标记为失败，并退回冻结积分。操作前请确认上游没有可用结果。",
+        "cancel": "任务将标记为取消，并退回冻结积分；此操作不会取消上游任务。"
+      }
     },
     "templates": {
       "labels": {
@@ -586,7 +605,8 @@
     "succeeded": "成功",
     "failed": "失败",
     "timeout": "超时",
-    "cancelled": "已取消"
+    "cancelled": "已取消",
+    "needs_review": "待人工核查"
   },
   "workspace": {
     "library": "项目库",

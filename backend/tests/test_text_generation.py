@@ -36,7 +36,7 @@ class FailingProvider(FakeProvider):
 @pytest.mark.asyncio
 @pytest.mark.parametrize("locale", ["zh-CN", "id"])
 async def test_stream_text_generation(monkeypatch, locale):
-    monkeypatch.setattr(text_generation, "OpenAIResponsesProvider", FakeProvider)
+    monkeypatch.setattr(text_generation, "create_text_provider", FakeProvider)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/generations/texts",
@@ -88,7 +88,7 @@ async def test_text_generation_rejects_blank_prompt():
 async def test_stream_text_generation_keeps_content_over_3000_characters(monkeypatch):
     chunks = ("甲" * 2000, "乙" * 2000)
     monkeypatch.setattr(FakeProvider, "chunks", chunks)
-    monkeypatch.setattr(text_generation, "OpenAIResponsesProvider", FakeProvider)
+    monkeypatch.setattr(text_generation, "create_text_provider", FakeProvider)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/generations/texts",
@@ -110,7 +110,7 @@ async def test_stream_text_generation_keeps_content_over_3000_characters(monkeyp
 
 @pytest.mark.asyncio
 async def test_stream_text_generation_hides_provider_error(monkeypatch):
-    monkeypatch.setattr(text_generation, "OpenAIResponsesProvider", FailingProvider)
+    monkeypatch.setattr(text_generation, "create_text_provider", FailingProvider)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/generations/texts",

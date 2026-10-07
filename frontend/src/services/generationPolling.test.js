@@ -13,6 +13,22 @@ beforeEach(() => {
 })
 
 describe('generation polling', () => {
+  it('stops automatic polling for needs_review and preserves the node pending review', async () => {
+    vi.useFakeTimers()
+    getGenerationTask.mockResolvedValue({
+      code: 0, data: { status: 'needs_review', progress: 20, credit_status: 'frozen' },
+    })
+    const update = vi.fn()
+    startGenerationPolling('review-task', 'review-node', update, 'workspace-1')
+    await vi.runAllTimersAsync()
+    expect(getGenerationTask).toHaveBeenCalledOnce()
+    expect(update).toHaveBeenCalledWith('review-node', expect.objectContaining({
+      generationPollingPaused: true,
+      generationError: i18n.global.t('errors.task_needs_review'),
+    }))
+    expect(update.mock.calls.some(([, data]) => data.status === 'failed')).toBe(false)
+    vi.useRealTimers()
+  })
   it('writes a successful result and stops polling', async () => {
     getGenerationTask.mockResolvedValue({
       code: 0,

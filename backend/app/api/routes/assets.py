@@ -16,7 +16,6 @@ from app.core.errors import (
 )
 from app.core.identity import get_current_user_id
 from app.models import Asset
-from app.providers.toapis import ToApisProvider
 from app.schemas.asset import AssetPrivateAvatarRequest, AssetUpdate
 from app.schemas.response import success
 from app.services.private_avatar import PrivateAvatarService
@@ -59,7 +58,7 @@ def asset_payload(asset: Asset) -> dict[str, Any]:
 
 
 def get_private_avatar_service() -> PrivateAvatarService:
-    return PrivateAvatarService(provider_factory=ToApisProvider)
+    return PrivateAvatarService()
 
 
 @router.get("")

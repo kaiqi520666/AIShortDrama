@@ -124,9 +124,17 @@ class ToApisProvider:
                 code=code,
                 details=details,
             ) from exc
-        data = response.json()
+        try:
+            data = response.json()
+        except ValueError as exc:
+            raise ToApisError(
+                "ToAPIs 返回格式异常", retryable=True, request_id=self._request_id(response),
+            ) from exc
         if not isinstance(data, dict):
-            raise ToApisError("ToAPIs 返回格式异常")
+            raise ToApisError("ToAPIs 返回格式异常", retryable=True, request_id=self._request_id(response))
+        request_id = self._request_id(response)
+        if request_id:
+            data = {**data, "provider_request_id": request_id}
         return data
 
     @staticmethod

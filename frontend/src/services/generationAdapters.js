@@ -9,7 +9,7 @@ import { buildVideoRequest, normalizeVideoSettings } from '../config/videoModels
 
 const { t } = i18n.global
 
-export const TERMINAL_GENERATION_STATUSES = new Set(['succeeded', 'failed', 'cancelled', 'timeout'])
+export const TERMINAL_GENERATION_STATUSES = new Set(['succeeded', 'failed', 'cancelled', 'timeout', 'needs_review'])
 export const MEDIA_LABEL_KEYS = { image: 'canvas.image', video: 'canvas.video', audio: 'canvas.audio' }
 
 export function isTerminalGenerationStatus(status) {

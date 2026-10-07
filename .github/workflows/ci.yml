@@ -40,6 +40,15 @@ jobs:
         with:
           version: "0.8.15"
       - run: uv sync --locked
+      - name: Prepare isolated test database
+        run: |
+          docker exec "$POSTGRES_CONTAINER" pg_isready -U postgres -d aisd
+          docker exec "$REDIS_CONTAINER" redis-cli ping | grep -Fx PONG
+          docker exec "$POSTGRES_CONTAINER" createdb -U postgres aisd_test
+          docker exec "$POSTGRES_CONTAINER" pg_isready -U postgres -d aisd_test
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
+          REDIS_CONTAINER: ${{ job.services.redis.id }}
       - run: uv run ruff check .
       - run: uv run pytest
         env:
@@ -74,12 +83,43 @@ jobs:
         with:
           version: "0.8.15"
       - run: uv sync --locked
+      - name: Verify database health
+        run: docker exec "$POSTGRES_CONTAINER" pg_isready -U postgres -d aisd
+        env:
+          POSTGRES_CONTAINER: ${{ job.services.postgres.id }}
       - run: uv run alembic upgrade head
         env:
           APP_ENV: development
           DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/aisd
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: ci-secret
+      - name: Verify migration head and database constraints
+        run: |
+          uv run alembic current
+          uv run alembic heads
+          uv run python scripts/check_migrations.py
+          uv run alembic upgrade head
+          uv run python scripts/check_migrations.py
+        env:
+          APP_ENV: development
+          DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/aisd
+          REDIS_URL: redis://localhost:6379/0
+          SECRET_KEY: ci-secret
+
+  docker-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production images
+        run: |
+          docker build --tag aisd-ci-backend:${{ github.sha }} backend
+          docker build --tag aisd-ci-frontend:${{ github.sha }} frontend
+      - name: Validate Compose and production startup
+        env:
+          BACKEND_IMAGE: aisd-ci-backend:${{ github.sha }}
+          FRONTEND_IMAGE: aisd-ci-frontend:${{ github.sha }}
+        run: bash deploy/ci-smoke.sh
 
   frontend:
     runs-on: ubuntu-latest

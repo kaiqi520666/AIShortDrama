@@ -4,7 +4,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select
 
-import app.api.routes.admin as admin_routes
+import app.api.routes.admin_tasks as admin_task_routes
 from app.core.auth import hash_password
 from app.core.database import SessionLocal
 from app.core.identity import DEFAULT_WORKSPACE_ID, get_current_admin
@@ -129,13 +129,10 @@ async def test_admin_task_list_is_lightweight_and_detail_has_diagnostics(monkeyp
             assert data["result"] == {"type": "video"}
 
             class FakeProvider:
-                async def __aenter__(self):
-                    return self
-
-                async def __aexit__(self, *_):
+                async def aclose(self):
                     pass
 
-                async def get_video_task(self, provider_task_id):
+                async def get_task(self, provider_task_id):
                     assert provider_task_id == "provider-task-123"
                     return {
                         "status": "failed",
@@ -143,7 +140,9 @@ async def test_admin_task_list_is_lightweight_and_detail_has_diagnostics(monkeyp
                         "error": {"message": "内容审核拒绝"},
                     }
 
-            monkeypatch.setattr(admin_routes, "ToApisProvider", FakeProvider)
+            monkeypatch.setattr(
+                admin_task_routes, "create_generation_provider", lambda *_: FakeProvider()
+            )
             refreshed = await client.post(
                 f"/api/admin/tasks/{task_id}/provider-status"
             )

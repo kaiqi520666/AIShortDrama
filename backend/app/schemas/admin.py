@@ -20,6 +20,21 @@ class AdminMutation(BaseModel):
         return value
 
 
+class ResolveReviewRequest(AdminMutation):
+    action: Literal["resume", "fail", "cancel"]
+    provider_task_id: str | None = Field(default=None, min_length=1, max_length=128)
+
+    @field_validator("provider_task_id")
+    @classmethod
+    def normalize_provider_task_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            raise ValueError("Provider 任务 ID 不能为空")
+        return value
+
+
 class CreditAdjustmentRequest(AdminMutation):
     amount: int = Field(ge=-1_000_000, le=1_000_000)
 

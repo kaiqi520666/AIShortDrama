@@ -21,8 +21,8 @@ from app.core.errors import (
     public_error_message,
 )
 from app.core.identity import get_current_user_id
-from app.models import ContentTemplate, GenerationTask, Workspace
-from app.providers.openai_responses import OpenAIResponsesProvider
+from app.models import ContentTemplate, Workspace
+from app.providers.registry import create_text_provider
 from app.schemas.reversal import ReversePromptRequest
 from app.services.billing import BillingError, InsufficientCredits, freeze_task_credits
 from app.services.content_templates import (
@@ -31,6 +31,7 @@ from app.services.content_templates import (
     UGC_STORYBOARD_KEY,
 )
 from app.workers.generation import complete_text_task, fail_task
+from app.services.task_lifecycle import create_task, transition_task
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -87,25 +88,25 @@ async def stream_reverse_prompt(
     )
     if not workspace:
         raise NotFoundError("工作台不存在")
-    task = GenerationTask(
+    task = create_task(
+        db,
         user_id=user_id,
         workspace_id=payload.workspace_id,
         node_id=payload.node_id,
         task_type=f"{payload.media_type}_reverse",
         provider="aijws",
         model=payload.model,
-        status="running",
         prompt=prompt,
         request_snapshot=payload.model_dump(
             mode="json", exclude={"workspace_id", "node_id", "prompt"}
         ),
         started_at=datetime.now(UTC),
     )
-    db.add(task)
     try:
         await freeze_task_credits(db, task, "text")
+        await transition_task(db, task.id, "running", source="reverse_stream")
         await db.commit()
-        provider = OpenAIResponsesProvider()
+        provider = create_text_provider()
     except InsufficientCredits as exc:
         await db.rollback()
         raise InsufficientCreditsError(str(exc)) from exc

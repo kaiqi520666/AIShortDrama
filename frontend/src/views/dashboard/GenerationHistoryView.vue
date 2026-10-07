@@ -36,6 +36,7 @@ const statusOptions = computed(() => ([
 ]))
 const statusLabels = computed(() => ({
   queued: t('records.queued'), running: t('records.running'), succeeded: t('records.success'), failed: t('records.failed'), timeout: t('records.timeout'), cancelled: t('records.cancelled'),
+  needs_review: t('taskStatus.needs_review'),
 }))
 const columns = computed(() => ([
   { key: 'created_at', label: t('records.time'), width: '158px' },

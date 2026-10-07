@@ -2,6 +2,7 @@
 param(
     [ValidateSet('Status', 'Deploy')]
     [string]$Mode = 'Status',
+    [switch]$BuildOnServer,
     [switch]$SkipTests
 )
 
@@ -86,13 +87,18 @@ if ($gitStatus) {
     throw 'The Git worktree is not clean. Commit or resolve local changes before deploying.'
 }
 
-$revision = Invoke-Native -FilePath 'git.exe' -ArgumentList @('-C', $projectRoot, 'rev-parse', '--short=8', 'HEAD') -Capture
+$commitSha = Invoke-Native -FilePath 'git.exe' -ArgumentList @('-C', $projectRoot, 'rev-parse', 'HEAD') -Capture
+$revision = $commitSha.Substring(0, 8)
 $backendImage = "ai-short-drama-backend:$revision"
 $frontendImage = "ai-short-drama-frontend:$revision"
 $temporaryDirectory = Join-Path ([System.IO.Path]::GetTempPath()) "ai-short-drama-deploy-$([guid]::NewGuid().ToString('N'))"
 $localArchive = Join-Path $temporaryDirectory "images-$revision.tar"
 $remoteArchive = "$remoteDeployDir/images-$revision.tar"
+$localSourceArchive = Join-Path $temporaryDirectory "source-$revision.tar"
+$remoteSourceArchive = "$remoteDeployDir/source-$revision.tar"
+$remoteBuildDirectory = "$remoteDeployDir/build-$revision-$([guid]::NewGuid().ToString('N'))"
 $archiveUploaded = $false
+$sourceUploaded = $false
 $deploymentSwitched = $false
 $oldBackendImage = $null
 $oldFrontendImage = $null
@@ -118,8 +124,28 @@ try {
         }
     }
 
-    Invoke-Native -FilePath 'docker.exe' -ArgumentList @('build', '-t', $backendImage, (Join-Path $projectRoot 'backend'))
-    Invoke-Native -FilePath 'docker.exe' -ArgumentList @('build', '-t', $frontendImage, (Join-Path $projectRoot 'frontend'))
+    $currentCommitSha = Invoke-Native -FilePath 'git.exe' -ArgumentList @('-C', $projectRoot, 'rev-parse', 'HEAD') -Capture
+    $currentGitStatus = Invoke-Native -FilePath 'git.exe' -ArgumentList @('-C', $projectRoot, 'status', '--porcelain') -Capture
+    if ($currentCommitSha -ne $commitSha -or $currentGitStatus) {
+        throw 'The Git worktree changed during deployment validation. Stop and review the changes.'
+    }
+
+    if ($BuildOnServer) {
+        Invoke-Native -FilePath 'git.exe' -ArgumentList @(
+            '-C', $projectRoot, 'archive', '--format=tar', "--output=$localSourceArchive",
+            $commitSha, 'backend', 'frontend'
+        )
+        $sourceUploaded = $true
+        $sourceScpArguments = @($sshOptions) + @($localSourceArchive, "${sshTarget}:$remoteSourceArchive")
+        Invoke-Native -FilePath 'scp.exe' -ArgumentList $sourceScpArguments
+        Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo mkdir '$remoteBuildDirectory' && sudo tar -xf '$remoteSourceArchive' -C '$remoteBuildDirectory'"
+        Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo docker build -t '$backendImage' '$remoteBuildDirectory/backend'"
+        Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo docker build -t '$frontendImage' '$remoteBuildDirectory/frontend'"
+    }
+    else {
+        Invoke-Native -FilePath 'docker.exe' -ArgumentList @('build', '-t', $backendImage, (Join-Path $projectRoot 'backend'))
+        Invoke-Native -FilePath 'docker.exe' -ArgumentList @('build', '-t', $frontendImage, (Join-Path $projectRoot 'frontend'))
+    }
 
     Invoke-Ssh -Command 'sudo /opt/ai-short-drama/backup.sh'
     $oldBackendImage = Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo sed -n 's/^BACKEND_IMAGE=//p' .env" -Capture
@@ -128,12 +154,14 @@ try {
         throw 'Could not read the current production image tags.'
     }
 
-    Invoke-Native -FilePath 'docker.exe' -ArgumentList @('image', 'save', '--output', $localArchive, $backendImage, $frontendImage)
-    $scpArguments = @($sshOptions) + @($localArchive, "${sshTarget}:$remoteArchive")
-    $archiveUploaded = $true
-    Invoke-Native -FilePath 'scp.exe' -ArgumentList $scpArguments
+    if (-not $BuildOnServer) {
+        Invoke-Native -FilePath 'docker.exe' -ArgumentList @('image', 'save', '--output', $localArchive, $backendImage, $frontendImage)
+        $scpArguments = @($sshOptions) + @($localArchive, "${sshTarget}:$remoteArchive")
+        $archiveUploaded = $true
+        Invoke-Native -FilePath 'scp.exe' -ArgumentList $scpArguments
+        Invoke-Ssh -Command "sudo docker load --input '$remoteArchive'"
+    }
 
-    Invoke-Ssh -Command "sudo docker load --input '$remoteArchive'"
     $deploymentSwitched = $true
     Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo sed -i -E 's|^BACKEND_IMAGE=.*$|BACKEND_IMAGE=$backendImage|' .env && sudo sed -i -E 's|^FRONTEND_IMAGE=.*$|FRONTEND_IMAGE=$frontendImage|' .env"
 
@@ -146,8 +174,21 @@ try {
     if ($migrationOutput) {
         Write-Output $migrationOutput
     }
-    Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo docker compose -p '$composeProject' up -d --no-deps backend worker"
-    Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo docker compose -p '$composeProject' up -d --no-deps frontend"
+    Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo docker compose -p '$composeProject' run --rm --no-deps migrate python scripts/check_migrations.py"
+    Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo docker compose -p '$composeProject' up -d --no-deps --wait --wait-timeout 90 backend worker"
+    Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo docker compose -p '$composeProject' up -d --no-deps --wait --wait-timeout 90 frontend"
+    for ($attempt = 1; $attempt -le 20; $attempt++) {
+        try {
+            Invoke-Ssh -Command "cd '$remoteDeployDir' && sudo docker compose -p '$composeProject' exec -T worker arq --check app.workers.settings.WorkerSettings" -Capture | Out-Null
+            break
+        }
+        catch {
+            if ($attempt -eq 20) {
+                throw
+            }
+            Start-Sleep -Seconds 2
+        }
+    }
 
     $runningBackendImage = Invoke-Ssh -Command "sudo docker inspect --format '{{.Config.Image}}' ai-short-drama-backend-1" -Capture
     $runningWorkerImage = Invoke-Ssh -Command "sudo docker inspect --format '{{.Config.Image}}' ai-short-drama-worker-1" -Capture
@@ -196,6 +237,14 @@ catch {
     throw
 }
 finally {
+    if ($sourceUploaded) {
+        try {
+            Invoke-Ssh -Command "cd '$remoteDeployDir' && case '$remoteBuildDirectory' in '$remoteDeployDir'/build-*) sudo rm -f -- '$remoteSourceArchive' && sudo rm -rf -- '$remoteBuildDirectory' ;; *) exit 1 ;; esac"
+        }
+        catch {
+            Write-Warning "Could not remove the temporary source archive and build directory: $($_.Exception.Message)"
+        }
+    }
     if ($archiveUploaded) {
         try {
             Invoke-Ssh -Command "sudo rm -f '$remoteArchive'"
@@ -205,6 +254,11 @@ finally {
         }
     }
     if (Test-Path -LiteralPath $temporaryDirectory) {
+        $resolvedTemporaryDirectory = [System.IO.Path]::GetFullPath($temporaryDirectory)
+        $temporaryRoot = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+        if (-not $resolvedTemporaryDirectory.StartsWith($temporaryRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Refusing to remove a deployment directory outside the temporary root.'
+        }
         Remove-Item -LiteralPath $temporaryDirectory -Recurse -Force
     }
 }

@@ -42,3 +42,11 @@ def test_transition_task_validates_progress():
 
     with pytest.raises(InvalidTaskTransition):
         transition_task(task, "running", progress=101)
+
+
+def test_needs_review_only_allows_explicit_manual_resolution():
+    task = make_task("needs_review")
+    for status in ("queued", "succeeded", "failed", "cancelled"):
+        with pytest.raises(InvalidTaskTransition):
+            transition_task(task, status)
+    assert transition_task(task, "queued", manual=True) is True

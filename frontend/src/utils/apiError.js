@@ -33,7 +33,7 @@ export function createApiError(payload, status) {
 
 export function getTaskErrorMessage(task) {
   return getApiErrorMessage({
-    error_key: task.error_key || { failed: 'generation_failed', cancelled: 'task_cancelled', timeout: 'task_timeout' }[task.status] || 'generation_failed',
+    error_key: task.error_key || { failed: 'generation_failed', cancelled: 'task_cancelled', timeout: 'task_timeout', needs_review: 'task_needs_review' }[task.status] || 'generation_failed',
     error_params: task.error_params,
   })
 }

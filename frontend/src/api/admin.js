@@ -92,6 +92,10 @@ export async function getAdminTaskProviderStatus(taskId) {
   return (await apiClient.post(`/admin/tasks/${taskId}/provider-status`)).data
 }
 
+export async function resolveAdminTaskReview(taskId, payload, { signal } = {}) {
+  return (await apiClient.post(`/admin/tasks/${taskId}/resolve-review`, payload, { signal })).data
+}
+
 export async function getAdminAudits(params) {
   return (await apiClient.get('/admin/audits', { params })).data
 }
